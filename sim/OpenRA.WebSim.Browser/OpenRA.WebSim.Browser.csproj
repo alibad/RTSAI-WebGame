@@ -1,0 +1,35 @@
+<Project Sdk="Microsoft.NET.Sdk.WebAssembly">
+  <!--
+    The OpenRA simulation for the browser (Mono WebAssembly runtime), driven from a Web Worker.
+    Interpreter by default; -p:Aot=true compiles every assembly ahead of time (needs the wasm-tools workload).
+    Build:  dotnet publish sim/OpenRA.WebSim.Browser -c Release [-p:Aot=true]
+  -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <AssemblyName>OpenRA.WebSim.Browser</AssemblyName>
+    <RootNamespace>OpenRA.WebSim.Browser</RootNamespace>
+    <RuntimeIdentifier>browser-wasm</RuntimeIdentifier>
+    <!-- OpenRA builds everything by reflection (ObjectCreator, FieldLoader, Sync): keep all IL. -->
+    <PublishTrimmed>false</PublishTrimmed>
+    <TrimMode>partial</TrimMode>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <WasmEnableThreads>false</WasmEnableThreads>
+    <WasmEnableSIMD>true</WasmEnableSIMD>
+    <WasmFingerprintAssets>false</WasmFingerprintAssets>
+    <WasmEmitSymbolMap>false</WasmEmitSymbolMap>
+    <EmccInitialHeapSize>268435456</EmccInitialHeapSize>
+    <EmccMaximumHeapSize>4294901760</EmccMaximumHeapSize>
+    <CompressionEnabled>false</CompressionEnabled>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Aot)' == 'true'">
+    <RunAOTCompilation>true</RunAOTCompilation>
+    <WasmStripILAfterAOT>false</WasmStripILAfterAOT>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="*.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\OpenRA.WebSim\OpenRA.WebSim.csproj" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    The mod's OpenRA.Mods.RTSAI gameplay code (traits, bot modules, lint) compiled unchanged.
+    Left out: the AI companion (Kestrel/gRPC sidecar, sockets, processes), its lobby/server traits,
+    load screen and widget logic. The web build's mod.yaml drops rules/companion.yaml to match.
+  -->
+  <PropertyGroup>
+    <AssemblyName>OpenRA.Mods.RTSAI</AssemblyName>
+    <RootNamespace>OpenRA.Mods.RTSAI</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="$(ModRoot)OpenRA.Mods.RTSAI\Traits\**\*.cs" />
+    <Compile Include="$(ModRoot)OpenRA.Mods.RTSAI\Lint\**\*.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="$(EngineRoot)OpenRA.Game\OpenRA.Game.csproj" />
+    <ProjectReference Include="$(EngineRoot)OpenRA.Mods.Common\OpenRA.Mods.Common.csproj" />
+    <ProjectReference Include="$(EngineRoot)OpenRA.Mods.Cnc\OpenRA.Mods.Cnc.csproj" />
+  </ItemGroup>
+</Project>

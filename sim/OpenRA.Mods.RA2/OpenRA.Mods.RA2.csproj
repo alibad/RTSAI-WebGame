@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- The mod's OpenRA.Mods.RA2 sources, compiled unchanged (same exclusion as the mod's own project). -->
+  <PropertyGroup>
+    <AssemblyName>OpenRA.Mods.RA2</AssemblyName>
+    <RootNamespace>OpenRA.Mods.RA2</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="$(ModRoot)OpenRA.Mods.RA2\**\*.cs"
+             Exclude="$(ModRoot)OpenRA.Mods.RA2\obj\**;$(ModRoot)OpenRA.Mods.RA2\bin\**;$(ModRoot)OpenRA.Mods.RA2\UtilityCommands\ImportRA2MapCommand.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="$(EngineRoot)OpenRA.Game\OpenRA.Game.csproj" />
+    <ProjectReference Include="$(EngineRoot)OpenRA.Mods.Common\OpenRA.Mods.Common.csproj" />
+    <ProjectReference Include="$(EngineRoot)OpenRA.Mods.Cnc\OpenRA.Mods.Cnc.csproj" />
+  </ItemGroup>
+</Project>

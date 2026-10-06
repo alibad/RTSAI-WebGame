@@ -1,0 +1,174 @@
+﻿#region Copyright & License Information
+/*
+ * Copyright (c) The OpenRA Developers and Contributors
+ * This file is part of OpenRA, which is free software. It is made
+ * available to you under the terms of the GNU General Public License
+ * as published by the Free Software Foundation, either version 3 of
+ * the License, or (at your option) any later version. For more
+ * information, see COPYING.
+ */
+#endregion
+
+using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.IO;
+using System.Linq;
+using System.Text;
+using System.Text.Json;
+using OpenRA;
+using OpenRA.WebSim;
+
+static class Program
+{
+	static int Main(string[] args)
+	{
+		if (args.Length == 0)
+		{
+			Console.WriteLine("usage: websim pack|extract-content|unpack|run ...");
+			return 1;
+		}
+
+		var opts = ParseOptions(args.Skip(1).ToArray());
+		try
+		{
+			return args[0] switch
+			{
+				"pack" => Bundle.Build(opts),
+				"extract-content" => PrivateContent.Extract(opts),
+				"unpack" => Unpack(opts),
+				"run" => Run(opts),
+				_ => throw new ArgumentException("Unknown command " + args[0]),
+			};
+		}
+		catch (Exception e)
+		{
+			Console.Error.WriteLine(e);
+			return 2;
+		}
+		finally
+		{
+			// The engine's log writer is a foreground thread: stop it or the process never exits.
+			Log.Dispose();
+		}
+	}
+
+	static Dictionary<string, string> ParseOptions(string[] args)
+	{
+		var opts = new Dictionary<string, string>();
+		for (var i = 0; i < args.Length; i++)
+		{
+			if (!args[i].StartsWith("--", StringComparison.Ordinal))
+				continue;
+
+			var key = args[i][2..];
+			opts[key] = i + 1 < args.Length && !args[i + 1].StartsWith("--", StringComparison.Ordinal) ? args[++i] : "true";
+		}
+
+		return opts;
+	}
+
+	/// <summary>Builds a native VFS root exactly like the browser's: the bundle, plus private content if given.</summary>
+	static int Unpack(Dictionary<string, string> opts)
+	{
+		var root = opts["root"];
+		if (Directory.Exists(root))
+			throw new IOException($"{root} already exists; pick a fresh directory.");
+
+		var n = Pack.Unpack(File.ReadAllBytes(opts["pack"]), root);
+		Console.WriteLine($"unpacked {n} files into {root}");
+		if (opts.TryGetValue("private", out var priv))
+		{
+			var m = Pack.Unpack(File.ReadAllBytes(priv), root);
+			Console.WriteLine($"unpacked {m} private content files");
+		}
+
+		return 0;
+	}
+
+	static int Run(Dictionary<string, string> opts)
+	{
+		var root = opts["root"];
+		var scenario = ScenarioSpec.Parse(File.ReadAllText(opts["scenario"]));
+		var ticks = opts.TryGetValue("ticks", out var t) ? int.Parse(t) : 500;
+
+		Dictionary<int, byte[]> replay = null;
+		if (opts.TryGetValue("replay", out var replayFile))
+			replay = SessionLog.ReadPackets(File.ReadAllText(replayFile));
+
+		var wall = Stopwatch.StartNew();
+		SimHost.Boot(root);
+		var bootMs = wall.Elapsed.TotalMilliseconds;
+		SimHost.Start(scenario, replay);
+		var startMs = wall.Elapsed.TotalMilliseconds - bootMs;
+		Console.WriteLine($"boot {bootMs:F0} ms, start {startMs:F0} ms; {string.Join(", ", SimHost.Timings.Select(kv => $"{kv.Key} {kv.Value:F0}"))}");
+		Console.WriteLine($"actors {SimHost.World.Actors.Count()} players {SimHost.World.Players.Length} map {SimHost.World.Map.Title}");
+
+		var snapshot = opts.ContainsKey("snapshot");
+		if (snapshot)
+		{
+			Snapshot.StartInfoJson(out var terrain);
+			Console.WriteLine($"terrain vertices {terrain.Length / 48}");
+		}
+
+		if (opts.ContainsKey("dump"))
+		{
+			foreach (var a in SimHost.World.Actors.Where(a => a.Owner.Playable && a.OccupiesSpace != null).Take(12))
+				Console.WriteLine($"  {a.ActorID} {a.Info.Name} owner={a.Owner.InternalName} inWorld={a.IsInWorld} dead={a.IsDead} pos={a.CenterPosition} cell={a.Location}");
+		}
+
+		var tickTimes = new List<double>();
+		var snapTimes = new List<double>();
+		var snapBytes = new List<int>();
+		for (var i = 0; i < ticks; i++)
+		{
+			var s = Stopwatch.GetTimestamp();
+			SimHost.Tick();
+			tickTimes.Add(Stopwatch.GetElapsedTime(s).TotalMilliseconds);
+			if (snapshot)
+			{
+				snapBytes.Add(Snapshot.Build());
+				snapTimes.Add(Snapshot.LastBuildMs);
+			}
+
+			if (opts.ContainsKey("progress") && (i + 1) % 50 == 0)
+			{
+				var alive = SimHost.PlayablePlayers().Select(p => SimHost.World.Actors.Count(a => a.Owner == p && a.IsInWorld && !a.IsDead)).ToList();
+				Console.WriteLine($"  tick {SimHost.World.WorldTick}: alive {string.Join(" vs ", alive)}, last 50 ticks mean {tickTimes.TakeLast(50).Average():F2} ms, hash {SimHost.Connection.SyncHashes.LastOrDefault()}");
+			}
+		}
+
+		var units = SimHost.World.Actors.Count(a => a.IsInWorld && a.Owner.Playable);
+		Console.WriteLine($"ticks {ticks}: world tick {SimHost.World.WorldTick}, playable-owned actors left {units}");
+		Console.WriteLine($"tick ms: {Stats(tickTimes)}");
+		if (snapshot)
+			Console.WriteLine($"snapshot ms: {Stats(snapTimes)}; bytes: mean {snapBytes.Average():F0} max {snapBytes.Max()}; unsupported renderables {Snapshot.UnsupportedRenderables}");
+
+		var gc = GC.GetGCMemoryInfo();
+		Console.WriteLine($"managed heap {GC.GetTotalMemory(false) / 1048576.0:F0} MB, working set {Environment.WorkingSet / 1048576.0:F0} MB, peak committed {gc.TotalCommittedBytes / 1048576.0:F0} MB");
+
+		if (opts.TryGetValue("hashes", out var hashFile))
+		{
+			File.WriteAllLines(hashFile, SimHost.Connection.SyncHashes.Select((h, i) => $"{i + 1} {h}"));
+			Console.WriteLine($"wrote {SimHost.Connection.SyncHashes.Count} sync hashes to {hashFile}");
+		}
+
+		if (opts.TryGetValue("log", out var logFile))
+			File.WriteAllText(logFile, SessionLog.Write(scenario, SimHost.Connection));
+
+		if (opts.TryGetValue("timings", out var timingFile))
+			File.WriteAllLines(timingFile, tickTimes.Select(x => x.ToString("F3")));
+
+		return 0;
+	}
+
+	static string Stats(List<double> v)
+	{
+		if (v.Count == 0)
+			return "n/a";
+
+		var sorted = v.OrderBy(x => x).ToList();
+		double P(double q) => sorted[Math.Min(sorted.Count - 1, (int)(q * sorted.Count))];
+		return $"mean {v.Average():F2} p50 {P(0.5):F2} p95 {P(0.95):F2} max {sorted[^1]:F2}";
+	}
+}

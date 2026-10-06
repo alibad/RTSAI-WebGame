@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Native (CoreCLR) counterpart of the browser build: bundles inputs, extracts private content, and runs the same host headless. -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <AssemblyName>websim</AssemblyName>
+    <RootNamespace>OpenRA.WebSim.Native</RootNamespace>
+    <ServerGarbageCollection>false</ServerGarbageCollection>
+    <TieredPGO>true</TieredPGO>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="*.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\OpenRA.WebSim\OpenRA.WebSim.csproj" />
+  </ItemGroup>
+</Project>

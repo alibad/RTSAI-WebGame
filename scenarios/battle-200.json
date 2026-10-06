@@ -1,0 +1,16 @@
+{
+  "map": "web-arena",
+  "seed": 20261006,
+  "script": "battle",
+  "players": [
+    { "slot": "Multi0", "faction": "saudi", "color": "2A6FDB", "spawn": 1 },
+    { "slot": "Multi1", "faction": "iran", "bot": "webidle", "color": "D83A2E", "spawn": 2 }
+  ],
+  "options": { "explored": "True", "fog": "False", "crates": "False", "shortgame": "False" },
+  "spawns": [
+    { "type": "r2m1a2s",  "player": 0, "x": 40, "y": 40, "count": 60, "columns": 6, "spacing": 2 },
+    { "type": "r2sang",   "player": 0, "x": 30, "y": 40, "count": 40, "columns": 4, "spacing": 2 },
+    { "type": "r2karrar", "player": 1, "x": 78, "y": 40, "count": 60, "columns": 6, "spacing": 2 },
+    { "type": "r2basij",  "player": 1, "x": 92, "y": 40, "count": 40, "columns": 4, "spacing": 2 }
+  ]
+}

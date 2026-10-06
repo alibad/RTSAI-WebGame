@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    The embedded OpenRA host shared by the browser (WebAssembly) build and the native comparison runner.
+    Both compile this exact code against the same engine + mod assemblies, so a match proves the runtime, not the host.
+  -->
+  <PropertyGroup>
+    <AssemblyName>OpenRA.WebSim</AssemblyName>
+    <RootNamespace>OpenRA.WebSim</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="*.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="$(EngineRoot)OpenRA.Game\OpenRA.Game.csproj" />
+    <ProjectReference Include="$(EngineRoot)OpenRA.Mods.Common\OpenRA.Mods.Common.csproj" />
+    <ProjectReference Include="$(EngineRoot)OpenRA.Mods.Cnc\OpenRA.Mods.Cnc.csproj" />
+    <ProjectReference Include="..\OpenRA.Mods.RA2\OpenRA.Mods.RA2.csproj" />
+    <ProjectReference Include="..\OpenRA.Mods.RTSAI\OpenRA.Mods.RTSAI.csproj" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,22 @@
+﻿<Project>
+  <!--
+    RTSAI-WebGame: the real OpenRA simulation (engine + RTS AI mod) compiled for the browser.
+    EngineRoot is the rtsai/web-engine worktree; ModRoot is the RTSAI-Mod checkout whose C# and data we load.
+    Both are read-only inputs: nothing here writes into them except the engine's own bin/ + obj/ build output.
+  -->
+  <PropertyGroup>
+    <EngineRoot Condition="'$(EngineRoot)' == ''">$(MSBuildThisFileDirectory)..\OpenRA-wt-web\</EngineRoot>
+    <ModRoot Condition="'$(ModRoot)' == ''">$(MSBuildThisFileDirectory)..\RTSAI-Mod\</ModRoot>
+    <TargetFramework>net10.0</TargetFramework>
+    <LangVersion>13</LangVersion>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <Optimize>true</Optimize>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <NoWarn>$(NoWarn);CS1591;CA1416;IDE0005;NU1900</NoWarn>
+    <NuGetAudit>false</NuGetAudit>
+    <BaseOutputPath>$(MSBuildThisFileDirectory)bin\$(MSBuildProjectName)\</BaseOutputPath>
+    <BaseIntermediateOutputPath>$(MSBuildThisFileDirectory)obj\$(MSBuildProjectName)\</BaseIntermediateOutputPath>
+  </PropertyGroup>
+</Project>

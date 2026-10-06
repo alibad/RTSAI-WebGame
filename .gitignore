@@ -1,0 +1,15 @@
+# Build output
+bin/
+obj/
+node_modules/
+web/dist/
+data/
+
+# Bundles are generated from the mod checkout; never commit them.
+*.pack
+
+# EA content must never enter this repository (it lives in %LOCALAPPDATA%\RTSAI-WebGame\private).
+*.mix
+*.bag
+*.idx
+private/
