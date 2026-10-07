@@ -1,4 +1,4 @@
-﻿// Game controller: owns the canvas, renderer and worker client; turns mouse/keyboard input into engine
+// Game controller: owns the canvas, renderer and worker client; turns mouse/keyboard input into engine
 // commands (selection, orders, modes, control groups); feeds the store the HUD renders from. The engine is the
 // source of truth for selection, order modes and production; the page only predicts what it draws this frame.
 
@@ -183,8 +183,9 @@ export class Game {
   }
 
   private started(info: StartInfo, radarTerrain: ArrayBuffer, startMs: number) {
+    // The sandbox keeps its camera between editing and running (it frames the placements itself).
+    if (!this.sandbox || !this.info) this.cam = { x: info.start[0], y: info.start[1], zoom: 1 };
     this.info = info;
-    this.cam = { x: info.start[0], y: info.start[1], zoom: 1 };
     const w = info.mapSize[0] * 2 + 1;
     const h = info.mapSize[1];
     this.radar.terrain = new ImageData(new Uint8ClampedArray(radarTerrain), w, h);
@@ -207,7 +208,7 @@ export class Game {
       // Cameos for everything the sidebar can show.
       this.requestIcons(catalog.flatMap((q) => q.items.map((i) => i.name)));
     }
-    this.requestIcons(u.selection.map((a) => a.type));
+    this.requestIcons((u.selection ?? []).map((a) => a.type)); // empty while spectating (sandbox editor)
     // Keep the open tab on a queue that exists; prefer one with something ready.
     if (!catalog.some((q) => q.type === s.tab && q.items.length)) {
       const first = catalog.find((q) => q.items.length);
@@ -605,7 +606,7 @@ export class Game {
     c.addEventListener("wheel", (e) => {
       e.preventDefault();
       const [wx, wy] = this.toWorld(e.clientX, e.clientY);
-      const z = Math.min(3, Math.max(0.5, this.cam.zoom * (e.deltaY < 0 ? 1.15 : 1 / 1.15)));
+      const z = Math.min(3, Math.max(0.35, this.cam.zoom * (e.deltaY < 0 ? 1.15 : 1 / 1.15)));
       this.cam.x = wx - (wx - this.cam.x) * (this.cam.zoom / z);
       this.cam.y = wy - (wy - this.cam.y) * (this.cam.zoom / z);
       this.cam.zoom = z;

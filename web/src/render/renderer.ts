@@ -174,7 +174,8 @@ export class Renderer {
   setStartInfo(info: StartInfo, terrain: ArrayBuffer) {
     const gl = this.gl;
     this.info = info;
-    this.sprites = [];
+    // No sprite reset here: the client resets the table when it requests the start, and the first snapshot
+    // (which defines every sprite) can arrive through the shared ring before this message is handled.
     this.terrainSheets = info.terrainSheets;
     const vao = gl.createVertexArray()!;
     gl.bindVertexArray(vao);

@@ -68,7 +68,10 @@ export function parseSandboxUrl(params: URLSearchParams): SandboxConfig {
       Object.assign(cfg, {
         fa: j.fa ?? cfg.fa, fb: j.fb ?? cfg.fb, level: j.level ?? 0, health: j.health ?? 100,
         order: j.order, autorun: !!j.autorun,
-        placements: (j.placements ?? []).map((p: Placement & { type?: string; player?: number }) => ({ ...p, id: p.id ?? p.type, side: (p.side ?? p.player ?? 0) as 0 | 1 })),
+        placements: (j.placements ?? []).map((p: Placement & { type?: string; player?: number }) => {
+          const side = (p.side ?? p.player ?? 0) as 0 | 1;
+          return { ...p, id: p.id ?? p.type, side, facing: p.facing ?? (side === 0 ? 768 : 256) };
+        }),
       });
     } catch (e) {
       console.warn("bad sandbox state", e);
@@ -91,7 +94,7 @@ export function parseSandboxUrl(params: URLSearchParams): SandboxConfig {
       for (let i = 0; i < count; i++) {
         const u = side === 0 ? 48 - (i % cols) * 2 - row : 80 + (i % cols) * 2 + row;
         const v = 64 + Math.floor(i / cols) * 2 + row * 4;
-        cfg.placements.push({ id, side, u, v });
+        cfg.placements.push({ id, side, u, v, facing: side === 0 ? 768 : 256 });
       }
       row++;
     }
@@ -133,8 +136,10 @@ export class Sandbox {
       map: ARENA,
       seed: 1 + Math.floor(Math.random() * 1e9),
       sandbox: run,
+      // Editing: both sides are idle bots and the page spectates (sees everything, no shroud). Running: side A
+      // is the player's to command.
       players: [
-        { slot: "Multi0", faction: st.fa, color: "2A6FDB" },
+        { slot: "Multi0", faction: st.fa, color: "2A6FDB", ...(run ? {} : { bot: "webidle" }) },
         { slot: "Multi1", faction: st.fb, bot: "webidle", color: "D83A2E" },
       ],
       options: { explored: "True", fog: "False", crates: "False", shortgame: "False" },
@@ -171,7 +176,7 @@ export class Sandbox {
     const xs = pts.map((p) => p[0]), ys = pts.map((p) => p[1]);
     const [x0, x1, y0, y1] = [Math.min(...xs), Math.max(...xs), Math.min(...ys), Math.max(...ys)];
     const canvas = this.game.canvas;
-    const zoom = Math.max(0.5, Math.min(1.5, Math.min(canvas.width / (x1 - x0 + 500), canvas.height / (y1 - y0 + 400))));
+    const zoom = Math.max(0.35, Math.min(1.5, Math.min(canvas.width / (x1 - x0 + 500), canvas.height / (y1 - y0 + 400))));
     this.game.cam.zoom = zoom;
     this.game.lookAt((x0 + x1) / 2, (y0 + y1) / 2);
   }

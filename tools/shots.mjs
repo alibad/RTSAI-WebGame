@@ -56,7 +56,7 @@ const shot = async (p, name) => { const f = path.join(out, name); await p.screen
     await p.evaluate((i) => window.game.command({ cmd: "produce", queue: "Building", item: i }), item);
     await until(p, (i) => window.store.getState().ui.queues.find((q) => q.type === "Building")?.items.find((x) => x.name === i && x.done), item, 150000);
     await p.evaluate((i) => window.game.command({ cmd: "produce", queue: "Building", item: i }), item);
-    const yard = await p.evaluate(() => { const s = window.game.client.cur; const a = s.actors.find((x) => x.owner === s.header.localPlayer && (x.flags & 8)); return [a.sx, a.sy]; });
+    const yard = await until(p, () => { const s = window.game.client.cur; const a = s.actors.find((x) => x.owner === s.header.localPlayer && (x.flags & 8)); return a ? [a.sx, a.sy] : null; });
     for (const [dx, dy] of [[150, 60], [-150, 60], [150, -60], [0, 150], [-220, 0], [220, 0], [0, -150], [300, 90]]) {
       await p.evaluate(([x, y]) => window.game["click"](x, y, 1, 0), [yard[0] + dx, yard[1] + dy]);
       await p.waitForTimeout(400);
@@ -93,12 +93,19 @@ const shot = async (p, name) => { const f = path.join(out, name); await p.screen
   const p = await page(`${base}&mode=sandbox&a=r2m1a2s:6,r2sang:4&b=r2karrar:6,r2basij:4&fa=saudi&fb=iran&level=1`);
   await phase(p, "playing");
   await until(p, () => window.store.getState().sandbox?.units.length > 0 && Object.keys(window.store.getState().icons).length > 20);
-  await p.evaluate(() => { const b = window.store.getState().info.bounds; window.game.lookAt((b[0] + b[2]) / 2 - 80, (b[1] + b[3]) / 2 - 140); window.game.cam.zoom = 1.25; });
-  await p.waitForTimeout(1500);
+  await p.waitForTimeout(1500); // the sandbox frames its placements itself
   await shot(p, "3-sandbox-setup.png");
   await p.evaluate(() => window.game.sandbox.run());
   await until(p, () => window.store.getState().sandbox.mode === "run" && window.game.sandbox.recording.length > 400, null, 120000);
-  await p.evaluate(() => { const b = window.store.getState().info.bounds; window.game.lookAt((b[0] + b[2]) / 2 - 40, (b[1] + b[3]) / 2 - 140); window.game.cam.zoom = 1.25; });
+  await p.evaluate(() => {
+    const g = window.game, s = g.client.cur;
+    const units = s.actors.filter((a) => s.players[a.owner]?.flags & 4 && a.maxHp > 0);
+    if (units.length) {
+      const c = units.reduce((acc, a) => [acc[0] + a.sx / units.length, acc[1] + a.sy / units.length], [0, 0]);
+      g.cam.zoom = 0.9;
+      g.lookAt(c[0], c[1]);
+    }
+  });
   await p.waitForTimeout(1200);
   await shot(p, "4-sandbox-fight.png");
   await p.close();

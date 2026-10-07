@@ -1,4 +1,4 @@
-﻿#region Copyright & License Information
+#region Copyright & License Information
 /*
  * Copyright (c) The OpenRA Developers and Contributors
  * This file is part of OpenRA, which is free software. It is made
@@ -217,8 +217,9 @@ namespace OpenRA.WebSim
 		/// </summary>
 		public static string Command(string json)
 		{
+			// No local player is fine: the sandbox editor runs as a spectator (it sees both sides).
 			var world = SimHost.World;
-			if (world == null || world.LocalPlayer == null)
+			if (world == null)
 				return "{}";
 
 			// UI actions run outside synced code, like the desktop widgets (orders still go through IssueOrder).
