@@ -83,8 +83,45 @@ namespace OpenRA.WebSim.Browser
 		[JSImport("textureFree", "websim")]
 		static partial void TextureFree(int id);
 
+		[JSImport("companionReply", "websim")]
+		static partial void CompanionReply(int call, int code, string message, [JSMarshalAs<JSType.MemoryView>] Span<byte> payload);
+
+		[JSImport("companionEvent", "websim")]
+		static partial void CompanionEvent(string json);
+
 		[JSImport("texture", "websim")]
 		static partial void StreamTexture(int id, int version, int width, int height, [JSMarshalAs<JSType.MemoryView>] Span<byte> data);
+
+		/// <summary>The co-commander for the next match (its CompanionBridge publishes observations and takes actions).</summary>
+		[JSExport]
+		public static void CompanionEnable(bool on) => CompanionRpc.Enable(on);
+
+		/// <summary>One relayed companion RPC (protobuf in, protobuf out); answered through companionReply.</summary>
+		[JSExport]
+		public static void CompanionCall(int call, string method, byte[] request) => _ = CompanionCallAsync(call, method, request);
+
+		static async System.Threading.Tasks.Task CompanionCallAsync(int call, string method, byte[] request)
+		{
+			byte[] reply = [];
+			var code = 0;
+			var message = "";
+			try
+			{
+				reply = await CompanionRpc.Call(method, request);
+			}
+			catch (CompanionRpc.RpcException e)
+			{
+				code = e.Code;
+				message = e.Message;
+			}
+			catch (Exception e)
+			{
+				code = 13;
+				message = e.Message;
+			}
+
+			CompanionReply(call, code, message, reply);
+		}
 
 		/// <summary>Routes load-step progress to the page (Mount does this too; the worker mounts files itself).</summary>
 		[JSExport]
@@ -98,6 +135,14 @@ namespace OpenRA.WebSim.Browser
 			SpriteStore.Load = SpriteLoad;
 			SpriteStore.Saved = SpriteSaved;
 			SpriteStore.Restored = SpriteRestored;
+
+			// The AI co-commander's status, threat and executed actions, for the page's panel.
+			CompanionRpc.StatusChanged = (state, message) =>
+				CompanionEvent($"{{\"kind\":\"status\",\"state\":{Snapshot.Json(state)},\"message\":{Snapshot.Json(message)}}}");
+			CompanionRpc.ThreatChanged = (score, level, reason) =>
+				CompanionEvent($"{{\"kind\":\"threat\",\"score\":{score},\"level\":{Snapshot.Json(level)},\"reason\":{Snapshot.Json(reason)}}}");
+			CompanionRpc.ActionsExecuted = (id, accepted, detail) =>
+				CompanionEvent($"{{\"kind\":\"executed\",\"id\":{Snapshot.Json(id)},\"accepted\":{(accepted ? "true" : "false")},\"detail\":{Snapshot.Json(detail)}}}");
 
 			// Textures the engine disposes (a finished game's sheets) are deleted on the page's GPU too.
 			WebTexture.Freed = TextureFree;

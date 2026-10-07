@@ -21,6 +21,9 @@ export class SimClient {
   private pending: { bytes: Uint8Array; seq: number }[] = [];
   /** Longest time a cached sprite sheet took to inflate and upload (ms). */
   sheetMs = 0;
+  /** Prebaked sheets of the prepared map: how many there are and how many are on the GPU. */
+  sheets = { total: 0, uploaded: 0 };
+  onSheets: (uploaded: number, total: number) => void = () => {};
   private handlers = new Map<string, ((m: FromWorker) => void)[]>();
   private replies = new Map<number, (json: string) => void>();
   private nextReq = 1;
@@ -74,13 +77,13 @@ export class SimClient {
     this.send({ type: "init", runtime, base, sab: this.sab, privateContent, gcParams, profile });
   }
 
-  start(scenario: string, paused = false) {
+  start(scenario: string, paused = false, companion = false) {
     this.cur = this.prev = null;
     this.lastSeq = this.header ? Atomics.load(this.header, 0) : 0;
     this.strings = [];
     this.pending = [];
     this.renderer.resetSprites();
-    this.send({ type: "start", scenario, paused });
+    this.send({ type: "start", scenario, paused, companion });
   }
 
   private handle(m: FromWorker) {
@@ -94,11 +97,17 @@ export class SimClient {
       case "texturefree":
         this.renderer.freeTexture(m.id);
         return;
+      case "sheets":
+        if (m.done === 0) this.sheets = { total: m.total, uploaded: 0 };
+        this.onSheets(this.sheets.uploaded, this.sheets.total);
+        return;
       case "texturegz": {
         const t0 = performance.now();
         gunzipSheet(m.gz).then((data) => {
           this.renderer.uploadTexture(m.id, 1, m.width, m.height, 0, data.buffer as ArrayBuffer);
           this.sheetMs = Math.max(this.sheetMs, performance.now() - t0);
+          this.sheets.uploaded++;
+          this.onSheets(this.sheets.uploaded, this.sheets.total);
         }).catch((e) => console.warn("sprite cache: sheet inflate failed", e));
         return;
       }

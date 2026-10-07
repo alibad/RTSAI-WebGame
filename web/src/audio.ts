@@ -158,4 +158,30 @@ export class AudioEngine {
     this.musicOn = on;
     for (const s of this.streams.values()) s.gain.gain.value = on ? s.volume : 0;
   }
+
+  private voiceNode: AudioBufferSourceNode | null = null;
+
+  /** The co-commander's spoken reply (a WAV); music ducks while it plays. Resolves when it ends. */
+  async voice(wav: ArrayBuffer) {
+    const ctx = this.ensure();
+    const buf = await ctx.decodeAudioData(wav);
+    this.stopVoice();
+    const node = ctx.createBufferSource();
+    node.buffer = buf;
+    node.connect(this.master);
+    this.music.gain.setTargetAtTime(0.35, ctx.currentTime, 0.08);
+    this.voiceNode = node;
+    node.start();
+    await new Promise<void>((resolve) => { node.onended = () => resolve(); });
+    if (this.voiceNode === node) {
+      this.voiceNode = null;
+      this.music.gain.setTargetAtTime(1, ctx.currentTime, 0.3);
+    }
+  }
+
+  stopVoice() {
+    try { this.voiceNode?.stop(); } catch { /* not started */ }
+    this.voiceNode = null;
+    if (this.ctx) this.music.gain.setTargetAtTime(1, this.ctx.currentTime, 0.2);
+  }
 }

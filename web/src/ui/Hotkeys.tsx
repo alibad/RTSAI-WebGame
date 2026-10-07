@@ -32,6 +32,9 @@ const GROUPS: [string, Row[]][] = [
     [["Esc"], "Cancel / deselect"],
     [["F2"], "Engine stats"],
   ]],
+  ["Co-commander", [
+    [["V"], "Hold to talk"],
+  ]],
 ];
 
 export function HotkeySheet() {

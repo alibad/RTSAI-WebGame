@@ -28,6 +28,8 @@ export function Setup({ game }: { game: Game }) {
   const privateContent = useStore((s) => s.privateContent);
   const profile = useStore((s) => s.profile);
   const publicShot = useStore((s) => s.publicShot);
+  const cc = useStore((s) => s.cc);
+  const ccAvailable = useStore((s) => s.ccAvailable);
 
   const factions = setup.factions.filter((f) => !f.random);
   const modern = new Set(["saudi", "iran", "china", "turkey", "israel", "yemen", "hezbollah"]);
@@ -82,7 +84,8 @@ export function Setup({ game }: { game: Game }) {
   };
 
   const backdrop = map && !publicShot ? previews[map.id] : "";
-  const ready = prepared === map?.id;
+  const sheets = useStore((s) => s.sheets);
+  const ready = prepared === map?.id && sheets.uploaded >= sheets.total;
   const factionInfo = factions.find((f) => f.id === faction);
   const identity = factionIdentity(faction);
 
@@ -155,7 +158,11 @@ export function Setup({ game }: { game: Game }) {
                 : <div className="grid h-full place-items-center"><div className="spinner" /></div>}
               <div className="absolute bottom-2 left-2 flex items-center gap-2 rounded-[3px] bg-black/70 px-2 py-1 text-[11px]">
                 {ready ? <span className="size-[7px] rounded-full bg-[var(--hud-green)]" /> : <div className="spinner !size-[10px] !border" />}
-                <span className="text-[var(--muted-foreground)]">{map?.players} players · {map?.tileset.toLowerCase()}</span>
+                <span className="text-[var(--muted-foreground)]">
+                  {prepared === map?.id && sheets.uploaded < sheets.total
+                    ? `Loading art ${Math.round((100 * sheets.uploaded) / sheets.total)}%`
+                    : `${map?.players} players · ${map?.tileset.toLowerCase()}`}
+                </span>
               </div>
             </div>
             <SearchSelect value={mapId} onValueChange={setMapId} options={mapOptions} aria-label="Map" placeholder="Find a map…" />
@@ -184,6 +191,7 @@ export function Setup({ game }: { game: Game }) {
 
           <div className="mt-auto flex items-center justify-end gap-3">
             {!privateContent && !profile && <span className="text-[11px] text-[var(--muted-foreground)]">Original game files not mounted</span>}
+            {ccAvailable && <CoCommanderToggle game={game} enabled={cc.enabled} mode={cc.mode} error={cc.error} />}
             <Button size="lg" onClick={start} disabled={!map}
               className="h-[46px] min-w-[180px] rounded-[3px] bg-[linear-gradient(180deg,#f6dc9c,#c9a253)] text-[16px] font-bold uppercase tracking-[0.18em] text-[#1a160c] shadow-[0_0_0_1px_#000,0_6px_20px_rgba(241,210,139,0.25)] hover:brightness-110">
               Start
@@ -191,6 +199,35 @@ export function Setup({ game }: { game: Game }) {
           </div>
         </section>
       </div>
+    </div>
+  );
+}
+
+/** The AI co-commander for this match: on/off, and which brain (the local AI stack, or a scripted stand-in). */
+function CoCommanderToggle({ game, enabled, mode, error }: { game: Game; enabled: boolean; mode: "mock" | "local"; error: string }) {
+  return (
+    <div className="hud-panel flex h-[46px] items-center gap-2 rounded-[3px] px-3" title={error || "An AI co-commander that advises, answers and proposes orders"}>
+      <button type="button" role="switch" aria-checked={enabled} aria-label="AI co-commander" onClick={() => game.cc.setEnabled(!enabled)}
+        className="flex items-center gap-2">
+        <svg viewBox="0 0 24 24" width={20} height={20} fill="none" stroke={enabled ? "var(--hud-gold)" : "var(--muted-foreground)"} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M12 3a4 4 0 0 0-4 4v1a4 4 0 0 0-2 7.5V17a4 4 0 0 0 6 3.5A4 4 0 0 0 18 17v-1.5A4 4 0 0 0 16 8V7a4 4 0 0 0-4-4Z" /><path d="M12 7v13M8 12h2M14 12h2" />
+        </svg>
+        <span className={cn("relative h-[18px] w-[32px] rounded-full transition-colors", enabled ? "bg-[var(--hud-gold)]" : "bg-[#262c25]")}>
+          <span className={cn("absolute top-[2px] size-[14px] rounded-full bg-[#0e110e] transition-[left]", enabled ? "left-[16px]" : "left-[2px]")} />
+        </span>
+        <span className="text-[13px] text-[var(--foreground)]">Co-commander</span>
+      </button>
+      {enabled && (
+        <span className="ml-1 flex overflow-hidden rounded-[2px] border border-white/10 text-[11px]">
+          {(["local", "mock"] as const).map((m) => (
+            <button key={m} type="button" onClick={() => game.cc.setMode(m)}
+              className={cn("px-2 py-[3px]", mode === m ? "bg-[var(--hud-gold)] font-semibold text-[#1a160c]" : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]")}>
+              {m === "local" ? "Local AI" : "Scripted"}
+            </button>
+          ))}
+        </span>
+      )}
+      {error && <span className="size-[7px] rounded-full bg-[var(--hud-red)]" aria-label={error} />}
     </div>
   );
 }

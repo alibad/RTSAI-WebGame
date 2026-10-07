@@ -7,6 +7,7 @@ import { percentile, useStore } from "../store";
 import { Sidebar } from "./Sidebar";
 import { Outcome } from "./Outcome";
 import { HotkeyButton, HotkeySheet } from "./Hotkeys";
+import { CoCommander } from "./CoCommander";
 import { AttackMoveIcon, DeployIcon, GuardIcon, ScatterIcon, StopIcon } from "./icons";
 import { Button } from "../components/ui/button";
 import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "../components/ui/dropdown-menu";
@@ -200,6 +201,7 @@ export function Hud({ game }: { game: Game }) {
         <div className="pointer-events-none absolute left-1/2 top-6 -translate-x-1/2 text-[13px] font-semibold uppercase tracking-[0.3em] text-[var(--hud-gold)] drop-shadow-[0_1px_2px_#000]">Paused</div>
       )}
       <Sidebar game={game} />
+      <CoCommander game={game} />
       <HotkeySheet />
       <Outcome game={game} />
     </>

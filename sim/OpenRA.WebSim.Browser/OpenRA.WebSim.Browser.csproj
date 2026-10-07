@@ -46,6 +46,7 @@
     <TrimmerRootAssembly Include="OpenRA.Mods.RA2" />
     <TrimmerRootAssembly Include="OpenRA.Mods.RTSAI" />
     <TrimmerRootAssembly Include="OpenRA.WebSim" />
+    <TrimmerRootAssembly Include="Google.Protobuf" />
     <TrimmerRootAssembly Include="System.Collections.Immutable" />
     <TrimmerRootAssembly Include="System.Collections" />
     <TrimmerRootAssembly Include="System.Linq" />

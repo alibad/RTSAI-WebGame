@@ -8,6 +8,7 @@ import {
   textureUpdates, type FromWorker, type ToWorker,
 } from "./protocol";
 import { LazyMount, httpRangeReader, mountPack } from "./lazyfs";
+import { CompanionRelay } from "./companion";
 import { fetchShippedSprites, SpriteBake, hashString } from "./spritecache";
 
 declare const self: DedicatedWorkerGlobalScope;
@@ -37,6 +38,7 @@ let lastUi = "";
 let timer: ReturnType<typeof setTimeout> | null = null;
 let tickMs = TICK_MS; // 40 ms at 1x; the sandbox can run faster
 let bake: SpriteBake | null = null; // prebaked sprite sheets (IndexedDB)
+let relay: CompanionRelay | null = null; // the AI co-commander's RPC relay (local companion <-> CompanionBridge)
 
 /** A snapshot without advancing the world (paused game, sandbox editing, camera moves while paused). */
 function refresh() {
@@ -146,6 +148,9 @@ async function init(msg: Extract<ToWorker, { type: "init" }>) {
     spriteSaved: (key: string, table: Uint8Array, ids: ArrayLike<number>) => bake?.saved(key, table, ids),
     spriteRestored: (key: string, ids: ArrayLike<number>) => bake?.restored(key, ids),
     textureFree: (id: number) => post({ type: "texturefree", id }),
+    // The AI co-commander (CompanionRpc.cs): relayed RPC answers, and status/threat/action events for the panel.
+    companionReply: (call: number, code: number, message: string, view: { slice(): Uint8Array }) => relay?.reply(call, code, message, view.slice()),
+    companionEvent: (json: string) => post({ type: "companion", event: JSON.parse(json) }),
     // Sheets committed by the engine go straight to the page (no copy kept in the WebAssembly heap).
     texture: (id: number, version: number, width: number, height: number, view: { slice(): Uint8Array }) => {
       const bytes = view.slice();
@@ -202,6 +207,7 @@ async function init(msg: Extract<ToWorker, { type: "init" }>) {
 
   bake = new SpriteBake(`${msg.profile ?? ""}|${bundleId}|${privateTag}|ORASPR01`, (id, width, height, gz) =>
     post({ type: "texturegz", id, width, height, gz }));
+  bake.onProgress = (done, total) => post({ type: "sheets", done, total });
   await bake.init();
 
   post({ type: "progress", stage: "Loading rules" });
@@ -222,8 +228,11 @@ function stopLoop() {
   timer = null;
 }
 
-function start(scenario: string, startPaused = false) {
+function start(scenario: string, startPaused = false, companion = false) {
   stopLoop();
+  // The co-commander's CompanionBridge is created with the world: enable it first, connect the relay after.
+  S.CompanionEnable(companion);
+  if (!companion) relay?.close();
   paused = startPaused;
   const t0 = performance.now();
   post({ type: "progress", stage: "Building the world" });
@@ -238,6 +247,13 @@ function start(scenario: string, startPaused = false) {
   lastUi = "";
   ticks = 0;
   post({ type: "started", info, terrain: tbuf, radarTerrain: rbuf, startMs: performance.now() - t0, lazy: lazy?.stats }, [tbuf, rbuf]);
+  if (companion) {
+    const url = new URL("companion/bridge", base);
+    url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
+    relay ??= new CompanionRelay(url.href, { call: (id, method, request) => S.CompanionCall(id, method, request) },
+      (connected) => post({ type: "companion", event: { kind: "link", connected } }));
+    relay.connect();
+  }
   sendShroud(true);
   running = true;
   nextTick = performance.now();
@@ -328,11 +344,15 @@ self.onmessage = async (e: MessageEvent<ToWorker>) => {
         post({ type: "preview", map: m.map, png: buf }, [buf]);
         break;
       }
-      case "start": start(m.scenario, m.paused ?? false); break;
+      case "start":
+        if (lazy) lazy.trace = [];
+        start(m.scenario, m.paused ?? false, m.companion ?? false);
+        if (lazy?.trace) { if (lazy.trace.length) console.info("lazy reads during start: " + lazy.trace.join(" ")); lazy.trace = null; }
+        break;
       case "refresh": refresh(); break;
       case "step": if (running && paused) tickOnce(); break;
       case "speed": tickMs = TICK_MS / Math.max(0.25, Math.min(8, m.speed)); break;
-      case "end": stopLoop(); S.EndGame(); break;
+      case "end": stopLoop(); relay?.close(); S.EndGame(); break;
       case "pause": paused = m.paused; if (paused) refresh(); break;
       case "view":
         S?.View(m.x0 | 0, m.y0 | 0, m.x1 | 0, m.y1 | 0);

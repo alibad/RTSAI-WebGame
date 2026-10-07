@@ -1,8 +1,10 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <!--
-    The mod's OpenRA.Mods.RTSAI gameplay code (traits, bot modules, lint) compiled unchanged.
-    Left out: the AI companion (Kestrel/gRPC sidecar, sockets, processes), its lobby/server traits,
-    load screen and widget logic. The web build's mod.yaml drops rules/companion.yaml to match.
+    The mod's OpenRA.Mods.RTSAI gameplay code (traits, bot modules, lint) compiled unchanged, plus the AI
+    co-commander's engine side (CompanionBridge, ObservationSerializer, ActionHandler and the rl_bridge.proto
+    messages). Left out: the desktop's Kestrel gRPC host and service, the sidecar process manager, the load screen
+    and widget logic; Web/CompanionWeb.cs stands in for the few members CompanionBridge uses from them. In the
+    browser the page's host answers the companion's RPCs (OpenRA.WebSim.CompanionRpc).
   -->
   <PropertyGroup>
     <AssemblyName>OpenRA.Mods.RTSAI</AssemblyName>
@@ -11,6 +13,18 @@
   <ItemGroup>
     <Compile Include="$(ModRoot)OpenRA.Mods.RTSAI\Traits\**\*.cs" />
     <Compile Include="$(ModRoot)OpenRA.Mods.RTSAI\Lint\**\*.cs" />
+    <Compile Include="$(ModRoot)OpenRA.Mods.RTSAI\Companion\*.cs"
+             Exclude="$(ModRoot)OpenRA.Mods.RTSAI\Companion\CompanionGrpcHost.cs;$(ModRoot)OpenRA.Mods.RTSAI\Companion\CompanionService.cs;$(ModRoot)OpenRA.Mods.RTSAI\Companion\CompanionHost.cs;$(ModRoot)OpenRA.Mods.RTSAI\Companion\CompanionProcessJob.cs" />
+    <Compile Include="Web\*.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Google.Protobuf" Version="3.29.3" />
+    <PackageReference Include="Grpc.Tools" Version="2.69.0">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
+    </PackageReference>
+    <!-- Messages only: the RPCs are relayed by the page's server, not served in-process. -->
+    <Protobuf Include="$(ModRoot)OpenRA.Mods.RTSAI\Companion\Protos\rl_bridge.proto" GrpcServices="None" Link="Protos\rl_bridge.proto" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="$(EngineRoot)OpenRA.Game\OpenRA.Game.csproj" />

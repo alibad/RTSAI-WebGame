@@ -7,6 +7,7 @@ import tailwindcss from "@tailwindcss/vite";
 export default defineConfig({
   base: "./",
   plugins: [react(), tailwindcss()],
-  build: { target: "es2022", sourcemap: true },
+  // The static public build (tools/build-public.mjs) ships without source maps.
+  build: { target: "es2022", sourcemap: process.env.RTSAI_PUBLIC_BUILD !== "1" },
   worker: { format: "es" },
 });

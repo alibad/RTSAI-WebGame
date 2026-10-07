@@ -3,6 +3,7 @@ bin/
 obj/
 node_modules/
 web/dist/
+build/
 data/
 
 # Bundles are generated from the mod checkout; never commit them.

@@ -1,12 +1,12 @@
 # Public profile data (the standalone game, project content only): packs data\public\web-bundle.pack (+ audio) from
 # the standalone mod checkout, then prebakes the sprite sheets of its maps into data\public\sprites, so a first visit
 # restores packed sheets instead of decoding every sprite file.
-#   tools\public.ps1 [-Mod ..\RTSAI-Mod-wt-web-public] [-Maps twin-fords,harbor-line,web-arena] [-NoBuild]
+#   tools\public.ps1 [-Mod ..\RTSAI-Mod-wt-web-public] [-Maps all|twin-fords,harbor-line] [-NoBuild]
 # Runtimes: dotnet publish sim\OpenRA.WebSim.Browser -c Release -p:WebProfile=public [-p:Aot=true] -o data\public\wasm-<interp|aot>
 param(
 	[string]$Mod = "..\RTSAI-Mod-wt-web-public",
 	[string]$Engine = "..\OpenRA-wt-web",
-	[string]$Maps = "twin-fords,harbor-line,web-arena",
+	[string]$Maps = "all",
 	[switch]$NoBuild
 )
 $ErrorActionPreference = "Stop"

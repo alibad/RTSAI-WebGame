@@ -57,7 +57,12 @@ export default function App() {
     loadCursors();
     // AOT by default; ?runtime=interp is the developer fallback. ?private=0 runs without the player's own files.
     // ?profile=public: the standalone game (project art and audio only, never the player's files).
-    const profile = params.get("profile") === "public" ? "public" : "";
+    // A static public build (tools/build-public.mjs) defaults to the standalone game.
+    const profile = (params.get("profile") ?? import.meta.env.VITE_DEFAULT_PROFILE) === "public" ? "public" : "";
+    // The co-commander needs the local server (it starts the companion and relays its RPCs); a static host has none.
+    fetch(new URL("api/companion/status", new URL("./", location.href)))
+      .then((r) => (r.ok ? r.json() : null)).then((s) => useStore.getState().set({ ccAvailable: !!s && typeof s.running === "boolean" }))
+      .catch(() => useStore.getState().set({ ccAvailable: false }));
     g.boot(params.get("runtime") ?? "aot", params.get("private") !== "0", profile);
     return () => g.dispose();
   }, []);

@@ -17,6 +17,7 @@ using System.Text.Json;
 using OpenRA.Graphics;
 using OpenRA.Mods.Common.Orders;
 using OpenRA.Mods.Common.Traits;
+using OpenRA.Mods.RTSAI.Traits;
 using OpenRA.Mods.Common.Traits.Radar;
 using OpenRA.Mods.Common.Traits.Render;
 using OpenRA.Mods.Common;
@@ -73,6 +74,15 @@ namespace OpenRA.WebSim
 			sb.Append(",\"radar\":").Append(radar ? "true" : "false");
 			sb.Append(",\"win\":").Append(J(p.WinState.ToString()));
 			sb.Append(",\"mode\":").Append(J(ModeName(world.OrderGenerator)));
+
+			// The AI co-commander's HUD line and threat meter (what the desktop's AI strip shows).
+			if (CompanionRpc.Enabled && CompanionBridge.TryGetStatus(out var cState, out var cMessage, out var cEnabled, out var cMuted))
+			{
+				CompanionBridge.TryGetThreat(out var tScore, out var tLevel, out var tReason);
+				sb.Append(",\"companion\":{\"state\":").Append(J(cState)).Append(",\"message\":").Append(J(cMessage))
+					.Append(",\"enabled\":").Append(cEnabled ? "true" : "false").Append(",\"muted\":").Append(cMuted ? "true" : "false")
+					.Append(",\"threat\":{\"score\":").Append(tScore).Append(",\"level\":").Append(J(tLevel)).Append(",\"reason\":").Append(J(tReason)).Append("}}");
+			}
 
 			// Queues: state of every queued item (progress, hold, ready).
 			sb.Append(",\"queues\":[");

@@ -22,7 +22,7 @@ using OpenRA.WebSim;
 /// Prebakes sprite sheets ahead of time: prepares each map natively exactly as the browser does and writes the
 /// packed sprite table and sheet pixels (gzip) with an index, so a first visit restores them instead of decoding and
 /// packing every sprite file (the browser's packing is identical: same files, same order, same packer).
-///   websim bake --root &lt;vfs&gt; --maps twin-fords,harbor-line,web-arena --out data/public/sprites
+///   websim bake --root &lt;vfs&gt; --maps all|twin-fords,harbor-line --out data/public/sprites
 /// Output is derived from the bundle it was baked from (its id is recorded); bake only project content for /data.
 /// </summary>
 static class Bake
@@ -31,7 +31,6 @@ static class Bake
 	{
 		var root = opts["root"];
 		var outDir = Path.GetFullPath(opts["out"]);
-		var maps = opts["maps"].Split(',', StringSplitOptions.RemoveEmptyEntries);
 		var bundleId = File.ReadAllText(Path.Combine(root, "ora", "BUNDLE_ID")).Trim();
 
 		if (Directory.Exists(outDir))
@@ -67,6 +66,11 @@ static class Bake
 		SpriteCache.Store = new SpriteStore();
 
 		SimHost.Boot(root);
+
+		// "all": every map a player can pick (any MapFolder), the sandbox arena included.
+		var maps = opts["maps"] == "all"
+			? SimHost.ModData.MapCache.Where(p => p.Visibility.HasFlag(OpenRA.MapVisibility.Lobby)).Select(p => Path.GetFileName(p.Path)).ToArray()
+			: opts["maps"].Split(',', StringSplitOptions.RemoveEmptyEntries);
 		foreach (var map in maps)
 		{
 			currentMap = map;

@@ -2,6 +2,7 @@
 // commands (selection, orders, modes, control groups); feeds the store the HUD renders from. The engine is the
 // source of truth for selection, order modes and production; the page only predicts what it draws this frame.
 
+import { CoCommander } from "./cocommander";
 import { Renderer, type Camera, type Overlay } from "./render/renderer";
 import { SimClient } from "./sim/client";
 import type { Actor, Snapshot, StartInfo, UiState } from "./sim/protocol";
@@ -35,6 +36,7 @@ export class Game {
   readonly client: SimClient;
   readonly radar = new RadarModel();
   readonly audio = new AudioEngine();
+  readonly cc = new CoCommander(this.audio);
   private lastListener = 0;
   cam: Camera = { x: 0, y: 0, zoom: 1 };
   overlay: Overlay = { selected: new Set(), hover: null, dragBox: null, orderFlash: null, ownPlayer: -1 };
@@ -60,7 +62,10 @@ export class Game {
   private tickArrival = new Map<number, number>();
   private latency: number[] = [];
   private onKeyDown = (e: KeyboardEvent) => this.keyDown(e);
-  private onKeyUp = (e: KeyboardEvent) => this.keys.delete(e.key.toLowerCase());
+  private onKeyUp = (e: KeyboardEvent) => {
+    this.keys.delete(e.key.toLowerCase());
+    if (e.key.toLowerCase() === "v" && store.get().cc.listening) this.cc.stopListening();
+  };
   private onBlur = () => this.keys.clear();
   private onMove = (e: MouseEvent) => this.mouseMove(e);
   private onUp = (e: MouseEvent) => this.mouseUp(e);
@@ -70,6 +75,7 @@ export class Game {
     this.client = new SimClient(this.renderer);
     store.set({ shared: this.client.shared });
     this.client.onSnapshot = (s) => this.onSnapshot(s);
+    this.client.onSheets = (uploaded, total) => store.set({ sheets: { uploaded, total } });
     this.wire();
     this.bind();
     this.raf = requestAnimationFrame(this.frame);
@@ -135,6 +141,7 @@ export class Game {
     });
     c.on("bench", (m) => store.set({ verify: `${m.ticks} ticks in ${m.ms.toFixed(0)} ms = ${(m.ms / m.ticks).toFixed(2)} ms/tick` }));
     c.on("log", (m) => this.verifyNative(m.json));
+    c.on("companion", (m) => this.cc.onEngine(m.event));
   }
 
   private perf(p: Partial<Perf>) {
@@ -165,7 +172,35 @@ export class Game {
     this.ui = null;
     this.latency = [];
     store.set({ phase: "loading", stage: "Building the world", ui: null, catalog: [], verify: "", menuOpen: false, paused: false });
-    this.client.start(scenarioJson, paused);
+    // Prebaked sprite sheets still streaming in: the world starts once they are on the GPU (nothing drawn invisible).
+    const { uploaded, total } = store.get().sheets;
+    if (uploaded < total) {
+      store.set({ stage: "Loading art", detail: `${uploaded} / ${total}` });
+      const wait = setInterval(() => {
+        const s = store.get().sheets;
+        if (s.uploaded < s.total) { store.set({ detail: `${s.uploaded} / ${s.total}` }); return; }
+        clearInterval(wait);
+        store.set({ stage: "Building the world", detail: "" });
+        this.launch(scenarioJson, paused);
+      }, 100);
+      return;
+    }
+    this.launch(scenarioJson, paused);
+  }
+
+  private launch(scenarioJson: string, paused: boolean) {
+    // The co-commander (skirmish only): the local companion is started first, then the match with its bridge on.
+    if (!store.get().cc.enabled || !store.get().ccAvailable || this.sandbox) {
+      this.client.start(scenarioJson, paused);
+      return;
+    }
+    store.set({ stage: "Starting the co-commander" });
+    this.cc.ensureRunning()
+      .then(() => { this.cc.matchStarted(); this.client.start(scenarioJson, paused, true); })
+      .catch((e) => {
+        store.set({ cc: { ...store.get().cc, error: String(e instanceof Error ? e.message : e) } });
+        this.client.start(scenarioJson, paused);
+      });
   }
 
   quit() {
@@ -662,6 +697,7 @@ export class Game {
       case "z": this.setMode("repair"); break;
       case "q": this.setMode("sell"); break;
       case "h": if (this.info) this.lookAt(this.info.start[0], this.info.start[1]); break;
+      case "v": if (store.get().cc.enabled && !e.repeat) this.cc.startListening(); break;
       default: return;
     }
     e.preventDefault();

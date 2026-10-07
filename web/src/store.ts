@@ -1,6 +1,7 @@
 ﻿// App state shared by the game controller (writes) and the React HUD (reads through selectors, so a 25 Hz UI
 // update only re-renders the components whose slice changed).
 
+import { initialCoCommander, type CoCommanderState } from "./cocommander";
 import { create } from "zustand";
 import type { CatalogQueue, LazyStats, SetupData, StartInfo, UiState } from "./sim/protocol";
 import type { SandboxState } from "./sandbox";
@@ -48,6 +49,11 @@ export interface Store {
   menuOpen: boolean;
   /** The hotkey sheet (F1). */
   keysOpen: boolean;
+  /** The AI co-commander (cocommander.ts), and whether this server can run it (local mode). */
+  cc: CoCommanderState;
+  ccAvailable: boolean;
+  /** Prebaked sprite sheets of the prepared map on the GPU (the world waits for them). */
+  sheets: { uploaded: number; total: number };
   paused: boolean;
   timings: Record<string, number>;
   downloads: Record<string, number>;
@@ -83,6 +89,9 @@ export const useStore = create<Store>((set) => ({
   statsOpen: false,
   menuOpen: false,
   keysOpen: false,
+  cc: initialCoCommander(),
+  ccAvailable: false,
+  sheets: { uploaded: 0, total: 0 },
   paused: false,
   timings: {},
   downloads: {},

@@ -236,6 +236,7 @@ export interface UiState {
   groups?: number[];
   catalog?: CatalogQueue[];
   sandbox?: SandboxStats | null;
+  companion?: CompanionHud;
 }
 
 /** The battle sandbox readout (sim/OpenRA.WebSim/Sandbox.cs). Times in seconds of game time. */
@@ -257,6 +258,18 @@ export interface CatalogItem {
   requires?: string[];
 }
 
+export type CompanionEngineEvent =
+  | { kind: "status"; state: string; message: string }
+  | { kind: "threat"; score: number; level: string; reason: string }
+  | { kind: "executed"; id: string; accepted: boolean; detail: string }
+  | { kind: "link"; connected: boolean };
+
+/** The co-commander's HUD line and threat meter in the UI state (Ui.cs). */
+export interface CompanionHud {
+  state: string; message: string; enabled: boolean; muted: boolean;
+  threat: { score: number; level: string; reason: string };
+}
+
 /** End-of-game summary per playing side (Ui.cs GameStats). */
 export interface GameStats {
   tick: number;
@@ -276,7 +289,7 @@ export type ToWorker =
   | { type: "init"; runtime: string; base: string; sab: SharedArrayBuffer | null; privateContent: boolean; gcParams?: string; profile?: string }
   | { type: "prepare"; map: string }
   | { type: "preview"; map: string }
-  | { type: "start"; scenario: string; paused?: boolean }
+  | { type: "start"; scenario: string; paused?: boolean; companion?: boolean }
   | { type: "refresh" }
   | { type: "step" }
   | { type: "speed"; speed: number }
@@ -300,8 +313,12 @@ export type FromWorker =
   | { type: "started"; info: StartInfo; terrain: ArrayBuffer; radarTerrain: ArrayBuffer; startMs: number; lazy?: LazyStats }
   | { type: "snapshot"; bytes: ArrayBuffer; seq: number } // postMessage fallback when SharedArrayBuffer is unavailable
   | { type: "texture"; id: number; version: number; width: number; height: number; kind: number; data: ArrayBuffer }
+  /** The AI co-commander: status / threat / executed (CompanionRpc.cs) and the relay link state. */
+  | { type: "companion"; event: CompanionEngineEvent }
   /** The engine disposed a texture (e.g. a finished game's sheets): free the GPU copy. */
   | { type: "texturefree"; id: number }
+  /** Restoring prebaked sheets: how many of all were handed to the page so far. */
+  | { type: "sheets"; done: number; total: number }
   /** A prebaked sprite sheet from the cache, gzip-compressed (the page inflates it). */
   | { type: "texturegz"; id: number; width: number; height: number; gz: Blob }
   | { type: "ui"; json: string }

@@ -4,6 +4,7 @@
 // Emscripten's own createLazyFile copies byte by byte; this copies chunks with typed-array sets.
 
 const CHUNK = 256 * 1024;
+const WHOLE_FILE = 4 * 1024 * 1024;
 
 export type RangeReader = (start: number, end: number) => Uint8Array; // [start, end)
 
@@ -13,6 +14,8 @@ export class LazyMount {
   private cache = new Map<string, Uint8Array>(); // insertion order = LRU order
   private cached = 0;
   readonly stats: LazyStats = { files: 0, bytes: 0, fetchedBytes: 0, cachedBytes: 0, fetches: 0 };
+  /** Chunk ids fetched synchronously, when tracing (diagnostics). */
+  trace: string[] | null = null;
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   constructor(private FS: any, private maxCacheBytes = 128 * 1024 * 1024) {}
@@ -25,12 +28,23 @@ export class LazyMount {
       this.cache.set(id, hit);
       return hit;
     }
+    // A file of a few chunks (a music track, a sprite file) is usually read whole: fetch the rest of it with this
+    // chunk, one round trip instead of one per chunk (these reads block the engine).
     const start = index * CHUNK;
-    const data = read(start, Math.min(size, start + CHUNK));
+    const last = size <= WHOLE_FILE ? Math.ceil(size / CHUNK) - 1 : index;
+    let end = Math.min(size, (last + 1) * CHUNK);
+    for (let i = index + 1; i <= last; i++) if (this.cache.has(`${key}#${i}`)) { end = i * CHUNK; break; }
+    const all = read(start, end);
     this.stats.fetches++;
-    this.stats.fetchedBytes += data.length;
-    this.cache.set(id, data);
-    this.cached += data.length;
+    this.stats.fetchedBytes += all.length;
+    if (this.trace) this.trace.push(id);
+    let data = all.subarray(0, Math.min(CHUNK, all.length));
+    for (let i = index, o = 0; o < all.length; i++, o += CHUNK) {
+      const piece = all.slice(o, Math.min(all.length, o + CHUNK));
+      if (i === index) data = piece;
+      this.cache.set(`${key}#${i}`, piece);
+      this.cached += piece.length;
+    }
     while (this.cached > this.maxCacheBytes && this.cache.size > 1) {
       const [oldest, buf] = this.cache.entries().next().value as [string, Uint8Array];
       this.cache.delete(oldest);

@@ -17,6 +17,7 @@ import os from "node:os";
 import crypto from "node:crypto";
 import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
+import { createCompanion } from "./companion.mjs";
 
 const PORT = Number(process.env.RTSAI_WEBGAME_PORT ?? 3490);
 const HOST = "127.0.0.1";
@@ -251,6 +252,9 @@ async function verify(req, res) {
 
 // ---------------------------------------------------------------- routes
 
+// The AI co-commander's local mode (gRPC facade for the companion, WebSocket relay to the game, its HTTP API).
+const companion = createCompanion({ repo, appData });
+
 const server = http.createServer(async (req, res) => {
   isolationHeaders(res);
   const url = new URL(req.url, `http://${req.headers.host}`);
@@ -264,6 +268,17 @@ const server = http.createServer(async (req, res) => {
         ok: true, private: fs.existsSync(privateFiles), runtimes: Object.keys(runtimes).filter((k) => fs.existsSync(runtimes[k])),
         profiles: Object.fromEntries(Object.keys(profiles).map((pr) => [pr, Object.keys(runtimes).filter((k) => fs.existsSync(runtimeDir(pr, k)))])),
       });
+    }
+    if (p.startsWith("/api/companion/") || p.startsWith("/companion/")) {
+      if (!isLocal(req)) return res.writeHead(403).end("local only");
+      if (p === "/api/companion/status") return json(res, companion.status());
+      if (p === "/api/companion/start" && req.method === "POST") {
+        const body = JSON.parse((await readBody(req)) || "{}");
+        try { return json(res, await companion.start(body.mode)); } catch (e) { return json(res, { error: String(e.message ?? e), ...companion.status() }, 500); }
+      }
+      if (p === "/api/companion/stop" && req.method === "POST") { companion.stop(); return json(res, companion.status()); }
+      if (p.startsWith("/companion/api/")) return companion.proxy(req, res, p.slice("/companion/api/".length) + url.search);
+      return res.writeHead(404).end();
     }
     if (p === "/api/metrics" && req.method === "POST") {
       fs.appendFileSync(path.join(data, "metrics.jsonl"), (await readBody(req)).trim() + "\n");
@@ -303,6 +318,13 @@ const server = http.createServer(async (req, res) => {
     res.writeHead(500, { "content-type": "text/plain" });
     res.end(String(e?.stack ?? e));
   }
+});
+
+// The game's side of the co-commander relay (the worker), local only.
+server.on("upgrade", (req, socket) => {
+  const p = new URL(req.url, "http://x").pathname.replace(/^\/play(?=\/)/, "");
+  if (p === "/companion/bridge" && isLocal(req)) companion.upgrade(req, socket);
+  else socket.destroy();
 });
 
 server.listen(PORT, HOST, () => {

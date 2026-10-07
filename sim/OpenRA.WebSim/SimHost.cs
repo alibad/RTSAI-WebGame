@@ -99,6 +99,13 @@ namespace OpenRA.WebSim
 			Time("boot.maps", () => Game.ModData.MapCache.LoadMaps(Game.ModData));
 		}
 
+		/// <summary>A map's package path by its folder name, in any of the mod's MapFolders (e.g. ra2|standalone/maps).</summary>
+		public static string MapPath(string mapName)
+		{
+			return ModData.MapCache.FirstOrDefault(p => Path.GetFileName(p.Path) == mapName)?.Path
+				?? Path.Combine(Root, "mods", ModId, "maps", mapName);
+		}
+
 		public static Map LoadMap(string path)
 		{
 			var package = ModData.ModFiles.OpenPackage(path) ?? throw new FileNotFoundException($"Map not found: {path}");
@@ -195,7 +202,7 @@ namespace OpenRA.WebSim
 			preparedMap?.Dispose();
 			preparedMap = null;
 			Map map = null;
-			Time("prepare.map", () => map = LoadMap(Path.Combine(Root, "mods", ModId, "maps", mapName)));
+			Time("prepare.map", () => map = LoadMap(MapPath(mapName)));
 
 			// Sheets a sprite builder may still append to keep their CPU copy; the rest go to the page and are dropped.
 			var spriteCache = map.Sequences.SpriteCache;
@@ -210,8 +217,12 @@ namespace OpenRA.WebSim
 			Time("prepare.sprites", () => map.Sequences.LoadSprites());
 			Time("prepare.music", () =>
 			{
+				// ModData.PrepareMap parses every track (MusicInfo.Load) to learn its length, which only the desktop's
+				// music player shows; in the browser that would download every track. The playlist only needs to know
+				// that a track exists, which the file system answers without reading it.
+				var exists = typeof(OpenRA.GameRules.MusicInfo).GetProperty(nameof(OpenRA.GameRules.MusicInfo.Exists));
 				foreach (var entry in map.Rules.Music)
-					entry.Value.Load(map);
+					exists.SetValue(entry.Value, map.Exists(entry.Value.Filename));
 			});
 			preparedMap = map;
 			preparedMapName = mapName;

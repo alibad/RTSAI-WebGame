@@ -81,6 +81,8 @@ export class SpriteBake {
   private db: Promise<IDBDatabase> | null = null;
   private tables = new Map<string, TableRecord>();
   private shipped = new Map<string, ShippedPacking>();
+  /** Restore progress (sheets handed to the page, of all), for the page's loading state. */
+  onProgress: (done: number, total: number) => void = () => {};
   private capture: Map<number, Promise<Blob>> | null = null;
   readonly stats: BakeStats = { restored: 0, saved: 0, bytes: 0, ms: 0 };
 
@@ -177,14 +179,22 @@ export class SpriteBake {
     const ids = Array.from(idList);
     const shipped = this.shipped.get(key);
     if (shipped) {
-      // Shipped sheets come over HTTP (cached by the browser like the rest of the data), still compressed.
+      // Shipped sheets come over HTTP (cached by the browser like the rest of the data), still compressed. Two at a
+      // time: the link is the limit anyway, and the engine's own synchronous file reads must not queue behind them.
       this.stats.restored++;
       const t0 = performance.now();
-      Promise.all(shipped.sheets.map(async (sh, i) => {
-        const res = await fetch(sh.url);
-        if (!res.ok) throw new Error(`${sh.url}: HTTP ${res.status}`);
-        this.postSheet(ids[i], sh.width, sh.height, await res.blob());
-      })).then(() => {
+      let next = 0, done = 0;
+      this.onProgress(0, ids.length);
+      const lane = async () => {
+        while (next < shipped.sheets.length) {
+          const i = next++, sh = shipped.sheets[i];
+          const res = await fetch(sh.url);
+          if (!res.ok) throw new Error(`${sh.url}: HTTP ${res.status}`);
+          this.postSheet(ids[i], sh.width, sh.height, await res.blob());
+          this.onProgress(++done, ids.length);
+        }
+      };
+      Promise.all([lane(), lane()]).then(() => {
         this.stats.ms = performance.now() - t0;
         console.info(`sprite cache: fetched ${ids.length} shipped sheets in ${this.stats.ms.toFixed(0)} ms`);
       }).catch((e) => console.warn("sprite cache: shipped sheets failed", e));
@@ -200,10 +210,12 @@ export class SpriteBake {
       const db = await this.db!;
       const tx = db.transaction(SHEETS);
       const blobs = await Promise.all(ids.map((_, i) => done(tx.objectStore(SHEETS).get(`${key}#${i}`)) as Promise<Blob | undefined>));
+      this.onProgress(0, ids.length);
       blobs.forEach((blob, i) => {
         if (blob instanceof Blob) this.postSheet(ids[i], t.sheets[i].width, t.sheets[i].height, blob);
         else console.warn(`sprite cache: sheet ${i} of ${key} is missing`);
       });
+      this.onProgress(ids.length, ids.length);
       this.stats.ms = performance.now() - t0;
       console.info(`sprite cache: read ${ids.length} sheets in ${this.stats.ms.toFixed(0)} ms`);
     })().catch((e) => console.warn("sprite cache restore failed", e));

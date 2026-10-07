@@ -85,7 +85,7 @@ static class Bundle
 					continue;
 
 				var bytes = File.ReadAllBytes(f);
-				if (lazyArt && !rel.StartsWith("maps/", StringComparison.Ordinal) && ArtExtensions.Contains(Path.GetExtension(f)) && bytes.Length >= LazyArtMinBytes)
+				if (lazyArt && !rel.Contains("maps/", StringComparison.Ordinal) && ArtExtensions.Contains(Path.GetExtension(f)) && bytes.Length >= LazyArtMinBytes)
 				{
 					// Part of the bundle's identity (sprites baked from it depend on it), stored in web-art.pack.
 					contentHash.AppendData(Encoding.UTF8.GetBytes($"mods/rtsai/{rel}|{bytes.Length}|"));
@@ -167,13 +167,12 @@ static class Bundle
 	static string Rel(string root, string f) => Path.GetRelativePath(root, f).Replace('\\', '/');
 
 	/// <summary>
-	/// The web mod.yaml: identical to the mod's except that the AI companion (a gRPC sidecar) is left out and a
-	/// small overlay adds what the embedded host needs. Everything that affects the simulation is unchanged.
+	/// The web mod.yaml: identical to the mod's (the AI co-commander's CompanionBridge included; the page's host relays
+	/// its RPCs) plus a small overlay for what the embedded host needs. Everything that affects the simulation is unchanged.
 	/// </summary>
 	static string WebModYaml(string yaml)
 	{
 		yaml = yaml.Replace("\r\n", "\n");
-		yaml = yaml.Replace("\tra2|rules/companion.yaml\n", "");
 
 		// The host's no-op load screen lives in OpenRA.WebSim (the mod's own one starts the companion sidecar).
 		yaml = yaml.Replace("LoadScreen: RTSAILoadScreen", "LoadScreen: WebLoadScreen");
