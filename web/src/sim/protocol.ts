@@ -3,7 +3,10 @@
 
 export const MAGIC = 0x314e5357; // "WSN1"
 export const RESYNC_MAGIC = 0x31525357; // "WSR1": sprite/string tables restart at id 0
-export const HEADER_BYTES = 64;
+export const HEADER_BYTES = 80;
+export const CAPTURE_VERTEX_BYTES = 48; // OpenRA.Graphics.Vertex
+export const CAPTURE_BATCH_BYTES = 44;
+export const MODEL_CMD_BYTES = 136;
 export const ACTOR_BYTES = 52;
 export const DRAW_BYTES = 48;
 export const PLAYER_BYTES = 16;
@@ -26,6 +29,16 @@ export interface Header {
   localPlayer: number;
   unsupported: number;
   selectionHash: number;
+  capVertices: number;
+  capBatches: number;
+  modelCmds: number;
+}
+
+/** Engine renderer output recorded by Capture.cs: beams, lines, contrails, voxel model sprites (+ model passes). */
+export interface Captured {
+  vertices: Uint8Array; // capVertices * 48 bytes (copied)
+  batches: { start: number; count: number; blend: number; ui: boolean; textures: number[] }[];
+  modelCmds: DataView; // modelCmds * 136 bytes (copied)
 }
 
 export interface Actor {
@@ -46,6 +59,7 @@ export interface Actor {
   worldZ: number;
   sequence: number; // string id of the body animation sequence
   frame: number;
+  rank: number; // veterancy level (0 rookie, 1 veteran, 2 elite)
 }
 
 export interface Player {
@@ -87,6 +101,7 @@ export interface Snapshot {
   strings: string[];
   receivedAt: number;
   resync: boolean;
+  captured: Captured;
 }
 
 const decoder = new TextDecoder();
@@ -101,6 +116,7 @@ export function parseSnapshot(bytes: Uint8Array, receivedAt: number): Snapshot {
     tick: i(4), netFrame: i(8), syncHash: i(12), tickMs: f(16), buildMs: f(20),
     actorCount: i(24), drawCount: i(28), playerCount: i(32), newSprites: i(36), textureCount: i(40),
     newStrings: i(44), paletteRows: i(48), localPlayer: i(52), unsupported: i(56), selectionHash: i(60),
+    capVertices: i(64), capBatches: i(68), modelCmds: i(72),
   };
 
   let p = HEADER_BYTES;
@@ -111,7 +127,7 @@ export function parseSnapshot(bytes: Uint8Array, receivedAt: number): Snapshot {
       id: dv.getUint32(p, true), type: i(p + 4), owner: dv.getUint8(p + 8), flags: dv.getUint8(p + 9),
       facing: dv.getUint16(p + 10, true), sx: f(p + 12), sy: f(p + 16), sz: f(p + 20), hp: i(p + 24), maxHp: i(p + 28),
       bx: dv.getInt16(p + 32, true), by: dv.getInt16(p + 34, true), bw: dv.getInt16(p + 36, true), bh: dv.getInt16(p + 38, true),
-      worldZ: i(p + 40), sequence: i(p + 44), frame: dv.getUint16(p + 48, true),
+      worldZ: i(p + 40), sequence: i(p + 44), frame: dv.getUint16(p + 48, true), rank: dv.getUint16(p + 50, true),
     };
     actors[k] = a;
     actorById.set(a.id, a);
@@ -148,7 +164,20 @@ export function parseSnapshot(bytes: Uint8Array, receivedAt: number): Snapshot {
     p += len;
   }
 
-  return { header, actors, actorById, draws, players, sprites, textures, strings, receivedAt, resync: magic === RESYNC_MAGIC };
+  p = (p + 3) & ~3;
+  const vEnd = p + header.capVertices * CAPTURE_VERTEX_BYTES;
+  const vertices = bytes.slice(p, vEnd);
+  p = vEnd;
+  const batches: Captured["batches"] = [];
+  for (let k = 0; k < header.capBatches; k++, p += CAPTURE_BATCH_BYTES) {
+    const tex: number[] = [];
+    for (let t = 0; t < 8; t++) tex.push(i(p + 12 + 4 * t));
+    batches.push({ start: i(p), count: i(p + 4), blend: dv.getUint8(p + 8), ui: dv.getUint8(p + 9) === 1, textures: tex });
+  }
+  const mEnd = p + header.modelCmds * MODEL_CMD_BYTES;
+  const modelCmds = new DataView(bytes.slice(p, mEnd).buffer);
+  const captured = { vertices, batches, modelCmds };
+  return { header, actors, actorById, draws, players, sprites, textures, strings, receivedAt, resync: magic === RESYNC_MAGIC, captured };
 }
 
 /** Texture section only (the worker uses it to ship changed sheets to the page). */
@@ -173,41 +202,83 @@ export interface StartInfo {
   start: [number, number];
   depthBuffer: boolean;
   depthMargin: number;
+  cellOrigin: [number, number];
+  mapBounds: [number, number, number, number]; // MPos left, top, right, bottom (exclusive)
+  gridType: string;
   terrainSheets: number[];
   terrainVertexCount: number;
   vertexRowStride: number;
   localPlayer: string;
-  players: { name: string; faction: string; color: string; bot: boolean }[];
+  players: { name: string; label: string; faction: string; color: string; bot: boolean }[];
   timings: Record<string, number>;
 }
 
+export interface LazyStats { files: number; bytes: number; fetchedBytes: number; cachedBytes: number; fetches: number }
+
+export interface SetupData {
+  factions: { id: string; name: string; side: string; description: string; random: boolean }[];
+  bots: { type: string; name: string }[];
+  maps: { id: string; uid: string; title: string; players: number; tileset: string; author: string; slots: string[] }[];
+  options?: { id: string; name: string; default: string; values: { value: string; label: string }[] }[];
+}
+
+/** Per-tick game-UI state (sim/OpenRA.WebSim/Ui.cs). `catalog` is present only when it changed. */
+export interface UiState {
+  tick: number;
+  cash?: number;
+  storage?: number;
+  power?: { provided: number; drained: number; state: "Normal" | "Low" | "Critical" };
+  radar: boolean;
+  win: string;
+  mode: string; // "", place, sell, repair, attackmove, guard
+  queues: { type: string; enabled: boolean; items: QueuedItem[] }[];
+  selection: { id: number; type: string; own: boolean; hp: number; maxHp: number; rank: number; maxRank: number }[];
+  groups?: number[];
+  catalog?: CatalogQueue[];
+}
+
+export interface QueuedItem { name: string; progress: number; paused: boolean; done: boolean; infinite: boolean; remaining: number }
+export interface CatalogItem { name: string; label: string; cost: number; time: number; buildable: boolean; building: boolean }
+export interface CatalogQueue { type: string; items: CatalogItem[] }
+
 // Messages between page and worker.
 export type ToWorker =
-  | { type: "init"; runtime: string; sab: SharedArrayBuffer | null; privateContent: boolean }
+  | { type: "init"; runtime: string; base: string; sab: SharedArrayBuffer | null; privateContent: boolean }
+  | { type: "prepare"; map: string }
+  | { type: "preview"; map: string }
   | { type: "start"; scenario: string }
+  | { type: "end" }
   | { type: "pause"; paused: boolean }
   | { type: "view"; x0: number; y0: number; x1: number; y1: number }
-  | { type: "select"; ids: number[]; additive: boolean }
+  | { type: "select"; ids: number[]; additive: boolean; req: number }
+  | { type: "command"; json: string; req: number }
   | { type: "click"; x: number; y: number; button: number; mods: number; t: number }
   | { type: "cursor"; x: number; y: number; mods: number; seq: number }
-  | { type: "stop"; t: number }
+  | { type: "icons"; names: string[] }
   | { type: "bench"; ticks: number }
   | { type: "log" }
   | { type: "resync" };
 
 export type FromWorker =
   | { type: "progress"; stage: string; detail?: string }
-  | { type: "ready"; timings: Record<string, number>; runtimeMs: number; downloadBytes: Record<string, number> }
-  | { type: "started"; info: StartInfo; terrain: ArrayBuffer; startMs: number }
+  | { type: "ready"; timings: Record<string, number>; runtimeMs: number; downloadBytes: Record<string, number>; setup: SetupData; privateContent: boolean }
+  | { type: "prepared"; map: string; ms: number; timings: Record<string, number>; lazy?: LazyStats }
+  | { type: "preview"; map: string; png: ArrayBuffer }
+  | { type: "started"; info: StartInfo; terrain: ArrayBuffer; radarTerrain: ArrayBuffer; startMs: number; lazy?: LazyStats }
   | { type: "snapshot"; bytes: ArrayBuffer; seq: number } // postMessage fallback when SharedArrayBuffer is unavailable
   | { type: "texture"; id: number; version: number; width: number; height: number; kind: number; data: ArrayBuffer }
+  | { type: "ui"; json: string }
+  | { type: "shroud"; cells: ArrayBuffer }
+  | { type: "radar"; blips: ArrayBuffer }
+  | { type: "reply"; req: number; json: string }
+  | { type: "icon"; name: string; width: number; height: number; data: ArrayBuffer }
+  | { type: "modelbuffer"; id: number; data: ArrayBuffer }
   | { type: "cursor"; cursor: string; seq: number }
   | { type: "ordered"; count: number; t: number; tick: number }
   | { type: "bench"; ticks: number; ms: number }
   | { type: "log"; json: string }
-  | { type: "stats"; json: string; heapBytes: number; tickMs: number; lateTicks: number; ticksPerSecond: number }
+  | { type: "stats"; json: string; heapBytes: number; tickMs: number; lateTicks: number; ticksPerSecond: number; lazy?: LazyStats }
   | { type: "error"; message: string };
-
 // Shared ring layout (Int32 slots at the start of the SharedArrayBuffer).
 // 32 slots of 1 MB: about 1.3 s of ticks, so a main-thread stall (sheet uploads, GC, a busy frame) does not
 // overrun the ring. Snapshots are ~50-150 KB; a larger one falls back to postMessage with its seq.

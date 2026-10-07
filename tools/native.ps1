@@ -23,7 +23,7 @@ if (-not $NoBuild) {
 	dotnet build sim\OpenRA.WebSim.Native\OpenRA.WebSim.Native.csproj -c Release -nologo -v q | Select-String -Pattern " error |rror\(s\)"
 }
 if (-not $NoPack) {
-	& $ws pack --engine $Engine --mod $Mod --out data\web-bundle.pack --maps "tournament-2A,blank-shellmap"
+	& $ws pack --engine $Engine --mod $Mod --out data\web-bundle.pack
 	$root = Join-Path $scratch "vfs-native"
 	if (Test-Path $root) { Remove-Item -Recurse -Force $root }
 	& $ws unpack --pack data\web-bundle.pack --private $Private --root $root | Out-Null

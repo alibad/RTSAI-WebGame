@@ -1,81 +1,150 @@
-﻿// Local, private dev server for the RTS AI web engine spike. Binds 127.0.0.1:3490 only.
+// Local, private server for the RTS AI web game. Binds 127.0.0.1:3490 only.
 //   node server/serve.mjs
 // - Cross-origin isolation (COOP/COEP) so the page and worker can share a SharedArrayBuffer snapshot ring.
-// - /rt/interp|aot/  the .NET WebAssembly runtime + assemblies (sim/OpenRA.WebSim.Browser publish output)
-// - /data/           the public mod bundle (project + OpenRA files only)
-// - /private/        LOCAL ONLY: the player's own RA2 packages from %LOCALAPPDATA%\RTSAI-WebGame\private.
-//                    Never bundled into web/dist, never committed, refused for non-loopback clients.
+// - /rt/aot|interp/  the .NET WebAssembly runtime + assemblies (sim/OpenRA.WebSim.Browser publish output).
+// - /data/           the public mod bundle (project + OpenRA files only).
+// - /private/        LOCAL ONLY: the player's own RA2 files from %LOCALAPPDATA%\RTSAI-WebGame\private\files,
+//                    served with byte ranges so the worker mounts them lazily. Refused for non-loopback clients,
+//                    never bundled into web/dist, never committed.
 // - /api/verify      replays the browser session natively (same host code, CoreCLR) and compares SyncHashes.
+// Everything also answers under /play/... so the local app's gateway can proxy this server on one origin.
 
 import http from "node:http";
 import fs from "node:fs";
 import path from "node:path";
 import zlib from "node:zlib";
 import os from "node:os";
+import crypto from "node:crypto";
 import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
-const PORT = 3490;
+const PORT = Number(process.env.RTSAI_WEBGAME_PORT ?? 3490);
 const HOST = "127.0.0.1";
 const repo = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const dist = path.join(repo, "web", "dist");
 const data = path.join(repo, "data");
-const privateDir = path.join(process.env.LOCALAPPDATA ?? os.homedir(), "RTSAI-WebGame", "private");
-const scratch = process.env.RTSAI_WEB_SCRATCH ?? path.join(process.env.LOCALAPPDATA ?? os.tmpdir(), "RTSAI-WebGame", "scratch");
+const appData = path.join(process.env.LOCALAPPDATA ?? os.homedir(), "RTSAI-WebGame");
+const privateDir = path.join(appData, "private");
+const privateFiles = path.join(privateDir, "files");
+const scratch = process.env.RTSAI_WEB_SCRATCH ?? path.join(appData, "scratch");
+const brDir = path.join(appData, "brotli-cache");
 const websim = path.join(repo, "bin", "OpenRA.WebSim.Native", "Release", "net10.0", "websim.exe");
 const runtimes = { interp: path.join(data, "wasm-interp", "wwwroot"), aot: path.join(data, "wasm-aot", "wwwroot") };
 
 const MIME = {
   ".html": "text/html; charset=utf-8", ".js": "text/javascript", ".mjs": "text/javascript", ".css": "text/css",
   ".json": "application/json", ".wasm": "application/wasm", ".map": "application/json", ".svg": "image/svg+xml",
-  ".png": "image/png", ".pack": "application/octet-stream", ".dat": "application/octet-stream", ".pdb": "application/octet-stream",
+  ".png": "image/png", ".webp": "image/webp", ".ogg": "audio/ogg", ".wav": "audio/wav", ".mp3": "audio/mpeg",
+  ".pack": "application/octet-stream", ".dat": "application/octet-stream", ".pdb": "application/octet-stream",
 };
 
-const brCache = new Map(); // file -> { mtimeMs, buf }
+// ---------------------------------------------------------------- compression (cached on disk, warmed at start)
+
+const brMemo = new Map(); // file -> { key, buf }
+
+function brKey(file, stat) {
+  return crypto.createHash("sha1").update(`${file}|${stat.size}|${stat.mtimeMs}`).digest("hex");
+}
 
 function compressed(file, stat) {
-  const hit = brCache.get(file);
-  if (hit && hit.mtimeMs === stat.mtimeMs) return hit.buf;
-  const quality = file.endsWith(".pack") ? 6 : 9;
-  const buf = zlib.brotliCompressSync(fs.readFileSync(file), {
-    params: { [zlib.constants.BROTLI_PARAM_QUALITY]: quality, [zlib.constants.BROTLI_PARAM_SIZE_HINT]: stat.size },
-  });
-  brCache.set(file, { mtimeMs: stat.mtimeMs, buf });
+  const key = brKey(file, stat);
+  const hit = brMemo.get(file);
+  if (hit && hit.key === key) return hit.buf;
+  const disk = path.join(brDir, key + ".br");
+  let buf;
+  if (fs.existsSync(disk)) buf = fs.readFileSync(disk);
+  else {
+    buf = zlib.brotliCompressSync(fs.readFileSync(file), {
+      params: { [zlib.constants.BROTLI_PARAM_QUALITY]: 9, [zlib.constants.BROTLI_PARAM_SIZE_HINT]: stat.size },
+    });
+    fs.mkdirSync(brDir, { recursive: true });
+    fs.writeFileSync(disk, buf);
+  }
+  brMemo.set(file, { key, buf });
   return buf;
 }
+
+function warmCompression() {
+  const files = [];
+  const walk = (d) => { if (fs.existsSync(d)) for (const e of fs.readdirSync(d, { withFileTypes: true })) e.isDirectory() ? walk(path.join(d, e.name)) : files.push(path.join(d, e.name)); };
+  walk(path.join(runtimes.aot, "_framework"));
+  walk(path.join(runtimes.interp, "_framework"));
+  const pack = path.join(data, "web-bundle.pack");
+  if (fs.existsSync(pack)) files.unshift(pack);
+  let i = 0;
+  const next = () => {
+    if (i >= files.length) return;
+    const f = files[i++];
+    try { const st = fs.statSync(f); if (st.size > 1024) compressed(f, st); } catch { /* ignore */ }
+    setImmediate(next);
+  };
+  next();
+}
+
+// ---------------------------------------------------------------- responses
 
 function isolationHeaders(res) {
   res.setHeader("Cross-Origin-Opener-Policy", "same-origin");
   res.setHeader("Cross-Origin-Embedder-Policy", "require-corp");
   res.setHeader("Cross-Origin-Resource-Policy", "same-origin");
-  res.setHeader("Cache-Control", "no-store");
 }
 
-function sendFile(req, res, file, { compress = true } = {}) {
+/**
+ * Static file with ETag revalidation (the browser keeps the runtime and bundles and re-downloads only when they
+ * change), brotli for compressible content, byte ranges for uncompressed content.
+ */
+function sendFile(req, res, file, { compress = true, immutable = false } = {}) {
   let stat;
   try {
     stat = fs.statSync(file);
     if (!stat.isFile()) throw new Error("not a file");
   } catch {
-    res.writeHead(404, { "content-type": "text/plain" });
+    res.writeHead(404, { "content-type": "text/plain", "cache-control": "no-store" });
     res.end("not found");
     return;
   }
   const type = MIME[path.extname(file).toLowerCase()] ?? "application/octet-stream";
+  const etag = `"${stat.size.toString(36)}-${Math.floor(stat.mtimeMs).toString(36)}"`;
+  res.setHeader("ETag", etag);
+  res.setHeader("Cache-Control", immutable ? "public, max-age=31536000, immutable" : "no-cache");
+  if (req.headers["if-none-match"] === etag) {
+    res.writeHead(304);
+    res.end();
+    return;
+  }
+
+  const range = req.headers.range?.match(/^bytes=(\d*)-(\d*)$/);
+  if (range && !compress) {
+    let start = range[1] === "" ? stat.size - Number(range[2]) : Number(range[1]);
+    let end = range[1] === "" || range[2] === "" ? stat.size - 1 : Number(range[2]);
+    start = Math.max(0, start);
+    end = Math.min(stat.size - 1, end);
+    if (start > end) {
+      res.writeHead(416, { "content-range": `bytes */${stat.size}` });
+      res.end();
+      return;
+    }
+    res.writeHead(206, { "content-type": type, "content-length": end - start + 1, "content-range": `bytes ${start}-${end}/${stat.size}`, "accept-ranges": "bytes" });
+    if (req.method === "HEAD") return res.end();
+    fs.createReadStream(file, { start, end }).pipe(res);
+    return;
+  }
+
   const accepts = /\bbr\b/.test(req.headers["accept-encoding"] ?? "");
   if (compress && accepts && stat.size > 1024) {
     const buf = compressed(file, stat);
     res.writeHead(200, { "content-type": type, "content-encoding": "br", "content-length": buf.length, vary: "accept-encoding", "x-raw-length": stat.size });
-    res.end(buf);
+    res.end(req.method === "HEAD" ? undefined : buf);
     return;
   }
-  res.writeHead(200, { "content-type": type, "content-length": stat.size });
+  res.writeHead(200, { "content-type": type, "content-length": stat.size, "accept-ranges": compress ? "none" : "bytes" });
+  if (req.method === "HEAD") return res.end();
   fs.createReadStream(file).pipe(res);
 }
 
 function safeJoin(root, rel) {
   const p = path.normalize(path.join(root, decodeURIComponent(rel)));
-  return p.startsWith(root) ? p : null;
+  return p === root || p.startsWith(root + path.sep) ? p : null;
 }
 
 function readBody(req) {
@@ -85,6 +154,11 @@ function readBody(req) {
     req.on("end", () => resolve(Buffer.concat(chunks).toString("utf8")));
     req.on("error", reject);
   });
+}
+
+function json(res, obj, status = 200) {
+  res.writeHead(status, { "content-type": "application/json", "cache-control": "no-store" });
+  res.end(JSON.stringify(obj));
 }
 
 function run(cmd, args, env) {
@@ -97,13 +171,33 @@ function run(cmd, args, env) {
   });
 }
 
+const isLocal = (req) => ["127.0.0.1", "::1", "::ffff:127.0.0.1"].includes(req.socket.remoteAddress ?? "");
+
+// ---------------------------------------------------------------- private content (local only)
+
+/** Files the worker mounts lazily: [{ path (relative to support/Content/ra2), size }]. */
+function privateManifest() {
+  const out = [];
+  const walk = (d, rel) => {
+    for (const e of fs.readdirSync(d, { withFileTypes: true })) {
+      const r = rel ? `${rel}/${e.name}` : e.name;
+      if (e.isDirectory()) walk(path.join(d, e.name), r);
+      else out.push({ path: r, size: fs.statSync(path.join(d, e.name)).size });
+    }
+  };
+  if (fs.existsSync(privateFiles)) walk(privateFiles, "");
+  return out;
+}
+
+// ---------------------------------------------------------------- native SyncHash verification
+
 let lastYield = 0;
 function gpuYieldLine() {
   // Shared-box etiquette: native comparison runs are CPU-only (Null platform), but announce them anyway.
   if (Date.now() - lastYield < 3600_000) return;
   lastYield = Date.now();
   const stamp = new Date().toISOString().replace(/\.\d+Z$/, "Z");
-  const line = `${stamp} RTS AI web-engine spike (native headless SyncHash replay): CPU-only Null-platform OpenRA runs, no GPU, up to 60 min\n`;
+  const line = `${stamp} RTS AI web game (native headless SyncHash replay): CPU-only Null-platform OpenRA runs, no GPU, up to 60 min\n`;
   try { fs.appendFileSync("C:\\Users\\Admin\\Code\\AI\\logs\\gpu-yield.txt", line); } catch { /* optional */ }
 }
 
@@ -138,20 +232,21 @@ async function verify(req, res) {
     browserRuntime: body.log.runtime, packets: Object.keys(body.log.packets).length, files: { scenarioFile, logFile, hashFile },
   };
   fs.appendFileSync(path.join(data, "verify.jsonl"), JSON.stringify({ at: new Date().toISOString(), ...result }) + "\n");
+  for (const f of [scenarioFile, logFile, hashFile]) try { fs.unlinkSync(f); } catch { /* keep going */ }
   json(res, result);
 }
 
-function json(res, obj) {
-  res.writeHead(200, { "content-type": "application/json" });
-  res.end(JSON.stringify(obj));
-}
+// ---------------------------------------------------------------- routes
 
 const server = http.createServer(async (req, res) => {
   isolationHeaders(res);
   const url = new URL(req.url, `http://${req.headers.host}`);
-  const p = url.pathname;
+  let p = url.pathname;
+  if (p === "/play") p = "/";
+  else if (p.startsWith("/play/")) p = p.slice(5);
   try {
     if (p === "/api/verify" && req.method === "POST") return await verify(req, res);
+    if (p === "/api/health") return json(res, { ok: true, private: fs.existsSync(privateFiles), runtimes: Object.keys(runtimes).filter((k) => fs.existsSync(runtimes[k])) });
     if (p === "/api/metrics" && req.method === "POST") {
       fs.appendFileSync(path.join(data, "metrics.jsonl"), (await readBody(req)).trim() + "\n");
       return json(res, { ok: true });
@@ -166,17 +261,22 @@ const server = http.createServer(async (req, res) => {
       return f && f.endsWith(".pack") ? sendFile(req, res, f) : res.writeHead(404).end();
     }
     if (p.startsWith("/private/")) {
-      const remote = req.socket.remoteAddress ?? "";
-      if (!["127.0.0.1", "::1", "::ffff:127.0.0.1"].includes(remote)) return res.writeHead(403).end("local only");
-      const f = safeJoin(privateDir, p.slice(9));
-      return f ? sendFile(req, res, f, { compress: false }) : res.writeHead(400).end();
+      if (!isLocal(req)) return res.writeHead(403).end("local only");
+      res.setHeader("Cache-Control", "no-store");
+      if (p === "/private/manifest.json") return json(res, { files: privateManifest() });
+      if (p.startsWith("/private/files/")) {
+        const f = safeJoin(privateFiles, p.slice("/private/files/".length));
+        return f ? sendFile(req, res, f, { compress: false }) : res.writeHead(400).end();
+      }
+      return res.writeHead(404).end();
     }
     if (p.startsWith("/scenarios/")) {
       const f = safeJoin(path.join(repo, "scenarios"), p.slice(11));
       return f ? sendFile(req, res, f, { compress: false }) : res.writeHead(400).end();
     }
-    const f = safeJoin(dist, p === "/" ? "index.html" : p.slice(1));
-    if (f && fs.existsSync(f) && fs.statSync(f).isFile()) return sendFile(req, res, f);
+    const rel = p === "/" ? "index.html" : p.slice(1);
+    const f = safeJoin(dist, rel);
+    if (f && fs.existsSync(f) && fs.statSync(f).isFile()) return sendFile(req, res, f, { immutable: rel.startsWith("assets/") });
     return sendFile(req, res, path.join(dist, "index.html"));
   } catch (e) {
     res.writeHead(500, { "content-type": "text/plain" });
@@ -184,4 +284,7 @@ const server = http.createServer(async (req, res) => {
   }
 });
 
-server.listen(PORT, HOST, () => console.log(`RTS AI web engine spike: http://${HOST}:${PORT}/  (private RA2 content: ${fs.existsSync(privateDir) ? "available" : "missing"})`));
+server.listen(PORT, HOST, () => {
+  console.log(`RTS AI web game: http://${HOST}:${PORT}/  (private RA2 files: ${fs.existsSync(privateFiles) ? "available" : "missing"})`);
+  warmCompression();
+});

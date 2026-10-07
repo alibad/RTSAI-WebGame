@@ -81,6 +81,11 @@ namespace OpenRA.WebSim
 
 			var platform = new WebPlatform();
 			Game.Renderer = new Renderer(platform, Game.Settings.Graphics, manifest.RendererConstants.VertexBatchSize);
+
+			// The UI sprite renderer draws in viewport px; captured draws from it are mapped back to world px.
+			var shaderField = typeof(SpriteRenderer).GetField("shader", BindingFlags.NonPublic | BindingFlags.Instance);
+			if (shaderField?.GetValue(Game.Renderer.SpriteRenderer) is WebShader ui)
+				ui.UiSpace = true;
 			Game.Sound = new Sound(platform, Game.Settings.Sound);
 
 			Time("boot.moddata", () => Game.ModData = new ModData(manifest, mods, true));
@@ -174,12 +179,60 @@ namespace OpenRA.WebSim
 			return session;
 		}
 
+		static Map preparedMap;
+		static string preparedMapName;
+
+		/// <summary>
+		/// Loads a map with its rules, sequences and sprites ahead of Start (ModData.PrepareMap, split so each step is
+		/// timed). The page calls it while the player is on the setup screen, so starting only builds the world.
+		/// Render-side work only: the simulation's state is created by Start, so this cannot affect determinism.
+		/// </summary>
+		public static void Prepare(string mapName)
+		{
+			if (preparedMap != null && preparedMapName == mapName)
+				return;
+
+			preparedMap?.Dispose();
+			preparedMap = null;
+			Map map = null;
+			Time("prepare.map", () => map = LoadMap(Path.Combine(Root, "mods", ModId, "maps", mapName)));
+			Time("prepare.loaders", () => ModData.InitializeLoaders(map));
+			Time("prepare.sprites", () => map.Sequences.LoadSprites());
+			Time("prepare.music", () =>
+			{
+				foreach (var entry in map.Rules.Music)
+					entry.Value.Load(map);
+			});
+			preparedMap = map;
+			preparedMapName = mapName;
+		}
+
+		/// <summary>Disposes the current game (world, renderer, order manager) so another can start.</summary>
+		public static void EndGame()
+		{
+			if (World == null)
+				return;
+
+			WorldRenderer?.Dispose();
+			World.Dispose();
+			OrderManager?.Dispose();
+			World = null;
+			WorldRenderer = null;
+			OrderManager = null;
+			Game.OrderManager = null;
+			ScriptedOrders.Clear();
+			GC.Collect();
+		}
+
 		/// <summary>Creates the world for a scenario. replayPackets (frame -> OrderPacket bytes) switches the connection to replay.</summary>
 		public static void Start(ScenarioSpec s, Dictionary<int, byte[]> replayPackets = null)
 		{
+			EndGame();
 			Scenario = s;
-			Map map = null;
-			Time("start.map", () => map = LoadMap(Path.Combine(Root, "mods", ModId, "maps", s.Map)));
+			Prepare(s.Map);
+			var map = preparedMap;
+			preparedMap = null;
+			preparedMapName = null;
 
 			Connection = new WebConnection { ReplayPackets = replayPackets };
 			OrderManager = new OrderManager(Connection);
@@ -187,19 +240,16 @@ namespace OpenRA.WebSim
 			Game.OrderManager = OrderManager;
 			OrderManager.LobbyInfo = BuildSession(s, map);
 
-			// ModData.PrepareMap, split so each step is timed separately.
-			Time("start.loaders", () => ModData.InitializeLoaders(map));
-			Time("start.sprites", () => map.Sequences.LoadSprites());
-			Time("start.music", () =>
-			{
-				foreach (var entry in map.Rules.Music)
-					entry.Value.Load(map);
-			});
 			if (map.Grid.EnableDepthBuffer)
 				Game.Renderer.SetDepthMargin(map.Rules.TerrainInfo.TileSize.Height * map.Grid.MaximumTerrainHeight);
 
 			Time("start.world", () => World = OrderManager.World = new World(map, ModData, OrderManager, WorldType.Regular));
 			Time("start.worldrenderer", () => WorldRenderer = new WorldRenderer(ModData, World));
+			Capture.ViewToWorld = (x, y) =>
+			{
+				var vp = WorldRenderer.Viewport;
+				return (vp.TopLeft.X + x / vp.Zoom, vp.TopLeft.Y + y / vp.Zoom);
+			};
 			Time("start.loadcomplete", () => World.LoadComplete(WorldRenderer));
 
 			SpawnActors(s);
@@ -352,8 +402,13 @@ namespace OpenRA.WebSim
 
 		static MouseInput Mouse(int2 worldPx, MouseButton button, Modifiers mods)
 		{
-			return new MouseInput(MouseInputEvent.Down, button, worldPx, int2.Zero, mods, 1);
+			// Order generators that draw at the cursor (building placement) read the mouse from the viewport.
+			Viewport.LastMousePos = WorldRenderer.Viewport.WorldToViewPx(worldPx);
+			return new MouseInput(MouseInputEvent.Down, button, Viewport.LastMousePos, int2.Zero, mods, 1);
 		}
+
+		/// <summary>Moves the engine's idea of the mouse (for previews drawn at the cursor) without an order.</summary>
+		public static void MouseMove(int2 worldPx) => Viewport.LastMousePos = WorldRenderer.Viewport.WorldToViewPx(worldPx);
 
 		/// <summary>The cursor the game would show for the current selection at this world pixel.</summary>
 		public static string Cursor(int2 worldPx, Modifiers mods)

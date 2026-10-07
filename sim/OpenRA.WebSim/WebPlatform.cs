@@ -1,4 +1,4 @@
-#region Copyright & License Information
+﻿#region Copyright & License Information
 /*
  * Copyright (c) The OpenRA Developers and Contributors
  * This file is part of OpenRA, which is free software. It is made
@@ -12,6 +12,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Runtime.InteropServices;
 using OpenRA.Graphics;
 using OpenRA.Primitives;
 
@@ -114,6 +115,9 @@ namespace OpenRA.WebSim
 		public Size Size { get; private set; }
 		public TextureScaleFilter ScaleFilter { get; set; }
 
+		/// <summary>A framebuffer's colour texture: the page renders into it (no pixel data here).</summary>
+		public bool IsRenderTarget { get; init; }
+
 		public void Dispose()
 		{
 			Data = null;
@@ -164,54 +168,134 @@ namespace OpenRA.WebSim
 		public void Dispose() { }
 	}
 
+	/// <summary>
+	/// Draws nothing, but while <see cref="Capture"/> is active it records the draw calls (with the bound vertex
+	/// buffer, shader state, blend mode and render target) so the page can replay them.
+	/// </summary>
 	sealed class WebGraphicsContext : IGraphicsContext
 	{
+		public static object CurrentVertexBuffer;
+		public static WebShader CurrentShader;
+		public static WebTexture CurrentTarget;
+		static BlendMode blend;
+
 		public string GLVersion => "Web";
 
-		public IVertexBuffer<T> CreateEmptyVertexBuffer<T>(int size) where T : struct => new WebVertexBuffer<T>();
-		public IVertexBuffer<T> CreateVertexBuffer<T>(T[] data, bool dynamic = true) where T : struct => new WebVertexBuffer<T>();
+		public IVertexBuffer<T> CreateEmptyVertexBuffer<T>(int size) where T : struct => new WebVertexBuffer<T>(null, size);
+		public IVertexBuffer<T> CreateVertexBuffer<T>(T[] data, bool dynamic = true) where T : struct => new WebVertexBuffer<T>(data, data.Length);
 		public T[] CreateVertices<T>(int size) where T : struct => new T[size];
 		public IIndexBuffer CreateIndexBuffer(uint[] indices) => new WebIndexBuffer();
 		public ITexture CreateTexture() => new WebTexture();
 		public IFrameBuffer CreateFrameBuffer(Size s) => new WebFrameBuffer(s);
 		public IFrameBuffer CreateFrameBuffer(Size s, Color clearColor) => new WebFrameBuffer(s);
-		public IShader CreateShader(IShaderBindings shaderBindings) => new WebShader();
+		public IShader CreateShader(IShaderBindings shaderBindings) => new WebShader(shaderBindings.VertexShaderName);
 		public void EnableScissor(int x, int y, int width, int height) { }
 		public void DisableScissor() { }
 		public void Present() { }
-		public void DrawPrimitives(PrimitiveType pt, int firstVertex, int numVertices) { }
-		public void DrawElements(int numIndices, int offset) { }
+
+		public void DrawPrimitives(PrimitiveType pt, int firstVertex, int numVertices)
+		{
+			if (Capture.Active && pt == PrimitiveType.TriangleList && CurrentShader?.Name == "model" && CurrentVertexBuffer is IModelVertexSource vb)
+				Capture.AddModelDraw(vb, firstVertex, numVertices, CurrentShader, CurrentTarget);
+		}
+
+		public void DrawElements(int numIndices, int offset)
+		{
+			// SpriteRenderer.Flush: quads (6 indices each) over the temp vertex buffer.
+			if (Capture.Active && CurrentShader != null && CurrentTarget == null && CurrentVertexBuffer is WebVertexBuffer<Vertex> vb)
+				Capture.AddQuads(vb.Data, offset / 6 * 4, numIndices / 6 * 4, blend, CurrentShader);
+		}
+
 		public void Clear() { }
 		public void EnableDepthBuffer() { }
 		public void DisableDepthBuffer() { }
 		public void ClearDepthBuffer() { }
-		public void SetBlendMode(BlendMode mode) { }
+		public void SetBlendMode(BlendMode mode) => blend = mode;
 		public void SetVSyncEnabled(bool enabled) { }
 		public void Dispose() { }
 	}
 
 	sealed class WebFrameBuffer : IFrameBuffer
 	{
+		readonly WebTexture texture;
+
 		public WebFrameBuffer(Size s)
 		{
-			Texture = new WebTexture();
-			Texture.SetData(null, s.Width, s.Height);
+			texture = new WebTexture { IsRenderTarget = true };
+			texture.SetData(null, s.Width, s.Height);
 		}
 
-		public ITexture Texture { get; }
-		public void Bind() { }
-		public void Unbind() { }
+		public ITexture Texture => texture;
+
+		public void Bind()
+		{
+			WebGraphicsContext.CurrentTarget = texture;
+			if (Capture.Active)
+				Capture.BeginTarget(texture);
+		}
+
+		public void Unbind()
+		{
+			if (Capture.Active)
+				Capture.EndTarget();
+			WebGraphicsContext.CurrentTarget = null;
+		}
+
 		public void EnableScissor(Rectangle rect) { }
 		public void DisableScissor() { }
 		public void Dispose() { }
 	}
 
-	sealed class WebVertexBuffer<T> : IVertexBuffer<T> where T : struct
+	sealed class WebVertexBuffer<T> : IVertexBuffer<T>, IModelVertexSource where T : struct
 	{
-		public void Bind() { }
-		public void SetData(T[] vertices, int length) { }
-		public void SetData(ref T[] vertices, int length) { }
-		public void SetData(T[] vertices, int offset, int start, int length) { }
+		static int nextId;
+
+		public int Id { get; } = System.Threading.Interlocked.Increment(ref nextId);
+		public int Version { get; private set; }
+
+		/// <summary>The latest data (the caller's array: temp buffers are drawn right after SetData).</summary>
+		public T[] Data { get; private set; }
+		public int Length { get; private set; }
+
+		public WebVertexBuffer(T[] data, int length)
+		{
+			Data = data;
+			Length = length;
+		}
+
+		public void Bind() => WebGraphicsContext.CurrentVertexBuffer = this;
+
+		public void SetData(T[] vertices, int length) => Set(vertices, 0, 0, length);
+		public void SetData(ref T[] vertices, int length) => Set(vertices, 0, 0, length);
+		public void SetData(T[] vertices, int offset, int start, int length) => Set(vertices, offset, start, length);
+
+		void Set(T[] vertices, int offset, int start, int length)
+		{
+			if (typeof(T) == typeof(ModelVertex))
+			{
+				// Model buffers are static and drawn later: keep our own copy.
+				Data ??= new T[Math.Max(Length, start + length)];
+				if (Data.Length < start + length)
+				{
+					var grown = Data;
+					Array.Resize(ref grown, start + length);
+					Data = grown;
+				}
+
+				Array.Copy(vertices, offset, Data, start, length);
+				Length = Math.Max(Length, start + length);
+			}
+			else if (offset == 0 && start == 0)
+			{
+				Data = vertices;
+				Length = length;
+			}
+
+			Version++;
+		}
+
+		public byte[] Bytes() => Data == null ? [] : MemoryMarshal.AsBytes(Data.AsSpan(0, Math.Min(Length, Data.Length))).ToArray();
+
 		public void Dispose() { }
 	}
 
@@ -221,17 +305,33 @@ namespace OpenRA.WebSim
 		public void Dispose() { }
 	}
 
-	sealed class WebShader : IShader
+	/// <summary>Remembers its uniforms so captured draws carry the state the real shader would have.</summary>
+	public sealed class WebShader : IShader
 	{
-		public void SetBool(string name, bool value) { }
-		public void SetVec(string name, float x) { }
-		public void SetVec(string name, float x, float y) { }
-		public void SetVec(string name, float x, float y, float z) { }
-		public void SetVec(string name, ReadOnlyMemory<float> vec, int length) { }
-		public void SetTexture(string param, ITexture texture) { }
-		public void SetMatrix(string param, float[] mtx) { }
+		public readonly string Name;
+
+		/// <summary>True for the UI sprite renderer's shader (positions in viewport px).</summary>
+		public bool UiSpace;
+
+		readonly Dictionary<string, ITexture> textures = [];
+		readonly Dictionary<string, float[]> vecs = [];
+		readonly Dictionary<string, float[]> matrices = [];
+
+		public WebShader(string name) => Name = name;
+
+		public int TextureId(string name) => textures.TryGetValue(name, out var t) && t is WebTexture w ? w.Id : -1;
+		public float[] Vec(string name) => vecs.TryGetValue(name, out var v) ? v : null;
+		public float[] Matrix(string name) => matrices.TryGetValue(name, out var m) ? m : null;
+
+		public void SetBool(string name, bool value) => vecs[name] = [value ? 1 : 0];
+		public void SetVec(string name, float x) => vecs[name] = [x];
+		public void SetVec(string name, float x, float y) => vecs[name] = [x, y];
+		public void SetVec(string name, float x, float y, float z) => vecs[name] = [x, y, z];
+		public void SetVec(string name, ReadOnlyMemory<float> vec, int length) => vecs[name] = vec.Span[..Math.Min(length, vec.Length)].ToArray();
+		public void SetTexture(string param, ITexture texture) => textures[param] = texture;
+		public void SetMatrix(string param, float[] mtx) => matrices[param] = (float[])mtx.Clone();
 		public void PrepareRender() { }
-		public void Bind() { }
+		public void Bind() => WebGraphicsContext.CurrentShader = this;
 	}
 
 	sealed class WebHardwareCursor : IHardwareCursor

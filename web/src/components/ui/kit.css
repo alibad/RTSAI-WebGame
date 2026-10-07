@@ -1,0 +1,105 @@
+/*
+ * RTS AI UI kit: shadcn/ui (Base UI primitives, base-nova style) themed with the site's own palette.
+ * Imported once, right after Tailwind, by app/globals.css; the standalone Studio build (scripts/art-lab-preview.ts)
+ * adds Tailwind's theme and utility layers for these components only. See "UI kit" in README.md.
+ *
+ * Tokens are plain CSS variables, so a surface can re-theme the kit by redefining them on any ancestor or on a
+ * popup itself (popups are portalled to <body>): `.ui-paper` is the light "paper" surface used by the feedback
+ * dialog and the Earth studio form.
+ */
+@import "tw-animate-css";
+
+/* The site is dark by design; the kit's `dark:` variants only apply under an explicit `.dark` ancestor. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* Base UI and Radix state attributes (from shadcn/tailwind.css). */
+@custom-variant data-open { &:where([data-state="open"]), &:where([data-open]:not([data-open="false"])) { @slot; } }
+@custom-variant data-closed { &:where([data-state="closed"]), &:where([data-closed]:not([data-closed="false"])) { @slot; } }
+@custom-variant data-checked { &:where([data-state="checked"]), &:where([data-checked]:not([data-checked="false"])) { @slot; } }
+@custom-variant data-unchecked { &:where([data-state="unchecked"]), &:where([data-unchecked]:not([data-unchecked="false"])) { @slot; } }
+@custom-variant data-selected { &:where([data-selected="true"]) { @slot; } }
+@custom-variant data-disabled { &:where([data-disabled="true"]), &:where([data-disabled]:not([data-disabled="false"])) { @slot; } }
+@custom-variant data-active { &:where([data-state="active"]), &:where([data-active]:not([data-active="false"])) { @slot; } }
+@custom-variant data-horizontal { &:where([data-orientation="horizontal"]) { @slot; } }
+@custom-variant data-vertical { &:where([data-orientation="vertical"]) { @slot; } }
+
+@utility no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+  &::-webkit-scrollbar { display: none; }
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-field: var(--field);
+  --color-ring: var(--ring);
+  --radius-sm: calc(var(--radius) - 2px);
+  --radius-md: var(--radius);
+  --radius-lg: calc(var(--radius) + 1px);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+/* Dark panel surfaces with the gold accent (the Workshop and Campaign studio palette). */
+:root {
+  --radius: 5px;
+  --background: #111411;
+  --foreground: #eeeadd;
+  --card: #1a1f19;
+  --card-foreground: #eeeadd;
+  --popover: #1b211a;
+  --popover-foreground: #eeeadd;
+  --primary: #f1d28b;
+  --primary-foreground: #171510;
+  --secondary: #242b22;
+  --secondary-foreground: #eeeadd;
+  --muted: #242b22;
+  --muted-foreground: #a2a695;
+  --accent: #3a3825;
+  --accent-foreground: #ffe4a5;
+  --destructive: #ef5b3f;
+  --border: #3a4234;
+  --input: #3a4234;
+  --field: #111910;
+  --ring: #eac06e;
+  /* Above the site header (30), the feedback launcher (45) and the auth (100) and feedback (110) dialogs. */
+  --z-popover: 130;
+}
+
+/* Light "paper" surfaces: the feedback dialog and the Earth studio form. */
+.ui-paper {
+  --popover: #faf8f1;
+  --popover-foreground: #111411;
+  --muted: #ebe7dc;
+  --muted-foreground: #6f7168;
+  --accent: #efe3c4;
+  --accent-foreground: #6e2a1c;
+  --border: #c7c3b6;
+  --input: #aaa69a;
+  --field: #faf8f1;
+  --ring: #c84631;
+}
+
+/* An option's secondary text (unit category, faction side) reads as metadata. */
+[data-slot="select-item"] small, [data-slot="combobox-item"] small, [data-slot="select-value"] small {
+  color: var(--muted-foreground);
+  font-size: 0.85em;
+}
+
+/* Kit inputs show focus with their own border and ring, not the site's offset outline. */
+[data-slot="input-group-control"]:focus-visible, [data-slot="input"]:focus-visible { outline: none; }

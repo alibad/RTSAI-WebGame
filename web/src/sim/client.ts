@@ -1,24 +1,14 @@
-// Page-side handle on the simulation worker: owns the SharedArrayBuffer ring, turns new slots into parsed
-// snapshots (keeping the previous one for interpolation) and forwards sprite/texture tables to the renderer.
+﻿// Page-side handle on the simulation worker: owns the SharedArrayBuffer ring, turns new slots into parsed
+// snapshots (keeping the previous one for interpolation), forwards sprite/texture tables to the renderer, and
+// offers request/reply calls (selection, commands) and typed message subscriptions for the rest.
 
 import {
   RING_BYTES, RING_HEADER_BYTES, RING_LEN_AT, RING_SEQ_AT, RING_SLOT_BYTES, RING_SLOTS, parseSnapshot,
-  type FromWorker, type Snapshot, type StartInfo, type ToWorker,
+  type FromWorker, type Snapshot, type ToWorker,
 } from "./protocol";
 import type { Renderer } from "../render/renderer";
 
-export interface ClientEvents {
-  onProgress(stage: string, detail?: string): void;
-  onReady(m: Extract<FromWorker, { type: "ready" }>): void;
-  onStarted(info: StartInfo, startMs: number): void;
-  onSnapshot(s: Snapshot): void;
-  onCursor(cursor: string): void;
-  onOrdered(m: Extract<FromWorker, { type: "ordered" }>): void;
-  onStats(m: Extract<FromWorker, { type: "stats" }>): void;
-  onBench(m: Extract<FromWorker, { type: "bench" }>): void;
-  onLog(json: string): void;
-  onError(message: string): void;
-}
+type Handler<T extends FromWorker["type"]> = (m: Extract<FromWorker, { type: T }>) => void;
 
 export class SimClient {
   readonly worker: Worker;
@@ -28,12 +18,17 @@ export class SimClient {
   private bytes: Uint8Array | null = null;
   private lastSeq = 0;
   private pending: { bytes: Uint8Array; seq: number }[] = [];
+  private handlers = new Map<string, ((m: FromWorker) => void)[]>();
+  private replies = new Map<number, (json: string) => void>();
+  private nextReq = 1;
+  private resyncing = false;
   cur: Snapshot | null = null;
   prev: Snapshot | null = null;
   strings: string[] = [];
   missedSnapshots = 0;
+  onSnapshot: ((s: Snapshot) => void) | null = null;
 
-  constructor(private renderer: Renderer, private ev: ClientEvents) {
+  constructor(private renderer: Renderer) {
     this.worker = new Worker(new URL("./worker.ts", import.meta.url), { type: "module" });
     this.shared = typeof SharedArrayBuffer !== "undefined" && self.crossOriginIsolated === true;
     if (this.shared) {
@@ -42,44 +37,72 @@ export class SimClient {
       this.bytes = new Uint8Array(this.sab);
     }
     this.worker.onmessage = (e: MessageEvent<FromWorker>) => this.handle(e.data);
-    this.worker.onerror = (e) => ev.onError(e.message || "worker error");
+    this.worker.onerror = (e) => this.emit({ type: "error", message: e.message || "worker error" });
+  }
+
+  on<T extends FromWorker["type"]>(type: T, h: Handler<T>) {
+    const list = this.handlers.get(type) ?? [];
+    list.push(h as (m: FromWorker) => void);
+    this.handlers.set(type, list);
+  }
+
+  private emit(m: FromWorker) {
+    for (const h of this.handlers.get(m.type) ?? []) h(m);
   }
 
   send(m: ToWorker) {
     this.worker.postMessage(m);
   }
 
-  init(runtime: string, privateContent: boolean) {
-    this.send({ type: "init", runtime, sab: this.sab, privateContent });
+  /** A command that answers with JSON (selection, control groups, production...). */
+  request<T = Record<string, unknown>>(m: { type: "command"; json: string } | { type: "select"; ids: number[]; additive: boolean }): Promise<T> {
+    const req = this.nextReq++;
+    return new Promise((resolve) => {
+      this.replies.set(req, (json) => resolve(JSON.parse(json) as T));
+      this.send({ ...m, req } as ToWorker);
+    });
+  }
+
+  command<T = Record<string, unknown>>(cmd: Record<string, unknown>) {
+    return this.request<T>({ type: "command", json: JSON.stringify(cmd) });
+  }
+
+  init(runtime: string, base: string, privateContent: boolean) {
+    this.send({ type: "init", runtime, base, sab: this.sab, privateContent });
   }
 
   start(scenario: string) {
     this.cur = this.prev = null;
-    this.lastSeq = 0;
+    this.lastSeq = this.header ? Atomics.load(this.header, 0) : 0;
     this.strings = [];
+    this.pending = [];
+    this.renderer.resetSprites();
     this.send({ type: "start", scenario });
   }
 
   private handle(m: FromWorker) {
     switch (m.type) {
-      case "progress": this.ev.onProgress(m.stage, m.detail); break;
-      case "ready": this.ev.onReady(m); break;
       case "started":
         this.renderer.setStartInfo(m.info, m.terrain);
-        this.ev.onStarted(m.info, m.startMs);
         break;
-      case "texture": this.renderer.uploadTexture(m.id, m.version, m.width, m.height, m.kind, m.data); break;
-      case "snapshot": this.pending.push({ bytes: new Uint8Array(m.bytes), seq: m.seq }); break;
-      case "cursor": this.ev.onCursor(m.cursor); break;
-      case "ordered": this.ev.onOrdered(m); break;
-      case "stats": this.ev.onStats(m); break;
-      case "bench": this.ev.onBench(m); break;
-      case "log": this.ev.onLog(m.json); break;
-      case "error": this.ev.onError(m.message); break;
+      case "texture":
+        this.renderer.uploadTexture(m.id, m.version, m.width, m.height, m.kind, m.data);
+        return;
+      case "modelbuffer":
+        this.renderer.setModelBuffer(m.id, m.data);
+        return;
+      case "snapshot":
+        this.pending.push({ bytes: new Uint8Array(m.bytes), seq: m.seq });
+        return;
+      case "reply": {
+        const r = this.replies.get(m.req);
+        this.replies.delete(m.req);
+        r?.(m.json);
+        return;
+      }
     }
+    this.emit(m);
   }
-
-  private resyncing = false;
 
   private accept(bytes: Uint8Array, now: number) {
     const s = parseSnapshot(bytes, now);
@@ -90,9 +113,16 @@ export class SimClient {
     } else if (this.resyncing) return; // incremental tables are stale until the resync snapshot arrives
     for (const str of s.strings) this.strings.push(str);
     this.renderer.addSprites(s.sprites);
+    this.renderer.runModels(s);
     this.prev = this.cur;
     this.cur = s;
-    this.ev.onSnapshot(s);
+    this.onSnapshot?.(s);
+  }
+
+  private requestResync() {
+    if (this.resyncing) return;
+    this.resyncing = true;
+    this.send({ type: "resync" });
   }
 
   /** Called once per animation frame: picks up every snapshot published since the last frame, in order. */
@@ -104,10 +134,7 @@ export class SimClient {
         // worker to resend them and drop snapshots until the resync one arrives.
         this.missedSnapshots += latest - this.lastSeq;
         this.lastSeq = latest;
-        if (!this.resyncing) {
-          this.resyncing = true;
-          this.send({ type: "resync" });
-        }
+        this.requestResync();
         return;
       }
       while (this.lastSeq < latest) {
@@ -128,10 +155,7 @@ export class SimClient {
         if (Atomics.load(this.header, RING_SEQ_AT + slot) !== seq) {
           // Overwritten while copying: resync rather than apply a torn snapshot.
           this.missedSnapshots++;
-          if (!this.resyncing) {
-            this.resyncing = true;
-            this.send({ type: "resync" });
-          }
+          this.requestResync();
           continue;
         }
         this.accept(copy, now);

@@ -38,6 +38,8 @@ static class Program
 				"extract-content" => PrivateContent.Extract(opts),
 				"unpack" => Unpack(opts),
 				"run" => Run(opts),
+				"uitest" => UiTest(opts),
+				"capturetest" => CaptureTest(opts),
 				_ => throw new ArgumentException("Unknown command " + args[0]),
 			};
 		}
@@ -86,6 +88,78 @@ static class Program
 		return 0;
 	}
 
+	/// <summary>
+	/// Native twin of tools/playtest.mjs: drives the page's commands (Ui.Command) through a short skirmish and
+	/// prints the UI state after each step, so command bugs show with full stack traces.
+	/// </summary>
+	static int UiTest(Dictionary<string, string> opts)
+	{
+		SimHost.Boot(opts["root"]);
+		Console.WriteLine("setup: " + SetupInfo.Json()[..Math.Min(400, SetupInfo.Json().Length)]);
+		SimHost.Start(ScenarioSpec.Parse(File.ReadAllText(opts["scenario"])));
+		void Ticks(int n) { for (var i = 0; i < n; i++) { SimHost.Tick(); Snapshot.Build(); } }
+		string Cmd(string json) { var r = Ui.Command(json); Console.WriteLine($"cmd {json} -> {r}"); return r; }
+		Ticks(5);
+		var world = SimHost.World;
+		var mcv = world.Actors.First(a => a.Owner == world.LocalPlayer && a.Info.Name.Contains("mcv"));
+		SimHost.Select([mcv.ActorID], false);
+		Cmd("{\"cmd\":\"deploy\"}");
+		Ticks(60);
+		Console.WriteLine("state: " + Ui.State()[..Math.Min(1500, Ui.State().Length)]);
+		var power = world.Map.Rules.Actors.Keys.FirstOrDefault(k => k.EndsWith("powr")) ?? "gapowr";
+		Cmd($"{{\"cmd\":\"produce\",\"queue\":\"Building\",\"item\":\"{power}\"}}");
+		for (var i = 0; i < 2000 && !Ui.State().Contains("\"done\":true"); i++)
+			Ticks(1);
+		Console.WriteLine($"ready after tick {world.WorldTick}");
+		Cmd($"{{\"cmd\":\"produce\",\"queue\":\"Building\",\"item\":\"{power}\"}}");
+		Console.WriteLine("mode: " + world.OrderGenerator?.GetType().Name);
+		var yard = world.Actors.First(a => a.Owner == world.LocalPlayer && a.Info.HasTraitInfo<OpenRA.Mods.Common.Traits.BuildingInfo>());
+		var yp = SimHost.WorldRenderer.ScreenPxPosition(yard.CenterPosition);
+		foreach (var (dx, dy) in new[] { (150, 60), (-150, 60), (150, -60), (0, 140), (220, 0) })
+		{
+			Console.WriteLine("cursor: " + SimHost.Cursor(new int2(yp.X + dx, yp.Y + dy), Modifiers.None));
+			SimHost.Click(new int2(yp.X + dx, yp.Y + dy), MouseButton.Left, Modifiers.None);
+			Ticks(3);
+			if (world.Actors.Any(a => a.Info.Name == power && a.Owner == world.LocalPlayer))
+			{
+				Console.WriteLine($"placed at {dx},{dy}");
+				break;
+			}
+			if (world.OrderGenerator is not OpenRA.Mods.Common.Orders.PlaceBuildingOrderGenerator)
+				Cmd($"{{\"cmd\":\"produce\",\"queue\":\"Building\",\"item\":\"{power}\"}}");
+		}
+		Ticks(30);
+		Console.WriteLine("state: " + Ui.State()[..Math.Min(600, Ui.State().Length)]);
+		foreach (var m in new[] { "sell", "repair", "attackmove", "guard", "none" })
+			Cmd($"{{\"cmd\":\"mode\",\"mode\":\"{m}\"}}");
+		Console.WriteLine($"capture: vertices {Capture.VertexCount} batches {Capture.BatchCount} model cmds {Capture.ModelCmdCount}; others {Snapshot.UnsupportedRenderables}");
+		Console.WriteLine("icon bytes: " + Ui.Icon(power).Length);
+		return 0;
+	}
+
+	/// <summary>Runs a scenario and reports what the renderer capture records (voxels, beams, lines).</summary>
+	static int CaptureTest(Dictionary<string, string> opts)
+	{
+		SimHost.Boot(opts["root"]);
+		SimHost.Start(ScenarioSpec.Parse(File.ReadAllText(opts["scenario"])));
+		var ticks = opts.TryGetValue("ticks", out var t) ? int.Parse(t) : 200;
+		var maxV = 0; var maxB = 0; var maxM = 0; var others = 0;
+		for (var i = 0; i < ticks; i++)
+		{
+			SimHost.Tick();
+			Snapshot.Build();
+			maxV = Math.Max(maxV, Capture.VertexCount);
+			maxB = Math.Max(maxB, Capture.BatchCount);
+			maxM = Math.Max(maxM, Capture.ModelCmdCount);
+			others = Math.Max(others, Snapshot.UnsupportedRenderables);
+			if (i % 50 == 49)
+				Console.WriteLine($"tick {SimHost.World.WorldTick}: vertices {Capture.VertexCount} batches {Capture.BatchCount} model cmds {Capture.ModelCmdCount} failed {Snapshot.UnsupportedRenderables} snapshot {Snapshot.Bytes.Length} B, model buffers {string.Join(",", Capture.ModelBuffers.Select(kv => kv.Key + ":" + kv.Value.Bytes().Length))}");
+		}
+
+		Console.WriteLine($"max: vertices {maxV} batches {maxB} model cmds {maxM} failed {others}");
+		return 0;
+	}
+
 	static int Run(Dictionary<string, string> opts)
 	{
 		var root = opts["root"];
@@ -103,6 +177,7 @@ static class Program
 		var startMs = wall.Elapsed.TotalMilliseconds - bootMs;
 		Console.WriteLine($"boot {bootMs:F0} ms, start {startMs:F0} ms; {string.Join(", ", SimHost.Timings.Select(kv => $"{kv.Key} {kv.Value:F0}"))}");
 		Console.WriteLine($"actors {SimHost.World.Actors.Count()} players {SimHost.World.Players.Length} map {SimHost.World.Map.Title}");
+			Console.WriteLine($"player names: {string.Join(", ", SimHost.World.Players.Where(p => p.Playable).Select(p => p.ResolvedPlayerName))}");
 
 		var snapshot = opts.ContainsKey("snapshot");
 		if (snapshot)

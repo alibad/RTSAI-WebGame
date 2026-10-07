@@ -174,6 +174,45 @@ void main()
 }
 `;
 
+/**
+ * Shroud and fog. uShroud holds one texel per half-tile on the isometric grid (value 0 unexplored, 0.5 fogged,
+ * 1 visible), so bilinear filtering gives soft cell edges. Drawn over the world as one quad in world px.
+ */
+export const SHROUD_VS = /* glsl */ `#version 300 es
+precision highp float;
+uniform vec3 uScroll;
+uniform vec3 uP1;
+uniform vec3 uP2;
+uniform vec4 uRect; // world px x, y, w, h
+out vec2 vWorld;
+void main()
+{
+  vec2 c = vec2(float(gl_VertexID & 1), float(gl_VertexID >> 1));
+  vWorld = uRect.xy + c * uRect.zw;
+  gl_Position = vec4((vWorld - uScroll.xy) * uP1.xy + uP2.xy, 0.0, 1.0);
+}
+`;
+
+export const SHROUD_FS = /* glsl */ `#version 300 es
+precision highp float;
+uniform sampler2D uShroud;
+uniform vec2 uOrigin;   // world px of the texel (0, 0) centre
+uniform vec2 uHalfTile; // world px per texel
+uniform vec2 uTexSize;
+in vec2 vWorld;
+out vec4 fragColor;
+void main()
+{
+  vec2 t = (vWorld - uOrigin) / uHalfTile;
+  float v = texture(uShroud, (t + 0.5) / uTexSize).r;
+  float black = 1.0 - smoothstep(0.08, 0.42, v);
+  float fog = (1.0 - smoothstep(0.58, 0.92, v)) * 0.55;
+  float a = max(black, fog);
+  if (a <= 0.003) discard;
+  fragColor = vec4(0.0, 0.0, 0.0, a);
+}
+`;
+
 /** Flat-coloured quads for selection brackets, health bars and the drag box (screen-space overlay). */
 export const COLOR_VS = /* glsl */ `#version 300 es
 precision highp float;

@@ -1,0 +1,16 @@
+{
+  "map": "web-arena",
+  "seed": 77,
+  "script": "battle",
+  "players": [
+    { "slot": "Multi0", "faction": "america", "color": "2A6FDB", "spawn": 1 },
+    { "slot": "Multi1", "faction": "russia", "bot": "webidle", "color": "D83A2E", "spawn": 2 }
+  ],
+  "options": { "explored": "True", "fog": "False", "crates": "False", "shortgame": "False" },
+  "spawns": [
+    { "type": "mtnk", "player": 0, "x": 50, "y": 56, "count": 6, "columns": 2, "spacing": 2 },
+    { "type": "harv",   "player": 0, "x": 46, "y": 58, "count": 2, "columns": 1, "spacing": 2 },
+    { "type": "htnk", "player": 1, "x": 76, "y": 56, "count": 6, "columns": 2, "spacing": 2 },
+    { "type": "apoc",   "player": 1, "x": 84, "y": 58, "count": 2, "columns": 1, "spacing": 2 }
+  ]
+}

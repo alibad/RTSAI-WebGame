@@ -34,7 +34,7 @@ namespace OpenRA.WebSim
 	{
 		public const uint Magic = 0x314E5357; // "WSN1"
 		public const uint ResyncMagic = 0x31525357; // "WSR1": sprite/string tables restart at id 0
-		public const int HeaderBytes = 64;
+		public const int HeaderBytes = 80;
 		public const int PlayerBytes = 16;
 		public const int SpriteBytes = 60;
 		public const int TextureBytes = 20;
@@ -57,6 +57,8 @@ namespace OpenRA.WebSim
 		static byte[] lastPalette;
 
 		static readonly List<(IRenderable R, uint Key)> Renderables = [];
+		static readonly List<IRenderable> Others = [];
+		static readonly Dictionary<int, int> ModelBufferVersionsSent = [];
 		static long[] sortKeys = new long[1024];
 		static readonly List<Actor> ViewActors = [];
 
@@ -81,8 +83,28 @@ namespace OpenRA.WebSim
 			stringsSent = 0;
 			TextureVersionsSent.Clear();
 			TexturesOfInterest.Clear();
+			ModelBufferVersionsSent.Clear();
+			Capture.ModelBuffers.Clear();
 			lastPalette = null;
 			viewSet = false;
+		}
+
+		/// <summary>Model vertex buffers the page does not have in their current version (ids).</summary>
+		public static List<int> ChangedModelBuffers()
+		{
+			var ids = new List<int>();
+			foreach (var (id, vb) in Capture.ModelBuffers)
+				if (!ModelBufferVersionsSent.TryGetValue(id, out var v) || v != vb.Version)
+					ids.Add(id);
+			return ids;
+		}
+
+		public static byte[] ModelBuffer(int id)
+		{
+			if (!Capture.ModelBuffers.TryGetValue(id, out var vb))
+				return [];
+			ModelBufferVersionsSent[id] = vb.Version;
+			return vb.Bytes();
 		}
 
 		/// <summary>The page lost snapshots (e.g. a hidden tab): resend the sprite/string tables from id 0 in the next one.</summary>
@@ -268,13 +290,48 @@ namespace OpenRA.WebSim
 					Renderables.Add((r, key));
 			}
 
+			if (world.OrderGenerator != null)
+				foreach (var r in world.OrderGenerator.Render(wr, world))
+					Renderables.Add((r, 0));
+
 			// Stable sort by the engine's z key (WorldRenderer.RenderableZPositionComparisonKey).
-			var n = Renderables.Count;
-			if (sortKeys.Length < n)
-				sortKeys = new long[Exts.NextPowerOf2(n)];
-			for (var i = 0; i < n; i++)
+			var worldCount = Renderables.Count;
+			if (sortKeys.Length < worldCount)
+				sortKeys = new long[Exts.NextPowerOf2(worldCount)];
+			for (var i = 0; i < worldCount; i++)
 				sortKeys[i] = ((long)WorldRenderer.RenderableZPositionComparisonKey(Renderables[i].R) << 32) + i;
-			sortKeys.AsSpan(0, n).Sort(CollectionsMarshal.AsSpan(Renderables));
+			sortKeys.AsSpan(0, worldCount).Sort(CollectionsMarshal.AsSpan(Renderables).Slice(0, worldCount));
+
+			// Above the shroud, in generation order (WorldRenderer.GenerateOverlayRenderables): IRenderAboveShroud,
+			// selected actors' IRenderAboveShroudWhenSelected, IEffectAboveShroud effects, the order generator
+			// (building placement footprint and preview).
+			foreach (var t in world.ActorsWithTrait<IRenderAboveShroud>())
+			{
+				if (!t.Actor.IsInWorld || t.Actor.Disposed)
+					continue;
+				foreach (var r in t.Trait.RenderAboveShroud(t.Actor, wr))
+					Renderables.Add((r, t.Actor.ActorID));
+			}
+
+			foreach (var a in world.Selection.Actors)
+			{
+				if (!a.IsInWorld || a.Disposed)
+					continue;
+				foreach (var t in a.TraitsImplementing<IRenderAboveShroudWhenSelected>())
+					foreach (var r in t.RenderAboveShroud(a, wr))
+						Renderables.Add((r, a.ActorID));
+			}
+
+			foreach (var e in world.Effects)
+				if (e is OpenRA.Effects.IEffectAboveShroud ea)
+					foreach (var r in ea.RenderAboveShroud(wr))
+						Renderables.Add((r, EffectKey(e)));
+
+			if (world.OrderGenerator != null)
+				foreach (var r in world.OrderGenerator.RenderAboveShroud(wr, world))
+					Renderables.Add((r, 0));
+
+			var n = Renderables.Count;
 
 			// ---- header placeholder
 			pos = 0;
@@ -289,9 +346,11 @@ namespace OpenRA.WebSim
 			var actorStart = pos;
 			var actorCount = 0;
 			Ensure(ViewActors.Count * ActorBytes);
+			var viewer = world.RenderPlayer;
 			foreach (var a in ViewActors)
 			{
-				if (!a.IsInWorld || a.Disposed)
+				// Only what the render player can see (actor.Render already hides the rest; the actor list must too).
+				if (!a.IsInWorld || a.Disposed || (viewer != null && !a.CanBeViewedByPlayer(viewer)))
 					continue;
 
 				var health = a.TraitOrDefault<IHealth>();
@@ -341,19 +400,21 @@ namespace OpenRA.WebSim
 				var anim = BodyAnimation(a);
 				I32(StringId(anim?.CurrentSequence?.Name));
 				U16(anim?.CurrentSequence != null ? anim.CurrentFrame : 0);
-				U16(0);
+				U16(a.TraitOrDefault<GainsExperience>()?.Level ?? 0);
 				actorCount++;
 			}
 
 			// Draws
 			var drawCount = 0;
 			Ensure(n * DrawBytes);
+			Others.Clear();
 			for (var i = 0; i < n; i++)
 			{
 				var (r, key) = Renderables[i];
 				if (r is not SpriteRenderable sr)
 				{
-					UnsupportedRenderables++;
+					// Beams, contrails, lines, voxel models...: drawn by the engine's renderers and captured below.
+					Others.Add(r);
 					continue;
 				}
 
@@ -378,6 +439,8 @@ namespace OpenRA.WebSim
 
 				var palette = sr.Palette?.TextureIndex ?? 0;
 				var dflags = sr.IsDecoration ? 1 : 0;
+				if (i >= worldCount)
+					dflags |= 4; // above the shroud
 				if (sr.Rotation != WAngle.Zero)
 					dflags |= 2;
 
@@ -395,6 +458,34 @@ namespace OpenRA.WebSim
 				F32(a);
 				F32(sr.Rotation.RendererRadians());
 				drawCount++;
+			}
+
+			// Everything that is not a plain sprite: let the engine render it into the recording context
+			// (WorldRenderer.PrepareRenderables + Draw for these renderables only).
+			UnsupportedRenderables = 0;
+			Capture.Begin();
+			try
+			{
+				wr.BeginFrame();
+				var finalized = new List<IFinalizedRenderable>(Others.Count);
+				foreach (var r in Others)
+				{
+					try { finalized.Add(r.PrepareRender(wr)); }
+					catch (Exception) { UnsupportedRenderables++; }
+				}
+
+				wr.EndFrame();
+				foreach (var f in finalized)
+				{
+					try { f.Render(wr); }
+					catch (Exception) { UnsupportedRenderables++; }
+				}
+
+				Game.Renderer.Flush();
+			}
+			finally
+			{
+				Capture.End();
 			}
 
 			// Players (tiny; sent every tick so ownership/colours/defeat are always current)
@@ -479,7 +570,7 @@ namespace OpenRA.WebSim
 				I32(tex.Version);
 				I32(tex.Size.Width);
 				I32(tex.Size.Height);
-				I32(tex == paletteTexture ? 1 : 0);
+				I32(tex == paletteTexture ? 1 : tex.IsRenderTarget ? 2 : 0);
 				TextureVersionsSent[id] = tex.Version;
 				textureCount++;
 			}
@@ -498,6 +589,15 @@ namespace OpenRA.WebSim
 
 			Pad4();
 			stringsSent = Strings.Count;
+
+			// Captured renderer output: vertices (OpenRA.Graphics.Vertex), quad batches, model framebuffer commands.
+			Ensure(Capture.Vertices.Length + Capture.Batches.Length + Capture.ModelCommands.Length);
+			Capture.Vertices.CopyTo(buffer.AsSpan(pos));
+			pos += Capture.Vertices.Length;
+			Capture.Batches.CopyTo(buffer.AsSpan(pos));
+			pos += Capture.Batches.Length;
+			Capture.ModelCommands.CopyTo(buffer.AsSpan(pos));
+			pos += Capture.ModelCommands.Length;
 
 			// ---- header
 			var end = pos;
@@ -519,6 +619,10 @@ namespace OpenRA.WebSim
 			I32(Array.IndexOf(players, world.LocalPlayer));
 			I32(UnsupportedRenderables);
 			I32(world.Selection.Hash);
+			I32(Capture.VertexCount);
+			I32(Capture.BatchCount);
+			I32(Capture.ModelCmdCount);
+			I32(0);
 			pos = end;
 
 			// Section order is fixed: actors, draws, players, sprites, textures, strings.
@@ -527,6 +631,9 @@ namespace OpenRA.WebSim
 			LastBuildMs = Stopwatch.GetElapsedTime(start).TotalMilliseconds;
 			return pos;
 		}
+
+		/// <summary>A JSON string literal (no reflection: the trimmed AOT build has reflection-based serialization off).</summary>
+		public static string Json(string s) => "\"" + System.Text.Json.JsonEncodedText.Encode(s ?? "").Value + "\"";
 
 		/// <summary>Static data for the page: map/grid geometry and the terrain layer's vertices (combined.vert layout).</summary>
 		public static string StartInfoJson(out byte[] terrainVertices)
@@ -566,10 +673,15 @@ namespace OpenRA.WebSim
 			sb.Append($"\"tileSize\":[{wr.TileSize.Width},{wr.TileSize.Height}],\"tileScale\":{wr.TileScale},");
 			sb.Append($"\"bounds\":[{tl.X},{tl.Y},{br.X},{br.Y}],\"start\":[{start.X},{start.Y}],");
 			sb.Append($"\"depthBuffer\":{(map.Grid.EnableDepthBuffer ? "true" : "false")},\"depthMargin\":{depthMargin},");
+			// World px of projected cell (0, 0) at height 0: the origin of the shroud and minimap grids.
+			var c0 = map.CenterOfCell(new MPos(0, 0).ToCPos(map));
+			var origin = wr.ScreenPxPosition(new WPos(c0.X, c0.Y, 0));
+			sb.Append($"\"cellOrigin\":[{origin.X},{origin.Y}],\"gridType\":\"{map.Grid.Type}\",");
+			sb.Append($"\"mapBounds\":[{map.Bounds.Left},{map.Bounds.Top},{map.Bounds.Right},{map.Bounds.Bottom}],");
 			sb.Append($"\"terrainSheets\":[{string.Join(",", sheetIds)}],");
 			sb.Append($"\"terrainVertexCount\":{terrainVertices.Length / 48},\"vertexRowStride\":{4 * map.MapSize.Width},");
 			sb.Append($"\"localPlayer\":\"{local?.InternalName}\",");
-			sb.Append($"\"players\":[{string.Join(",", players.Select(p => $"{{\"name\":\"{p.InternalName}\",\"faction\":\"{p.Faction.InternalName}\",\"color\":\"{p.Color.R:X2}{p.Color.G:X2}{p.Color.B:X2}\",\"bot\":{(p.IsBot ? "true" : "false")}}}"))}],");
+			sb.Append($"\"players\":[{string.Join(",", players.Select(p => $"{{\"name\":\"{p.InternalName}\",\"label\":{Json(p.ResolvedPlayerName)},\"faction\":\"{p.Faction.InternalName}\",\"color\":\"{p.Color.R:X2}{p.Color.G:X2}{p.Color.B:X2}\",\"bot\":{(p.IsBot ? "true" : "false")}}}"))}],");
 			sb.Append($"\"timings\":{{{string.Join(",", SimHost.Timings.Select(kv => $"\"{kv.Key}\":{kv.Value:F1}"))}}}");
 			sb.Append('}');
 			return sb.ToString();

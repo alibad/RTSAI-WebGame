@@ -1,4 +1,4 @@
-// Runs the browser (WebAssembly) build of the simulation headless under Node (same V8 engine as Chrome):
+﻿// Runs the browser (WebAssembly) build of the simulation headless under Node (same V8 engine as Chrome):
 //   node tools/wasm-node.mjs --runtime interp|aot --scenario scenarios/battle-50.json --ticks 600 [--hashes out.txt]
 //        [--snapshot] [--replay session.json]
 // Used for repeatable WASM benchmarks and SyncHash comparisons against the native runner.
@@ -27,6 +27,7 @@ api.setModuleImports("websim", {
 });
 const S = (await api.getAssemblyExports(api.getConfig().mainAssemblyName)).OpenRA.WebSim.Browser.Interop;
 const tRuntime = performance.now() - t0;
+if (args["debug-fluent"]) { console.log("fluent:", S.DebugFluent()); process.exit(0); }
 
 S.Mount(new Uint8Array(fs.readFileSync(path.join(repo, "data", "web-bundle.pack"))));
 S.Mount(new Uint8Array(fs.readFileSync(privatePack)));
@@ -61,6 +62,9 @@ const stats = JSON.parse(S.Stats());
 console.log(`ticks ${ticks}: mean ${mean.toFixed(2)} p50 ${q(0.5).toFixed(2)} p95 ${q(0.95).toFixed(2)} max ${sorted.at(-1).toFixed(2)} ms` +
   (withSnapshot ? `; snapshots ${snapshots}, mean ${(snapshotBytes / Math.max(1, snapshots)).toFixed(0)} bytes` : ""));
 console.log(`heap ${(api.Module.HEAPU8.length / 1048576).toFixed(0)} MB wasm memory, managed ${stats.managedMB} MB, units ${stats.units}, ${stats.framework}`);
+
+if (args["read"]) for (const f of args["read"].split(",")) console.log(`---- ${f}\n${S.ReadText(f)}`);
+if (args["players"]) console.log("players", JSON.stringify(info.players));
 
 const log = JSON.parse(S.SessionLog());
 if (args.hashes) fs.writeFileSync(args.hashes, log.hashes.map((h, i) => `${i + 1} ${h}`).join("\n") + "\n");

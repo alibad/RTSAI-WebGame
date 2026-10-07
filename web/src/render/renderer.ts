@@ -1,9 +1,10 @@
-// WebGL2 renderer for engine snapshots: terrain from the engine's TerrainSpriteLayer vertices, then every
+﻿// WebGL2 renderer for engine snapshots: terrain from the engine's TerrainSpriteLayer vertices, then every
 // SpriteRenderable the engine produced this tick (instanced, batched like OpenRA's SpriteRenderer: up to
 // 8 sheets per batch, split on blend mode), then selection brackets, health bars and the drag box.
 
-import { COLOR_FS, COLOR_VS, COMBINED_FS, SPRITE_VS, TERRAIN_VS } from "./shaders";
+import { COLOR_FS, COLOR_VS, COMBINED_FS, SHROUD_FS, SHROUD_VS, SPRITE_VS, TERRAIN_VS } from "./shaders";
 import { DRAW_BYTES, type Actor, type Snapshot, type SpriteInfo, type StartInfo } from "../sim/protocol";
+import { ModelPass } from "./models";
 
 export interface Camera {
   x: number; // world px at the canvas centre
@@ -66,6 +67,16 @@ export class Renderer {
   private spriteProg: WebGLProgram;
   private terrainProg: WebGLProgram;
   private colorProg: WebGLProgram;
+  private shroudProg: WebGLProgram;
+  private shroudTex: WebGLTexture | null = null;
+  private shroudSize: [number, number] = [0, 0];
+  private shroudAllVisible = true;
+  readonly models: ModelPass;
+  private capVao: WebGLVertexArrayObject;
+  private capVbo: WebGLBuffer;
+  private capIbo: WebGLBuffer;
+  private capQuads = 0;
+  private capUploaded: Snapshot | null = null;
   private textures = new Map<number, GLTex>();
   private palette: GLTex | null = null;
   private paletteRows = 1;
@@ -95,6 +106,24 @@ export class Renderer {
     this.spriteProg = compile(gl, SPRITE_VS, COMBINED_FS);
     this.terrainProg = compile(gl, TERRAIN_VS, COMBINED_FS);
     this.colorProg = compile(gl, COLOR_VS, COLOR_FS);
+    this.shroudProg = compile(gl, SHROUD_VS, SHROUD_FS);
+    this.models = new ModelPass(gl);
+
+    // Captured engine vertices (OpenRA.Graphics.Vertex, the terrain layout) drawn as indexed quads.
+    this.capVao = gl.createVertexArray()!;
+    gl.bindVertexArray(this.capVao);
+    this.capVbo = gl.createBuffer()!;
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.capVbo);
+    gl.enableVertexAttribArray(0);
+    gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 48, 0);
+    gl.enableVertexAttribArray(1);
+    gl.vertexAttribPointer(1, 4, gl.FLOAT, false, 48, 12);
+    gl.enableVertexAttribArray(2);
+    gl.vertexAttribIPointer(2, 1, gl.UNSIGNED_INT, 48, 28);
+    gl.enableVertexAttribArray(3);
+    gl.vertexAttribPointer(3, 4, gl.FLOAT, false, 48, 32);
+    this.capIbo = gl.createBuffer()!;
+    gl.bindVertexArray(null);
 
     // Sprite instances
     this.spriteVao = gl.createVertexArray()!;
@@ -174,6 +203,72 @@ export class Renderer {
     this.sprites = [];
   }
 
+  /**
+   * Shroud state for the render player: cells[v * cols + u] for projected cell (u, v): 0 unexplored, 1 fogged,
+   * 2 visible. Expanded onto the isometric half-tile grid: cell (u, v) sits at texel (2u + (v & 1), v); the texels
+   * between cells take the mean of their four neighbours so the bilinear-filtered edges follow the diamonds.
+   */
+  setShroud(cells: Uint8Array, cols: number, rows: number) {
+    const gl = this.gl;
+    const W = cols * 2 + 1;
+    const H = rows;
+    const tex = new Uint8Array(W * H);
+    let all = true;
+    for (let v = 0; v < rows; v++) {
+      const odd = v & 1;
+      for (let u = 0; u < cols; u++) {
+        const s = cells[v * cols + u];
+        if (s !== 2) all = false;
+        tex[v * W + 2 * u + odd] = s * 127.5;
+      }
+    }
+    for (let v = 0; v < rows; v++) {
+      const odd = v & 1;
+      for (let x = 1 - odd; x < W; x += 2) {
+        let sum = 0, n = 0;
+        if (x > 0) { sum += tex[v * W + x - 1]; n++; }
+        if (x < W - 1) { sum += tex[v * W + x + 1]; n++; }
+        if (v > 0) { sum += tex[(v - 1) * W + x]; n++; }
+        if (v < H - 1) { sum += tex[(v + 1) * W + x]; n++; }
+        tex[v * W + x] = n ? sum / n : 0;
+      }
+    }
+    this.shroudAllVisible = all;
+    if (!this.shroudTex) this.shroudTex = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, this.shroudTex);
+    gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.R8, W, H, 0, gl.RED, gl.UNSIGNED_BYTE, tex);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    this.shroudSize = [W, H];
+  }
+
+  private drawShroud(cam: Camera) {
+    const info = this.info;
+    if (!info || !this.shroudTex || this.shroudAllVisible || this.actorFilter) return;
+    const gl = this.gl;
+    gl.useProgram(this.shroudProg);
+    this.viewUniforms(this.shroudProg, cam);
+    const [hw, hh] = [info.tileSize[0] / 2, info.tileSize[1] / 2];
+    const [ox, oy] = info.cellOrigin;
+    const loc = (n: string) => gl.getUniformLocation(this.shroudProg, n);
+    // Cover the map plus a margin of shroud around it.
+    gl.uniform4f(loc("uRect"), ox - info.tileSize[0], oy - info.tileSize[1], (this.shroudSize[0] + 2) * hw, (this.shroudSize[1] + 3) * hh);
+    gl.uniform2f(loc("uOrigin"), ox, oy);
+    gl.uniform2f(loc("uHalfTile"), hw, hh);
+    gl.uniform2f(loc("uTexSize"), this.shroudSize[0], this.shroudSize[1]);
+    gl.uniform1i(loc("uShroud"), 9);
+    gl.activeTexture(gl.TEXTURE9);
+    gl.bindTexture(gl.TEXTURE_2D, this.shroudTex);
+    gl.enable(gl.BLEND);
+    gl.blendEquation(gl.FUNC_ADD);
+    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+    gl.bindVertexArray(null);
+    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+  }
+
   addSprites(s: SpriteInfo[]) {
     for (const x of s) this.sprites.push(x);
   }
@@ -184,7 +279,12 @@ export class Renderer {
     const tex = existing?.tex ?? gl.createTexture()!;
     gl.bindTexture(gl.TEXTURE_2D, tex);
     gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, width, height, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array(data));
+    if (kind === 2) {
+      // A render target (voxel sheet): allocated here, drawn into by the model pass.
+      if (!existing || existing.width !== width || existing.height !== height)
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, width, height, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+      this.models.setTarget(id, tex, width, height);
+    } else gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, width, height, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array(data));
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
@@ -197,6 +297,54 @@ export class Renderer {
   }
 
   get textureCount() { return this.textures.size; }
+
+  setModelBuffer(id: number, data: ArrayBuffer) {
+    this.models.setBuffer(id, data);
+  }
+
+  /** Draws this snapshot's voxel models into their sheets (once per snapshot, not per frame). */
+  runModels(s: Snapshot) {
+    if (!this.palette || s.header.modelCmds === 0) return;
+    this.models.run(s.captured.modelCmds, s.header.modelCmds, (id) => this.textures.get(id)?.tex ?? null, this.palette.tex, this.paletteRows);
+  }
+
+  private drawCaptured(cur: Snapshot, cam: Camera) {
+    const cap = cur.captured;
+    if (!cap.batches.length || this.actorFilter) return;
+    const gl = this.gl;
+    gl.useProgram(this.terrainProg);
+    this.viewUniforms(this.terrainProg, cam);
+    gl.bindVertexArray(this.capVao);
+    if (this.capUploaded !== cur) {
+      gl.bindBuffer(gl.ARRAY_BUFFER, this.capVbo);
+      gl.bufferData(gl.ARRAY_BUFFER, cap.vertices, gl.STREAM_DRAW);
+      const quads = cap.vertices.length / 48 / 4;
+      if (quads > this.capQuads) {
+        const n = Math.max(1024, 1 << Math.ceil(Math.log2(quads)));
+        const idx = new Uint32Array(n * 6);
+        for (let q = 0; q < n; q++) idx.set([q * 4, q * 4 + 1, q * 4 + 2, q * 4 + 2, q * 4 + 3, q * 4], q * 6);
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.capIbo);
+        gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, idx, gl.STATIC_DRAW);
+        this.capQuads = n;
+      }
+      this.capUploaded = cur;
+    }
+    for (const b of cap.batches) {
+      let ok = true;
+      for (let i = 0; i < 8; i++) {
+        const id = b.textures[i];
+        const t = id >= 0 ? this.textures.get(id) : undefined;
+        if (id >= 0 && !t) ok = false;
+        gl.activeTexture(gl.TEXTURE0 + i);
+        gl.bindTexture(gl.TEXTURE_2D, t?.tex ?? null);
+      }
+      if (!ok) continue;
+      setBlend(gl, b.blend);
+      gl.drawElements(gl.TRIANGLES, (b.count / 4) * 6, gl.UNSIGNED_INT, (b.start / 4) * 6 * 4);
+      this.stats.batches++;
+    }
+    gl.bindVertexArray(null);
+  }
 
   private viewUniforms(prog: WebGLProgram, cam: Camera) {
     const gl = this.gl;
@@ -268,8 +416,11 @@ export class Renderer {
       gl.drawElements(gl.TRIANGLES, this.terrainIndexCount, gl.UNSIGNED_INT, 0);
     }
 
-    if (cur) this.drawSprites(cur, prev, cam, now);
+    if (cur) this.drawSprites(cur, prev, cam, now, false);
+    if (cur) this.drawCaptured(cur, cam);
     if (depthOn) gl.disable(gl.DEPTH_TEST);
+    this.drawShroud(cam);
+    if (cur) this.drawSprites(cur, prev, cam, now, true); // above the shroud: placement previews, rally points
     if (cur) this.drawOverlay(cur, prev, cam, overlay, now);
     gl.bindVertexArray(null);
     this.stats.frameMs = performance.now() - t0;
@@ -294,7 +445,7 @@ export class Renderer {
     }
   }
 
-  private drawSprites(cur: Snapshot, prev: Snapshot | null, cam: Camera, now: number) {
+  private drawSprites(cur: Snapshot, prev: Snapshot | null, cam: Camera, now: number, aboveShroud: boolean) {
     const gl = this.gl;
     gl.useProgram(this.spriteProg);
     this.viewUniforms(this.spriteProg, cam);
@@ -341,6 +492,7 @@ export class Renderer {
     const dv = cur.draws;
     for (let i = 0; i < cur.header.drawCount && n < MAX_INSTANCES; i++) {
       const o = i * DRAW_BYTES;
+      if (((dv.getUint16(o + 26, true) & 4) !== 0) !== aboveShroud) continue;
       const key = dv.getUint32(o, true);
       if (this.actorFilter) {
         const owner = key !== 0 && key < 0x80000000 ? cur.actorById.get(key) : undefined;
@@ -475,6 +627,15 @@ export class Renderer {
       rect(x1 - L, y0, L, t, c[0], c[1], c[2]); rect(x1 - t, y0, t, L, c[0], c[1], c[2]);
       rect(x0, y1 - t, L, t, c[0], c[1], c[2]); rect(x0, y1 - L, t, L, c[0], c[1], c[2]);
       rect(x1 - L, y1 - t, L, t, c[0], c[1], c[2]); rect(x1 - t, y1 - L, t, L, c[0], c[1], c[2]);
+      if (act.rank > 0) {
+        // Veterancy chevrons at the bottom right (gold: veteran, red-gold: elite).
+        const col = act.rank >= 2 ? [1, 0.45, 0.2] : [0.95, 0.82, 0.45];
+        for (let k = 0; k < act.rank; k++) {
+          const cx = x1 - 6 - k * 5, cy = y1 - 4;
+          rect(cx, cy, 4, 1.5, col[0], col[1], col[2]);
+          rect(cx + 1, cy - 1.5, 2, 1.5, col[0], col[1], col[2]);
+        }
+      }
       if (act.maxHp > 0) {
         const f = Math.max(0, act.hp / act.maxHp);
         const col = f > 0.5 ? [0.2, 0.85, 0.25] : f > 0.25 ? [0.95, 0.8, 0.1] : [0.9, 0.15, 0.1];

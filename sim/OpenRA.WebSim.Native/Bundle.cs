@@ -34,8 +34,11 @@ static class Bundle
 		var engine = opts["engine"];
 		var modRoot = opts["mod"];
 		var output = opts["out"];
-		var maps = (opts.TryGetValue("maps", out var m) ? m : "tournament-2A").Split(',', StringSplitOptions.RemoveEmptyEntries).ToHashSet();
 		var modDir = Path.Combine(modRoot, "mods", "rtsai");
+
+		// Every map the mod ships (5 MB in all) unless --maps lists some.
+		var maps = (opts.TryGetValue("maps", out var m) ? m.Split(',', StringSplitOptions.RemoveEmptyEntries)
+			: Directory.GetDirectories(Path.Combine(modDir, "maps")).Select(Path.GetFileName)).ToHashSet();
 
 		Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(output)));
 		long total = 0;

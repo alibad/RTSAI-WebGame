@@ -12,9 +12,12 @@
     <!-- OpenRA builds everything by reflection (ObjectCreator, FieldLoader, Sync): keep all IL. -->
     <PublishTrimmed>false</PublishTrimmed>
     <TrimMode>partial</TrimMode>
-    <!-- No ICU download: invariant culture data, but allow CultureInfo("en") (Fluent asks for it). -->
-    <InvariantGlobalization>true</InvariantGlobalization>
-    <PredefinedCulturesOnly>false</PredefinedCulturesOnly>
+    <!-- Real culture data (ICU, the small EFIGS shard): Fluent's plural rules are looked up by language and
+         throw under invariant globalization, which showed bot names as their message key. The simulation itself
+         parses and formats with the invariant culture, so this does not affect determinism (parity-checked). -->
+    <InvariantGlobalization>false</InvariantGlobalization>
+    <WasmIncludeFullIcuData>false</WasmIncludeFullIcuData>
+    <WasmIcuDataFileName>icudt_EFIGS.dat</WasmIcuDataFileName>
     <WasmEnableThreads>false</WasmEnableThreads>
     <WasmEnableSIMD>true</WasmEnableSIMD>
     <WasmFingerprintAssets>false</WasmFingerprintAssets>
