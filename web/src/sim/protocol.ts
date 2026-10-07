@@ -209,7 +209,12 @@ export type FromWorker =
   | { type: "error"; message: string };
 
 // Shared ring layout (Int32 slots at the start of the SharedArrayBuffer).
-export const RING_SLOTS = 3;
-export const RING_SLOT_BYTES = 8 * 1024 * 1024;
-export const RING_HEADER_BYTES = 64; // [0] latest seq, [1..3] slot length, [4..6] slot seq, [7..9] slot write time (ms, int)
+// 32 slots of 1 MB: about 1.3 s of ticks, so a main-thread stall (sheet uploads, GC, a busy frame) does not
+// overrun the ring. Snapshots are ~50-150 KB; a larger one falls back to postMessage with its seq.
+export const RING_SLOTS = 32;
+export const RING_SLOT_BYTES = 1024 * 1024;
+/** Int32 header: [0] latest seq, [RING_LEN_AT + slot] length, [RING_SEQ_AT + slot] seq (0 = sent by postMessage). */
+export const RING_LEN_AT = 1;
+export const RING_SEQ_AT = 1 + RING_SLOTS;
+export const RING_HEADER_BYTES = 4 * (1 + 2 * RING_SLOTS);
 export const RING_BYTES = RING_HEADER_BYTES + RING_SLOTS * RING_SLOT_BYTES;

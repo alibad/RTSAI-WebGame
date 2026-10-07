@@ -2,7 +2,7 @@
 // snapshots (keeping the previous one for interpolation) and forwards sprite/texture tables to the renderer.
 
 import {
-  RING_BYTES, RING_HEADER_BYTES, RING_SLOT_BYTES, RING_SLOTS, parseSnapshot,
+  RING_BYTES, RING_HEADER_BYTES, RING_LEN_AT, RING_SEQ_AT, RING_SLOT_BYTES, RING_SLOTS, parseSnapshot,
   type FromWorker, type Snapshot, type StartInfo, type ToWorker,
 } from "./protocol";
 import type { Renderer } from "../render/renderer";
@@ -113,11 +113,19 @@ export class SimClient {
       while (this.lastSeq < latest) {
         const seq = this.lastSeq + 1;
         const slot = seq % RING_SLOTS;
-        const len = Atomics.load(this.header, 1 + slot);
+        if (Atomics.load(this.header, RING_SEQ_AT + slot) === 0) {
+          // Sent by postMessage (too big for a slot): apply it in order once the message has arrived.
+          const i = this.pending.findIndex((p) => p.seq === seq);
+          if (i < 0) break;
+          this.lastSeq = seq;
+          this.accept(this.pending.splice(i, 1)[0].bytes, now);
+          continue;
+        }
+        const len = Atomics.load(this.header, RING_LEN_AT + slot);
         const off = RING_HEADER_BYTES + slot * RING_SLOT_BYTES;
         const copy = this.bytes.slice(off, off + len);
         this.lastSeq = seq;
-        if (Atomics.load(this.header, 4 + slot) !== seq) {
+        if (Atomics.load(this.header, RING_SEQ_AT + slot) !== seq) {
           // Overwritten while copying: resync rather than apply a torn snapshot.
           this.missedSnapshots++;
           if (!this.resyncing) {
@@ -128,6 +136,7 @@ export class SimClient {
         }
         this.accept(copy, now);
       }
+      if (this.pending.length) this.pending = this.pending.filter((p) => p.seq > this.lastSeq);
     } else {
       for (const p of this.pending) this.accept(p.bytes, now);
       this.pending = [];

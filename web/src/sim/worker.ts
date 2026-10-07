@@ -1,9 +1,9 @@
-/// <reference lib="webworker" />
+﻿/// <reference lib="webworker" />
 // The simulation worker: hosts the .NET WebAssembly runtime running the real OpenRA engine + RTS AI mod,
 // ticks the world at 25 tps and publishes one snapshot per tick into a SharedArrayBuffer ring.
 
 import {
-  RING_BYTES, RING_HEADER_BYTES, RING_SLOTS, RING_SLOT_BYTES,
+  RING_BYTES, RING_HEADER_BYTES, RING_LEN_AT, RING_SEQ_AT, RING_SLOTS, RING_SLOT_BYTES,
   textureUpdates, type FromWorker, type ToWorker,
 } from "./protocol";
 
@@ -37,12 +37,19 @@ function publish(view: { slice(): Uint8Array; length: number }) {
   if (ringHeader && ringBytes && bytes.length <= RING_SLOT_BYTES) {
     const slot = seq % RING_SLOTS;
     ringBytes.set(bytes, RING_HEADER_BYTES + slot * RING_SLOT_BYTES);
-    Atomics.store(ringHeader, 1 + slot, bytes.length);
-    Atomics.store(ringHeader, 4 + slot, seq);
+    Atomics.store(ringHeader, RING_LEN_AT + slot, bytes.length);
+    Atomics.store(ringHeader, RING_SEQ_AT + slot, seq);
     Atomics.store(ringHeader, 0, seq);
   } else {
+    // Too big for a slot (or no shared memory): send it by message, then mark the seq as published so the
+    // page knows to wait for that message instead of reading the ring.
     const copy = bytes.slice();
     post({ type: "snapshot", bytes: copy.buffer, seq }, [copy.buffer]);
+    if (ringHeader) {
+      const slot = seq % RING_SLOTS;
+      Atomics.store(ringHeader, RING_SEQ_AT + slot, 0);
+      Atomics.store(ringHeader, 0, seq);
+    }
   }
 
   for (const t of textureUpdates(bytes)) {

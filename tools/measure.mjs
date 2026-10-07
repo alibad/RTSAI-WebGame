@@ -1,4 +1,4 @@
-// Drives the spike in Chromium (Playwright's build, real GPU via ANGLE/D3D11) and records the measurements:
+﻿// Drives the spike in Chromium (Playwright's build, real GPU via ANGLE/D3D11) and records the measurements:
 // load timings, download sizes, sim tick and frame times, input latency, memory, and the SyncHash replay check.
 //   node tools/measure.mjs --runtime interp --scenario battle-50 [--seconds 20] [--verify] [--probe 20]
 // Requires server/serve.mjs on 127.0.0.1:3490. Writes one JSON line per run to data/measure.jsonl.
@@ -84,6 +84,7 @@ const result = {
   lateTicks: h.lateTicks, unitsStart: samples[0]?.units, unitsEnd: samples.at(-1)?.units,
   latency: { n: h.latency.length, p50: pct(h.latency, 0.5), p95: pct(h.latency, 0.95), max: pct(h.latency, 1) },
   latencyVisible: { n: h.latencyVisible.length, p50: pct(h.latencyVisible, 0.5), p95: pct(h.latencyVisible, 0.95) },
+  missedSnapshots: await page.evaluate(() => window.game.client.missedSnapshots),
   bench, verify, pixels, errors,
 };
 console.log(JSON.stringify(result, null, 1));

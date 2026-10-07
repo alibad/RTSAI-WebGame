@@ -46,3 +46,52 @@ cd web && npm run build && cd .. && node server\serve.mjs                       
 node tools\fidelity.mjs --scenario scenarios\battle-200.json --ticks 1500 --runtime aot
 node tools\measure.mjs --runtime aot --scenario battle-200 --verify
 ```
+
+## Results (2026-10-07, Ryzen box + RTX 5090, Chromium 1228 via ANGLE D3D11, 1600x900)
+
+SyncHash parity, every net frame compared, all identical:
+
+| Run | Frames |
+|---|---|
+| wasm interp (Node) vs native, battle-50 | 1200 / 1200 |
+| wasm interp (Node) vs native, battle-200 | 1500 / 1500 |
+| wasm AOT (Node) vs native, battle-200 | 1500 / 1500 |
+| wasm AOT (Node) session replayed natively, skirmish vs doctrine bot | 3000 / 3000 |
+| browser sessions (real orders + bot) replayed natively, 5 runs | 886 to 1501 each |
+
+Browser (worker ticking, page drawing):
+
+| | interp 50 | interp 200 | AOT 50 | AOT 200 | AOT skirmish |
+|---|---|---|---|---|---|
+| World start | 18.2 s | 19.0 s | 5.5 s | 4.8 s | 5.6 s |
+| Ticks/s (target 25) | 24.5 | 24.1 | 25.1 | 25.0 | 24.9 |
+| World.Tick | 6.8 ms | 19.8 ms | 2.8 ms | 5.8 ms | 1.7 ms |
+| Tick + snapshot | 11.2 ms | 32.7 ms | 5.0 ms | 8.1 ms | 4.1 ms |
+| Draw (CPU) / fps | 0.12 ms / 144 | 0.13 ms / 144 | 0.12 ms / 144 | 0.16 ms / 144 | 0.15 ms / 144 |
+| Input to frame p50 / p95 | 28 / 49 ms | 46 / 65 ms | 35 / 55 ms | 28 / 56 ms | 29 / 54 ms |
+| WASM heap | 827 MB | 826 MB | 622 MB | 865 MB | 722 MB |
+
+Native (CoreCLR x64) tick means for comparison: battle-50 1.6 ms, battle-200 3.3 ms, skirmish 0.8 ms.
+Node/V8 tick-only: interp is 4-6x native (battle-200 p95 40 ms, over budget); AOT is 2.3x native (p95 13 ms).
+Downloads (brotli 11): runtime 9.1 MB interp / 13.2 MB AOT, page 0.1 MB, mod bundle 8.2 MB.
+Private RA2 content (256 MB, local only) is not shippable.
+
+## Blockers
+
+1. Content: terrain, infantry, buildings, effects come from the player's RA2 files. Public build must use the
+   rtsai/standalone content (no EA files).
+2. Interpreter is too slow at 200 units and to load (18 s): AOT only (6 min build, +4 MB download).
+3. Memory: 620-870 MB wasm heap that never shrinks (MEMFS copy of the 256 MB pack, ~250-380 MB managed).
+4. No game UI: sidebar/build queue/minimap/power/money, shroud and fog, voxels/beams/lines, audio.
+5. Single-threaded wasm: any engine Task.Run + Wait path deadlocks (Ruleset fixed); UI/network paths unexercised.
+6. Engine branch rtsai/web-engine is local only; companion AI (gRPC) dropped; only desktop Chromium tested.
+
+## Phased plan
+
+1. Standalone web build: standalone content, AOT, pre-baked sheets cached in the browser, lazy mounts.
+   Targets: world start under 3 s, download under 30 MB, heap under 500 MB. Push the engine branch.
+2. Playable skirmish: React sidebar and production through engine orders, minimap, shroud/fog, remaining
+   renderables, WebAudio, hotkeys and control groups. fidelity.mjs nightly as the regression gate.
+3. AI and online: hosted/companion AI over WebSocket; lockstep multiplayer relay (parity makes desktop
+   cross-play possible); replays.
+4. Ship: COOP/COEP hosting, CDN, Safari/Firefox/mobile matrix, performance budget gates.
