@@ -52,7 +52,7 @@ function ProposalCard({ game, item, compact }: { game: Game; item: FeedItem; com
   return (
     <div className={cn("flex items-center gap-3 rounded-[3px] border border-[var(--hud-gold-dim)] bg-[rgba(30,26,14,0.92)] px-3 py-2", compact && "shadow-[0_8px_24px_rgba(0,0,0,0.55)]")}>
       <svg viewBox="0 0 24 24" width={18} height={18} fill="none" stroke="var(--hud-gold)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0"><path d="M4 12h12M12 6l6 6-6 6" /></svg>
-      <span className="min-w-0 flex-1 text-[13px] leading-snug text-[var(--foreground)]">{item.text}</span>
+      <span className={cn("min-w-0 flex-1 text-[13px] leading-snug", item.state === "expired" ? "text-[var(--muted-foreground)]" : "text-[var(--foreground)]")}>{item.text}</span>
       {item.state === "pending" ? (
         <span className="flex shrink-0 gap-1.5">
           <button type="button" onClick={() => game.cc.decide(item, true)} title="Accept (Enter)"
@@ -61,7 +61,8 @@ function ProposalCard({ game, item, compact }: { game: Game; item: FeedItem; com
             className="rounded-[2px] border border-white/15 px-2.5 py-1 text-[12px] text-[var(--muted-foreground)] hover:text-[var(--foreground)]">✕</button>
         </span>
       ) : (
-        <span className={cn("text-[12px]", item.state === "accepted" ? "text-[var(--hud-green)]" : "text-[var(--muted-foreground)]")}>{item.state === "accepted" ? "✓" : "✕"}</span>
+        <span className={cn("text-[12px]", item.state === "accepted" ? "text-[var(--hud-green)]" : "text-[var(--muted-foreground)]")}
+          title={item.state === "expired" ? "No longer offered" : undefined}>{item.state === "accepted" ? "✓" : item.state === "expired" ? "–" : "✕"}</span>
       )}
     </div>
   );

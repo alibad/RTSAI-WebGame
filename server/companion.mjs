@@ -14,7 +14,7 @@ import fs from "node:fs";
 import http from "node:http";
 import http2 from "node:http2";
 import path from "node:path";
-import { spawn } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import zlib from "node:zlib";
 import { startMockGateway } from "./mock-ai.mjs";
 
@@ -24,6 +24,11 @@ const MOCK_PORT = Number(process.env.RTSAI_WEB_MOCK_AI_PORT ?? 4010);
 // The product's local AI stack (OpenRA-AI ai/: llama.cpp + Qwen3-VL 2B, whisper.cpp base.en, Kokoro), served by its
 // own gateway (openra_ai_companion.local_runtime) on ports apart from the desktop game's 4000-4002.
 const LOCAL_GATEWAY_PORT = Number(process.env.RTSAI_WEB_LOCAL_AI_PORT ?? 4020);
+// Optional: an already running OpenAI-compatible gateway for local mode (e.g. the machine's GPU models) instead of
+// the product's CPU runtime. It must serve local-coder, local-whisper and local-kokoro.
+const EXTERNAL_GATEWAY = process.env.RTSAI_WEB_AI_GATEWAY ?? "";
+// Diagnostics: every companion output line, time-stamped, appended to this file (state polling left out).
+const COMPANION_LOG = process.env.RTSAI_WEB_COMPANION_LOG ?? "";
 const CALL_TIMEOUT_MS = 10_000;
 const GRPC_CODES = { UNAVAILABLE: 14, DEADLINE_EXCEEDED: 4, UNIMPLEMENTED: 12, INTERNAL: 13 };
 
@@ -247,12 +252,13 @@ export function createCompanion({ repo, appData, log = console.log }) {
       Object.assign(env, {
         OPENRA_AI_MODEL_PROVIDER: "local", OPENRA_AI_TEXT_MODEL: "local-coder", OPENRA_AI_VISION_MODEL: "local-coder",
         OPENRA_AI_TRANSCRIBE_MODEL: "local-whisper", OPENRA_AI_TTS_MODEL: "local-kokoro",
-        OPENRA_AI_ROUTER_URL: `http://127.0.0.1:${LOCAL_GATEWAY_PORT}`, OPENRA_AI_LOCAL_ROUTER_URL: `http://127.0.0.1:${LOCAL_GATEWAY_PORT}`,
+        OPENRA_AI_ROUTER_URL: EXTERNAL_GATEWAY || `http://127.0.0.1:${LOCAL_GATEWAY_PORT}`,
+        OPENRA_AI_LOCAL_ROUTER_URL: EXTERNAL_GATEWAY || `http://127.0.0.1:${LOCAL_GATEWAY_PORT}`,
         OPENRA_AI_LOCAL_CHAT_PORT: String(LOCAL_GATEWAY_PORT + 1), OPENRA_AI_LOCAL_TRANSCRIBE_PORT: String(LOCAL_GATEWAY_PORT + 2),
         // Local models answer slower than the hosted route: allow them time.
         OPENRA_AI_ROUTER_TIMEOUT_SECONDS: process.env.OPENRA_AI_ROUTER_TIMEOUT_SECONDS ?? "60",
       });
-      if (!runtime || runtime.exitCode !== null) {
+      if (!EXTERNAL_GATEWAY && (!runtime || runtime.exitCode !== null)) {
         const python = path.join(openraAi, ".venv", "Scripts", "python.exe");
         runtime = spawn(python, ["-m", "openra_ai_companion.local_runtime", "serve", "--root", openraAi, "--mode", "local",
           "--port", String(LOCAL_GATEWAY_PORT), "--parent-pid", String(process.pid)], { cwd: openraAi, env, windowsHide: true });
@@ -274,7 +280,14 @@ export function createCompanion({ repo, appData, log = console.log }) {
     proc = spawn(exe, args, { cwd: openraAi, env, windowsHide: true });
     mode = want;
     output.length = 0;
-    const keep = (d) => { for (const line of String(d).split(/\r?\n/)) if (line.trim()) { output.push(line); if (output.length > 200) output.shift(); } };
+    const keep = (d) => {
+      for (const line of String(d).split(/\r?\n/)) {
+        if (!line.trim()) continue;
+        output.push(line);
+        if (output.length > 200) output.shift();
+        if (COMPANION_LOG && !line.includes("GET /v1/state")) fs.appendFileSync(COMPANION_LOG, `${new Date().toISOString()} ${line}\n`);
+      }
+    };
     proc.stdout.on("data", keep);
     proc.stderr.on("data", keep);
     proc.on("exit", (code) => { keep(`(companion exited with ${code})`); if (proc?.exitCode !== null) proc = null; });
@@ -289,10 +302,18 @@ export function createCompanion({ repo, appData, log = console.log }) {
 
   /** Stops the companion; `all` also stops the local AI runtime (its models stay loaded between games otherwise). */
   function stop(all = false) {
-    if (all && runtime) { try { runtime.kill(); } catch { /* gone */ } runtime = null; }
-    if (proc) { try { proc.kill(); } catch { /* gone */ } }
+    // With their children: the runtime's llama-server and whisper-server, the companion's tool server (on Windows
+    // killing the parent alone leaves them running, with the models in memory).
+    if (all && runtime) { killTree(runtime); runtime = null; }
+    if (proc) killTree(proc);
     proc = null;
     mode = "";
+  }
+
+  function killTree(child) {
+    if (!child || child.exitCode !== null) return;
+    if (process.platform === "win32") spawnSync("taskkill", ["/PID", String(child.pid), "/T", "/F"], { windowsHide: true });
+    else try { child.kill(); } catch { /* gone */ }
   }
 
   function healthy(port) {

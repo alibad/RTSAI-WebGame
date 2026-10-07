@@ -98,9 +98,53 @@ stream, which a replay cannot reproduce. Re-enabling it needs an order of its ow
   - start of playback 0 ms.
 
   That is the whole cost of the browser, relay and companion; real models add their own time on top.
-- **Real local models** (Whisper, the local LLM, Kokoro) are not measured yet. On 7 October the GPU was claimed by the
-  owner's open-ended 3D run (`AI\logs\gpu-claim.txt`). The same test with `--mode local` measures them once the GPU
-  is free.
+- **Real local models** (`tools/cocommander-live.mjs`, 7 October; 12 spoken turns per run). The player's lines are
+  Kokoro "onyx" played into the browser microphone; the browser game runs the public profile and an Iran mirror on
+  Twin Fords. Each run ends with a native SyncHash replay of the whole session.
+  - **GPU stack** (the measured one): the product's own Qwen3-VL 2B Q4 on a CUDA llama.cpp, Whisper large-v3 and
+    Kokoro on the GPU, behind one gateway (`RTSAI_WEB_AI_GATEWAY`, `--gateway`). It ran beside the owner's 3D run,
+    with a yield line.
+    - The companion's usual large model (Qwen3-Coder 30B on vLLM, 22.9 GB) did not fit: 20 GB was free.
+    - Ollama's qwen3-vl:8b thinks before every answer even when thinking is turned off, so it was not used.
+
+    | 23 turns, two runs | Median | p95 | Max |
+    |---|---|---|---|
+    | Talk key released to reply playing | **1.8 s** | 11.8 s | 24.1 s |
+    | Same, without "what should I do?" questions (19 turns) | 1.6 s | 4.0 s | 4.6 s |
+    | Transcript (Whisper) | 0.9 s | 3.6 s | |
+    | Answer (companion and LLM) | 0.4 s | 10.5 s | |
+    | Speech audio (Kokoro) | 0.4 s | 0.9 s | |
+
+    - "What should I build first?" and "What should I do next?" go through the companion's planner, which makes
+      several model calls. They took 8.9 to 24.1 s, and they are the whole p95 tail.
+    - Transcripts were word-exact on 23 of 24 lines. The 24th was a timing slip in the first version of the
+      harness, not a Whisper error.
+  - **Orders.** Of 14 spoken orders across the two runs, 8 became the right card. The engine executed 7 of them:
+    power plant, tanks east and stop all in both runs, infantry north in one.
+    - The other "infantry north" card arrived after the first harness version had moved on, and accepting it then
+      returned HTTP 409.
+    - The remaining 6 were refused, correctly, because their prerequisite was missing:
+      - barracks and refinery need the power plant placed;
+      - training needs the barracks.
+    - The power plant was never placed, for this reason. The co-commander offers to place the finished building
+      (pending action, shown as a card). Any later question replaces that offer in the companion.
+    - In the browser such a card now turns to "–" (no longer offered) instead of failing with HTTP 409.
+    - For an item that isn't available yet, the companion says *I don't recognize "barracks"*. On the RA2-based
+      mod it has no catalogue of everything buildable, so it cannot explain the missing prerequisite (an
+      OpenRA-AI issue).
+  - **Parity.** Both runs replayed identically: 2605 of 2605 and 2999 of 2999 net frames.
+    - An earlier run reported a mismatch at frame 5224 of 5259, and it also had two stalls (47 s and 71 s) that never
+      reached the model.
+    - Its files had already been deleted, and the two later runs did not reproduce it.
+    - The verify endpoint now keeps the files of any mismatch.
+  - **CPU stack** (the product pack: llama.cpp CPU, whisper.cpp base.en, Kokoro ONNX). This was not a usable
+    measurement. The machine was at 98 % CPU: the 3D run plus other sessions' software-rendered browsers.
+    - The first answer took 129 s and the next six 7.5 to 25 s.
+    - One line's audio was cut, so its transcript landed in the next turn.
+    - It needs a quiet machine to measure.
+- **Spoken order replies** are the order and its note ("Build a Power Plant. I'll offer to place the Power Plant
+  when it's finished."). The desktop game's "I prepared 1 validated order. Say confirm to execute, or cancel." is
+  left out: in the browser the card is accepted with a click or Enter.
 
 ## The panel (`web/src/ui/CoCommander.tsx`, `web/src/cocommander.ts`)
 

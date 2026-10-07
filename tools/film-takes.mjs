@@ -18,8 +18,11 @@ const mode = opt("mode", "local");
 const faction = opt("faction", "iran");
 const takes = opt("takes", "A,B").split(",");
 const lineB = opt("line-b", "Send the tanks to the center of the map.");
+// The Kokoro voices behind the OpenAI names (the product's runtime: alloy -> af_sarah; the machine's GPU server:
+// alloy -> af_heart). onyx is am_michael in both.
+const replyVoice = opt("reply-voice", "af_sarah");
 const server = "http://127.0.0.1:3490";
-const gateway = mode === "local" ? "http://127.0.0.1:4020" : "http://127.0.0.1:4010";
+const gateway = opt("gateway", mode === "local" ? "http://127.0.0.1:4020" : "http://127.0.0.1:4010"); // --gateway: the server's RTSAI_WEB_AI_GATEWAY
 const CSS_W = 1180, CSS_H = 740, FPS = 30;
 const LINES = { A: "Build a power plant.", B: lineB, C: "Build a power plant." };
 // The card each take accepts (other offers, e.g. alerts, are left alone).
@@ -442,7 +445,7 @@ async function take(name) {
   const timeline = events.sort((a, b) => a.t - b.t).map((e) => ({ ...e, at: rel(e.t), t: undefined }));
   const hygiene = await page.evaluate((t) => window.__hygiene.filter((h) => h.t >= t), start);
   const meta = { take: name, line, hygiene: hygiene.length ? hygiene.slice(0, 5).map((h) => ({ at: rel(h.t), hit: h.hit, context: h.context })) : "clean", playerVoice: "Kokoro v1.0 'am_michael' (synthetic, requested as 'onyx'); not a human recording",
-    replyVoice: "Kokoro v1.0 'af_sarah' (the co-commander's voice)", durationS: rel(end), sfxOffsetS: rel(sfxStart), timeline,
+    replyVoice: `Kokoro v1.0 '${replyVoice}' (the co-commander's voice, requested as 'alloy')`, durationS: rel(end), sfxOffsetS: rel(sfxStart), timeline,
     transcript: feed.filter((f) => f.kind === "you").map((f) => f.text), replies: feed.filter((f) => f.kind !== "you").map((f) => `${f.kind}: ${f.text}`) };
   fs.writeFileSync(path.join(dir, `take-${name}.json`), JSON.stringify(meta, null, 2));
   log(`take ${name}: ${meta.durationS} s, transcript ${JSON.stringify(meta.transcript)}, events ${timeline.map((e) => `${e.name}@${e.at}`).join(", ")}`);

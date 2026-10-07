@@ -17,23 +17,25 @@ const runtime = opt("runtime", "aot");
 const profile = opt("profile", "public");
 const out = opt("out", "cocommander-live");
 const server = "http://127.0.0.1:3490";
-const gateway = mode === "local" ? "http://127.0.0.1:4020" : "http://127.0.0.1:4010";
+const gateway = opt("gateway", mode === "local" ? "http://127.0.0.1:4020" : "http://127.0.0.1:4010"); // --gateway: the server's RTSAI_WEB_AI_GATEWAY
 fs.mkdirSync(out, { recursive: true });
 
-// The turns: questions and orders, with what a correct order proposal mentions.
+// The turns: questions and orders, with what a correct order proposal mentions. Ordered so each order's
+// prerequisites can be met by then (the power plant placed before the barracks and refinery, the barracks before
+// training).
 const TURNS = [
   { line: "What should I build first?" },
   { line: "Build a power plant.", expect: /power/i },
   { line: "How is our economy?" },
-  { line: "Build a refinery.", expect: /refin/i },
   { line: "Where is the enemy?" },
-  { line: "Send the tanks east.", expect: /east|move/i },
-  { line: "Build a barracks.", expect: /barrack/i },
   { line: "What is our power status?" },
-  { line: "Train three soldiers.", expect: /train|soldier|infantry|rifle/i },
-  { line: "Stop all units.", expect: /stop/i },
+  { line: "Build a barracks.", expect: /barrack/i },
+  { line: "Send the tanks east.", expect: /east|move/i },
+  { line: "Build a refinery.", expect: /refin/i },
   { line: "What should I do next?" },
+  { line: "Train three soldiers.", expect: /train|soldier|infantry|rifle/i },
   { line: "Send the infantry north.", expect: /north|move/i },
+  { line: "Stop all units.", expect: /stop/i },
 ];
 
 const t0 = Date.now();
@@ -124,12 +126,16 @@ await page.evaluate(() => {
   window.game.audio.onVoice = (_wav, at, seconds) => window.__marks.push({ name: "playing", t: at, seconds });
 });
 
-const feedSince = (n) => page.evaluate((n) => window.store.getState().cc.feed.slice(n), n);
+// Feed entries by id (the feed keeps only its latest 60 entries, so positions shift).
+const feedSince = (n) => page.evaluate((n) => window.store.getState().cc.feed.filter((f) => f.id > n), n);
 const words = (s) => s.toLowerCase().replace(/[^a-z0-9 ]/g, " ").split(/\s+/).filter(Boolean);
 const results = [];
+// Only the turn's own exchange in the feed (see the offers note below).
+await page.evaluate(() => { window.game.cc.focus = /^$a/; });
 for (let i = 0; i < TURNS.length; i++) {
   const turn = TURNS[i], { wav, seconds } = lines[i];
-  const feedStart = (await page.evaluate(() => window.store.getState().cc.feed.length));
+  const feedStart = await page.evaluate(() => window.store.getState().cc.feed.at(-1)?.id ?? -1);
+  const startedAt = new Date().toISOString();
   await page.evaluate((b64) => {
     const bin = atob(b64), buf = new Uint8Array(bin.length);
     for (let k = 0; k < bin.length; k++) buf[k] = bin.charCodeAt(k);
@@ -141,6 +147,8 @@ for (let i = 0; i < TURNS.length; i++) {
   const released = await page.evaluate(() => performance.now());
   await page.keyboard.up("v");
   const done = await until(() => window.__marks.some((m) => m.name === "playing") || (!window.store.getState().cc.thinking && window.__marks.some((m) => m.name === "answer")) ? true : null, null, 120000);
+  // Every reply with text is spoken: a quick answer is followed by its speech.
+  if (done) await until(() => window.__marks.some((m) => m.name === "playing") ? true : null, null, 15000);
   await page.waitForTimeout(400);
   const marks = await page.evaluate(() => window.__marks);
   const at = (name) => marks.find((m) => m.name === name)?.t;
@@ -150,7 +158,7 @@ for (let i = 0; i < TURNS.length; i++) {
   const said = feed.filter((f) => f.kind === "ai" || f.kind === "rejected").map((f) => f.text).join(" ");
   const want = words(turn.line), got = words(heard);
   const wordAccuracy = want.length ? want.filter((w) => got.includes(w)).length / want.length : 0;
-  const r = { turn: i + 1, line: turn.line, heard, wordAccuracy: +wordAccuracy.toFixed(2), reply: said || proposal?.text || "", proposal: proposal?.text ?? null,
+  const r = { turn: i + 1, startedAt, line: turn.line, heard, wordAccuracy: +wordAccuracy.toFixed(2), reply: said || proposal?.text || "", proposal: proposal?.text ?? null,
     ms: { transcribe: at("transcribe") && at("transcribe") - released, answer: at("answer") && at("transcribe") && at("answer") - at("transcribe"),
       speech: at("speech") && at("answer") && at("speech") - at("answer"), play: at("playing") && at("speech") && at("playing") - at("speech"),
       total: at("playing") && at("playing") - released }, completed: !!done };
@@ -159,16 +167,25 @@ for (let i = 0; i < TURNS.length; i++) {
     r.proposalMatches = !!proposal && turn.expect.test(proposal.text);
     if (proposal) {
       await page.evaluate(() => { const g = window.game; g.cc.decide(g.cc.pending(), true); });
-      const receipt = await until((n) => window.store.getState().cc.feed.slice(n).find((f) => f.kind === "done" || f.kind === "rejected") ?? null, feedStart, 30000);
+      const receipt = await until((n) => window.store.getState().cc.feed.find((f) => f.id > n && (f.kind === "done" || f.kind === "rejected")) ?? null, feedStart, 30000);
       r.receipt = receipt ? { kind: receipt.kind, text: receipt.text } : null;
     }
   }
   results.push(r);
   log(`turn ${r.turn}: "${r.line}" -> heard "${r.heard}" (${Math.round((r.wordAccuracy) * 100)}%) | ${r.ms.total ? Math.round(r.ms.total) + " ms" : "no speech"} | ${r.proposal ? `proposal "${r.proposal}" ${r.receipt?.kind ?? "-"}` : (r.reply || "").slice(0, 90)}`);
-  // Accept any placement proposal the companion raises meanwhile (a finished building).
+  // Between turns: accept an order the co-commander offers by itself (placing a finished building), straight
+  // through its API; during a turn such offers and volunteered alerts stay out of the feed (cc.focus) so the
+  // turn's transcript, reply, speech and card are its own.
   await page.waitForTimeout(1500);
-  const pending = await page.evaluate(() => window.game.cc.pending()?.text ?? null);
-  if (pending) { log(`  accepting follow-up: "${pending}"`); await page.evaluate(() => { const g = window.game; g.cc.decide(g.cc.pending(), true); }); await page.waitForTimeout(1500); }
+  const offer = await page.evaluate(async () => {
+    const state = await (await fetch("companion/api/v1/state")).json();
+    const p = state.pending_action;
+    if (!p) return null;
+    const res = await fetch("companion/api/v1/actions/confirm", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ proposal_id: p.proposal_id }) });
+    const reply = await res.json().catch(() => ({}));
+    return { summary: p.summary, status: res.status, state: reply.metadata?.action?.state ?? null };
+  });
+  if (offer) { r.offerAccepted = offer; log(`  accepted the co-commander's offer: "${offer.summary}" (${offer.state ?? offer.status})`); await page.waitForTimeout(1500); }
 }
 
 // 4. Parity: the session, every accepted order included, replayed natively.

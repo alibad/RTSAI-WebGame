@@ -16,7 +16,8 @@ export interface FeedItem {
   at: number;
   proposalId?: string;
   /** Proposals: pending until the player accepts or cancels them. */
-  state?: "pending" | "accepted" | "cancelled";
+  /** expired: the companion no longer holds it (a newer question or order replaced it); it can't be accepted. */
+  state?: "pending" | "accepted" | "cancelled" | "expired";
   importance?: string;
 }
 
@@ -112,10 +113,14 @@ export class CoCommander {
   private async offers() {
     if (!this.s.enabled || !this.s.running || !this.s.linked) return;
     try {
+      const asked = Date.now();
       const res = await fetch(new URL(`${API}v1/state`, base()));
       if (!res.ok) return;
       const state = await res.json() as { pending_action?: { proposal_id: string; summary: string } | null };
       const p = state.pending_action;
+      // The companion holds one proposal at a time: older cards it no longer holds can't be accepted any more.
+      for (const f of this.s.feed)
+        if (f.kind === "proposal" && f.state === "pending" && f.at < asked && f.proposalId !== p?.proposal_id) this.update(f.id, { state: "expired" });
       if (p && !this.s.feed.some((f) => f.proposalId === p.proposal_id) && (!this.focus || this.focus.test(p.summary)))
         this.push("proposal", p.summary, { proposalId: p.proposal_id, state: "pending" });
     } catch { /* the companion is restarting */ }
@@ -159,14 +164,18 @@ export class CoCommander {
     if (r.interrupted) return;
     const action = r.metadata?.action;
     if (action?.state === "pending" && action.proposal_id) {
-      this.push("proposal", action.summary || r.text, { proposalId: action.proposal_id, state: "pending" });
+      const summary = action.summary || r.text;
+      this.push("proposal", summary, { proposalId: action.proposal_id, state: "pending" });
       // The card carries the order and its buttons; keep only what the reply adds (e.g. a note), not the boilerplate.
       const note = r.text.replace(action.summary ?? "", "").replace(/I prepared \d+ validated orders?\.?/i, "").replace(/Say confirm to execute, or cancel\.?/i, "")
         .replace(/^[\s.]*(Note:\s*)?/i, "").trim();
       if (note.length > 3) this.push("ai", note[0].toUpperCase() + note.slice(1));
-    } else if (r.text) {
-      this.push(action?.state === "rejected" ? "rejected" : "ai", r.text);
+      // Spoken: the order and the note, as on screen (the card is accepted with a click or Enter, not by saying
+      // "confirm", so the desktop game's voice prompt is left out).
+      this.speak([summary.replace(/[.\s]+$/, ""), note.length > 3 ? note : ""].filter(Boolean).join(". "));
+      return;
     }
+    if (r.text) this.push(action?.state === "rejected" ? "rejected" : "ai", r.text);
     if (r.text) this.speak(r.text);
   }
 

@@ -247,7 +247,8 @@ async function verify(req, res) {
     browserRuntime: body.log.runtime, packets: Object.keys(body.log.packets).length, files: { scenarioFile, logFile, hashFile },
   };
   fs.appendFileSync(path.join(data, "verify.jsonl"), JSON.stringify({ at: new Date().toISOString(), ...result }) + "\n");
-  for (const f of [scenarioFile, logFile, hashFile]) try { fs.unlinkSync(f); } catch { /* keep going */ }
+  // A mismatch keeps its files (the scenario, the browser's orders and hashes, the native hashes) for diagnosis.
+  if (result.match) for (const f of [scenarioFile, logFile, hashFile]) try { fs.unlinkSync(f); } catch { /* keep going */ }
   json(res, result);
 }
 

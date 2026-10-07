@@ -35,9 +35,17 @@ deterministic: every test game replays identically in the desktop engine, tick f
 | In game | 144 fps, about 300 MB memory | same |
 
 - **Speed:** clicks show on screen in about 50 ms, and Start to playing takes about 1 s.
-- **Co-commander overhead** without the AI models' own time is 65 ms from releasing the talk key to the reply
-  starting to play. The real-model latency (local Whisper, LLM and Kokoro) is not measured yet: the GPU was taken by
-  the owner's 3D run.
+- **Co-commander, real local models on the GPU:**
+  - The models: the product's Qwen3-VL 2B on CUDA llama.cpp, Whisper large-v3 and Kokoro.
+  - **1.8 s median** from releasing the talk key to the spoken reply starting, over 23 spoken turns.
+  - p95 is 11.8 s. Open "what should I do?" questions use the companion's planner and take 9 to 24 s; without them,
+    the median is 1.6 s and p95 4.0 s.
+  - Transcripts were word-exact on 23 of 24 lines.
+  - Every order the co-commander understood became the right card, and every accepted card was executed.
+  - Both sessions replayed natively with identical SyncHash.
+  - Details and caveats are in [CO-COMMANDER.md](CO-COMMANDER.md#latency).
+  - The CPU-only pack could not be measured fairly: the machine was saturated by other work.
+  - Without the models, the overhead of the browser, relay and companion is 65 ms.
 
 ## What deploying needs (nothing is deployed)
 
@@ -63,6 +71,10 @@ deterministic: every test game replays identically in the desktop engine, tick f
   slower.
 - **Hosting.** A host or rewrite that drops the custom headers would break loading. The preview check above catches
   this.
-- **Real-model co-commander** (latency, order acceptance) is unmeasured until the GPU is free.
+- **Co-commander follow-ups.**
+  - When a building is finished, the co-commander offers to place it. Any question asked before the player accepts
+    replaces that offer in the companion (OpenRA-AI). In the browser the card now shows it is no longer offered.
+  - Items that aren't buildable yet get *I don't recognize …* instead of naming the missing prerequisite.
+  - The CPU-only stack still needs a measurement on a quiet machine.
 - **Content still landing.** The standalone art is still landing. The rare special-death effects (about 2 MB) still
   ship until the standalone agent confirms they are unused.
