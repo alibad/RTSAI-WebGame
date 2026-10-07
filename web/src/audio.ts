@@ -21,12 +21,19 @@ export class AudioEngine {
   private ctx: AudioContext | null = null;
   private master!: GainNode;
   private music!: GainNode;
+  /** Game sounds (effects, voices of units, notifications) and the co-commander's voice, mixed into master. */
+  readonly buses: { sfx?: GainNode; voice?: GainNode } = {};
+  /** The co-commander's reply started playing (its WAV bytes and the page time), e.g. for recording. */
+  onVoice: ((wav: ArrayBuffer, at: number, seconds: number) => void) | null = null;
   private sources = new Map<number, AudioBuffer>();
   private playing = new Map<number, Playing>();
   private streams = new Map<number, Stream>();
   private listener = { x: 0, y: 0 };
   soundOn = true;
   musicOn = true;
+
+  /** The audio context, created on first use (recording taps attach to the buses). */
+  context() { return this.ensure(); }
 
   private ensure() {
     if (this.ctx) return this.ctx;
@@ -35,6 +42,10 @@ export class AudioEngine {
     this.master.connect(ctx.destination);
     this.music = ctx.createGain();
     this.music.connect(this.master);
+    this.buses.sfx = ctx.createGain();
+    this.buses.sfx.connect(this.master);
+    this.buses.voice = ctx.createGain();
+    this.buses.voice.connect(this.master);
     this.ctx = ctx;
     // Browsers start audio suspended until the player interacts with the page.
     const resume = () => { if (ctx.state === "suspended") ctx.resume(); };
@@ -84,7 +95,7 @@ export class AudioEngine {
     const g = this.gainFor(p);
     gain.gain.value = g.gain;
     pan.pan.value = g.pan;
-    node.connect(gain).connect(pan).connect(this.master);
+    node.connect(gain).connect(pan).connect(this.buses.sfx!);
     node.onended = () => this.playing.delete(sound);
     node.start();
     this.playing.set(sound, p);
@@ -164,14 +175,16 @@ export class AudioEngine {
   /** The co-commander's spoken reply (a WAV); music ducks while it plays. Resolves when it ends. */
   async voice(wav: ArrayBuffer) {
     const ctx = this.ensure();
+    const copy = this.onVoice ? wav.slice(0) : null;
     const buf = await ctx.decodeAudioData(wav);
     this.stopVoice();
     const node = ctx.createBufferSource();
     node.buffer = buf;
-    node.connect(this.master);
+    node.connect(this.buses.voice!);
     this.music.gain.setTargetAtTime(0.35, ctx.currentTime, 0.08);
     this.voiceNode = node;
     node.start();
+    if (copy) this.onVoice?.(copy, performance.now(), buf.duration);
     await new Promise<void>((resolve) => { node.onended = () => resolve(); });
     if (this.voiceNode === node) {
       this.voiceNode = null;

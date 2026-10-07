@@ -13,6 +13,7 @@ const ADVICE = [
 ];
 const TRANSCRIPTS = ["What should I build next?", "Build a power plant", "How is our economy?", "Train five riflemen"];
 let turn = 0, heard = 0;
+let nextTranscript = null; // set by POST /mock/next-transcript (test tools): what the next transcription returns
 
 function lastUser(messages) {
   for (let i = (messages?.length ?? 0) - 1; i >= 0; i--) {
@@ -81,6 +82,7 @@ export function startMockGateway(port) {
       return json(404, { error: "not_found" });
     }
     const raw = await body(req);
+    if (url.pathname === "/mock/next-transcript") { nextTranscript = raw.toString("utf8"); return json(200, { ok: true }); }
     if (url.pathname === "/v1/chat/completions") {
       let request = {};
       try { request = JSON.parse(raw.toString("utf8")); } catch { /* empty */ }
@@ -101,7 +103,8 @@ export function startMockGateway(port) {
       return json(200, reply);
     }
     if (url.pathname === "/v1/audio/transcriptions") {
-      const text = process.env.RTSAI_MOCK_TRANSCRIPT || TRANSCRIPTS[heard++ % TRANSCRIPTS.length];
+      const text = nextTranscript ?? process.env.RTSAI_MOCK_TRANSCRIPT ?? TRANSCRIPTS[heard++ % TRANSCRIPTS.length];
+      nextTranscript = null;
       return json(200, { text });
     }
     if (url.pathname === "/v1/audio/speech") {

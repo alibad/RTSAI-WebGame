@@ -21,6 +21,9 @@ import { startMockGateway } from "./mock-ai.mjs";
 export const GRPC_PORT = Number(process.env.RTSAI_WEB_COMPANION_GRPC ?? 9988);
 export const CONTROL_PORT = Number(process.env.RTSAI_WEB_COMPANION_PORT ?? 8797);
 const MOCK_PORT = Number(process.env.RTSAI_WEB_MOCK_AI_PORT ?? 4010);
+// The product's local AI stack (OpenRA-AI ai/: llama.cpp + Qwen3-VL 2B, whisper.cpp base.en, Kokoro), served by its
+// own gateway (openra_ai_companion.local_runtime) on ports apart from the desktop game's 4000-4002.
+const LOCAL_GATEWAY_PORT = Number(process.env.RTSAI_WEB_LOCAL_AI_PORT ?? 4020);
 const CALL_TIMEOUT_MS = 10_000;
 const GRPC_CODES = { UNAVAILABLE: 14, DEADLINE_EXCEEDED: 4, UNIMPLEMENTED: 12, INTERNAL: 13 };
 
@@ -222,7 +225,7 @@ export function createCompanion({ repo, appData, log = console.log }) {
 
   const openraAi = process.env.RTSAI_OPENRA_AI ?? path.resolve(repo, "..", "OpenRA-AI");
   const exe = path.join(openraAi, ".venv", "Scripts", "openra-ai-companion.exe");
-  let proc = null, mode = "", mock = null;
+  let proc = null, mode = "", mock = null, runtime = null;
   const output = [];
 
   async function start(requested) {
@@ -238,8 +241,32 @@ export function createCompanion({ repo, appData, log = console.log }) {
       env.OPENRA_AI_LOCAL_ROUTER_URL = env.OPENRA_AI_ROUTER_URL;
       env.OPENRA_AI_DATA_DIR = path.join(appData, "companion-mock");
     } else {
-      // The player's own local AI stack (the bundled gateway on :4000) and settings, as the desktop game uses.
-      env.OPENRA_AI_DATA_DIR = process.env.OPENRA_AI_DATA_DIR ?? path.join(appData, "companion");
+      // The local models: the product's runtime gateway, started here with its own settings and ports.
+      env.OPENRA_AI_DATA_DIR = process.env.OPENRA_AI_DATA_DIR ?? path.join(appData, "companion-local");
+      fs.mkdirSync(env.OPENRA_AI_DATA_DIR, { recursive: true });
+      Object.assign(env, {
+        OPENRA_AI_MODEL_PROVIDER: "local", OPENRA_AI_TEXT_MODEL: "local-coder", OPENRA_AI_VISION_MODEL: "local-coder",
+        OPENRA_AI_TRANSCRIBE_MODEL: "local-whisper", OPENRA_AI_TTS_MODEL: "local-kokoro",
+        OPENRA_AI_ROUTER_URL: `http://127.0.0.1:${LOCAL_GATEWAY_PORT}`, OPENRA_AI_LOCAL_ROUTER_URL: `http://127.0.0.1:${LOCAL_GATEWAY_PORT}`,
+        OPENRA_AI_LOCAL_CHAT_PORT: String(LOCAL_GATEWAY_PORT + 1), OPENRA_AI_LOCAL_TRANSCRIBE_PORT: String(LOCAL_GATEWAY_PORT + 2),
+        // Local models answer slower than the hosted route: allow them time.
+        OPENRA_AI_ROUTER_TIMEOUT_SECONDS: process.env.OPENRA_AI_ROUTER_TIMEOUT_SECONDS ?? "60",
+      });
+      if (!runtime || runtime.exitCode !== null) {
+        const python = path.join(openraAi, ".venv", "Scripts", "python.exe");
+        runtime = spawn(python, ["-m", "openra_ai_companion.local_runtime", "serve", "--root", openraAi, "--mode", "local",
+          "--port", String(LOCAL_GATEWAY_PORT), "--parent-pid", String(process.pid)], { cwd: openraAi, env, windowsHide: true });
+        const keepRt = (d) => { for (const line of String(d).split(/\r?\n/)) if (line.trim()) { output.push("[runtime] " + line); if (output.length > 200) output.shift(); } };
+        runtime.stdout.on("data", keepRt);
+        runtime.stderr.on("data", keepRt);
+        log(`co-commander: local AI runtime started on :${LOCAL_GATEWAY_PORT}, pid ${runtime.pid}`);
+        // llama.cpp and whisper.cpp load their models first (up to a few minutes on a cold disk).
+        for (let i = 0; i < 360; i++) {
+          if (runtime.exitCode !== null) throw new Error("the local AI runtime exited: " + output.slice(-5).join(" | "));
+          if (await healthy(LOCAL_GATEWAY_PORT)) break;
+          await new Promise((r) => setTimeout(r, 500));
+        }
+      }
     }
     fs.mkdirSync(env.OPENRA_AI_DATA_DIR, { recursive: true });
     const args = ["watch", "--no-speak", "--bridge", `127.0.0.1:${GRPC_PORT}`, "--control-port", String(CONTROL_PORT),
@@ -260,10 +287,20 @@ export function createCompanion({ repo, appData, log = console.log }) {
     return status();
   }
 
-  function stop() {
+  /** Stops the companion; `all` also stops the local AI runtime (its models stay loaded between games otherwise). */
+  function stop(all = false) {
+    if (all && runtime) { try { runtime.kill(); } catch { /* gone */ } runtime = null; }
     if (proc) { try { proc.kill(); } catch { /* gone */ } }
     proc = null;
     mode = "";
+  }
+
+  function healthy(port) {
+    return new Promise((resolve) => {
+      const r = http.get({ host: "127.0.0.1", port, path: "/health", timeout: 1000 }, (res) => { res.resume(); resolve(res.statusCode < 500); });
+      r.on("error", () => resolve(false));
+      r.on("timeout", () => { r.destroy(); resolve(false); });
+    });
   }
 
   function ping() {
@@ -275,7 +312,7 @@ export function createCompanion({ repo, appData, log = console.log }) {
   }
 
   function status() {
-    return { running: !!proc, mode, pid: proc?.pid ?? 0, gameConnected: !!worker, grpcPort: GRPC_PORT, controlPort: CONTROL_PORT, relay: stats, log: output.slice(-20) };
+    return { running: !!proc, mode, pid: proc?.pid ?? 0, localRuntime: runtime && runtime.exitCode === null ? runtime.pid : 0, gameConnected: !!worker, grpcPort: GRPC_PORT, controlPort: CONTROL_PORT, relay: stats, log: output.slice(-20) };
   }
 
   /** /companion/api/<path> -> the companion's HTTP API (ask, transcribe, speak, actions, control, state). */

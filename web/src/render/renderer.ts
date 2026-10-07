@@ -396,8 +396,12 @@ export class Renderer {
     const margin = this.info?.depthMargin ?? 0;
     const sx = cam.x - W / 2;
     const sy = cam.y - H / 2;
-    const depth = depthOn ? 2 / (H + margin) : 0;
-    gl.uniform3f(gl.getUniformLocation(prog, "uScroll"), sx, sy, depthOn ? sy : 0);
+    // The depth range starts a little above the view's top edge: a terrain cell whose centre lies just above the
+    // screen still draws its lower half there, and without the pad those triangles fall past the far plane (a row
+    // of black notches along the top of the view). Below, the engine's margin as before.
+    const pad = depthOn ? 2 * (this.info?.tileSize[1] ?? 0) : 0;
+    const depth = depthOn ? 2 / (H + margin + pad) : 0;
+    gl.uniform3f(gl.getUniformLocation(prog, "uScroll"), sx, sy, depthOn ? sy - pad : 0);
     gl.uniform3f(gl.getUniformLocation(prog, "uP1"), 2 / W, -2 / H, -depth);
     gl.uniform3f(gl.getUniformLocation(prog, "uP2"), -1, 1, depthOn ? 1 : 0);
     gl.uniform1f(gl.getUniformLocation(prog, "uZoom"), cam.zoom);

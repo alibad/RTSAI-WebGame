@@ -57,6 +57,12 @@ let nextFeed = 1;
 
 export class CoCommander {
   private recorder: { ctx: AudioContext; stream: MediaStream; node: ScriptProcessorNode; chunks: Float32Array[]; rate: number } | null = null;
+  private poll: ReturnType<typeof setInterval> | null = null;
+  /**
+   * Recording (tools/film-takes.mjs): when set, the co-commander's own alerts stay out of the feed and only the
+   * offers matching this pattern appear as cards, so a take shows just the exchange being filmed.
+   */
+  focus: RegExp | null = null;
   private lastAlert = "";
 
   constructor(private audio: AudioEngine) {}
@@ -92,10 +98,27 @@ export class CoCommander {
     if (!status.running) throw new Error(status.error || "The co-commander could not start.");
   }
 
-  /** A new match: clear the feed, greet. */
+  /** A new match: clear the feed, greet, and watch for orders the co-commander offers on its own. */
   matchStarted() {
     this.set({ feed: [], linked: false, thinking: false });
     this.push("system", this.s.mode === "mock" ? "Co-commander online (scripted brain)" : "Co-commander online");
+    if (!this.poll) this.poll = setInterval(() => { void this.offers(); }, 1500);
+  }
+
+  /**
+   * Orders the co-commander offers by itself (e.g. "the Power Plant is ready; I can place it"): the desktop game
+   * accepts them with a hotkey; here they become cards like any proposal.
+   */
+  private async offers() {
+    if (!this.s.enabled || !this.s.running || !this.s.linked) return;
+    try {
+      const res = await fetch(new URL(`${API}v1/state`, base()));
+      if (!res.ok) return;
+      const state = await res.json() as { pending_action?: { proposal_id: string; summary: string } | null };
+      const p = state.pending_action;
+      if (p && !this.s.feed.some((f) => f.proposalId === p.proposal_id) && (!this.focus || this.focus.test(p.summary)))
+        this.push("proposal", p.summary, { proposalId: p.proposal_id, state: "pending" });
+    } catch { /* the companion is restarting */ }
   }
 
   /** Engine events (worker): status lines become feed entries; links and executed actions update the panel. */
@@ -109,7 +132,7 @@ export class CoCommander {
     const text = e.message.replace(/^AI\s*•\s*/, "").trim();
     const state = e.state.split(":")[0];
     // Advice and alerts the companion volunteers; lifecycle lines (ready, thinking, capabilities) stay in the strip.
-    if (!/^(speaking-)?(routine|important|critical|alert|advice)/.test(state) || !text || text === this.lastAlert) return;
+    if (!/^(speaking-)?(routine|important|critical|alert|advice)/.test(state) || !text || text === this.lastAlert || this.focus) return;
     this.lastAlert = text;
     const importance = state.replace("speaking-", "");
     this.push("alert", text, { importance });

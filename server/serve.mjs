@@ -277,7 +277,7 @@ const server = http.createServer(async (req, res) => {
         const body = JSON.parse((await readBody(req)) || "{}");
         try { return json(res, await companion.start(body.mode)); } catch (e) { return json(res, { error: String(e.message ?? e), ...companion.status() }, 500); }
       }
-      if (p === "/api/companion/stop" && req.method === "POST") { companion.stop(); return json(res, companion.status()); }
+      if (p === "/api/companion/stop" && req.method === "POST") { companion.stop(url.searchParams.get("all") === "1"); return json(res, companion.status()); }
       if (p.startsWith("/companion/api/")) return companion.proxy(req, res, p.slice("/companion/api/".length) + url.search);
       return res.writeHead(404).end();
     }
