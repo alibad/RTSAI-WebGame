@@ -2,15 +2,14 @@
 // engine command with the desktop palette's rules (left: build / place / resume, Shift: x5; right: hold, then
 // cancel; Ctrl+right: cancel all).
 
-import { memo, useEffect, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useRef, useState } from "react";
 import type { Game } from "../game";
 import type { CatalogItem, QueuedItem } from "../sim/protocol";
 import { useStore } from "../store";
 import { Minimap } from "./Minimap";
 import { PowerIcon, QUEUE_ICONS, RepairIcon, SellIcon } from "./icons";
 import { cn } from "../lib/utils";
-
-const TICK_S = 0.04;
+import { CameoTip } from "./CameoTip";
 
 function Credits() {
   const cash = useStore((s) => s.ui?.cash ?? 0);
@@ -70,9 +69,10 @@ interface CameoProps {
   done: boolean;
   placing: boolean;
   onPress: (item: string, e: React.MouseEvent) => void;
+  onHover: (item: CatalogItem | null, top: number) => void;
 }
 
-const Cameo = memo(function Cameo({ item, queue, icon, progress, count, paused, done, placing, onPress }: CameoProps) {
+const Cameo = memo(function Cameo({ item, queue, icon, progress, count, paused, done, placing, onPress, onHover }: CameoProps) {
   const deg = progress >= 0 ? progress * 360 : 0;
   return (
     <button
@@ -81,6 +81,8 @@ const Cameo = memo(function Cameo({ item, queue, icon, progress, count, paused, 
       data-disabled={!item.buildable && count === 0}
       onMouseDown={(e) => { e.preventDefault(); onPress(item.name, e); }}
       onContextMenu={(e) => e.preventDefault()}
+      onMouseEnter={(e) => onHover(item, e.currentTarget.getBoundingClientRect().top)}
+      onMouseLeave={() => onHover(null, 0)}
       aria-label={item.label}
       data-queue={queue}
       data-item={item.name}
@@ -96,10 +98,6 @@ const Cameo = memo(function Cameo({ item, queue, icon, progress, count, paused, 
         </div>
       )}
       {count > 1 && <span className="digits absolute left-[3px] top-[1px] text-[12px] font-bold text-white drop-shadow-[0_1px_1px_#000]">{count}</span>}
-      <span className="pointer-events-none absolute inset-x-0 bottom-0 translate-y-full bg-black/85 px-1 py-[1px] text-left text-[10px] leading-tight text-[var(--hud-gold)] opacity-0 transition group-hover:translate-y-0 group-hover:opacity-100">
-        {item.label}
-        <span className="digits float-right text-[var(--foreground)]">${item.cost} · {Math.round(item.time * TICK_S)}s</span>
-      </span>
     </button>
   );
 });
@@ -148,6 +146,10 @@ function Palette({ game, height }: { game: Game; height: number }) {
   const mode = useStore((s) => s.ui?.mode ?? "");
   const q = catalog.find((c) => c.type === tab);
   const state = queues?.find((x) => x.type === tab);
+  const [hover, setHover] = useState<{ name: string; top: number } | null>(null);
+  const onHover = useCallback((item: CatalogItem | null, top: number) => setHover(item ? { name: item.name, top } : null), []);
+  // The live catalog entry (buildable and requirements change while hovering).
+  const hovered = hover ? q?.items.find((i) => i.name === hover.name) : undefined;
 
   const onPress = (item: string, e: React.MouseEvent) => {
     if (e.button === 0) game.command({ cmd: "produce", queue: tab, item, count: e.shiftKey ? 5 : 1, front: e.ctrlKey });
@@ -174,23 +176,26 @@ function Palette({ game, height }: { game: Game; height: number }) {
             done={!!first?.done}
             placing={mode === "place" && !!first?.done}
             onPress={onPress}
+            onHover={onHover}
           />
         );
       })}
+      {hovered && <CameoTip item={hovered} top={hover!.top} />}
     </div>
   );
 }
 
-function ModeButton({ active, title, onClick, children }: { active: boolean; title: string; onClick: () => void; children: React.ReactNode }) {
+function ModeButton({ active, title, hotkey, onClick, children }: { active: boolean; title: string; hotkey: string; onClick: () => void; children: React.ReactNode }) {
   return (
     <button
       type="button"
-      title={title}
+      title={`${title} (${hotkey})`}
       onClick={onClick}
-      className={cn("hud-inset grid size-[30px] place-items-center text-[var(--muted-foreground)] hover:text-[var(--foreground)]",
+      className={cn("hud-inset relative grid size-[30px] place-items-center text-[var(--muted-foreground)] hover:text-[var(--foreground)]",
         active && "text-[var(--hud-gold)] shadow-[inset_0_0_0_1px_var(--hud-gold),inset_0_0_10px_rgba(241,210,139,0.35)]")}
     >
       {children}
+      <span className="digits absolute bottom-0 right-[2px] text-[9px] text-[var(--hud-gold-dim)]">{hotkey}</span>
     </button>
   );
 }
@@ -211,8 +216,8 @@ export function Sidebar({ game }: { game: Game }) {
       <div className="flex items-center justify-between gap-2 px-[2px]">
         <Credits />
         <div className="flex gap-[3px]">
-          <ModeButton active={mode === "repair"} title="Repair (Z)" onClick={() => game.setMode("repair")}><RepairIcon width={18} height={18} /></ModeButton>
-          <ModeButton active={mode === "sell"} title="Sell (Q)" onClick={() => game.setMode("sell")}><SellIcon width={18} height={18} /></ModeButton>
+          <ModeButton active={mode === "repair"} title="Repair" hotkey="Z" onClick={() => game.setMode("repair")}><RepairIcon width={18} height={18} /></ModeButton>
+          <ModeButton active={mode === "sell"} title="Sell" hotkey="Q" onClick={() => game.setMode("sell")}><SellIcon width={18} height={18} /></ModeButton>
         </div>
       </div>
       <Tabs />

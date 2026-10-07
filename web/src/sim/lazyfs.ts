@@ -86,6 +86,7 @@ export class LazyMount {
  * Mounts every file of an ORAPACK1 bundle (sim/OpenRA.WebSim/Pack.cs) as a file that reads straight from the
  * downloaded buffer, so the bundle is not copied into the WebAssembly heap.
  */
+/** Mounts every file of an ORAPACK1 bundle under root; returns name -> [offset, length] within the pack. */
 export function mountPack(mount: LazyMount, pack: Uint8Array, root: string) {
   const dv = new DataView(pack.buffer, pack.byteOffset, pack.byteLength);
   const magic = new TextDecoder().decode(pack.subarray(0, 8));
@@ -93,6 +94,7 @@ export function mountPack(mount: LazyMount, pack: Uint8Array, root: string) {
   const count = dv.getInt32(8, true);
   const dec = new TextDecoder();
   let p = 12;
+  const files = new Map<string, [number, number]>();
   for (let i = 0; i < count; i++) {
     const nameLength = dv.getUint16(p, true);
     p += 2;
@@ -102,9 +104,10 @@ export function mountPack(mount: LazyMount, pack: Uint8Array, root: string) {
     p += 4;
     const start = p;
     mount.addDirect(`${root}/${name}`, length, (s, e) => pack.subarray(start + s, start + e));
+    files.set(name, [start, length]);
     p += length;
   }
-  return count;
+  return files;
 }
 
 /** Synchronous HTTP range reads (workers only). */

@@ -1,0 +1,13 @@
+{
+  "map": "web-arena",
+  "seed": 777,
+  "players": [
+    { "slot": "Multi0", "faction": "saudi", "color": "2A6FDB" },
+    { "slot": "Multi1", "faction": "iran", "bot": "webidle", "color": "D83A2E" }
+  ],
+  "options": { "explored": "True", "fog": "False", "crates": "False", "shortgame": "False" },
+  "placements": [
+    { "id": "r2m1a2s", "side": 0, "u": 56, "v": 68, "count": 4, "columns": 2, "spacing": 2, "order": "engage", "facing": 768 },
+    { "id": "r2basij", "side": 1, "u": 68, "v": 68, "count": 3, "columns": 3, "spacing": 2, "order": "hold", "facing": 256 }
+  ]
+}

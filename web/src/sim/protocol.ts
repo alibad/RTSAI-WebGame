@@ -247,7 +247,28 @@ export interface SandboxStats {
 }
 
 export interface QueuedItem { name: string; progress: number; paused: boolean; done: boolean; infinite: boolean; remaining: number }
-export interface CatalogItem { name: string; label: string; cost: number; time: number; buildable: boolean; building: boolean }
+export interface CatalogItem {
+  name: string; label: string; cost: number; time: number; buildable: boolean; building: boolean;
+  /** Power provided (+) or drained (-). */
+  power: number;
+  /** The production tooltip's description (role, strengths and weaknesses), when the mod has one. */
+  desc?: string;
+  /** What is still missing to build it (actor names), when not buildable. */
+  requires?: string[];
+}
+
+/** End-of-game summary per playing side (Ui.cs GameStats). */
+export interface GameStats {
+  tick: number;
+  timestep: number;
+  players: {
+    name: string; faction: string; color: string; local: boolean; bot: boolean; win: string;
+    unitsKilled: number; unitsDead: number; buildingsKilled: number; buildingsDead: number;
+    killsCost: number; deathsCost: number; earned: number;
+    /** Army value every 30 s of game time, then the current value. */
+    army: number[];
+  }[];
+}
 export interface CatalogQueue { type: string; items: CatalogItem[] }
 
 // Messages between page and worker.
@@ -279,6 +300,8 @@ export type FromWorker =
   | { type: "started"; info: StartInfo; terrain: ArrayBuffer; radarTerrain: ArrayBuffer; startMs: number; lazy?: LazyStats }
   | { type: "snapshot"; bytes: ArrayBuffer; seq: number } // postMessage fallback when SharedArrayBuffer is unavailable
   | { type: "texture"; id: number; version: number; width: number; height: number; kind: number; data: ArrayBuffer }
+  /** The engine disposed a texture (e.g. a finished game's sheets): free the GPU copy. */
+  | { type: "texturefree"; id: number }
   /** A prebaked sprite sheet from the cache, gzip-compressed (the page inflates it). */
   | { type: "texturegz"; id: number; width: number; height: number; gz: Blob }
   | { type: "ui"; json: string }

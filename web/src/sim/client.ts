@@ -91,6 +91,9 @@ export class SimClient {
       case "texture":
         this.renderer.uploadTexture(m.id, m.version, m.width, m.height, m.kind, m.data);
         return;
+      case "texturefree":
+        this.renderer.freeTexture(m.id);
+        return;
       case "texturegz": {
         const t0 = performance.now();
         gunzipSheet(m.gz).then((data) => {

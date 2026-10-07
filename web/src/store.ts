@@ -46,6 +46,8 @@ export interface Store {
   cursor: string;
   statsOpen: boolean;
   menuOpen: boolean;
+  /** The hotkey sheet (F1). */
+  keysOpen: boolean;
   paused: boolean;
   timings: Record<string, number>;
   downloads: Record<string, number>;
@@ -80,6 +82,7 @@ export const useStore = create<Store>((set) => ({
   cursor: "default",
   statsOpen: false,
   menuOpen: false,
+  keysOpen: false,
   paused: false,
   timings: {},
   downloads: {},

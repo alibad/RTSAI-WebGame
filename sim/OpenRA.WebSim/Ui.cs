@@ -177,14 +177,30 @@ namespace OpenRA.WebSim
 						sb.Append(',');
 					firstItem = false;
 					var bi = a.TraitInfo<BuildableInfo>();
-					var tooltip = a.TraitInfos<TooltipInfo>().FirstOrDefault(t => t.EnabledByDefault);
+					var power = a.TraitInfos<PowerInfo>().Where(i => i.EnabledByDefault).Sum(i => i.Amount);
+					var canBuild = buildable.Contains(a.Name);
 					sb.Append("{\"name\":").Append(J(a.Name))
-						.Append(",\"label\":").Append(J(tooltip != null ? FluentProvider.GetMessage(tooltip.Name) : a.Name))
+						.Append(",\"label\":").Append(J(ActorLabel(a)))
 						.Append(",\"cost\":").Append(q.GetProductionCost(a))
 						.Append(",\"time\":").Append(q.GetBuildTime(a, bi))
-						.Append(",\"buildable\":").Append(buildable.Contains(a.Name) ? "true" : "false")
-						.Append(",\"building\":").Append(a.HasTraitInfo<BuildingInfo>() ? "true" : "false")
-						.Append('}');
+						.Append(",\"power\":").Append(power)
+						.Append(",\"buildable\":").Append(canBuild ? "true" : "false")
+						.Append(",\"building\":").Append(a.HasTraitInfo<BuildingInfo>() ? "true" : "false");
+
+					// The desktop production tooltip: description, and what is still missing to build it.
+					if (bi.Description != null && FluentProvider.TryGetMessage(bi.Description, out var desc))
+						sb.Append(",\"desc\":").Append(J(desc));
+					if (!canBuild)
+					{
+						var rules = p.World.Map.Rules;
+						var requires = bi.Prerequisites
+							.Where(r => !r.StartsWith('~') && !r.StartsWith('!') && rules.Actors.ContainsKey(r))
+							.Select(r => ActorLabel(rules.Actors[r])).Distinct().ToList();
+						if (requires.Count > 0)
+							sb.Append(",\"requires\":[").Append(string.Join(",", requires.Select(J))).Append(']');
+					}
+
+					sb.Append('}');
 				}
 
 				sb.Append("]}");
@@ -192,6 +208,12 @@ namespace OpenRA.WebSim
 
 			sb.Append(']');
 			return sb.ToString();
+		}
+
+		static string ActorLabel(ActorInfo a)
+		{
+			var tooltip = a.TraitInfos<TooltipInfo>().FirstOrDefault(t => t.EnabledByDefault);
+			return tooltip != null ? FluentProvider.GetMessage(tooltip.Name) : a.Name;
 		}
 
 		static string ModeName(IOrderGenerator og) => og switch
@@ -314,6 +336,9 @@ namespace OpenRA.WebSim
 					break;
 				}
 
+				case "stats":
+					return GameStats(world);
+
 				// ---- battle sandbox (an editing world that does not tick; runs are rebuilt from the placements)
 				case "units":
 					return UnitCatalog(world);
@@ -388,6 +413,44 @@ namespace OpenRA.WebSim
 			}
 
 			return "{}";
+		}
+
+		/// <summary>
+		/// The end-of-game summary (the desktop's observer statistics): per playing side, what it destroyed and lost,
+		/// earned, and its army value sampled every 30 s of game time. Read-only.
+		/// </summary>
+		static string GameStats(World world)
+		{
+			var sb = new StringBuilder(1024);
+			sb.Append("{\"tick\":").Append(world.WorldTick).Append(",\"timestep\":").Append(world.Timestep).Append(",\"players\":[");
+			var first = true;
+			foreach (var p in world.Players.Where(p => p.Playable && !p.NonCombatant))
+			{
+				var st = p.PlayerActor.TraitOrDefault<PlayerStatistics>();
+				var res = p.PlayerActor.TraitOrDefault<PlayerResources>();
+				if (st == null)
+					continue;
+
+				if (!first)
+					sb.Append(',');
+				first = false;
+				sb.Append("{\"name\":").Append(J(p.ResolvedPlayerName))
+					.Append(",\"faction\":").Append(J(p.Faction.InternalName))
+					.Append(",\"color\":").Append(J($"{p.Color.R:X2}{p.Color.G:X2}{p.Color.B:X2}"))
+					.Append(",\"local\":").Append(p == world.LocalPlayer ? "true" : "false")
+					.Append(",\"bot\":").Append(p.IsBot ? "true" : "false")
+					.Append(",\"win\":").Append(J(p.WinState.ToString()))
+					.Append(",\"unitsKilled\":").Append(st.UnitsKilled)
+					.Append(",\"unitsDead\":").Append(st.UnitsDead)
+					.Append(",\"buildingsKilled\":").Append(st.BuildingsKilled)
+					.Append(",\"buildingsDead\":").Append(st.BuildingsDead)
+					.Append(",\"killsCost\":").Append(st.KillsCost)
+					.Append(",\"deathsCost\":").Append(st.DeathsCost)
+					.Append(",\"earned\":").Append(res?.Earned ?? 0)
+					.Append(",\"army\":[").Append(string.Join(",", st.ArmySamples.Append(st.ArmyValue))).Append("]}");
+			}
+
+			return sb.Append("]}").ToString();
 		}
 
 		/// <summary>Every buildable unit (infantry, vehicles, aircraft, ships) for the sandbox picker.</summary>

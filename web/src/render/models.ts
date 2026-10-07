@@ -117,6 +117,15 @@ export class ModelPass {
     gl.bufferData(gl.ARRAY_BUFFER, data, gl.STATIC_DRAW);
   }
 
+  /** Drops a render target's framebuffer (its texture was disposed). */
+  freeTarget(id: number) {
+    const t = this.targets.get(id);
+    if (!t) return;
+    this.gl.deleteFramebuffer(t.fbo);
+    this.gl.deleteRenderbuffer(t.depth);
+    this.targets.delete(id);
+  }
+
   /** Attaches a framebuffer (with depth) to a render-target sheet texture. */
   setTarget(id: number, tex: WebGLTexture, width: number, height: number) {
     const gl = this.gl;

@@ -37,6 +37,7 @@ static class Program
 				"pack" => Bundle.Build(opts),
 				"extract-content" => PrivateContent.Extract(opts),
 				"unpack" => Unpack(opts),
+				"bake" => Bake.Run(opts),
 				"run" => Run(opts),
 				"uitest" => UiTest(opts),
 				"capturetest" => CaptureTest(opts),
@@ -79,6 +80,11 @@ static class Program
 
 		var n = Pack.Unpack(File.ReadAllBytes(opts["pack"]), root);
 		Console.WriteLine($"unpacked {n} files into {root}");
+
+		// The large sprite art the browser reads lazily (web-art.pack next to the bundle).
+		var art = Path.Combine(Path.GetDirectoryName(Path.GetFullPath(opts["pack"])), "web-art.pack");
+		if (File.Exists(art))
+			Console.WriteLine($"unpacked {Pack.Unpack(File.ReadAllBytes(art), root)} art files");
 		if (opts.TryGetValue("private", out var priv))
 		{
 			var m = Pack.Unpack(File.ReadAllBytes(priv), root);

@@ -46,9 +46,41 @@ function sheetSizes(table: Uint8Array) {
 
 export interface BakeStats { restored: number; saved: number; bytes: number; ms: number }
 
+/** A packing baked ahead of time and shipped with the data (websim bake): its table, and where its sheets are. */
+export interface ShippedPacking { key: string; table: Uint8Array; sheets: { width: number; height: number; url: string }[] }
+
+/**
+ * Reads data/<profile>/sprites/index.json and the tables of every packing baked from exactly this bundle; sheets
+ * are fetched only when a packing is restored. Null when there are none (or they were baked from other content).
+ */
+export async function fetchShippedSprites(dir: string, bundleId: string): Promise<ShippedPacking[] | null> {
+  try {
+    const res = await fetch(new URL("index.json", dir));
+    if (!res.ok) return null;
+    const index = await res.json() as { format: string; bundle: string; packings: Record<string, { sheets: { width: number; height: number }[] }> };
+    if (index.format !== "ORASPR01" || index.bundle !== bundleId) {
+      console.warn(`sprite cache: shipped sheets are for bundle ${index.bundle}, not ${bundleId}; ignored`);
+      return null;
+    }
+    return await Promise.all(Object.entries(index.packings).map(async ([key, p]) => {
+      const t = await fetch(new URL(`${key}.table.gz`, dir));
+      if (!t.ok) throw new Error(`${key}.table.gz: HTTP ${t.status}`);
+      return {
+        key,
+        table: await gunzip(await t.blob()),
+        sheets: p.sheets.map((sh, i) => ({ ...sh, url: new URL(`${key}.${i}.gz`, dir).href })),
+      };
+    }));
+  } catch (e) {
+    console.warn("sprite cache: shipped sheets unavailable", e);
+    return null;
+  }
+}
+
 export class SpriteBake {
   private db: Promise<IDBDatabase> | null = null;
   private tables = new Map<string, TableRecord>();
+  private shipped = new Map<string, ShippedPacking>();
   private capture: Map<number, Promise<Blob>> | null = null;
   readonly stats: BakeStats = { restored: 0, saved: 0, bytes: 0, ms: 0 };
 
@@ -97,11 +129,14 @@ export class SpriteBake {
     this.capture?.set(id, gzip(data.slice()));
   }
 
-  /** SpriteStore.Load (synchronous, from C#): the cached table for this exact reservation key. */
+  addShipped(p: ShippedPacking) { this.shipped.set(p.key, p); }
+
+  /** SpriteStore.Load (synchronous, from C#): the shipped or cached table for this exact reservation key. */
   load(key: string): Uint8Array {
+    const s = this.shipped.get(key);
     const t = this.tables.get(key);
-    console.info(`sprite cache: ${t ? "hit" : "miss"} ${key} (${this.tables.size} cached)`);
-    return t ? new Uint8Array(t.table) : new Uint8Array(0);
+    console.info(`sprite cache: ${s ? "shipped" : t ? "hit" : "miss"} ${key} (${this.shipped.size} shipped, ${this.tables.size} cached)`);
+    return s ? s.table : t ? new Uint8Array(t.table) : new Uint8Array(0);
   }
 
   /** SpriteStore.Saved: store the table and the sheets' compressed pixels (async, after Prepare). */
@@ -140,6 +175,21 @@ export class SpriteBake {
    */
   restored(key: string, idList: ArrayLike<number>) {
     const ids = Array.from(idList);
+    const shipped = this.shipped.get(key);
+    if (shipped) {
+      // Shipped sheets come over HTTP (cached by the browser like the rest of the data), still compressed.
+      this.stats.restored++;
+      const t0 = performance.now();
+      Promise.all(shipped.sheets.map(async (sh, i) => {
+        const res = await fetch(sh.url);
+        if (!res.ok) throw new Error(`${sh.url}: HTTP ${res.status}`);
+        this.postSheet(ids[i], sh.width, sh.height, await res.blob());
+      })).then(() => {
+        this.stats.ms = performance.now() - t0;
+        console.info(`sprite cache: fetched ${ids.length} shipped sheets in ${this.stats.ms.toFixed(0)} ms`);
+      }).catch((e) => console.warn("sprite cache: shipped sheets failed", e));
+      return;
+    }
     const t = this.tables.get(key);
     if (!t || !this.db) return;
     this.stats.restored++;

@@ -80,6 +80,9 @@ namespace OpenRA.WebSim.Browser
 		[JSImport("spriteRestored", "websim")]
 		static partial void SpriteRestored(string key, [JSMarshalAs<JSType.Array<JSType.Number>>] int[] textureIds);
 
+		[JSImport("textureFree", "websim")]
+		static partial void TextureFree(int id);
+
 		[JSImport("texture", "websim")]
 		static partial void StreamTexture(int id, int version, int width, int height, [JSMarshalAs<JSType.MemoryView>] Span<byte> data);
 
@@ -95,6 +98,9 @@ namespace OpenRA.WebSim.Browser
 			SpriteStore.Load = SpriteLoad;
 			SpriteStore.Saved = SpriteSaved;
 			SpriteStore.Restored = SpriteRestored;
+
+			// Textures the engine disposes (a finished game's sheets) are deleted on the page's GPU too.
+			WebTexture.Freed = TextureFree;
 
 			// Sheets go to the page as soon as the engine commits them (during map preparation, on the setup
 			// screen), so the WebAssembly heap keeps no copy of them.

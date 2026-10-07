@@ -31,6 +31,11 @@ static class Bundle
 
 	static readonly HashSet<string> AudioExtensions = new(StringComparer.OrdinalIgnoreCase) { ".wav", ".aud", ".ogg", ".mp3" };
 
+	// Sprite art read only while a map's sprites are decoded and packed: large files go to web-art.pack, read by
+	// byte range on demand, so a visit that restores prebaked sheets never downloads them.
+	static readonly HashSet<string> ArtExtensions = new(StringComparer.OrdinalIgnoreCase) { ".shp", ".png", ".tem", ".sno", ".urb" };
+	const int LazyArtMinBytes = 32 * 1024;
+
 	public static int Build(Dictionary<string, string> opts)
 	{
 		var engine = opts["engine"];
@@ -43,14 +48,19 @@ static class Bundle
 			: Directory.GetDirectories(Path.Combine(modDir, "maps")).Select(Path.GetFileName)).ToHashSet();
 
 		Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(output)));
+		var lazyArt = !opts.ContainsKey("no-lazy-art");
+		var art = new List<string>();
 		long total = 0;
 		var count = 0;
+		using var contentHash = System.Security.Cryptography.IncrementalHash.CreateHash(System.Security.Cryptography.HashAlgorithmName.SHA256);
 		// Written to a temporary file and moved into place, so a concurrent or interrupted run never leaves a torn pack.
 		using (var fs = File.Create(output + ".tmp"))
 		using (var pack = new Pack.Writer(fs))
 		{
 			void Add(string name, byte[] data)
 			{
+				contentHash.AppendData(Encoding.UTF8.GetBytes($"{name}|{data.Length}|"));
+				contentHash.AppendData(data);
 				pack.Add(name, data);
 				total += data.Length;
 				count++;
@@ -74,7 +84,17 @@ static class Bundle
 				if (rel.StartsWith("maps/", StringComparison.Ordinal) && !maps.Contains(rel.Split('/')[1]))
 					continue;
 
-				Add("mods/rtsai/" + rel, File.ReadAllBytes(f));
+				var bytes = File.ReadAllBytes(f);
+				if (lazyArt && !rel.StartsWith("maps/", StringComparison.Ordinal) && ArtExtensions.Contains(Path.GetExtension(f)) && bytes.Length >= LazyArtMinBytes)
+				{
+					// Part of the bundle's identity (sprites baked from it depend on it), stored in web-art.pack.
+					contentHash.AppendData(Encoding.UTF8.GetBytes($"mods/rtsai/{rel}|{bytes.Length}|"));
+					contentHash.AppendData(bytes);
+					art.Add(f);
+					continue;
+				}
+
+				Add("mods/rtsai/" + rel, bytes);
 			}
 
 			Add("mods/rtsai/mod.yaml", Encoding.UTF8.GetBytes(WebModYaml(File.ReadAllText(Path.Combine(modDir, "mod.yaml")))));
@@ -84,41 +104,56 @@ static class Bundle
 			var blank = Path.Combine(modDir, "maps", "blank-shellmap");
 			Add("mods/rtsai/maps/web-arena/map.bin", File.ReadAllBytes(Path.Combine(blank, "map.bin")));
 			Add("mods/rtsai/maps/web-arena/map.yaml", Encoding.UTF8.GetBytes(ArenaYaml()));
+
+			// The bundle's identity (a hash of every file above): caches and prebaked sprites built from this content
+			// are keyed by it, so repacking identical content keeps them and any change invalidates them.
+			var id = Convert.ToHexString(contentHash.GetHashAndReset())[..20].ToLowerInvariant();
+			pack.Add("ora/BUNDLE_ID", Encoding.UTF8.GetBytes(id));
+			Console.WriteLine($"bundle id {id}");
 		}
 
 		File.Move(output + ".tmp", output, true);
 		Console.WriteLine($"{output}: {count} files, {total / 1048576.0:F1} MB raw, {new FileInfo(output).Length / 1048576.0:F1} MB pack");
 
+		var outDir = Path.GetDirectoryName(Path.GetFullPath(output));
+
 		// The mod's own (licensed) audio: a separate pack plus a JSON index of byte offsets for lazy range reads.
-		var audioOut = Path.Combine(Path.GetDirectoryName(Path.GetFullPath(output)), "web-audio.pack");
+		var audio = Directory.EnumerateFiles(modDir, "*", SearchOption.AllDirectories)
+			.Where(f => AudioExtensions.Contains(Path.GetExtension(f)) && !f.Contains(Path.DirectorySeparatorChar + ".", StringComparison.Ordinal))
+			.OrderBy(f => f, StringComparer.Ordinal);
+		WriteLazyPack(Path.Combine(outDir, "web-audio.pack"), modDir, audio);
+		WriteLazyPack(Path.Combine(outDir, "web-art.pack"), modDir, art);
+		return 0;
+	}
+
+	/// <summary>A pack read by byte range (never downloaded whole), with a JSON index of each file's offset.</summary>
+	static void WriteLazyPack(string output, string modDir, IEnumerable<string> files)
+	{
 		var index = new StringBuilder("{\"files\":[");
-		var audioCount = 0;
-		long audioTotal = 0;
-		using (var fs = File.Create(audioOut + ".tmp"))
+		var count = 0;
+		long total = 0;
+		using (var fs = File.Create(output + ".tmp"))
 		using (var pack = new Pack.Writer(fs))
 		{
-			foreach (var f in Directory.EnumerateFiles(modDir, "*", SearchOption.AllDirectories).OrderBy(f => f, StringComparer.Ordinal))
+			foreach (var f in files)
 			{
-				if (!AudioExtensions.Contains(Path.GetExtension(f)) || f.Contains(Path.DirectorySeparatorChar + ".", StringComparison.Ordinal))
-					continue;
-
 				var rel = "mods/rtsai/" + Rel(modDir, f);
 				var data = File.ReadAllBytes(f);
 				var offset = fs.Position + 2 + Encoding.UTF8.GetByteCount(rel) + 4;
 				pack.Add(rel, data);
-				if (audioCount++ > 0)
+				if (count++ > 0)
 					index.Append(',');
 				index.Append($"{{\"path\":\"{rel}\",\"offset\":{offset},\"size\":{data.Length}}}");
-				audioTotal += data.Length;
+				total += data.Length;
 			}
 		}
 
 		index.Append("]}");
-		File.WriteAllText(Path.ChangeExtension(audioOut, ".json.tmp"), index.ToString());
-		File.Move(audioOut + ".tmp", audioOut, true);
-		File.Move(Path.ChangeExtension(audioOut, ".json.tmp"), Path.ChangeExtension(audioOut, ".json"), true);
-		Console.WriteLine($"{audioOut}: {audioCount} files, {audioTotal / 1048576.0:F1} MB (mounted lazily)");
-		return 0;
+		var json = Path.ChangeExtension(output, ".json");
+		File.WriteAllText(json + ".tmp", index.ToString());
+		File.Move(output + ".tmp", output, true);
+		File.Move(json + ".tmp", json, true);
+		Console.WriteLine($"{output}: {count} files, {total / 1048576.0:F1} MB (mounted lazily)");
 	}
 
 	static IEnumerable<string> Files(string dir)
@@ -169,7 +204,8 @@ static class Bundle
 		"ra2-bot-medium = Medium AI\n" +
 		"ra2-bot-rush = Rush AI\n" +
 		"ra2-bot-turtle = Turtle AI\n" +
-		"ra2-bot-naval = Naval AI\n";
+		"ra2-bot-naval = Naval AI\n" +
+		"web-idle = Idle AI\n";
 
 	// UI-only and lobby-only changes; nothing here alters unit, weapon or economy rules.
 	const string WebRules =

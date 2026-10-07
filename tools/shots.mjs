@@ -59,7 +59,7 @@ const shot = async (p, name) => { const f = path.join(out, name); await p.screen
     await until(p, (i) => window.store.getState().ui.queues.find((q) => q.type === "Building")?.items.find((x) => x.name === i && x.done), item, 150000);
     await p.evaluate((i) => window.game.command({ cmd: "produce", queue: "Building", item: i }), item);
     const yard = await until(p, () => { const s = window.game.client.cur; const a = s.actors.find((x) => x.owner === s.header.localPlayer && (x.flags & 8)); return a ? [a.sx, a.sy] : null; });
-    for (const [dx, dy] of [[150, 60], [-150, 60], [150, -60], [0, 150], [-220, 0], [220, 0], [0, -150], [300, 90]]) {
+    for (const [dx, dy] of [[150, 60], [-150, 60], [150, -60], [0, 150], [-220, 0], [220, 0], [0, -150], [300, 90], [-300, 90], [0, 260], [-300, -90], [300, -90], [0, -260], [380, 180], [-380, 180]]) {
       await p.evaluate(([x, y]) => window.game["click"](x, y, 1, 0), [yard[0] + dx, yard[1] + dy]);
       await p.waitForTimeout(400);
       if (await p.evaluate((i) => window.game.client.cur.actors.some((a) => window.game.client.str(a.type) === i), item)) return true;
@@ -69,6 +69,11 @@ const shot = async (p, name) => { const f = path.join(out, name); await p.screen
   };
   await build("gapowr");
   await build("gapile");
+  if (profile) {
+    // The standalone game is shot as players see it: a refinery and a radar bring the minimap (real terrain) online.
+    await build("garefn");
+    await build("gaairc");
+  }
   const inf = await until(p, () => window.store.getState().catalog.find((c) => c.type === "Infantry")?.items.filter((i) => i.buildable && i.name.startsWith("r2")).map((i) => i.name), null, 20000);
   if (inf?.length) {
     await p.evaluate((i) => window.game.command({ cmd: "produce", queue: "Infantry", item: i, count: 5 }), inf[0]);
@@ -87,6 +92,32 @@ const shot = async (p, name) => { const f = path.join(out, name); await p.screen
   });
   await p.waitForTimeout(1200);
   await shot(p, "2-skirmish-hud.png");
+
+  // Production tooltip on a cameo, then the hotkey sheet.
+  const cameo = await p.evaluate(() => {
+    const b = document.querySelector("button.cameo[data-queue='Infantry']")?.getBoundingClientRect();
+    return b ? [b.x + b.width / 2, b.y + b.height / 2] : null;
+  });
+  if (cameo) {
+    await p.mouse.move(cameo[0], cameo[1]);
+    await p.waitForTimeout(400);
+    await shot(p, "2b-tooltip.png");
+    await p.mouse.move(600, 400);
+  }
+  await p.keyboard.press("F1");
+  await p.waitForTimeout(300);
+  await shot(p, "2c-hotkeys.png");
+  await p.close();
+}
+
+// Victory screen with the end-of-game statistics (a short arena game: four tanks against three riflemen).
+{
+  const p = await page(`${base}&scenario=outcome`);
+  await phase(p, "playing");
+  const won = await until(p, () => window.store.getState().ui?.win === "Won", null, 180000);
+  await p.waitForTimeout(1500);
+  if (won) await shot(p, "5-victory.png");
+  else console.log("outcome: no victory within 180 s");
   await p.close();
 }
 

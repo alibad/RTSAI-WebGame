@@ -173,7 +173,7 @@ export class Game {
     this.audio.stop(-1);
     this.info = null;
     this.ui = null;
-    store.set({ phase: "setup", info: null, ui: null, catalog: [], menuOpen: false, preparedMap: null });
+    store.set({ phase: "setup", info: null, ui: null, catalog: [], menuOpen: false, keysOpen: false, preparedMap: null });
   }
 
   setPaused(paused: boolean) {
@@ -495,7 +495,7 @@ export class Game {
       const res = await fetch(new URL("api/verify", new URL("./", location.href)), {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ scenario: JSON.parse(this.scenarioJson), log: JSON.parse(logJson) }),
+        body: JSON.stringify({ scenario: JSON.parse(this.scenarioJson), log: JSON.parse(logJson), profile: store.get().profile || undefined }),
       });
       const r = await res.json();
       store.set({
@@ -635,8 +635,10 @@ export class Game {
     const k = e.key.toLowerCase();
     this.keys.add(k);
     if (e.key === "F2") { store.set({ statsOpen: !store.get().statsOpen }); e.preventDefault(); return; }
+    if (e.key === "F1" || e.key === "?") { store.set({ keysOpen: !store.get().keysOpen }); e.preventDefault(); return; }
     if (e.key === "Escape") {
-      if (this.ui?.mode) this.command({ cmd: "mode", mode: "none" });
+      if (store.get().keysOpen) store.set({ keysOpen: false });
+      else if (this.ui?.mode) this.command({ cmd: "mode", mode: "none" });
       else if (store.get().menuOpen) store.set({ menuOpen: false });
       else this.select([]);
       return;

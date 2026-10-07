@@ -40,14 +40,16 @@ console.log(run(process.execPath, ["tools/wasm-node.mjs", "--runtime", runtime, 
 console.log("Native (CoreCLR) run...");
 const websim = path.join(repo, "bin", `OpenRA.WebSim.Native${profile ? "-" + profile : ""}`, "Release", "net10.0", "websim.exe");
 const root = path.join(scratch, `vfs-native${profile ? "-" + profile : ""}`);
-if (profile) {
-  // The profile's native VFS root is the bundle alone (no private content), rebuilt whenever the bundle changes.
+{
+  // The native VFS root mirrors the browser's: the bundle and its art (plus the private RA2 files, except for a
+  // profile), rebuilt whenever the bundle changes.
   const pack = path.join(repo, "data", profile, "web-bundle.pack");
-  const stamp = path.join(scratch, `vfs-native-${profile}.stamp`);
+  const stamp = path.join(scratch, `vfs-native${profile ? "-" + profile : ""}.stamp`);
   const want = String(fs.statSync(pack).mtimeMs);
   if (!fs.existsSync(root) || !fs.existsSync(stamp) || fs.readFileSync(stamp, "utf8") !== want) {
     fs.rmSync(root, { recursive: true, force: true });
-    console.log(run(websim, ["unpack", "--pack", pack, "--root", root]).trim());
+    const priv = path.join(process.env.LOCALAPPDATA ?? os.tmpdir(), "RTSAI-WebGame", "private", "ra2-all.pack");
+    console.log(run(websim, ["unpack", "--pack", pack, "--root", root, ...(profile ? [] : ["--private", priv])]).trim());
     fs.writeFileSync(stamp, want);
   }
 }

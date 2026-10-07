@@ -8,7 +8,7 @@ import {
   textureUpdates, type FromWorker, type ToWorker,
 } from "./protocol";
 import { LazyMount, httpRangeReader, mountPack } from "./lazyfs";
-import { SpriteBake, hashString } from "./spritecache";
+import { fetchShippedSprites, SpriteBake, hashString } from "./spritecache";
 
 declare const self: DedicatedWorkerGlobalScope;
 
@@ -145,6 +145,7 @@ async function init(msg: Extract<ToWorker, { type: "init" }>) {
     spriteLoad: (key: string) => bake?.load(key) ?? new Uint8Array(0),
     spriteSaved: (key: string, table: Uint8Array, ids: ArrayLike<number>) => bake?.saved(key, table, ids),
     spriteRestored: (key: string, ids: ArrayLike<number>) => bake?.restored(key, ids),
+    textureFree: (id: number) => post({ type: "texturefree", id }),
     // Sheets committed by the engine go straight to the page (no copy kept in the WebAssembly heap).
     texture: (id: number, version: number, width: number, height: number, view: { slice(): Uint8Array }) => {
       const bytes = view.slice();
@@ -164,17 +165,25 @@ async function init(msg: Extract<ToWorker, { type: "init" }>) {
   // Files read straight from the downloaded bundle: nothing is copied into the WebAssembly heap.
   lazy = new LazyMount(runtimeApi.Module.FS);
   S.SetProgress();
-  mountPack(lazy, bundle, "/vfs");
+  const packFiles = mountPack(lazy, bundle, "/vfs");
+  // The bundle's content id (Bundle.cs): caches and prebaked sprites are keyed by it.
+  const idAt = packFiles.get("ora/BUNDLE_ID");
+  const bundleId = idAt ? new TextDecoder().decode(bundle.subarray(idAt[0], idAt[0] + idAt[1])).trim() : bundleTag;
+  // Prebaked sprite sheets shipped with a profile's data (websim bake), fetched while the engine loads its rules.
+  const shipped = msg.profile ? fetchShippedSprites(new URL(`data/${profileDir}sprites/`, base).href, bundleId) : Promise.resolve(null);
 
   let privateContent = false;
   let privateTag = "none";
-  // The mod's own (licensed) audio, fetched by byte range from web-audio.pack when a sound is first played.
-  const audioIndex = await fetch(new URL(`data/${profileDir}web-audio.json`, base));
-  if (audioIndex.ok) {
-    const { files } = (await audioIndex.json()) as { files: { path: string; offset: number; size: number }[] };
-    const read = httpRangeReader(new URL(`data/${profileDir}web-audio.pack`, base).href);
-    for (const f of files) lazy.add(`/vfs/${f.path}`, f.size, (s, e) => read(f.offset + s, f.offset + e));
-  }
+  // Read by byte range when first needed: the mod's own (licensed) audio when a sound first plays, and the large
+  // sprite art when a map's sprites are decoded (never, when its sheets are prebaked or cached).
+  const mount = lazy;
+  await Promise.all(["web-audio", "web-art"].map(async (name) => {
+    const index = await fetch(new URL(`data/${profileDir}${name}.json`, base));
+    if (!index.ok) return;
+    const { files } = (await index.json()) as { files: { path: string; offset: number; size: number }[] };
+    const read = httpRangeReader(new URL(`data/${profileDir}${name}.pack`, base).href);
+    for (const f of files) mount.add(`/vfs/${f.path}`, f.size, (s, e) => read(f.offset + s, f.offset + e));
+  }));
 
   if (msg.privateContent && !msg.profile) {
     // The player's own RA2 files: mounted lazily (only the chunks a game reads are fetched), local only.
@@ -191,12 +200,17 @@ async function init(msg: Extract<ToWorker, { type: "init" }>) {
     }
   }
 
-  bake = new SpriteBake(`${msg.profile ?? ""}|${bundleTag}|${privateTag}|ORASPR01`, (id, width, height, gz) =>
+  bake = new SpriteBake(`${msg.profile ?? ""}|${bundleId}|${privateTag}|ORASPR01`, (id, width, height, gz) =>
     post({ type: "texturegz", id, width, height, gz }));
   await bake.init();
 
   post({ type: "progress", stage: "Loading rules" });
   const timings = JSON.parse(S.Boot());
+  const shippedSprites = await shipped;
+  if (shippedSprites) {
+    for (const s of shippedSprites) bake.addShipped(s);
+    timings["sprites.shipped"] = shippedSprites.length;
+  }
   timings["worker.total"] = performance.now() - t0;
   timings["heap.ready"] = (runtimeApi.Module.HEAPU8.length / 1048576) | 0;
   post({ type: "ready", timings, runtimeMs, downloadBytes: resourceBytes(), setup: JSON.parse(S.Setup()), privateContent });

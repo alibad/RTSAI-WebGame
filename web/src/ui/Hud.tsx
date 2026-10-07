@@ -5,6 +5,8 @@ import { useMemo, useState } from "react";
 import type { Game } from "../game";
 import { percentile, useStore } from "../store";
 import { Sidebar } from "./Sidebar";
+import { Outcome } from "./Outcome";
+import { HotkeyButton, HotkeySheet } from "./Hotkeys";
 import { AttackMoveIcon, DeployIcon, GuardIcon, ScatterIcon, StopIcon } from "./icons";
 import { Button } from "../components/ui/button";
 import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "../components/ui/dropdown-menu";
@@ -165,7 +167,7 @@ function Stats({ game }: { game: Game }) {
         {row("Frame", `${p.fps.toFixed(0)} fps · ${p.frameMs.toFixed(2)} ms · ${p.draws} sprites`)}
         {row("Input → frame", p.latency.length ? `p50 ${percentile(p.latency, 0.5).toFixed(0)} · p95 ${percentile(p.latency, 0.95).toFixed(0)} ms` : "–")}
         {row("WASM heap", `${p.heapMB.toFixed(0)} MB (managed ${p.managedMB.toFixed(0)})`)}
-        {row("Private reads", lazy ? `${(lazy.fetchedBytes / 1048576).toFixed(0)} of ${(lazy.bytes / 1048576).toFixed(0)} MB` : "–")}
+        {row("Lazy reads", lazy ? `${(lazy.fetchedBytes / 1048576).toFixed(0)} of ${(lazy.bytes / 1048576).toFixed(0)} MB` : "–")}
         {row("World start", `${(startMs / 1000).toFixed(2)} s`)}
         {row("Map prepare", timings["prepare.total"] ? `${(timings["prepare.total"] / 1000).toFixed(2)} s` : "–")}
         {row("Late / missed", `${p.lateTicks} / ${p.missed}`)}
@@ -180,27 +182,12 @@ function Stats({ game }: { game: Game }) {
   );
 }
 
-function Outcome({ game }: { game: Game }) {
-  const win = useStore((s) => s.ui?.win ?? "Undefined");
-  if (win !== "Won" && win !== "Lost") return null;
-  return (
-    <div className="absolute inset-0 grid place-items-center bg-black/40" style={{ right: "var(--sidebar-w)" }}>
-      <div className="hud-panel flex flex-col items-center gap-4 px-10 py-7">
-        <div className={cn("text-[40px] font-black uppercase tracking-[0.2em]", win === "Won" ? "text-[var(--hud-gold)]" : "text-[var(--hud-red)]")}>
-          {win === "Won" ? "Victory" : "Defeat"}
-        </div>
-        <Button onClick={() => game.quit()}>Return</Button>
-      </div>
-    </div>
-  );
-}
-
 export function Hud({ game }: { game: Game }) {
   const statsOpen = useStore((s) => s.statsOpen);
   const paused = useStore((s) => s.paused);
   return (
     <>
-      <div className="absolute left-3 top-3 flex items-center gap-2"><GameMenu game={game} /></div>
+      <div className="absolute left-3 top-3 flex items-center gap-2"><GameMenu game={game} /><HotkeyButton /></div>
       {statsOpen && <Stats game={game} />}
       <div className="pointer-events-none absolute bottom-3 left-3 flex flex-col items-start gap-2 [&>*]:pointer-events-auto">
         <GroupBar game={game} />
@@ -213,6 +200,7 @@ export function Hud({ game }: { game: Game }) {
         <div className="pointer-events-none absolute left-1/2 top-6 -translate-x-1/2 text-[13px] font-semibold uppercase tracking-[0.3em] text-[var(--hud-gold)] drop-shadow-[0_1px_2px_#000]">Paused</div>
       )}
       <Sidebar game={game} />
+      <HotkeySheet />
       <Outcome game={game} />
     </>
   );

@@ -33,6 +33,7 @@ const tRuntime = performance.now() - t0;
 if (args["debug-fluent"]) { console.log("fluent:", S.DebugFluent()); process.exit(0); }
 
 S.Mount(new Uint8Array(fs.readFileSync(path.join(dataDir, "web-bundle.pack"))));
+if (fs.existsSync(path.join(dataDir, "web-art.pack"))) S.Mount(new Uint8Array(fs.readFileSync(path.join(dataDir, "web-art.pack"))));
 if (!profile) S.Mount(new Uint8Array(fs.readFileSync(privatePack)));
 const tMount = performance.now() - t0;
 const boot = JSON.parse(S.Boot());

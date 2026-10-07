@@ -303,6 +303,15 @@ export class Renderer {
 
   get textureCount() { return this.textures.size; }
 
+  /** The engine disposed this texture: its ids are never reused, so the GPU copy can go. */
+  freeTexture(id: number) {
+    const t = this.textures.get(id);
+    if (!t) return;
+    this.models.freeTarget(id);
+    this.gl.deleteTexture(t.tex);
+    this.textures.delete(id);
+  }
+
   /** A cameo as a PNG data URL, or null until its sheet and the palette are on the GPU. */
   renderIcon(s: IconSprite): string | null {
     return this.iconRaster.render(s, this.textures.get(s.tex)?.tex, this.palette?.tex, this.paletteRows);

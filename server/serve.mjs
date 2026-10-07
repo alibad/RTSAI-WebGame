@@ -217,15 +217,23 @@ async function verify(req, res) {
   fs.writeFileSync(scenarioFile, JSON.stringify(body.scenario));
   fs.writeFileSync(logFile, JSON.stringify(body.log));
 
-  const root = path.join(scratch, "vfs-native");
-  if (!fs.existsSync(root)) {
-    const r = await run(websim, ["unpack", "--pack", path.join(data, "web-bundle.pack"), "--private", path.join(privateDir, "ra2-all.pack"), "--root", root]);
+  // The native twin of the page's profile, on a VFS root rebuilt whenever the bundle changes (as tools/fidelity.mjs).
+  const profile = body.profile === "public" ? "public" : "";
+  const twin = profile ? websim.replace("OpenRA.WebSim.Native", `OpenRA.WebSim.Native-${profile}`) : websim;
+  const root = path.join(scratch, `vfs-native${profile ? "-" + profile : ""}`);
+  const stamp = root + ".stamp";
+  const pack = path.join(profile ? profiles[profile] : data, "web-bundle.pack");
+  const want = String(fs.statSync(pack).mtimeMs);
+  if (!fs.existsSync(root) || !fs.existsSync(stamp) || fs.readFileSync(stamp, "utf8") !== want) {
+    fs.rmSync(root, { recursive: true, force: true });
+    const r = await run(twin, ["unpack", "--pack", pack, "--root", root, ...(profile ? [] : ["--private", path.join(privateDir, "ra2-all.pack")])]);
     if (r.code !== 0) return json(res, { error: r.out.slice(-2000) });
+    fs.writeFileSync(stamp, want);
   }
 
   gpuYieldLine();
   const t0 = Date.now();
-  const r = await run(websim, ["run", "--root", root, "--scenario", scenarioFile, "--replay", logFile, "--ticks", String(browserHashes.length), "--hashes", hashFile],
+  const r = await run(twin, ["run", "--root", root, "--scenario", scenarioFile, "--replay", logFile, "--ticks", String(browserHashes.length), "--hashes", hashFile],
     { OPENRA_AI_HOST: "0" });
   if (r.code !== 0) return json(res, { error: r.out.slice(-2000) });
   const native = fs.readFileSync(hashFile, "utf8").trim().split(/\r?\n/).map((l) => Number(l.split(" ")[1]));
@@ -268,9 +276,10 @@ const server = http.createServer(async (req, res) => {
     }
     if (p.startsWith("/data/")) {
       const f = safeJoin(data, p.slice(6));
-      if (!f || !/\.(pack|json)$/.test(f) || /(measure|fidelity|verify|metrics)/.test(f)) return res.writeHead(404).end();
-      // The audio pack is read by byte range (lazily, per sound), so it is served uncompressed.
-      return sendFile(req, res, f, { compress: !/web-(audio|art)\.pack$/.test(f) });
+      if (!f || !/\.(pack|json|gz)$/.test(f) || /(measure|fidelity|verify|metrics)/.test(f)) return res.writeHead(404).end();
+      // The audio pack is read by byte range (lazily, per sound), so it is served uncompressed; prebaked sprite
+      // sheets (sprites/*.gz) are already compressed.
+      return sendFile(req, res, f, { compress: !/web-(audio|art)\.pack$|\.gz$/.test(f) });
     }
     if (p.startsWith("/private/")) {
       if (!isLocal(req)) return res.writeHead(403).end("local only");

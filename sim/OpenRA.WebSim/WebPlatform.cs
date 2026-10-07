@@ -172,10 +172,20 @@ namespace OpenRA.WebSim
 		/// <summary>A framebuffer's colour texture: the page renders into it (no pixel data here).</summary>
 		public bool IsRenderTarget { get; init; }
 
+		/// <summary>Set by the browser host: the page frees its GPU copy when the engine disposes a texture.</summary>
+		public static Action<int> Freed;
+
+		public bool Disposed { get; private set; }
+
 		public void Dispose()
 		{
+			if (Disposed)
+				return;
+
+			Disposed = true;
 			Data = null;
 			FloatData = null;
+			Freed?.Invoke(Id);
 		}
 	}
 
