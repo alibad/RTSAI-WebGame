@@ -7,7 +7,7 @@ import {
   RING_BYTES, RING_HEADER_BYTES, RING_LEN_AT, RING_SEQ_AT, RING_SLOTS, RING_SLOT_BYTES,
   textureUpdates, type FromWorker, type ToWorker,
 } from "./protocol";
-import { LazyMount, httpRangeReader } from "./lazyfs";
+import { LazyMount, httpRangeReader, mountPack } from "./lazyfs";
 
 declare const self: DedicatedWorkerGlobalScope;
 
@@ -106,9 +106,30 @@ async function init(msg: Extract<ToWorker, { type: "init" }>) {
   // waits for a thread handshake that never comes. Declare this worker a "sidecar" (a single-threaded host).
   (globalThis as unknown as { dotnetSidecar: boolean }).dotnetSidecar = true;
   const { dotnet } = await import(/* @vite-ignore */ runtimeUrl);
-  runtimeApi = await dotnet.withDiagnosticTracing(false).create();
+  // A soft heap limit makes the GC collect before growing the heap (WebAssembly memory never shrinks, so the
+  // high-water mark during loading is what the tab keeps).
+  runtimeApi = await dotnet.withDiagnosticTracing(false).withEnvironmentVariable("MONO_GC_PARAMS", msg.gcParams ?? "soft-heap-limit=200m").create();
   runtimeApi.setModuleImports("websim", {
     publish,
+    // Sounds the engine plays (WebSoundEngine): PCM once per source, then events; music as PCM chunks.
+    soundSource: (id: number, channels: number, bits: number, rate: number, view: { slice(): Uint8Array }) => {
+      const data = view.slice().buffer as ArrayBuffer;
+      post({ type: "audio", op: "source", id, channels, bits, rate, data }, [data]);
+    },
+    soundPlay: (sound: number, source: number, loop: boolean, relative: boolean, x: number, y: number, volume: number, attenuate: boolean) =>
+      post({ type: "audio", op: "play", sound, source, loop, relative, x, y, volume, attenuate }),
+    soundStream: (sound: number, channels: number, bits: number, rate: number, view: { slice(): Uint8Array }, end: boolean, volume: number) => {
+      const data = view.slice().buffer as ArrayBuffer;
+      post({ type: "audio", op: "stream", sound, channels, bits, rate, data, end, volume }, [data]);
+    },
+    soundStop: (sound: number) => post({ type: "audio", op: "stop", sound }),
+    soundVolume: (sound: number, volume: number) => post({ type: "audio", op: "volume", sound, volume }),
+    soundPause: (sound: number, paused: boolean) => post({ type: "audio", op: "pause", sound, paused }),
+    // Sheets committed by the engine go straight to the page (no copy kept in the WebAssembly heap).
+    texture: (id: number, version: number, width: number, height: number, view: { slice(): Uint8Array }) => {
+      const data = view.slice().buffer;
+      post({ type: "texture", id, version, width, height, kind: 0, data: data as ArrayBuffer }, [data as ArrayBuffer]);
+    },
     progress: (step: string) => post({ type: "progress", stage: step, detail: `${((performance.now() - t0) / 1000).toFixed(1)} s` }),
   });
   const config = runtimeApi.getConfig();
@@ -118,16 +139,26 @@ async function init(msg: Extract<ToWorker, { type: "init" }>) {
 
   const bundle = await fetchBytes(new URL("data/web-bundle.pack", base).href, "Downloading game data");
   post({ type: "progress", stage: "Mounting game data", detail: `${(bundle.length / 1048576).toFixed(1)} MB` });
-  S.Mount(bundle);
+  // Files read straight from the downloaded bundle: nothing is copied into the WebAssembly heap.
+  lazy = new LazyMount(runtimeApi.Module.FS);
+  S.SetProgress();
+  mountPack(lazy, bundle, "/vfs");
 
   let privateContent = false;
+  // The mod's own (licensed) audio, fetched by byte range from web-audio.pack when a sound is first played.
+  const audioIndex = await fetch(new URL("data/web-audio.json", base));
+  if (audioIndex.ok) {
+    const { files } = (await audioIndex.json()) as { files: { path: string; offset: number; size: number }[] };
+    const read = httpRangeReader(new URL("data/web-audio.pack", base).href);
+    for (const f of files) lazy.add(`/vfs/${f.path}`, f.size, (s, e) => read(f.offset + s, f.offset + e));
+  }
+
   if (msg.privateContent) {
     // The player's own RA2 files: mounted lazily (only the chunks a game reads are fetched), local only.
     const res = await fetch(new URL("private/manifest.json", base));
     if (res.ok) {
       const { files } = (await res.json()) as { files: { path: string; size: number }[] };
       if (files.length) {
-        lazy = new LazyMount(runtimeApi.Module.FS);
         for (const f of files)
           lazy.add(`/vfs/support/Content/ra2/${f.path}`, f.size, httpRangeReader(new URL(`private/files/${f.path.split("/").map(encodeURIComponent).join("/")}`, base).href));
         privateContent = true;
@@ -138,6 +169,7 @@ async function init(msg: Extract<ToWorker, { type: "init" }>) {
   post({ type: "progress", stage: "Loading rules" });
   const timings = JSON.parse(S.Boot());
   timings["worker.total"] = performance.now() - t0;
+  timings["heap.ready"] = (runtimeApi.Module.HEAPU8.length / 1048576) | 0;
   post({ type: "ready", timings, runtimeMs, downloadBytes: resourceBytes(), setup: JSON.parse(S.Setup()), privateContent });
 }
 
@@ -152,6 +184,7 @@ function start(scenario: string) {
   const t0 = performance.now();
   post({ type: "progress", stage: "Building the world" });
   const info = JSON.parse(S.Start(scenario));
+  info.timings["heap.started"] = (runtimeApi.Module.HEAPU8.length / 1048576) | 0;
   const terrain: Uint8Array = S.Terrain();
   const tbuf = terrain.slice().buffer;
   const radar: Uint8Array = S.RadarTerrain();
@@ -235,6 +268,7 @@ self.onmessage = async (e: MessageEvent<ToWorker>) => {
       case "prepare": {
         const t0 = performance.now();
         const timings = JSON.parse(S.Prepare(m.map));
+        timings["heap.prepared"] = (runtimeApi.Module.HEAPU8.length / 1048576) | 0;
         post({ type: "prepared", map: m.map, ms: performance.now() - t0, timings, lazy: lazy?.stats });
         break;
       }
@@ -264,13 +298,7 @@ self.onmessage = async (e: MessageEvent<ToWorker>) => {
       }
       case "cursor": post({ type: "cursor", cursor: S.Cursor(m.x | 0, m.y | 0, m.mods), seq: m.seq }); break;
       case "icons": {
-        for (const name of m.names) {
-          const b: Uint8Array = S.Icon(name);
-          if (b.length < 8) { post({ type: "icon", name, width: 0, height: 0, data: new ArrayBuffer(0) }); continue; }
-          const dv = new DataView(b.buffer, b.byteOffset, 8);
-          const data = b.slice(8).buffer;
-          post({ type: "icon", name, width: dv.getInt32(0, true), height: dv.getInt32(4, true), data }, [data]);
-        }
+        for (const name of m.names) post({ type: "icon", name, info: S.Icon(name) });
         break;
       }
       case "bench": {

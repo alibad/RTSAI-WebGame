@@ -1,13 +1,13 @@
-// In-game HUD around the battlefield: selection panel (portraits, health, veterancy), command bar, control
+﻿// In-game HUD around the battlefield: selection panel (portraits, health, veterancy), command bar, control
 // groups, game menu, victory/defeat and the developer stats panel (F2).
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import type { Game } from "../game";
 import { percentile, useStore } from "../store";
 import { Sidebar } from "./Sidebar";
 import { AttackMoveIcon, DeployIcon, GuardIcon, ScatterIcon, StopIcon } from "./icons";
 import { Button } from "../components/ui/button";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "../components/ui/dropdown-menu";
+import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "../components/ui/dropdown-menu";
 import { cn } from "../lib/utils";
 
 function HealthBar({ hp, max, className }: { hp: number; max: number; className?: string }) {
@@ -123,6 +123,8 @@ function GameMenu({ game }: { game: Game }) {
   const paused = useStore((s) => s.paused);
   const statsOpen = useStore((s) => s.statsOpen);
   const set = useStore((s) => s.set);
+  const [sound, setSound] = useState(game.audio.soundOn);
+  const [music, setMusic] = useState(game.audio.musicOn);
   return (
     <DropdownMenu>
       <DropdownMenuTrigger render={<Button variant="outline" size="icon" className="hud-panel size-[32px] rounded-[3px]" aria-label="Menu" />}>
@@ -131,6 +133,8 @@ function GameMenu({ game }: { game: Game }) {
       <DropdownMenuContent align="start" className="min-w-[180px]">
         <DropdownMenuItem onClick={() => game.setPaused(!paused)}>{paused ? "Resume" : "Pause"} <span className="ml-auto text-xs text-muted-foreground">P</span></DropdownMenuItem>
         <DropdownMenuItem onClick={() => set({ statsOpen: !statsOpen })}>Engine stats <span className="ml-auto text-xs text-muted-foreground">F2</span></DropdownMenuItem>
+        <DropdownMenuCheckboxItem checked={sound} onCheckedChange={(v) => { game.audio.setSoundOn(!!v); setSound(!!v); }}>Sound</DropdownMenuCheckboxItem>
+        <DropdownMenuCheckboxItem checked={music} onCheckedChange={(v) => { game.audio.setMusicOn(!!v); setMusic(!!v); }}>Music</DropdownMenuCheckboxItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem variant="destructive" onClick={() => game.quit()}>Leave game</DropdownMenuItem>
       </DropdownMenuContent>
@@ -152,16 +156,16 @@ function Stats({ game }: { game: Game }) {
       <dl className="grid grid-cols-[1fr_auto] gap-x-3 gap-y-[2px]">
         {row("Runtime", runtime === "aot" ? "AOT" : "Interpreter")}
         {row("Map", info?.map ?? "")}
-        {row("Tick", `${p.tick} · ${p.tps.toFixed(1)} tps`)}
+        {row("Tick", `${p.tick} Â· ${p.tps.toFixed(1)} tps`)}
         {row("SyncHash", (p.syncHash >>> 0).toString(16).padStart(8, "0"))}
         {row("World.Tick", `${p.engineTickMs.toFixed(2)} ms`)}
         {row("Tick + snapshot", `${p.simTickMs.toFixed(2)} ms`)}
-        {row("Frame", `${p.fps.toFixed(0)} fps · ${p.frameMs.toFixed(2)} ms · ${p.draws} sprites`)}
-        {row("Input → frame", p.latency.length ? `p50 ${percentile(p.latency, 0.5).toFixed(0)} · p95 ${percentile(p.latency, 0.95).toFixed(0)} ms` : "–")}
+        {row("Frame", `${p.fps.toFixed(0)} fps Â· ${p.frameMs.toFixed(2)} ms Â· ${p.draws} sprites`)}
+        {row("Input â†’ frame", p.latency.length ? `p50 ${percentile(p.latency, 0.5).toFixed(0)} Â· p95 ${percentile(p.latency, 0.95).toFixed(0)} ms` : "â€“")}
         {row("WASM heap", `${p.heapMB.toFixed(0)} MB (managed ${p.managedMB.toFixed(0)})`)}
-        {row("Private reads", lazy ? `${(lazy.fetchedBytes / 1048576).toFixed(0)} of ${(lazy.bytes / 1048576).toFixed(0)} MB` : "–")}
+        {row("Private reads", lazy ? `${(lazy.fetchedBytes / 1048576).toFixed(0)} of ${(lazy.bytes / 1048576).toFixed(0)} MB` : "â€“")}
         {row("World start", `${(startMs / 1000).toFixed(2)} s`)}
-        {row("Map prepare", timings["prepare.total"] ? `${(timings["prepare.total"] / 1000).toFixed(2)} s` : "–")}
+        {row("Map prepare", timings["prepare.total"] ? `${(timings["prepare.total"] / 1000).toFixed(2)} s` : "â€“")}
         {row("Late / missed", `${p.lateTicks} / ${p.missed}`)}
       </dl>
       <div className="mt-2 grid grid-cols-3 gap-1">

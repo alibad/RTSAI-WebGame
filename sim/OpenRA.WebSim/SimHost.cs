@@ -196,6 +196,16 @@ namespace OpenRA.WebSim
 			preparedMap = null;
 			Map map = null;
 			Time("prepare.map", () => map = LoadMap(Path.Combine(Root, "mods", ModId, "maps", mapName)));
+
+			// Sheets a sprite builder may still append to keep their CPU copy; the rest go to the page and are dropped.
+			var spriteCache = map.Sequences.SpriteCache;
+			WebTexture.MayReopen = t =>
+			{
+				foreach (var sb in spriteCache.SheetBuilders.Values)
+					if (sb.Current != null && SheetTexture(sb.Current) == t)
+						return true;
+				return false;
+			};
 			Time("prepare.loaders", () => ModData.InitializeLoaders(map));
 			Time("prepare.sprites", () => map.Sequences.LoadSprites());
 			Time("prepare.music", () =>
@@ -207,12 +217,19 @@ namespace OpenRA.WebSim
 			preparedMapName = mapName;
 		}
 
+		static readonly FieldInfo SheetTextureField = typeof(Sheet).GetField("texture", BindingFlags.NonPublic | BindingFlags.Instance);
+
+		/// <summary>A sheet's texture without committing it (GetTexture would upload pending data).</summary>
+		static ITexture SheetTexture(Sheet s) => (ITexture)SheetTextureField.GetValue(s);
+
 		/// <summary>Disposes the current game (world, renderer, order manager) so another can start.</summary>
 		public static void EndGame()
 		{
 			if (World == null)
 				return;
 
+			Game.Sound.StopAudio();
+			Game.Sound.StopMusic();
 			WorldRenderer?.Dispose();
 			World.Dispose();
 			OrderManager?.Dispose();
@@ -245,6 +262,13 @@ namespace OpenRA.WebSim
 
 			Time("start.world", () => World = OrderManager.World = new World(map, ModData, OrderManager, WorldType.Regular));
 			Time("start.worldrenderer", () => WorldRenderer = new WorldRenderer(ModData, World));
+			var wr = WorldRenderer;
+			WebSoundEngine.ToScreen = p =>
+			{
+				var px = wr.ScreenPxPosition(p);
+				return (px.X, px.Y);
+			};
+
 			Capture.ViewToWorld = (x, y) =>
 			{
 				var vp = WorldRenderer.Viewport;
@@ -334,6 +358,10 @@ namespace OpenRA.WebSim
 			// TickRender updates the screen map (mouse/selection lookups) and render-only state.
 			if (OrderManager.LocalFrameNumber > 0)
 				Sync.RunUnsynced(world, () => world.TickRender(WorldRenderer));
+
+			// Sound: music playlist and notification bookkeeping (Game.LogicTick does this on the desktop), music streams.
+			Sync.RunUnsynced(world, () => Game.Sound.Tick());
+			WebSoundEngine.Pump();
 
 			return ticked;
 		}
@@ -443,6 +471,8 @@ namespace OpenRA.WebSim
 					world.IssueOrder(o);
 				}
 
+				// WorldInteractionControllerWidget.ApplyOrders: acknowledge with the first voiced subject.
+				orders.PlayVoiceForOrders();
 				return orders.Length;
 			});
 		}

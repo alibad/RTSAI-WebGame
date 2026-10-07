@@ -243,7 +243,7 @@ export interface CatalogQueue { type: string; items: CatalogItem[] }
 
 // Messages between page and worker.
 export type ToWorker =
-  | { type: "init"; runtime: string; base: string; sab: SharedArrayBuffer | null; privateContent: boolean }
+  | { type: "init"; runtime: string; base: string; sab: SharedArrayBuffer | null; privateContent: boolean; gcParams?: string }
   | { type: "prepare"; map: string }
   | { type: "preview"; map: string }
   | { type: "start"; scenario: string }
@@ -271,8 +271,14 @@ export type FromWorker =
   | { type: "shroud"; cells: ArrayBuffer }
   | { type: "radar"; blips: ArrayBuffer }
   | { type: "reply"; req: number; json: string }
-  | { type: "icon"; name: string; width: number; height: number; data: ArrayBuffer }
+  | { type: "icon"; name: string; info: string }
   | { type: "modelbuffer"; id: number; data: ArrayBuffer }
+  | { type: "audio"; op: "source"; id: number; channels: number; bits: number; rate: number; data: ArrayBuffer }
+  | { type: "audio"; op: "play"; sound: number; source: number; loop: boolean; relative: boolean; x: number; y: number; volume: number; attenuate: boolean }
+  | { type: "audio"; op: "stream"; sound: number; channels: number; bits: number; rate: number; data: ArrayBuffer; end: boolean; volume: number }
+  | { type: "audio"; op: "stop"; sound: number }
+  | { type: "audio"; op: "volume"; sound: number; volume: number }
+  | { type: "audio"; op: "pause"; sound: number; paused: boolean }
   | { type: "cursor"; cursor: string; seq: number }
   | { type: "ordered"; count: number; t: number; tick: number }
   | { type: "bench"; ticks: number; ms: number }

@@ -22,7 +22,8 @@
     <WasmEnableSIMD>true</WasmEnableSIMD>
     <WasmFingerprintAssets>false</WasmFingerprintAssets>
     <WasmEmitSymbolMap>false</WasmEmitSymbolMap>
-    <EmccInitialHeapSize>268435456</EmccInitialHeapSize>
+    <!-- Start small and grow: WebAssembly memory never shrinks, so the initial size is a floor on the tab's footprint. -->
+    <EmccInitialHeapSize>67108864</EmccInitialHeapSize>
     <EmccMaximumHeapSize>4294901760</EmccMaximumHeapSize>
     <CompressionEnabled>false</CompressionEnabled>
     <GenerateDocumentationFile>false</GenerateDocumentationFile>

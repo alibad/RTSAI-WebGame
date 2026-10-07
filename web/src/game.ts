@@ -5,8 +5,10 @@
 import { Renderer, type Camera, type Overlay } from "./render/renderer";
 import { SimClient } from "./sim/client";
 import type { Actor, Snapshot, StartInfo, UiState } from "./sim/protocol";
+import type { IconSprite } from "./render/icons";
 import { store, type Perf } from "./store";
 import { cursorFor } from "./ui/cursors";
+import { AudioEngine } from "./audio";
 
 // OpenRA enums
 const MOD_SHIFT = 1, MOD_ALT = 2, MOD_CTRL = 4, MOD_META = 8;
@@ -31,6 +33,8 @@ export class Game {
   readonly renderer: Renderer;
   readonly client: SimClient;
   readonly radar = new RadarModel();
+  readonly audio = new AudioEngine();
+  private lastListener = 0;
   cam: Camera = { x: 0, y: 0, zoom: 1 };
   overlay: Overlay = { selected: new Set(), hover: null, dragBox: null, orderFlash: null, ownPlayer: -1 };
   info: StartInfo | null = null;
@@ -49,6 +53,7 @@ export class Game {
   private lastClick = { t: 0, id: -1 };
   private lastGroupTap = { t: 0, index: -1 };
   private iconRequested = new Set<string>();
+  private iconQueue = new Map<string, IconSprite>();
   private pendingLatency: { t0: number; tick: number; snapAt?: number } | null = null;
   private tickArrival = new Map<number, number>();
   private latency: number[] = [];
@@ -95,15 +100,8 @@ export class Game {
     });
     c.on("radar", (m) => { this.radar.blips = new Int32Array(m.blips); this.radar.bump(); });
     c.on("icon", (m) => {
-      let url: string | null = null;
-      if (m.width > 0) {
-        const canvas = document.createElement("canvas");
-        canvas.width = m.width;
-        canvas.height = m.height;
-        canvas.getContext("2d")!.putImageData(new ImageData(new Uint8ClampedArray(m.data), m.width, m.height), 0, 0);
-        url = canvas.toDataURL("image/png");
-      }
-      store.set({ icons: { ...store.get().icons, [m.name]: url } });
+      if (m.info) this.iconQueue.set(m.name, JSON.parse(m.info) as IconSprite);
+      else store.set({ icons: { ...store.get().icons, [m.name]: null } });
     });
     c.on("cursor", (m) => {
       if (m.seq !== this.cursorSeq) return;
@@ -122,6 +120,17 @@ export class Game {
       this.perf({ simTickMs: m.tickMs, tps: m.ticksPerSecond, lateTicks: m.lateTicks, heapMB: m.heapBytes / 1048576, managedMB: s.managedMB });
       if (m.lazy) store.set({ lazy: m.lazy });
     });
+    c.on("audio", (m) => {
+      const a = this.audio;
+      switch (m.op) {
+        case "source": a.source(m.id, m.channels, m.bits, m.rate, m.data); break;
+        case "play": a.play(m.sound, m.source, m.loop, m.relative, m.x, m.y, m.volume, m.attenuate); break;
+        case "stream": a.stream(m.sound, m.channels, m.bits, m.rate, m.data, m.end, m.volume); break;
+        case "stop": a.stop(m.sound); break;
+        case "volume": a.volume(m.sound, m.volume); break;
+        case "pause": a.pause(m.sound, m.paused); break;
+      }
+    });
     c.on("bench", (m) => store.set({ verify: `${m.ticks} ticks in ${m.ms.toFixed(0)} ms = ${(m.ms / m.ticks).toFixed(2)} ms/tick` }));
     c.on("log", (m) => this.verifyNative(m.json));
   }
@@ -132,7 +141,7 @@ export class Game {
 
   boot(runtime: string, privateContent: boolean) {
     store.set({ phase: "boot", runtime, stage: "Starting the engine", error: "" });
-    this.client.init(runtime, new URL("./", location.href).href, privateContent);
+    this.client.init(runtime, new URL("./", location.href).href, privateContent, new URLSearchParams(location.search).get("gc") ?? undefined);
   }
 
   prepare(map: string) {
@@ -159,6 +168,7 @@ export class Game {
 
   quit() {
     this.client.send({ type: "end" });
+    this.audio.stop(-1);
     this.info = null;
     this.ui = null;
     store.set({ phase: "setup", info: null, ui: null, catalog: [], menuOpen: false, preparedMap: null });
@@ -166,6 +176,7 @@ export class Game {
 
   setPaused(paused: boolean) {
     this.client.send({ type: "pause", paused });
+    this.audio.pause(-1, paused);
     store.set({ paused });
   }
 
@@ -203,6 +214,18 @@ export class Game {
     store.set(patch);
   }
 
+  /** Cameos whose sheet has reached the GPU are rendered and handed to the HUD (a few per frame). */
+  private rasterIcons() {
+    const done: Record<string, string> = {};
+    let n = 0;
+    for (const [name, sprite] of this.iconQueue) {
+      const url = this.renderer.renderIcon(sprite);
+      if (url) { done[name] = url; this.iconQueue.delete(name); }
+      if (++n >= 12) break;
+    }
+    if (Object.keys(done).length) store.set({ icons: { ...store.get().icons, ...done } });
+  }
+
   requestIcons(names: string[]) {
     const missing = [...new Set(names)].filter((n) => !this.iconRequested.has(n));
     if (!missing.length) return;
@@ -231,6 +254,8 @@ export class Game {
     const cur = this.client.cur;
     this.updateHover(cur);
     this.renderer.render(cur, this.client.prev, this.cam, this.overlay, performance.now());
+    if (this.iconQueue.size) this.rasterIcons();
+    if (now - this.lastListener > 100) { this.audio.setListener(this.cam.x, this.cam.y); this.lastListener = now; }
 
     const pl = this.pendingLatency;
     if (pl?.snapAt && cur) {

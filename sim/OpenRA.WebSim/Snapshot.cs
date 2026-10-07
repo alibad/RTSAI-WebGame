@@ -59,6 +59,18 @@ namespace OpenRA.WebSim
 		static readonly List<(IRenderable R, uint Key)> Renderables = [];
 		static readonly List<IRenderable> Others = [];
 		static readonly Dictionary<int, int> ModelBufferVersionsSent = [];
+		static readonly List<int> TextureQueue = [];
+		static int paletteTextureId = -1;
+
+		/// <summary>The host streamed this version to the page already (WebTexture.Stream).</summary>
+		public static void TextureStreamed(WebTexture t) => TextureVersionsSent[t.Id] = t.Version;
+
+		/// <summary>The page now has this texture's current version: drop our copy where safe (never the palette).</summary>
+		public static void TextureSent(int id)
+		{
+			if (id != paletteTextureId && id >= 0 && id < WebTexture.All.Count)
+				WebTexture.All[id].Sent();
+		}
 		static long[] sortKeys = new long[1024];
 		static readonly List<Actor> ViewActors = [];
 
@@ -81,7 +93,7 @@ namespace OpenRA.WebSim
 			StringIds.Clear();
 			Strings.Clear();
 			stringsSent = 0;
-			TextureVersionsSent.Clear();
+			// Textures stay on the page across games (and may have been streamed before this Reset): keep their versions.
 			TexturesOfInterest.Clear();
 			ModelBufferVersionsSent.Clear();
 			Capture.ModelBuffers.Clear();
@@ -547,10 +559,24 @@ namespace OpenRA.WebSim
 			MarkTexture(paletteTexture.Id);
 			var textureStart = pos;
 			var textureCount = 0;
-			foreach (var id in TexturesOfInterest)
+			paletteTextureId = paletteTexture.Id;
+
+			// Sheets drawn this tick first, then (a few per tick) every other sheet, so each sheet reaches the page
+			// once and our CPU copy can be dropped (WebTexture.Sent).
+			var extra = 0;
+			TextureQueue.Clear();
+			TextureQueue.AddRange(TexturesOfInterest);
+			foreach (var t in WebTexture.All)
+				if (t.Data != null && !t.IsRenderTarget && t.Size.Width > 0 && !TexturesOfInterest.Contains(t.Id))
+					TextureQueue.Add(t.Id);
+
+			foreach (var id in TextureQueue)
 			{
 				var tex = WebTexture.All[id];
 				if (TextureVersionsSent.TryGetValue(id, out var v) && v == tex.Version)
+					continue;
+
+				if (!TexturesOfInterest.Contains(id) && extra++ >= 3)
 					continue;
 
 				// The palette is re-uploaded every frame by RefreshPalette: only resend real changes.
@@ -574,7 +600,6 @@ namespace OpenRA.WebSim
 				TextureVersionsSent[id] = tex.Version;
 				textureCount++;
 			}
-
 			// New strings
 			var stringStart = pos;
 			var newStrings = Strings.Count - stringsSent;

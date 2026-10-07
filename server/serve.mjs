@@ -1,4 +1,4 @@
-// Local, private server for the RTS AI web game. Binds 127.0.0.1:3490 only.
+﻿// Local, private server for the RTS AI web game. Binds 127.0.0.1:3490 only.
 //   node server/serve.mjs
 // - Cross-origin isolation (COOP/COEP) so the page and worker can share a SharedArrayBuffer snapshot ring.
 // - /rt/aot|interp/  the .NET WebAssembly runtime + assemblies (sim/OpenRA.WebSim.Browser publish output).
@@ -258,7 +258,9 @@ const server = http.createServer(async (req, res) => {
     }
     if (p.startsWith("/data/")) {
       const f = safeJoin(data, p.slice(6));
-      return f && f.endsWith(".pack") ? sendFile(req, res, f) : res.writeHead(404).end();
+      if (!f || !/\.(pack|json)$/.test(f) || /(measure|fidelity|verify|metrics)/.test(f)) return res.writeHead(404).end();
+      // The audio pack is read by byte range (lazily, per sound), so it is served uncompressed.
+      return sendFile(req, res, f, { compress: !f.endsWith("web-audio.pack") });
     }
     if (p.startsWith("/private/")) {
       if (!isLocal(req)) return res.writeHead(403).end("local only");

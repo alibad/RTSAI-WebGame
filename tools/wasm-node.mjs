@@ -62,6 +62,8 @@ const stats = JSON.parse(S.Stats());
 console.log(`ticks ${ticks}: mean ${mean.toFixed(2)} p50 ${q(0.5).toFixed(2)} p95 ${q(0.95).toFixed(2)} max ${sorted.at(-1).toFixed(2)} ms` +
   (withSnapshot ? `; snapshots ${snapshots}, mean ${(snapshotBytes / Math.max(1, snapshots)).toFixed(0)} bytes` : ""));
 console.log(`heap ${(api.Module.HEAPU8.length / 1048576).toFixed(0)} MB wasm memory, managed ${stats.managedMB} MB, units ${stats.units}, ${stats.framework}`);
+console.log("stats", JSON.stringify(stats));
+if (args["textures"]) console.log("textures", S.TextureInfo());
 
 if (args["read"]) for (const f of args["read"].split(",")) console.log(`---- ${f}\n${S.ReadText(f)}`);
 if (args["players"]) console.log("players", JSON.stringify(info.players));

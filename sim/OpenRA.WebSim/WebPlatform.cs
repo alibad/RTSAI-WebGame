@@ -61,29 +61,51 @@ namespace OpenRA.WebSim
 			}
 		}
 
+		/// <summary>
+		/// Set by the browser host: hands a texture's new pixels to the page as soon as the engine commits them.
+		/// Returns true when the page took them, so no copy needs to be kept (unless the sheet may reopen).
+		/// </summary>
+		public static Func<WebTexture, byte[], bool> Stream;
+
 		public void SetData(byte[] colors, int width, int height)
 		{
-			if (colors == null)
-				Data = null;
-			else
-			{
-				if (Data == null || Data.Length != colors.Length)
-					Data = new byte[colors.Length];
-
-				Buffer.BlockCopy(colors, 0, Data, 0, colors.Length);
-			}
-
+			Released = false;
 			Size = new Size(width, height);
 			Version++;
+			if (colors == null)
+			{
+				Data = null;
+				return;
+			}
+
+			if (!IsRenderTarget && Stream != null && Stream(this, colors) && !MayReopen(this))
+			{
+				Data = null;
+				Released = true;
+				return;
+			}
+
+			if (Data == null || Data.Length != colors.Length)
+				Data = new byte[colors.Length];
+
+			Buffer.BlockCopy(colors, 0, Data, 0, colors.Length);
 		}
 
 		public void SetSubData(byte[] colors, int xoffset, int yoffset, int width, int height)
 		{
 			// Sheets pass their whole backing array along with the dirty region: copy that region's rows.
+			Released = false;
 			if (Data == null || Data.Length != colors.Length)
 			{
-				Data = (byte[])colors.Clone();
 				Version++;
+				if (Stream != null && Stream(this, colors) && !MayReopen(this))
+				{
+					Data = null;
+					Released = true;
+					return;
+				}
+
+				Data = (byte[])colors.Clone();
 				return;
 			}
 
@@ -109,7 +131,29 @@ namespace OpenRA.WebSim
 			if (Data != null)
 				return (byte[])Data.Clone();
 
+			if (Released)
+				DroppedReads++;
+
 			return new byte[4 * Size.Width * Size.Height];
+		}
+
+		/// <summary>Our copy was dropped after the page received it (the page keeps the pixels on the GPU).</summary>
+		public bool Released { get; private set; }
+
+		/// <summary>Reads of a dropped copy (would lose pixels; must stay 0 — watched in the stats).</summary>
+		public static int DroppedReads;
+
+		/// <summary>True for sheets the engine may still write to (a sheet builder's current sheet): never dropped.</summary>
+		public static Func<WebTexture, bool> MayReopen = _ => true;
+
+		/// <summary>Called after the page has this version: drops our copy unless the engine may reopen the sheet.</summary>
+		public void Sent()
+		{
+			if (Data == null || IsRenderTarget || MayReopen(this))
+				return;
+
+			Data = null;
+			Released = true;
 		}
 
 		public Size Size { get; private set; }
@@ -355,20 +399,127 @@ namespace OpenRA.WebSim
 		public void Dispose() { }
 	}
 
-	/// <summary>Silent sound engine. Phase 2 forwards Play2D calls to WebAudio on the page.</summary>
-	sealed class WebSoundEngine : ISoundEngine
+	/// <summary>
+	/// Hands sounds to the page (WebAudio): decoded PCM once per source, then play/stop/volume events. Music
+	/// streams are pumped in chunks from the tick loop (the engine's OpenAL backend does that on a thread).
+	/// Without a page (native runner) the callbacks are unset and it behaves like the silent null engine.
+	/// </summary>
+	public sealed class WebSoundEngine : ISoundEngine
 	{
-		public bool Dummy => true;
+		public interface IAudioSink
+		{
+			void Source(int id, int channels, int bits, int rate, ReadOnlySpan<byte> pcm);
+			void Play(int sound, int source, bool loop, bool relative, float x, float y, float volume, bool attenuate);
+			void Stream(int sound, int channels, int bits, int rate, ReadOnlySpan<byte> pcm, bool end, float volume);
+			void Stop(int sound);
+			void Volume(int sound, float volume);
+			void Pause(int sound, bool paused);
+		}
+
+		public static IAudioSink Sink;
+
+		/// <summary>World px of a position (set by the host once a world renderer exists).</summary>
+		public static Func<WPos, (float X, float Y)> ToScreen = p => (p.X, p.Y);
+
+		static int nextId;
+		static readonly List<WebSound> Streams = [];
+
+		public bool Dummy => Sink == null;
+		public float Volume { get; set; } = 1f;
 		public SoundDevice[] AvailableDevices() => [new SoundDevice(null, "Web")];
-		public ISoundSource AddSoundSourceFromMemory(byte[] data, int channels, int sampleBits, int sampleRate) => new WebSoundSource();
-		public ISound Play2D(ISoundSource soundSource, bool loop, bool relative, WPos pos, float volume, bool attenuateVolume) => new WebSound();
-		public ISound Play2DStream(Stream stream, int channels, int sampleBits, int sampleRate, bool loop, bool relative, WPos pos, float volume) => null;
-		public float Volume { get; set; }
-		public void PauseSound(ISound sound, bool paused) { }
-		public void SetAllSoundsPaused(bool paused) { }
-		public void SetSoundVolume(float volume, ISound music, ISound video) { }
-		public void StopSound(ISound sound) { }
-		public void StopAllSounds() { }
+
+		public ISoundSource AddSoundSourceFromMemory(byte[] data, int channels, int sampleBits, int sampleRate)
+		{
+			var s = new WebSoundSource(++nextId, data.Length / Math.Max(1, channels * sampleBits / 8 * sampleRate));
+			Sink?.Source(s.Id, channels, sampleBits, sampleRate, data);
+			return s;
+		}
+
+		public ISound Play2D(ISoundSource soundSource, bool loop, bool relative, WPos pos, float volume, bool attenuateVolume)
+		{
+			if (soundSource is not WebSoundSource src)
+				return null;
+
+			var sound = new WebSound(++nextId, loop ? double.MaxValue : src.Seconds) { Volume = volume };
+			var (x, y) = ToScreen(pos);
+			Sink?.Play(sound.Id, src.Id, loop, relative, x, y, volume, attenuateVolume);
+			return sound;
+		}
+
+		public ISound Play2DStream(Stream stream, int channels, int sampleBits, int sampleRate, bool loop, bool relative, WPos pos, float volume)
+		{
+			if (Sink == null)
+				return null;
+
+			var sound = new WebSound(++nextId, double.MaxValue) { Volume = volume, Stream = stream, Channels = channels, Bits = sampleBits, Rate = sampleRate };
+			Streams.Add(sound);
+			Pump();
+			return sound;
+		}
+
+		/// <summary>Sends each music stream''s next ~1.5 s of PCM (called every tick; the page queues the chunks).</summary>
+		public static void Pump()
+		{
+			for (var i = Streams.Count - 1; i >= 0; i--)
+			{
+				var s = Streams[i];
+				if (s.Stopped || s.Stream == null)
+				{
+					Streams.RemoveAt(i);
+					continue;
+				}
+
+				var bytesPerSecond = s.Channels * s.Bits / 8 * s.Rate;
+				if (s.SentSeconds - s.Elapsed > 3.0)
+					continue;
+
+				var buffer = new byte[bytesPerSecond * 3 / 2 / 4 * 4];
+				var n = 0;
+				for (int r; n < buffer.Length && (r = s.Stream.Read(buffer, n, buffer.Length - n)) > 0;)
+					n += r;
+				var end = n < buffer.Length;
+				s.SentSeconds += n / (double)bytesPerSecond;
+				Sink?.Stream(s.Id, s.Channels, s.Bits, s.Rate, buffer.AsSpan(0, n), end, s.Volume);
+				if (end)
+				{
+					s.Duration = s.SentSeconds;
+					s.Stream.Dispose();
+					s.Stream = null;
+					Streams.RemoveAt(i);
+				}
+			}
+		}
+
+		public void PauseSound(ISound sound, bool paused)
+		{
+			if (sound is WebSound s)
+				Sink?.Pause(s.Id, paused);
+		}
+
+		public void SetAllSoundsPaused(bool paused) => Sink?.Pause(-1, paused);
+
+		public void SetSoundVolume(float volume, ISound music, ISound video)
+		{
+			Volume = volume;
+			Sink?.Volume(-1, volume);
+		}
+
+		public void StopSound(ISound sound)
+		{
+			if (sound is WebSound s)
+			{
+				s.Stopped = true;
+				Sink?.Stop(s.Id);
+			}
+		}
+
+		public void StopAllSounds()
+		{
+			foreach (var s in Streams)
+				s.Stopped = true;
+			Sink?.Stop(-1);
+		}
+
 		public void SetListenerPosition(WPos position) { }
 		public void SetSoundLooping(bool looping, ISound sound) { }
 		public void SetSoundPosition(ISound sound, WPos position) { }
@@ -377,14 +528,49 @@ namespace OpenRA.WebSim
 
 	sealed class WebSoundSource : ISoundSource
 	{
+		public readonly int Id;
+		public readonly double Seconds;
+
+		public WebSoundSource(int id, double seconds)
+		{
+			Id = id;
+			Seconds = seconds;
+		}
+
 		public void Dispose() { }
 	}
 
 	sealed class WebSound : ISound
 	{
-		public float Volume { get; set; }
-		public float SeekPosition => 0;
-		public bool Complete => true;
+		public readonly int Id;
+		readonly System.Diagnostics.Stopwatch clock = System.Diagnostics.Stopwatch.StartNew();
+		public double Duration;
+		public bool Stopped;
+		public Stream Stream;
+		public int Channels, Bits, Rate;
+		public double SentSeconds;
+
+		public WebSound(int id, double duration)
+		{
+			Id = id;
+			Duration = duration;
+		}
+
+		public double Elapsed => clock.Elapsed.TotalSeconds;
+
+		float volume;
+		public float Volume
+		{
+			get => volume;
+			set
+			{
+				volume = value;
+				WebSoundEngine.Sink?.Volume(Id, value);
+			}
+		}
+
+		public float SeekPosition => (float)Elapsed;
+		public bool Complete => Stopped || (Stream == null && Elapsed >= Duration);
 		public void SetPosition(WPos position) { }
 	}
 }

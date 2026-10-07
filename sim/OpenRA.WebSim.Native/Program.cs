@@ -133,7 +133,7 @@ static class Program
 		foreach (var m in new[] { "sell", "repair", "attackmove", "guard", "none" })
 			Cmd($"{{\"cmd\":\"mode\",\"mode\":\"{m}\"}}");
 		Console.WriteLine($"capture: vertices {Capture.VertexCount} batches {Capture.BatchCount} model cmds {Capture.ModelCmdCount}; others {Snapshot.UnsupportedRenderables}");
-		Console.WriteLine("icon bytes: " + Ui.Icon(power).Length);
+		Console.WriteLine("icon: " + Ui.Icon(power));
 		return 0;
 	}
 

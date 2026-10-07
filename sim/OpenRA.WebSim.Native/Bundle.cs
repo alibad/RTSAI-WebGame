@@ -1,4 +1,4 @@
-#region Copyright & License Information
+﻿#region Copyright & License Information
 /*
  * Copyright (c) The OpenRA Developers and Contributors
  * This file is part of OpenRA, which is free software. It is made
@@ -25,9 +25,11 @@ static class Bundle
 {
 	static readonly HashSet<string> SkippedExtensions = new(StringComparer.OrdinalIgnoreCase)
 	{
-		// Audio is played by the page (WebAudio, phase 2) and is not needed by the simulation.
+		// Audio goes into web-audio.pack (mounted lazily, fetched by byte range when first played); video is unused.
 		".wav", ".aud", ".ogg", ".mp3", ".vqa", ".bik", ".md", ".pyc",
 	};
+
+	static readonly HashSet<string> AudioExtensions = new(StringComparer.OrdinalIgnoreCase) { ".wav", ".aud", ".ogg", ".mp3" };
 
 	public static int Build(Dictionary<string, string> opts)
 	{
@@ -83,6 +85,34 @@ static class Bundle
 		}
 
 		Console.WriteLine($"{output}: {count} files, {total / 1048576.0:F1} MB raw, {new FileInfo(output).Length / 1048576.0:F1} MB pack");
+
+		// The mod's own (licensed) audio: a separate pack plus a JSON index of byte offsets for lazy range reads.
+		var audioOut = Path.Combine(Path.GetDirectoryName(Path.GetFullPath(output)), "web-audio.pack");
+		var index = new StringBuilder("{\"files\":[");
+		var audioCount = 0;
+		long audioTotal = 0;
+		using (var fs = File.Create(audioOut))
+		using (var pack = new Pack.Writer(fs))
+		{
+			foreach (var f in Directory.EnumerateFiles(modDir, "*", SearchOption.AllDirectories).OrderBy(f => f, StringComparer.Ordinal))
+			{
+				if (!AudioExtensions.Contains(Path.GetExtension(f)) || f.Contains(Path.DirectorySeparatorChar + ".", StringComparison.Ordinal))
+					continue;
+
+				var rel = "mods/rtsai/" + Rel(modDir, f);
+				var data = File.ReadAllBytes(f);
+				var offset = fs.Position + 2 + Encoding.UTF8.GetByteCount(rel) + 4;
+				pack.Add(rel, data);
+				if (audioCount++ > 0)
+					index.Append(',');
+				index.Append($"{{\"path\":\"{rel}\",\"offset\":{offset},\"size\":{data.Length}}}");
+				audioTotal += data.Length;
+			}
+		}
+
+		index.Append("]}");
+		File.WriteAllText(Path.ChangeExtension(audioOut, ".json"), index.ToString());
+		Console.WriteLine($"{audioOut}: {audioCount} files, {audioTotal / 1048576.0:F1} MB (mounted lazily)");
 		return 0;
 	}
 

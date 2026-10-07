@@ -292,28 +292,20 @@ namespace OpenRA.WebSim
 				}
 
 				case "stop":
-					foreach (var a in OwnSelection(world))
-						world.IssueOrder(new Order("Stop", a, false));
+					Issue(world, OwnSelection(world).Select(a => new Order("Stop", a, false)));
 					break;
 
 				case "scatter":
-					foreach (var a in OwnSelection(world))
-						world.IssueOrder(new Order("Scatter", a, Bool("queued")));
+					Issue(world, OwnSelection(world).Select(a => new Order("Scatter", a, Bool("queued"))));
 					break;
 
 				case "deploy":
 				{
 					// CommandBarLogic.PerformDeployOrderOnSelection.
 					var queued = Bool("queued");
-					foreach (var a in OwnSelection(world))
-						foreach (var d in a.TraitsImplementing<IIssueDeployOrder>())
-							if (d.CanIssueDeployOrder(a, queued))
-							{
-								var o = d.IssueDeployOrder(a, queued);
-								if (o != null)
-									world.IssueOrder(o);
-							}
-
+					Issue(world, OwnSelection(world)
+						.SelectMany(a => a.TraitsImplementing<IIssueDeployOrder>().Where(d => d.CanIssueDeployOrder(a, queued)).Select(d => d.IssueDeployOrder(a, queued)))
+						.Where(o => o != null));
 					break;
 				}
 
@@ -334,6 +326,15 @@ namespace OpenRA.WebSim
 			}
 
 			return "{}";
+		}
+
+		/// <summary>Issues orders and plays the acknowledgement voice, like CommandBarLogic.</summary>
+		static void Issue(World world, IEnumerable<Order> orders)
+		{
+			var list = orders.ToArray();
+			foreach (var o in list)
+				world.IssueOrder(o);
+			list.PlayVoiceForOrders();
 		}
 
 		/// <summary>The selection after a control-group command, plus where the group is (for a double-tap camera jump).</summary>
@@ -359,32 +360,35 @@ namespace OpenRA.WebSim
 
 		/// <summary>
 		/// The build-palette cameo of an actor (its Buildable icon sequence in the producing faction's art and icon
-		/// palette, exactly what ProductionPaletteWidget draws) as RGBA pixels. Format: [w:int32][h:int32][rgba...].
-		/// Empty when the actor has no icon.
+		/// palette, exactly what ProductionPaletteWidget draws), as the sprite the page renders on the GPU:
+		/// {"tex","channel","uv":[l,t,r,b],"w","h","pal"} or "" when the actor has no icon.
 		/// </summary>
-		public static byte[] Icon(string actorName)
+		public static string Icon(string actorName)
 		{
 			var world = SimHost.World;
 			if (world == null || !world.Map.Rules.Actors.TryGetValue(actorName, out var info))
-				return [];
+				return "";
 
 			var bi = info.TraitInfoOrDefault<BuildableInfo>();
 			var rsi = info.TraitInfoOrDefault<RenderSpritesInfo>();
 			if (rsi == null)
-				return [];
+				return "";
 
 			var faction = Queues(Local).Select(q => q.Faction).FirstOrDefault() ?? Local?.Faction.InternalName;
 			var image = rsi.GetImage(info, faction);
 			var sequence = bi?.Icon ?? "icon";
 			if (!world.Map.Sequences.HasSequence(image, sequence))
-				return [];
+				return "";
 
 			var sprite = world.Map.Sequences.GetSequence(image, sequence).GetSprite(0);
 			var paletteName = bi == null ? "chrome" : bi.IconPaletteIsPlayerPalette ? bi.IconPalette + Local.InternalName : bi.IconPalette;
-			var palette = SimHost.WorldRenderer.Palette(paletteName).Palette;
-			return Rasterise(sprite, palette);
+			var palette = SimHost.WorldRenderer.Palette(paletteName);
+			var tex = Snapshot.TextureId(sprite.Sheet);
+			Snapshot.MarkTexture(tex);
+			var inv = System.Globalization.CultureInfo.InvariantCulture;
+			return $"{{\"tex\":{tex},\"channel\":{(int)sprite.Channel},\"uv\":[{sprite.Left.ToString(inv)},{sprite.Top.ToString(inv)},{sprite.Right.ToString(inv)},{sprite.Bottom.ToString(inv)}]," +
+				$"\"w\":{sprite.Bounds.Width},\"h\":{sprite.Bounds.Height},\"pal\":{palette.TextureIndex}}}";
 		}
-
 		/// <summary>CPU copy of a sprite's pixels (palette-resolved for indexed sheets) as [w][h][rgba...].</summary>
 		public static byte[] Rasterise(Sprite sprite, IPalette palette)
 		{

@@ -12,6 +12,7 @@
 using System;
 using System.Diagnostics;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Runtime.InteropServices.JavaScript;
 using System.Runtime.Versioning;
 using Linguini.Bundle;
@@ -41,6 +42,58 @@ namespace OpenRA.WebSim.Browser
 
 		[JSImport("progress", "websim")]
 		static partial void Progress(string step);
+
+		[JSImport("soundSource", "websim")]
+		static partial void SoundSource(int id, int channels, int bits, int rate, [JSMarshalAs<JSType.MemoryView>] Span<byte> pcm);
+
+		[JSImport("soundPlay", "websim")]
+		static partial void SoundPlay(int sound, int source, bool loop, bool relative, double x, double y, double volume, bool attenuate);
+
+		[JSImport("soundStream", "websim")]
+		static partial void SoundStream(int sound, int channels, int bits, int rate, [JSMarshalAs<JSType.MemoryView>] Span<byte> pcm, bool end, double volume);
+
+		[JSImport("soundStop", "websim")]
+		static partial void SoundStop(int sound);
+
+		[JSImport("soundVolume", "websim")]
+		static partial void SoundVolume(int sound, double volume);
+
+		[JSImport("soundPause", "websim")]
+		static partial void SoundPause(int sound, bool paused);
+
+		sealed class AudioSink : WebSoundEngine.IAudioSink
+		{
+			public void Source(int id, int channels, int bits, int rate, ReadOnlySpan<byte> pcm) => SoundSource(id, channels, bits, rate, MemoryMarshal.CreateSpan(ref MemoryMarshal.GetReference(pcm), pcm.Length));
+			public void Play(int sound, int source, bool loop, bool relative, float x, float y, float volume, bool attenuate) => SoundPlay(sound, source, loop, relative, x, y, volume, attenuate);
+			public void Stream(int sound, int channels, int bits, int rate, ReadOnlySpan<byte> pcm, bool end, float volume) => SoundStream(sound, channels, bits, rate, MemoryMarshal.CreateSpan(ref MemoryMarshal.GetReference(pcm), pcm.Length), end, volume);
+			public void Stop(int sound) => SoundStop(sound);
+			public void Volume(int sound, float volume) => SoundVolume(sound, volume);
+			public void Pause(int sound, bool paused) => SoundPause(sound, paused);
+		}
+
+		[JSImport("texture", "websim")]
+		static partial void StreamTexture(int id, int version, int width, int height, [JSMarshalAs<JSType.MemoryView>] Span<byte> data);
+
+		/// <summary>Routes load-step progress to the page (Mount does this too; the worker mounts files itself).</summary>
+		[JSExport]
+		public static void SetProgress()
+		{
+			SimHost.OnProgress = Progress;
+			WebSoundEngine.Sink = new AudioSink();
+
+			// Sheets go to the page as soon as the engine commits them (during map preparation, on the setup
+			// screen), so the WebAssembly heap keeps no copy of them.
+			WebTexture.Stream = (t, data) =>
+			{
+				// Sprite and terrain sheets only (the palette changes every frame and is sent when it really changes).
+				if (t.Size.Width < 512 || t.Size.Height < 512)
+					return false;
+
+				StreamTexture(t.Id, t.Version, t.Size.Width, t.Size.Height, data.AsSpan(0, Math.Min(data.Length, 4 * t.Size.Width * t.Size.Height)));
+				Snapshot.TextureStreamed(t);
+				return true;
+			};
+		}
 
 		[JSExport]
 		public static int Mount(byte[] pack)
@@ -97,9 +150,9 @@ namespace OpenRA.WebSim.Browser
 		[JSExport]
 		public static string Command(string json) => Ui.Command(json);
 
-		/// <summary>A cameo as [w][h][rgba...] (empty when the actor has no icon).</summary>
+		/// <summary>A cameo sprite (sheet, channel, uv, size, palette row) as JSON, or "" when the actor has none.</summary>
 		[JSExport]
-		public static byte[] Icon(string actor) => Ui.Icon(actor);
+		public static string Icon(string actor) => Ui.Icon(actor);
 
 		/// <summary>Shroud cells (0/1/2) when changed since the last call, else empty.</summary>
 		[JSExport]
@@ -114,6 +167,10 @@ namespace OpenRA.WebSim.Browser
 
 		[JSExport]
 		public static void MouseMove(int x, int y) => SimHost.MouseMove(new int2(x, y));
+
+		/// <summary>Debugging: every texture as id:widthxheight:MB(:rt).</summary>
+		[JSExport]
+		public static string TextureInfo() => string.Join(" ", WebTexture.All.Select(t => $"{t.Id}:{t.Size.Width}x{t.Size.Height}:{(t.Data?.Length ?? 0) / 1048576.0:F0}{(t.IsRenderTarget ? ":rt" : "")}"));
 
 		/// <summary>Ids of model vertex buffers changed since they were last fetched, comma separated.</summary>
 		[JSExport]
@@ -153,7 +210,9 @@ namespace OpenRA.WebSim.Browser
 		public static byte[] Texture(int id)
 		{
 			var t = WebTexture.All[id];
-			return t.Data ?? [];
+			var data = t.Data ?? [];
+			Snapshot.TextureSent(id);
+			return data;
 		}
 
 		[JSExport]
@@ -231,7 +290,9 @@ namespace OpenRA.WebSim.Browser
 				$"\"managedMB\":{GC.GetTotalMemory(false) / 1048576.0:F1}," +
 				$"\"tick\":{world?.WorldTick ?? 0}," +
 				$"\"units\":{units}," +
-				$"\"textures\":{WebTexture.All.Count}," +
+				$"\"textures\":{WebTexture.All.Count},\"textureMB\":{WebTexture.All.Sum(t => (long)(t.Data?.Length ?? 0)) / 1048576.0:F1}," +
+				$"\"droppedReads\":{WebTexture.DroppedReads},\"heapSizeMB\":{GC.GetGCMemoryInfo().HeapSizeBytes / 1048576.0:F1},\"fragmentedMB\":{GC.GetGCMemoryInfo().FragmentedBytes / 1048576.0:F1}," +
+				$"\"totalAllocatedMB\":{GC.GetTotalAllocatedBytes() / 1048576.0:F0}," +
 				$"\"framework\":\"{System.Runtime.InteropServices.RuntimeInformation.FrameworkDescription}\"" +
 				"}";
 		}

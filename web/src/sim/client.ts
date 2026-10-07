@@ -67,8 +67,8 @@ export class SimClient {
     return this.request<T>({ type: "command", json: JSON.stringify(cmd) });
   }
 
-  init(runtime: string, base: string, privateContent: boolean) {
-    this.send({ type: "init", runtime, base, sab: this.sab, privateContent });
+  init(runtime: string, base: string, privateContent: boolean, gcParams?: string) {
+    this.send({ type: "init", runtime, base, sab: this.sab, privateContent, gcParams });
   }
 
   start(scenario: string) {

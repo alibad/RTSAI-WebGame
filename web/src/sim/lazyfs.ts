@@ -1,4 +1,4 @@
-// Lazily mounted files in the .NET runtime's in-memory filesystem (Emscripten FS): the file exists with its full
+﻿// Lazily mounted files in the .NET runtime's in-memory filesystem (Emscripten FS): the file exists with its full
 // size, but its bytes are fetched in 256 KB chunks on first read (synchronous range requests, allowed in workers)
 // and kept in a bounded LRU cache. Used for the player's private RA2 files, of which a game reads only a fraction.
 // Emscripten's own createLazyFile copies byte by byte; this copies chunks with typed-array sets.
@@ -40,8 +40,13 @@ export class LazyMount {
     return data;
   }
 
+  /** A file served from memory that is already in JS (no chunk cache). */
+  addDirect(path: string, size: number, read: RangeReader) {
+    this.add(path, size, read, false);
+  }
+
   /** Creates `path` (absolute, inside the runtime FS) of `size` bytes whose content comes from `read`. */
-  add(path: string, size: number, read: RangeReader) {
+  add(path: string, size: number, read: RangeReader, cached = true) {
     const FS = this.FS;
     const slash = path.lastIndexOf("/");
     const dir = path.slice(0, slash);
@@ -59,7 +64,7 @@ export class LazyMount {
       while (done < n) {
         const pos = position + done;
         const index = Math.floor(pos / CHUNK);
-        const c = this.chunk(path, index, size, read);
+        const c = cached ? this.chunk(path, index, size, read) : read(index * CHUNK, Math.min(size, (index + 1) * CHUNK));
         const off = pos - index * CHUNK;
         const take = Math.min(n - done, c.length - off);
         dst.set(c.subarray(off, off + take), done);
@@ -70,9 +75,36 @@ export class LazyMount {
     ops.write = () => { throw new FS.ErrnoError(30); }; // EROFS
     ops.mmap = () => { throw new FS.ErrnoError(19); }; // ENODEV: callers fall back to read
     node.stream_ops = ops;
-    this.stats.files++;
-    this.stats.bytes += size;
+    if (cached) {
+      this.stats.files++;
+      this.stats.bytes += size;
+    }
   }
+}
+
+/**
+ * Mounts every file of an ORAPACK1 bundle (sim/OpenRA.WebSim/Pack.cs) as a file that reads straight from the
+ * downloaded buffer, so the bundle is not copied into the WebAssembly heap.
+ */
+export function mountPack(mount: LazyMount, pack: Uint8Array, root: string) {
+  const dv = new DataView(pack.buffer, pack.byteOffset, pack.byteLength);
+  const magic = new TextDecoder().decode(pack.subarray(0, 8));
+  if (magic !== "ORAPACK1") throw new Error("not an ORAPACK1 bundle");
+  const count = dv.getInt32(8, true);
+  const dec = new TextDecoder();
+  let p = 12;
+  for (let i = 0; i < count; i++) {
+    const nameLength = dv.getUint16(p, true);
+    p += 2;
+    const name = dec.decode(pack.subarray(p, p + nameLength));
+    p += nameLength;
+    const length = dv.getInt32(p, true);
+    p += 4;
+    const start = p;
+    mount.addDirect(`${root}/${name}`, length, (s, e) => pack.subarray(start + s, start + e));
+    p += length;
+  }
+  return count;
 }
 
 /** Synchronous HTTP range reads (workers only). */

@@ -5,6 +5,7 @@
 import { COLOR_FS, COLOR_VS, COMBINED_FS, SHROUD_FS, SHROUD_VS, SPRITE_VS, TERRAIN_VS } from "./shaders";
 import { DRAW_BYTES, type Actor, type Snapshot, type SpriteInfo, type StartInfo } from "../sim/protocol";
 import { ModelPass } from "./models";
+import { IconRaster, type IconSprite } from "./icons";
 
 export interface Camera {
   x: number; // world px at the canvas centre
@@ -72,6 +73,7 @@ export class Renderer {
   private shroudSize: [number, number] = [0, 0];
   private shroudAllVisible = true;
   readonly models: ModelPass;
+  private iconRaster: IconRaster;
   private capVao: WebGLVertexArrayObject;
   private capVbo: WebGLBuffer;
   private capIbo: WebGLBuffer;
@@ -108,6 +110,7 @@ export class Renderer {
     this.colorProg = compile(gl, COLOR_VS, COLOR_FS);
     this.shroudProg = compile(gl, SHROUD_VS, SHROUD_FS);
     this.models = new ModelPass(gl);
+    this.iconRaster = new IconRaster(gl);
 
     // Captured engine vertices (OpenRA.Graphics.Vertex, the terrain layout) drawn as indexed quads.
     this.capVao = gl.createVertexArray()!;
@@ -297,6 +300,11 @@ export class Renderer {
   }
 
   get textureCount() { return this.textures.size; }
+
+  /** A cameo as a PNG data URL, or null until its sheet and the palette are on the GPU. */
+  renderIcon(s: IconSprite): string | null {
+    return this.iconRaster.render(s, this.textures.get(s.tex)?.tex, this.palette?.tex, this.paletteRows);
+  }
 
   setModelBuffer(id: number, data: ArrayBuffer) {
     this.models.setBuffer(id, data);
