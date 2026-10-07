@@ -39,6 +39,7 @@ const runtimeDir = (profile, runtime) => path.join(profile ? profiles[profile] :
 const MIME = {
   ".html": "text/html; charset=utf-8", ".js": "text/javascript", ".mjs": "text/javascript", ".css": "text/css",
   ".json": "application/json", ".wasm": "application/wasm", ".map": "application/json", ".svg": "image/svg+xml",
+  ".webmanifest": "application/manifest+json",
   ".png": "image/png", ".webp": "image/webp", ".ogg": "audio/ogg", ".wav": "audio/wav", ".mp3": "audio/mpeg",
   ".pack": "application/octet-stream", ".dat": "application/octet-stream", ".pdb": "application/octet-stream",
 };
