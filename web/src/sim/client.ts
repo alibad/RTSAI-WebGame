@@ -21,8 +21,12 @@ export class SimClient {
   private pending: { bytes: Uint8Array; seq: number }[] = [];
   /** Longest time a cached sprite sheet took to inflate and upload (ms). */
   sheetMs = 0;
-  /** Prebaked sheets of the prepared map: how many there are and how many are on the GPU. */
-  sheets = { total: 0, uploaded: 0 };
+  /** Prebaked sheets of the prepared map, by pack group; the factions the game will show (null: all). */
+  private sheetList: { id: number; group: string }[] = [];
+  private wanted: string[] | null = [];
+  private gate: string[] | null = [];
+  private requested = new Set<number>();
+  /** Sheets the game needs (shared + its factions) and how many of them are on the GPU. */
   onSheets: (uploaded: number, total: number) => void = () => {};
   private handlers = new Map<string, ((m: FromWorker) => void)[]>();
   private replies = new Map<number, (json: string) => void>();
@@ -74,7 +78,8 @@ export class SimClient {
   }
 
   init(runtime: string, base: string, privateContent: boolean, gcParams?: string, profile?: string) {
-    this.send({ type: "init", runtime, base, sab: this.sab, privateContent, gcParams, profile });
+    this.send({ type: "init", runtime, base, sab: this.sab, privateContent, gcParams, profile,
+      rtBase: import.meta.env.VITE_RT_BASE || undefined, dataBase: import.meta.env.VITE_DATA_BASE || undefined });
   }
 
   start(scenario: string, paused = false, companion = false) {
@@ -84,6 +89,32 @@ export class SimClient {
     this.pending = [];
     this.renderer.resetSprites();
     this.send({ type: "start", scenario, paused, companion });
+  }
+
+  /** The factions the game will show (null: not known, e.g. a random faction): their sheets are fetched now. */
+  /**
+   * `groups`: the factions to fetch now (null: all). `gate`: those the game waits for (the local player's: the others
+   * are out of sight when a game starts and arrive moments later); null: all of `groups`.
+   */
+  wantGroups(groups: string[] | null, gate: string[] | null = groups) {
+    this.wanted = groups;
+    this.gate = gate;
+    this.send({ type: "sheetGroups", groups, first: gate ?? undefined });
+    this.sheetProgress();
+  }
+
+  /** A sprite whose sheet is missing was drawn (a faction outside the wanted ones): fetch that sheet. */
+  needSheet(id: number) {
+    if (this.requested.has(id) || !this.sheetList.some((s) => s.id === id)) return;
+    this.requested.add(id);
+    this.send({ type: "needSheets", ids: [id] });
+  }
+
+  private sheetProgress() {
+    // What a game waits for: shared sheets and its factions' (effects load meanwhile, never waited for).
+    const gate = this.gate === null ? this.wanted : this.gate;
+    const wanted = this.sheetList.filter((s) => s.group !== "fx" && (s.group === "" || gate === null || gate.includes(s.group)));
+    this.onSheets(wanted.filter((s) => this.renderer.hasTexture(s.id)).length, wanted.length);
   }
 
   private handle(m: FromWorker) {
@@ -97,17 +128,31 @@ export class SimClient {
       case "texturefree":
         this.renderer.freeTexture(m.id);
         return;
-      case "sheets":
-        if (m.done === 0) this.sheets = { total: m.total, uploaded: 0 };
-        this.onSheets(this.sheets.uploaded, this.sheets.total);
+      case "sheetList":
+        this.sheetList = m.sheets;
+        this.requested.clear();
+        this.sheetProgress();
         return;
+      case "texturebin": {
+        const src = new Uint8Array(m.data);
+        let rgba = src;
+        if (m.planar) {
+          // Plane after plane -> interleaved RGBA.
+          const px = m.width * m.rows;
+          rgba = new Uint8Array(px * 4);
+          const r = src.subarray(0, px), g = src.subarray(px, 2 * px), b = src.subarray(2 * px, 3 * px), a = src.subarray(3 * px, 4 * px);
+          for (let p = 0, o = 0; p < px; p++, o += 4) { rgba[o] = r[p]; rgba[o + 1] = g[p]; rgba[o + 2] = b[p]; rgba[o + 3] = a[p]; }
+        }
+        this.renderer.uploadSheetRows(m.id, m.width, m.height, m.rows, rgba);
+        this.sheetProgress();
+        return;
+      }
       case "texturegz": {
         const t0 = performance.now();
         gunzipSheet(m.gz).then((data) => {
           this.renderer.uploadTexture(m.id, 1, m.width, m.height, 0, data.buffer as ArrayBuffer);
           this.sheetMs = Math.max(this.sheetMs, performance.now() - t0);
-          this.sheets.uploaded++;
-          this.onSheets(this.sheets.uploaded, this.sheets.total);
+          this.sheetProgress();
         }).catch((e) => console.warn("sprite cache: sheet inflate failed", e));
         return;
       }

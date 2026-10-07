@@ -46,8 +46,16 @@ function sheetSizes(table: Uint8Array) {
 
 export interface BakeStats { restored: number; saved: number; bytes: number; ms: number }
 
-/** A packing baked ahead of time and shipped with the data (websim bake): its table, and where its sheets are. */
-export interface ShippedPacking { key: string; table: Uint8Array; sheets: { width: number; height: number; url: string }[] }
+/**
+ * A packing baked ahead of time and shipped with the data (websim bake): its table, and where its sheets are. Each
+ * sheet holds one pack group (a faction's sprites, or "" for shared ones) and only its used rows; indexed sheets are
+ * stored plane after plane (planar). The host compresses them (brotli); the browser inflates them natively.
+ */
+export interface ShippedSheet { width: number; height: number; rows: number; planar: boolean; group: string; url: string }
+export interface ShippedPacking { key: string; table: Uint8Array; sheets: ShippedSheet[]; early: Map<string, Promise<Response>> }
+
+/** A shipped sheet's raw bytes, for the page to upload (it re-interleaves planar ones). */
+export interface SheetBytes { id: number; width: number; height: number; rows: number; planar: boolean; data: ArrayBuffer }
 
 /**
  * Reads data/<profile>/sprites/index.json and the tables of every packing baked from exactly this bundle; sheets
@@ -57,18 +65,22 @@ export async function fetchShippedSprites(dir: string, bundleId: string): Promis
   try {
     const res = await fetch(new URL("index.json", dir));
     if (!res.ok) return null;
-    const index = await res.json() as { format: string; bundle: string; packings: Record<string, { sheets: { width: number; height: number }[] }> };
+    const index = await res.json() as { format: string; bundle: string; packings: Record<string, { sheets: Omit<ShippedSheet, "url">[] }> };
     if (index.format !== "ORASPR01" || index.bundle !== bundleId) {
       console.warn(`sprite cache: shipped sheets are for bundle ${index.bundle}, not ${bundleId}; ignored`);
       return null;
     }
     return await Promise.all(Object.entries(index.packings).map(async ([key, p]) => {
-      const t = await fetch(new URL(`${key}.table.gz`, dir));
-      if (!t.ok) throw new Error(`${key}.table.gz: HTTP ${t.status}`);
+      // The shared sheets are requested now, while the engine is still loading (they are needed for any game).
+      const early = new Map<string, Promise<Response>>();
+      p.sheets.forEach((sh, i) => { if (!sh.group) { const url = new URL(`${key}.${i}.bin`, dir).href; early.set(url, fetch(url)); } });
+      const t = await fetch(new URL(`${key}.table.bin`, dir));
+      if (!t.ok) throw new Error(`${key}.table.bin: HTTP ${t.status}`);
       return {
         key,
-        table: await gunzip(await t.blob()),
-        sheets: p.sheets.map((sh, i) => ({ ...sh, url: new URL(`${key}.${i}.gz`, dir).href })),
+        table: new Uint8Array(await t.arrayBuffer()),
+        sheets: p.sheets.map((sh, i) => ({ ...sh, group: sh.group ?? "", url: new URL(`${key}.${i}.bin`, dir).href })),
+        early,
       };
     }));
   } catch (e) {
@@ -83,6 +95,17 @@ export class SpriteBake {
   private shipped = new Map<string, ShippedPacking>();
   /** Restore progress (sheets handed to the page, of all), for the page's loading state. */
   onProgress: (done: number, total: number) => void = () => {};
+  /** Shipped sheets: the restored packing's sheet ids and groups (the page decides which it needs). */
+  onSheetList: (sheets: { id: number; group: string }[]) => void = () => {};
+  /** Shipped sheets: raw bytes of one sheet for the page. */
+  onSheetBytes: (sheet: SheetBytes) => void = () => {};
+  /** Groups to fetch as soon as a packing is restored ("" is always fetched); null: all of them. */
+  private wanted: Set<string> | null = new Set();
+  /** Groups fetched before the other wanted ones (the local player's faction: the game waits for it). */
+  private first = new Set<string>();
+  private pendingSheets = new Map<number, ShippedSheet>();
+  private queue: { id: number; sheet: ShippedSheet }[] = [];
+  private lanes = 0;
   private capture: Map<number, Promise<Blob>> | null = null;
   readonly stats: BakeStats = { restored: 0, saved: 0, bytes: 0, ms: 0 };
 
@@ -131,7 +154,61 @@ export class SpriteBake {
     this.capture?.set(id, gzip(data.slice()));
   }
 
-  addShipped(p: ShippedPacking) { this.shipped.set(p.key, p); }
+  /** Shipped sheets requested before their packing is restored (while the engine boots), by URL. */
+  private early = new Map<string, Promise<Response>>();
+
+  /**
+   * A shipped packing (from the data's index). Its shared sheets are requested right away, so they download while
+   * the engine boots instead of after the map is prepared.
+   */
+  addShipped(p: ShippedPacking) {
+    this.shipped.set(p.key, p);
+    for (const [url, res] of p.early) this.early.set(url, res);
+  }
+
+  /** The pack groups (factions) a game will show; their sheets are fetched now, the others only on demand. */
+  setWanted(groups: string[] | null, first: string[] = []) {
+    this.wanted = groups ? new Set(groups) : null;
+    this.first = new Set(first);
+    for (const [id, sheet] of this.pendingSheets) if (this.isWanted(sheet.group)) this.enqueue(id);
+  }
+
+  /** Sheets the page drew from but does not have (a faction outside the wanted groups appeared). */
+  need(ids: number[]) { for (const id of ids) this.enqueue(id); }
+
+  /** Shared sheets, the wanted factions', and the effects ("fx": fetched right after, never waited for). */
+  private isWanted(group: string) { return group === "" || group === "fx" || this.wanted === null || this.wanted.has(group); }
+
+  /** Fetch order: shared, the local player's faction, the other factions, then effects. */
+  private priority(group: string) { return group === "" ? 0 : this.first.has(group) ? 1 : group === "fx" ? 3 : 2; }
+
+  private enqueue(id: number) {
+    const sheet = this.pendingSheets.get(id);
+    if (!sheet) return;
+    this.pendingSheets.delete(id);
+    // Shared sheets first (needed whatever the factions), effects last (needed once fighting starts).
+    const p = this.priority(sheet.group);
+    const at = this.queue.findIndex((q) => this.priority(q.sheet.group) > p);
+    if (at < 0) this.queue.push({ id, sheet }); else this.queue.splice(at, 0, { id, sheet });
+    // Two at a time: the link is the limit anyway, and the engine's own synchronous reads must not queue behind them.
+    while (this.lanes < 2) { this.lanes++; this.lane().finally(() => this.lanes--); }
+  }
+
+  private async lane() {
+    for (let next = this.queue.shift(); next; next = this.queue.shift()) {
+      const { id, sheet } = next;
+      try {
+        const early = this.early.get(sheet.url);
+        this.early.delete(sheet.url);
+        const res = await (early ?? fetch(sheet.url));
+        if (!res.ok) throw new Error(`${sheet.url}: HTTP ${res.status}`);
+        this.onSheetBytes({ id, width: sheet.width, height: sheet.height, rows: sheet.rows, planar: sheet.planar, data: await res.arrayBuffer() });
+      } catch (e) {
+        console.warn("sprite cache: shipped sheet failed", e);
+        this.pendingSheets.set(id, sheet); // may be asked for again
+      }
+    }
+  }
 
   /** SpriteStore.Load (synchronous, from C#): the shipped or cached table for this exact reservation key. */
   load(key: string): Uint8Array {
@@ -179,30 +256,18 @@ export class SpriteBake {
     const ids = Array.from(idList);
     const shipped = this.shipped.get(key);
     if (shipped) {
-      // Shipped sheets come over HTTP (cached by the browser like the rest of the data), still compressed. Two at a
-      // time: the link is the limit anyway, and the engine's own synchronous file reads must not queue behind them.
+      // Shipped sheets come over HTTP (cached by the browser like the rest of the data). The page learns every
+      // sheet's group; the shared ones and those of the wanted groups are fetched now, the rest when needed.
       this.stats.restored++;
-      const t0 = performance.now();
-      let next = 0, done = 0;
-      this.onProgress(0, ids.length);
-      const lane = async () => {
-        while (next < shipped.sheets.length) {
-          const i = next++, sh = shipped.sheets[i];
-          const res = await fetch(sh.url);
-          if (!res.ok) throw new Error(`${sh.url}: HTTP ${res.status}`);
-          this.postSheet(ids[i], sh.width, sh.height, await res.blob());
-          this.onProgress(++done, ids.length);
-        }
-      };
-      Promise.all([lane(), lane()]).then(() => {
-        this.stats.ms = performance.now() - t0;
-        console.info(`sprite cache: fetched ${ids.length} shipped sheets in ${this.stats.ms.toFixed(0)} ms`);
-      }).catch((e) => console.warn("sprite cache: shipped sheets failed", e));
+      this.onSheetList(ids.map((id, i) => ({ id, group: shipped.sheets[i].group })));
+      ids.forEach((id, i) => this.pendingSheets.set(id, shipped.sheets[i]));
+      for (let i = 0; i < ids.length; i++) if (this.isWanted(shipped.sheets[i].group)) this.enqueue(ids[i]);
       return;
     }
     const t = this.tables.get(key);
     if (!t || !this.db) return;
     this.stats.restored++;
+    this.onSheetList(ids.map((id) => ({ id, group: "" })));
     t.created = Date.now(); // last use, for eviction
     this.db.then((db) => db.transaction(TABLES, "readwrite").objectStore(TABLES).put(t)).catch(() => {});
     const t0 = performance.now();

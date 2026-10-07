@@ -80,6 +80,9 @@ namespace OpenRA.WebSim.Browser
 		[JSImport("spriteRestored", "websim")]
 		static partial void SpriteRestored(string key, [JSMarshalAs<JSType.Array<JSType.Number>>] int[] textureIds);
 
+		[JSImport("audioReady", "websim")]
+		internal static partial bool AudioReady(string path);
+
 		[JSImport("textureFree", "websim")]
 		static partial void TextureFree(int id);
 
@@ -95,6 +98,10 @@ namespace OpenRA.WebSim.Browser
 		/// <summary>The co-commander for the next match (its CompanionBridge publishes observations and takes actions).</summary>
 		[JSExport]
 		public static void CompanionEnable(bool on) => CompanionRpc.Enable(on);
+
+		/// <summary>The co-commander's latest observation (rl_bridge GameObservation), or empty.</summary>
+		[JSExport]
+		public static byte[] CompanionObservation() => CompanionRpc.Observation();
 
 		/// <summary>One relayed companion RPC (protobuf in, protobuf out); answered through companionReply.</summary>
 		[JSExport]
@@ -143,6 +150,14 @@ namespace OpenRA.WebSim.Browser
 				CompanionEvent($"{{\"kind\":\"threat\",\"score\":{score},\"level\":{Snapshot.Json(level)},\"reason\":{Snapshot.Json(reason)}}}");
 			CompanionRpc.ActionsExecuted = (id, accepted, detail) =>
 				CompanionEvent($"{{\"kind\":\"executed\",\"id\":{Snapshot.Json(id)},\"accepted\":{(accepted ? "true" : "false")},\"detail\":{Snapshot.Json(detail)}}}");
+
+			// Audio files come over the network: a sound that is not fetched yet is skipped and music waits for its file,
+			// both fetched in the background, so the game never stalls on audio (Sound.AudioReady).
+			OpenRA.Sound.AudioReady = name =>
+			{
+				var path = SimHost.LoosePath(name);
+				return path == null || AudioReady(path);
+			};
 
 			// Textures the engine disposes (a finished game's sheets) are deleted on the page's GPU too.
 			WebTexture.Freed = TextureFree;

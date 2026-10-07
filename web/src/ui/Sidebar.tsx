@@ -68,21 +68,41 @@ interface CameoProps {
   paused: boolean;
   done: boolean;
   placing: boolean;
-  onPress: (item: string, e: React.MouseEvent) => void;
+  onPress: (item: string, e: { button: number; shiftKey: boolean; ctrlKey: boolean }) => void;
   onHover: (item: CatalogItem | null, top: number) => void;
 }
 
+const LONG_PRESS_MS = 450;
+
 const Cameo = memo(function Cameo({ item, queue, icon, progress, count, paused, done, placing, onPress, onHover }: CameoProps) {
   const deg = progress >= 0 ? progress * 360 : 0;
+  // Touch: tap builds, a long press holds (and cancels) like a right-click.
+  const press = useRef<{ timer: ReturnType<typeof setTimeout> | null; held: boolean }>({ timer: null, held: false });
   return (
     <button
       type="button"
       className={cn("cameo hud-inset group", done && "ring-1 ring-[var(--hud-gold)]", placing && "ring-2 ring-[var(--hud-gold)]")}
       data-disabled={!item.buildable && count === 0}
-      onMouseDown={(e) => { e.preventDefault(); onPress(item.name, e); }}
+      onPointerDown={(e) => {
+        e.preventDefault();
+        if (e.pointerType !== "touch") { onPress(item.name, e); return; }
+        press.current.held = false;
+        press.current.timer = setTimeout(() => {
+          press.current.held = true;
+          onPress(item.name, { button: 2, shiftKey: false, ctrlKey: false });
+          navigator.vibrate?.(12);
+        }, LONG_PRESS_MS);
+      }}
+      onPointerUp={(e) => {
+        if (e.pointerType !== "touch") return;
+        if (press.current.timer) clearTimeout(press.current.timer);
+        press.current.timer = null;
+        if (!press.current.held) onPress(item.name, { button: 0, shiftKey: false, ctrlKey: false });
+      }}
+      onPointerCancel={() => { if (press.current.timer) clearTimeout(press.current.timer); press.current.timer = null; }}
       onContextMenu={(e) => e.preventDefault()}
-      onMouseEnter={(e) => onHover(item, e.currentTarget.getBoundingClientRect().top)}
-      onMouseLeave={() => onHover(null, 0)}
+      onPointerEnter={(e) => { if (e.pointerType === "mouse") onHover(item, e.currentTarget.getBoundingClientRect().top); }}
+      onPointerLeave={() => onHover(null, 0)}
       aria-label={item.label}
       data-queue={queue}
       data-item={item.name}
@@ -151,7 +171,7 @@ function Palette({ game, height }: { game: Game; height: number }) {
   // The live catalog entry (buildable and requirements change while hovering).
   const hovered = hover ? q?.items.find((i) => i.name === hover.name) : undefined;
 
-  const onPress = (item: string, e: React.MouseEvent) => {
+  const onPress = (item: string, e: { button: number; shiftKey: boolean; ctrlKey: boolean }) => {
     if (e.button === 0) game.command({ cmd: "produce", queue: tab, item, count: e.shiftKey ? 5 : 1, front: e.ctrlKey });
     else if (e.button === 2) game.command({ cmd: "hold", queue: tab, item, count: e.shiftKey ? 5 : 1, all: e.ctrlKey });
   };
@@ -202,13 +222,15 @@ function ModeButton({ active, title, hotkey, onClick, children }: { active: bool
 
 export function Sidebar({ game }: { game: Game }) {
   const mode = useStore((s) => s.ui?.mode ?? "");
-  const [h, setH] = useState(window.innerHeight);
+  const [[w, h], setSize] = useState([window.innerWidth, window.innerHeight]);
   useEffect(() => {
-    const r = () => setH(window.innerHeight);
+    const r = () => setSize([window.innerWidth, window.innerHeight]);
     window.addEventListener("resize", r);
     return () => window.removeEventListener("resize", r);
   }, []);
-  const radarSize = 232;
+  // Compact sidebar on phones and small tablets (styles.css narrows --sidebar-w to match).
+  const compact = h < 600 || w < 900;
+  const radarSize = compact ? Math.max(96, Math.min(168, Math.floor(h * 0.3))) : 232;
   const paletteH = Math.max(150, h - radarSize - 8 - 44 - 36 - 28);
   return (
     <aside className="hud-panel absolute right-0 top-0 flex h-full flex-col gap-[6px] p-[8px]" style={{ width: "var(--sidebar-w)" }} onContextMenu={(e) => e.preventDefault()}>

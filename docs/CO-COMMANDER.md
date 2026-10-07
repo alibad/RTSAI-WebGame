@@ -48,6 +48,27 @@ hosted mode (next): worker ──wss://rtsai.net/companion/bridge──▶ hoste
 
   Ports avoid the desktop game's 9998 and 8787.
 
+## Observations: pushed, compact
+
+An observation is about 400 KB, nearly all of it the spatial map (float32 per cell and channel). The companion asks
+for one twice a second, about 800 KB/s: fine on loopback, far too much for the hosted link. So the game pushes
+observations instead of being polled.
+
+- **Worker** (`web/src/sim/companion.ts`, `streamObservations`): every 0.5 s, when the tick has changed, it sends:
+  - the observation without its spatial map, deflated;
+  - the spatial map as a deflated XOR against the previous one (unchanged cells are zeros), or in full after a
+    reconnect.
+- **Relay** (`server/companion.mjs`): rebuilds the exact `GameObservation` bytes by appending field 10 to the rest,
+  and answers `Observe` from that copy with no round trip to the game.
+- **Measured** on a Twin Fords skirmish with the scripted brain:
+  - 48 frames: 86.8 KB on the wire for 19.0 MB of observations, about 1.8 KB per frame (3.6 KB/s);
+  - all 47 `Observe` calls answered from the rebuilt copy;
+  - native verify identical (613/613).
+- **Hosted mode** sends the same frames over `wss://` to a hosted relay that rebuilds the observations the same way,
+  so the companion code stays unchanged. Rate and events: two frames a second is cheap at this size. A hosted relay
+  can also forward on change only, for example when visible enemies, own losses or finished production differ from
+  the last frame.
+
 ## Parity
 
 Orders are inputs. The companion's confirmed actions go through `CompanionBridge.ExecuteActions` on the game
@@ -95,7 +116,5 @@ stream, which a replay cannot reproduce. Re-enabling it needs an order of its ow
 - **Voice.** Speech recognition and speech go to hosted Whisper and TTS routes. The page code stays the same; only
   the base URL changes.
 - **Costs.**
-  - An observation is about 400 KB, measured at the start of a Twin Fords skirmish, and the local companion asks for
-    one every 0.5 s. Hosted mode should send observations only on events or every few seconds, and send compact
-    diffs.
+  - Observations: about 3.6 KB/s per player with the compact stream (see above), instead of about 800 KB/s.
   - Questions and alerts are the only model calls.

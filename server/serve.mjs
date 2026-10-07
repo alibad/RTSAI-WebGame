@@ -33,7 +33,8 @@ const websim = path.join(repo, "bin", "OpenRA.WebSim.Native", "Release", "net10.
 const runtimes = { interp: path.join(data, "wasm-interp", "wwwroot"), aot: path.join(data, "wasm-aot", "wwwroot") };
 // The public profile (standalone mod, project art only) has its own bundle and runtimes under data/public.
 const profiles = { public: path.join(data, "public") };
-const runtimeDir = (profile, runtime) => profile ? path.join(profiles[profile], `wasm-${runtime}`, "wwwroot") : runtimes[runtime];
+// Runtime variants (size experiments, e.g. ?runtime=aot-lean) live next to the default builds as wasm-<variant>.
+const runtimeDir = (profile, runtime) => path.join(profile ? profiles[profile] : data, `wasm-${runtime}`, "wwwroot");
 
 const MIME = {
   ".html": "text/html; charset=utf-8", ".js": "text/javascript", ".mjs": "text/javascript", ".css": "text/css",
@@ -284,14 +285,14 @@ const server = http.createServer(async (req, res) => {
       fs.appendFileSync(path.join(data, "metrics.jsonl"), (await readBody(req)).trim() + "\n");
       return json(res, { ok: true });
     }
-    const rt = p.match(/^\/rt\/(?:(public)\/)?(interp|aot)\/(.*)$/);
+    const rt = p.match(/^\/rt\/(?:(public)\/)?((?:interp|aot)(?:-[a-z]+)?)\/(.*)$/);
     if (rt) {
       const f = safeJoin(runtimeDir(rt[1], rt[2]), rt[3]);
       return f ? sendFile(req, res, f) : res.writeHead(400).end();
     }
     if (p.startsWith("/data/")) {
       const f = safeJoin(data, p.slice(6));
-      if (!f || !/\.(pack|json|gz)$/.test(f) || /(measure|fidelity|verify|metrics)/.test(f)) return res.writeHead(404).end();
+      if (!f || !/\.(pack|json|gz|bin)$/.test(f) || /(measure|fidelity|verify|metrics)/.test(f)) return res.writeHead(404).end();
       // The audio pack is read by byte range (lazily, per sound), so it is served uncompressed; prebaked sprite
       // sheets (sprites/*.gz) are already compressed.
       return sendFile(req, res, f, { compress: !/web-(audio|art)\.pack$|\.gz$/.test(f) });

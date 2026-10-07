@@ -57,6 +57,12 @@ namespace OpenRA.WebSim
 		/// <summary>A confirmed action set reached the engine: request id, accepted, detail.</summary>
 		public static Action<string, bool, string> ActionsExecuted;
 
+		/// <summary>The latest observation, serialized (empty when there is none): pushed to the relay as it changes.</summary>
+		public static byte[] Observation()
+		{
+			return CompanionBridge.TryGetObservation(out var observation) ? observation.ToByteArray() : [];
+		}
+
 		public static async Task<byte[]> Call(string method, byte[] request)
 		{
 			switch (method)

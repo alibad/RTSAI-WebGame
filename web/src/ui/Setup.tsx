@@ -56,6 +56,11 @@ export function Setup({ game }: { game: Game }) {
 
   // Previews for the backdrop and the picker; prepare the chosen map once the choice settles.
   useEffect(() => { if (map) game.preview(map.id); }, [game, map]);
+  // The sides chosen so far: their sprite sheets load while the player is still on this screen.
+  useEffect(() => {
+    const chosen = [faction, ...opponents.map((o) => o.faction)];
+    game.wantFactions(chosen.some((f) => setup.factions.find((x) => x.id === f)?.random) ? null : chosen, faction);
+  }, [game, faction, opponents, setup.factions]);
   useEffect(() => {
     if (!map) return;
     const t = setTimeout(() => game.prepare(map.id), 350);

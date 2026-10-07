@@ -37,7 +37,7 @@ static class Bake
 			Directory.Delete(outDir, true);
 		Directory.CreateDirectory(outDir);
 
-		var packings = new Dictionary<string, (List<int[]> Sheets, List<string> Maps, long Bytes)>();
+		var packings = new Dictionary<string, (List<Sheet> Sheets, List<string> Maps, long Bytes)>();
 		string currentMap = null;
 		SpriteStore.Load = _ => null;
 		SpriteStore.Saved = (key, table, ids) =>
@@ -48,20 +48,60 @@ static class Bake
 				return;
 			}
 
+			// Raw files: the host compresses them (the public build precompresses with brotli, served with
+			// Content-Encoding: br, so the browser inflates them natively).
+			File.WriteAllBytes(Path.Combine(outDir, key + ".table.bin"), table);
 			long bytes = 0;
-			bytes += WriteGz(Path.Combine(outDir, key + ".table.gz"), table);
-			var sheets = new List<int[]>();
+			var sheets = new List<Sheet>();
 			for (var i = 0; i < ids.Length; i++)
 			{
 				var t = WebTexture.All[ids[i]];
 				if (t.Data == null)
 					throw new InvalidOperationException($"sheet {i} (texture {ids[i]}) of {key} has no pixels");
 
-				bytes += WriteGz(Path.Combine(outDir, $"{key}.{i}.gz"), t.Data.AsSpan(0, 4 * t.Size.Width * t.Size.Height));
-				sheets.Add([t.Size.Width, t.Size.Height]);
+				// Only the rows sprites were packed into (the last sheet of a group is partly empty).
+				var w = t.Size.Width;
+				var rows = t.Size.Height;
+				while (rows > 0 && t.Data.AsSpan((rows - 1) * w * 4, w * 4).IndexOfAnyExcept((byte)0) < 0)
+					rows--;
+
+				// Indexed sheets hold four independent 8-bit sprite planes in the RGBA channels; stored plane after plane
+				// they compress far better (about 3x). Kept interleaved where that is smaller (some true-colour sheets).
+				var used = t.Data.AsSpan(0, rows * w * 4).ToArray();
+				var planar = Planarize(used);
+				var interleavedSize = BrotliSize(used);
+				var planarSize = BrotliSize(planar);
+				var usePlanar = planarSize < interleavedSize;
+				File.WriteAllBytes(Path.Combine(outDir, $"{key}.{i}.bin"), usePlanar ? planar : used);
+				bytes += Math.Min(planarSize, interleavedSize);
+				sheets.Add(new Sheet(w, t.Size.Height, rows, usePlanar, SpriteStore.LastSheetGroups.ElementAtOrDefault(i) ?? ""));
 			}
 
 			packings[key] = (sheets, [currentMap], bytes);
+
+			// --report <csv>: sheet pixels per sprite file (what each file costs), for deciding the pack groups.
+			if (opts.TryGetValue("report", out var report))
+			{
+				var tokens = SpriteStore.LastTokens;
+				var rows = new Dictionary<string, (string Type, int Sprites, long Area)>();
+				foreach (var (token, file) in SpriteStore.LastFiles)
+				{
+					if (!tokens.TryGetValue(token, out var list) || list == null)
+						continue;
+
+					foreach (var sp in list)
+					{
+						if (sp == null)
+							continue;
+
+						rows.TryGetValue(file, out var r);
+						rows[file] = (sp.Sheet.Type.ToString(), r.Sprites + 1, r.Area + (long)sp.Bounds.Width * sp.Bounds.Height);
+					}
+				}
+
+				File.WriteAllLines(report, rows.OrderByDescending(r => r.Value.Area)
+					.Select(r => $"{r.Key},{r.Value.Type},{r.Value.Sprites},{r.Value.Area},{SpriteCache.PackGroup?.Invoke(r.Key)}").Prepend("file,type,sprites,area,group"));
+			}
 		};
 		SpriteCache.Store = new SpriteStore();
 
@@ -86,21 +126,41 @@ static class Bake
 			packings = packings.ToDictionary(kv => kv.Key, kv => new
 			{
 				maps = kv.Value.Maps,
-				sheets = kv.Value.Sheets.Select(s => new { width = s[0], height = s[1] }),
+				sheets = kv.Value.Sheets.Select(s => new { width = s.Width, height = s.Height, rows = s.Rows, planar = s.Planar, group = s.Group }),
 				bytes = kv.Value.Bytes,
 			}),
 		};
 		File.WriteAllText(Path.Combine(outDir, "index.json"), JsonSerializer.Serialize(index, new JsonSerializerOptions { WriteIndented = true }));
 		foreach (var (key, p) in packings)
-			Console.WriteLine($"{key}: {p.Sheets.Count} sheets, {p.Bytes / 1048576.0:F1} MB gzip, maps {string.Join(", ", p.Maps)}");
+		{
+			Console.WriteLine($"{key}: {p.Sheets.Count} sheets, about {p.Bytes / 1048576.0:F1} MB brotli, maps {string.Join(", ", p.Maps)}");
+			foreach (var g in p.Sheets.GroupBy(s => s.Group))
+				Console.WriteLine($"  group '{g.Key}': {g.Count()} sheets");
+		}
 		return 0;
 	}
 
-	static long WriteGz(string path, ReadOnlySpan<byte> data)
+	sealed record Sheet(int Width, int Height, int Rows, bool Planar, string Group);
+
+	static byte[] Planarize(byte[] rgba)
 	{
-		using (var f = File.Create(path))
-		using (var gz = new GZipStream(f, CompressionLevel.SmallestSize))
-			gz.Write(data);
-		return new FileInfo(path).Length;
+		var px = rgba.Length / 4;
+		var planar = new byte[rgba.Length];
+		for (var p = 0; p < px; p++)
+		{
+			planar[p] = rgba[4 * p];
+			planar[px + p] = rgba[4 * p + 1];
+			planar[2 * px + p] = rgba[4 * p + 2];
+			planar[3 * px + p] = rgba[4 * p + 3];
+		}
+
+		return planar;
+	}
+
+	/// <summary>Brotli size at a fast quality (to choose a layout; the build compresses at the best quality).</summary>
+	static long BrotliSize(byte[] data)
+	{
+		var dest = new byte[BrotliEncoder.GetMaxCompressedLength(data.Length)];
+		return BrotliEncoder.TryCompress(data, dest, out var written, 5, 22) ? written : data.Length;
 	}
 }

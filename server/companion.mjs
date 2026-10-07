@@ -15,6 +15,7 @@ import http from "node:http";
 import http2 from "node:http2";
 import path from "node:path";
 import { spawn } from "node:child_process";
+import zlib from "node:zlib";
 import { startMockGateway } from "./mock-ai.mjs";
 
 export const GRPC_PORT = Number(process.env.RTSAI_WEB_COMPANION_GRPC ?? 9988);
@@ -97,7 +98,10 @@ export function createCompanion({ repo, appData, log = console.log }) {
   let worker = null; // the connected game's worker (one match at a time: the latest connection wins)
   let nextId = 1;
   const pending = new Map();
-  const stats = { calls: 0, errors: 0, byMethod: {}, replyBytes: {}, connectedAt: 0, lastCallAt: 0 };
+  const stats = { calls: 0, errors: 0, byMethod: {}, replyBytes: {}, connectedAt: 0, lastCallAt: 0,
+    observations: { frames: 0, wireBytes: 0, fullBytes: 0, servedFromCache: 0 } };
+  // The latest observation the game pushed (rebuilt in full), and the spatial map it was diffed against.
+  let observation = null, spatial = null;
 
   function relay(method, request) {
     return new Promise((resolve, reject) => {
@@ -112,8 +116,32 @@ export function createCompanion({ repo, appData, log = console.log }) {
     });
   }
 
+  /**
+   * An observation frame from the game: the observation without its spatial map (deflated), then the spatial map as
+   * a deflated XOR against the previous one (kind 1) or in full (kind 0). Rebuilt here into the exact GameObservation
+   * bytes: the message plus field 10 appended (a protobuf field may come last; it is the only copy).
+   */
+  function onObservation(payload) {
+    const liteLength = payload.readUInt32LE(0);
+    const lite = zlib.inflateRawSync(payload.subarray(4, 4 + liteLength));
+    const kind = payload[4 + liteLength];
+    let map = zlib.inflateRawSync(payload.subarray(5 + liteLength));
+    if (kind === 1) {
+      if (!spatial || spatial.length !== map.length) return; // out of step: wait for a full one
+      for (let i = 0; i < map.length; i++) map[i] ^= spatial[i];
+    }
+    spatial = map;
+    const len = [];
+    for (let n = map.length; ; n = Math.floor(n / 128)) { if (n < 128) { len.push(n); break; } len.push((n % 128) | 128); }
+    observation = { at: Date.now(), bytes: map.length ? Buffer.concat([lite, Buffer.from([0x52, ...len]), map]) : lite };
+    stats.observations.frames++;
+    stats.observations.wireBytes += payload.length;
+    stats.observations.fullBytes += observation.bytes.length;
+  }
+
   function onWorkerMessage(buf) {
     const { header, payload } = unpack(buf);
+    if (header.t === "obs") return onObservation(payload);
     if (header.t !== "reply") return;
     const p = pending.get(header.id);
     if (!p) return;
@@ -135,6 +163,8 @@ export function createCompanion({ repo, appData, log = console.log }) {
       for (const [id, p] of pending) { clearTimeout(p.timer); p.reject(Object.assign(new Error("The game disconnected."), { code: GRPC_CODES.UNAVAILABLE })); pending.delete(id); }
     });
     worker = sock;
+    observation = null;
+    spatial = null;
     stats.connectedAt = Date.now();
     log("co-commander: game connected");
   }
@@ -152,6 +182,18 @@ export function createCompanion({ repo, appData, log = console.log }) {
         stream.respond({ ":status": 200, "content-type": "application/grpc", "grpc-status": String(code), "grpc-message": encodeURIComponent(message) }, { endStream: true });
       };
       if (!m) return fail(GRPC_CODES.UNIMPLEMENTED, "unknown method");
+      // Observe: answered from the observation the game pushed, when it is recent (no round trip to the game).
+      if (m[1] === "Observe" && worker && observation && Date.now() - observation.at < 2000) {
+        stats.observations.servedFromCache++;
+        stats.calls++;
+        stats.byMethod.Observe = (stats.byMethod.Observe ?? 0) + 1;
+        stream.respond({ ":status": 200, "content-type": "application/grpc" }, { waitForTrailers: true });
+        stream.on("wantTrailers", () => stream.sendTrailers({ "grpc-status": "0" }));
+        const prefix = Buffer.alloc(5);
+        prefix.writeUInt32BE(observation.bytes.length, 1);
+        stream.end(Buffer.concat([prefix, observation.bytes]));
+        return;
+      }
       const body = Buffer.concat(chunks);
       if (body.length >= 5 && body[0] !== 0) return fail(GRPC_CODES.UNIMPLEMENTED, "compressed messages are not supported");
       const request = body.length >= 5 ? body.subarray(5, 5 + body.readUInt32BE(1)) : Buffer.alloc(0);

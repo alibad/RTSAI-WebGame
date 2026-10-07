@@ -59,6 +59,11 @@ static class Bundle
 		{
 			void Add(string name, byte[] data)
 			{
+				// The web hosts draw no text in the engine (the page does; WebPlatform.CreateFont ignores the data), so
+				// fonts ship as empty files: the engine still finds every font it loads.
+				if (name.EndsWith(".ttf", StringComparison.OrdinalIgnoreCase) || name.EndsWith(".otf", StringComparison.OrdinalIgnoreCase))
+					data = [];
+
 				contentHash.AppendData(Encoding.UTF8.GetBytes($"{name}|{data.Length}|"));
 				contentHash.AppendData(data);
 				pack.Add(name, data);
@@ -69,7 +74,8 @@ static class Bundle
 			Add("ora/VERSION", File.ReadAllBytes(Path.Combine(engine, "VERSION")));
 
 			// XCC filename database shipped with OpenRA: lets MixFile resolve names inside the player's .mix packages.
-			Add("ora/global mix database.dat", File.ReadAllBytes(Path.Combine(engine, "global mix database.dat")));
+			if (!opts.ContainsKey("no-mix-database"))
+				Add("ora/global mix database.dat", File.ReadAllBytes(Path.Combine(engine, "global mix database.dat")));
 			foreach (var f in Files(Path.Combine(engine, "glsl")))
 				Add("ora/glsl/" + Rel(Path.Combine(engine, "glsl"), f), File.ReadAllBytes(f));
 			foreach (var f in Files(Path.Combine(engine, "mods", "common")))
@@ -160,6 +166,7 @@ static class Bundle
 	{
 		return Directory.EnumerateFiles(dir, "*", SearchOption.AllDirectories)
 			.Where(f => !SkippedExtensions.Contains(Path.GetExtension(f)))
+			.Where(f => !Path.GetFileName(f).EndsWith("PROVENANCE.json", StringComparison.OrdinalIgnoreCase)) // asset records, not game data
 			.Where(f => !f.Contains(Path.DirectorySeparatorChar + ".", StringComparison.Ordinal))
 			.OrderBy(f => f, StringComparer.Ordinal);
 	}

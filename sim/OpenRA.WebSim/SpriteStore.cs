@@ -106,8 +106,19 @@ namespace OpenRA.WebSim
 			return result;
 		}
 
-		public void Save(SpriteCache cache, string key, IReadOnlyDictionary<int, Sprite[]> sprites)
+		/// <summary>Each saved sheet's group (SpriteCache.PackGroup of its sprites' files; "" for shared), in table order.</summary>
+		public static string[] LastSheetGroups = [];
+
+		/// <summary>The file of every packed token, from the last save (for reports).</summary>
+		public static IReadOnlyDictionary<int, string> LastFiles;
+
+		/// <summary>The sprites of every packed token, from the last save (for reports).</summary>
+		public static IReadOnlyDictionary<int, Sprite[]> LastTokens;
+
+		public void Save(SpriteCache cache, string key, IReadOnlyDictionary<int, Sprite[]> sprites, IReadOnlyDictionary<int, string> files)
 		{
+			LastFiles = files;
+			LastTokens = sprites;
 			if (Saved == null)
 				return;
 
@@ -191,6 +202,21 @@ namespace OpenRA.WebSim
 					}
 				}
 			}
+
+			// The group of each sheet (all its sprites share one, as SpriteCache packs groups into sheets of their own).
+			var groups = new string[sheetList.Count];
+			foreach (var (token, list) in sprites)
+			{
+				if (list == null || !files.TryGetValue(token, out var file))
+					continue;
+
+				var group = SpriteCache.PackGroup?.Invoke(file) ?? "";
+				foreach (var s in list)
+					if (s != null)
+						groups[sheetIndex[s.Sheet]] ??= group;
+			}
+
+			LastSheetGroups = groups.Select(g => g ?? "").ToArray();
 
 			// Every sheet must be committed (sent to the page) before its pixels can be stored.
 			var ids = sheetList.Select(s => ((WebTexture)s.GetTexture()).Id).ToArray();

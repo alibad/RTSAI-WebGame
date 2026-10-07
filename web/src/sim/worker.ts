@@ -7,7 +7,7 @@ import {
   RING_BYTES, RING_HEADER_BYTES, RING_LEN_AT, RING_SEQ_AT, RING_SLOTS, RING_SLOT_BYTES,
   textureUpdates, type FromWorker, type ToWorker,
 } from "./protocol";
-import { LazyMount, httpRangeReader, mountPack } from "./lazyfs";
+import { LazyMount, httpRangeReader, httpRangeReaderAsync, mountPack, wholeFileReader, wholeFileReaderAsync } from "./lazyfs";
 import { CompanionRelay } from "./companion";
 import { fetchShippedSprites, SpriteBake, hashString } from "./spritecache";
 
@@ -88,9 +88,9 @@ function publish(view: { slice(): Uint8Array; length: number }) {
 
 let bundleTag = "";
 
-async function fetchBytes(url: string, stage: string) {
+async function fetchBytes(url: string, stage: string, started?: Promise<Response>) {
   post({ type: "progress", stage, detail: url });
-  const res = await fetch(url);
+  const res = await (started ?? fetch(url));
   if (!res.ok) throw new Error(`${url}: HTTP ${res.status}`);
   bundleTag = res.headers.get("etag") ?? String(res.headers.get("content-length"));
   return new Uint8Array(await res.arrayBuffer());
@@ -119,14 +119,19 @@ async function init(msg: Extract<ToWorker, { type: "init" }>) {
   post({ type: "progress", stage: "Starting the engine", detail: msg.runtime });
   // Profiles (e.g. "public", the standalone game) have their own runtime build and data under data/<profile>/.
   const profileDir = msg.profile ? `${msg.profile}/` : "";
-  const runtimeUrl = new URL(`rt/${profileDir}${msg.runtime}/_framework/dotnet.js`, base).href;
+  // The game data downloads alongside the runtime (the engine needs both to boot).
+  const bundleRequest = fetch(new URL(`${msg.dataBase ?? "data/"}${profileDir}web-bundle.pack`, msg.base).href);
+  // A static public build serves runtime and data under content-hashed roots (cached forever); "rt/", "data/" locally.
+  const dataRoot = msg.dataBase ?? "data/";
+  const runtimeUrl = new URL(`${msg.rtBase ?? "rt/"}${profileDir}${msg.runtime}/_framework/dotnet.js`, base).href;
   // dotnet.js treats a worker that already has an onmessage handler as one of its own pthread workers and
   // waits for a thread handshake that never comes. Declare this worker a "sidecar" (a single-threaded host).
   (globalThis as unknown as { dotnetSidecar: boolean }).dotnetSidecar = true;
   const { dotnet } = await import(/* @vite-ignore */ runtimeUrl);
   // A soft heap limit makes the GC collect before growing the heap (WebAssembly memory never shrinks, so the
   // high-water mark during loading is what the tab keeps).
-  runtimeApi = await dotnet.withDiagnosticTracing(false).withEnvironmentVariable("MONO_GC_PARAMS", msg.gcParams ?? "soft-heap-limit=200m").create();
+  // English UI: pins the small EFIGS culture data (otherwise the browser locale picks a 1 MB shard).
+  runtimeApi = await dotnet.withDiagnosticTracing(false).withApplicationCulture("en-US").withEnvironmentVariable("MONO_GC_PARAMS", msg.gcParams ?? "soft-heap-limit=200m").create();
   runtimeApi.setModuleImports("websim", {
     publish,
     // Sounds the engine plays (WebSoundEngine): PCM once per source, then events; music as PCM chunks.
@@ -148,6 +153,8 @@ async function init(msg: Extract<ToWorker, { type: "init" }>) {
     spriteSaved: (key: string, table: Uint8Array, ids: ArrayLike<number>) => bake?.saved(key, table, ids),
     spriteRestored: (key: string, ids: ArrayLike<number>) => bake?.restored(key, ids),
     textureFree: (id: number) => post({ type: "texturefree", id }),
+    // Sound.AudioReady (SimHost): can this audio file be read now? If not, it is fetched in the background.
+    audioReady: (path: string) => lazy?.ready(path) ?? true,
     // The AI co-commander (CompanionRpc.cs): relayed RPC answers, and status/threat/action events for the panel.
     companionReply: (call: number, code: number, message: string, view: { slice(): Uint8Array }) => relay?.reply(call, code, message, view.slice()),
     companionEvent: (json: string) => post({ type: "companion", event: JSON.parse(json) }),
@@ -165,7 +172,7 @@ async function init(msg: Extract<ToWorker, { type: "init" }>) {
   S = exports.OpenRA.WebSim.Browser.Interop;
   const runtimeMs = performance.now() - t0;
 
-  const bundle = await fetchBytes(new URL(`data/${profileDir}web-bundle.pack`, base).href, "Downloading game data");
+  const bundle = await fetchBytes(new URL(`${dataRoot}${profileDir}web-bundle.pack`, base).href, "Downloading game data", bundleRequest);
   post({ type: "progress", stage: "Mounting game data", detail: `${(bundle.length / 1048576).toFixed(1)} MB` });
   // Files read straight from the downloaded bundle: nothing is copied into the WebAssembly heap.
   lazy = new LazyMount(runtimeApi.Module.FS);
@@ -175,7 +182,7 @@ async function init(msg: Extract<ToWorker, { type: "init" }>) {
   const idAt = packFiles.get("ora/BUNDLE_ID");
   const bundleId = idAt ? new TextDecoder().decode(bundle.subarray(idAt[0], idAt[0] + idAt[1])).trim() : bundleTag;
   // Prebaked sprite sheets shipped with a profile's data (websim bake), fetched while the engine loads its rules.
-  const shipped = msg.profile ? fetchShippedSprites(new URL(`data/${profileDir}sprites/`, base).href, bundleId) : Promise.resolve(null);
+  const shipped = msg.profile ? fetchShippedSprites(new URL(`${dataRoot}${profileDir}sprites/`, base).href, bundleId) : Promise.resolve(null);
 
   let privateContent = false;
   let privateTag = "none";
@@ -183,11 +190,26 @@ async function init(msg: Extract<ToWorker, { type: "init" }>) {
   // sprite art when a map's sprites are decoded (never, when its sheets are prebaked or cached).
   const mount = lazy;
   await Promise.all(["web-audio", "web-art"].map(async (name) => {
-    const index = await fetch(new URL(`data/${profileDir}${name}.json`, base));
+    const index = await fetch(new URL(`${dataRoot}${profileDir}${name}.json`, base));
     if (!index.ok) return;
-    const { files } = (await index.json()) as { files: { path: string; offset: number; size: number }[] };
-    const read = httpRangeReader(new URL(`data/${profileDir}${name}.pack`, base).href);
-    for (const f of files) mount.add(`/vfs/${f.path}`, f.size, (s, e) => read(f.offset + s, f.offset + e));
+    const { files } = (await index.json()) as { files: { path: string; offset?: number; size: number; file?: string }[] };
+    const url = new URL(`${dataRoot}${profileDir}${name}.pack`, base).href;
+    const read = httpRangeReader(url);
+    const readAsync = httpRangeReaderAsync(url);
+    // Audio can also be fetched in the background: a sound that is not here yet is skipped, music waits for it.
+    const background = name === "web-audio";
+    for (const f of files) {
+      if (f.file) {
+        // A single file (static public build): fetched whole and cached by the browser.
+        const fileUrl = new URL(`${dataRoot}${profileDir}${f.file}`, base).href;
+        const whole = wholeFileReader(fileUrl), wholeAsync = wholeFileReaderAsync(fileUrl);
+        mount.add(`/vfs/${f.path}`, f.size, whole, true, background ? wholeAsync : undefined);
+      } else {
+        const offset = f.offset ?? 0;
+        mount.add(`/vfs/${f.path}`, f.size, (s, e) => read(offset + s, offset + e), true,
+          background ? (s, e) => readAsync(offset + s, offset + e) : undefined);
+      }
+    }
   }));
 
   if (msg.privateContent && !msg.profile) {
@@ -207,7 +229,8 @@ async function init(msg: Extract<ToWorker, { type: "init" }>) {
 
   bake = new SpriteBake(`${msg.profile ?? ""}|${bundleId}|${privateTag}|ORASPR01`, (id, width, height, gz) =>
     post({ type: "texturegz", id, width, height, gz }));
-  bake.onProgress = (done, total) => post({ type: "sheets", done, total });
+  bake.onSheetList = (sheets) => post({ type: "sheetList", sheets });
+  bake.onSheetBytes = (s) => post({ type: "texturebin", ...s }, [s.data]);
   await bake.init();
 
   post({ type: "progress", stage: "Loading rules" });
@@ -247,12 +270,20 @@ function start(scenario: string, startPaused = false, companion = false) {
   lastUi = "";
   ticks = 0;
   post({ type: "started", info, terrain: tbuf, radarTerrain: rbuf, startMs: performance.now() - t0, lazy: lazy?.stats }, [tbuf, rbuf]);
+  // The local player's announcer and the interface sounds, fetched in the background (a sound that is not here yet
+  // is skipped, never waited for).
+  try {
+    const local = (JSON.parse(scenario).players as { faction?: string; bot?: string }[]).find((p) => !p.bot)?.faction;
+    if (lazy && local) lazy.prefetch(lazy.backgroundPaths().filter((p) => p.includes(`/eva/${local}/`) || p.includes("/audio/ui/")));
+  } catch { /* a scenario without players */ }
   if (companion) {
     const url = new URL("companion/bridge", base);
     url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
     relay ??= new CompanionRelay(url.href, { call: (id, method, request) => S.CompanionCall(id, method, request) },
       (connected) => post({ type: "companion", event: { kind: "link", connected } }));
     relay.connect();
+    // Observations are pushed as they change (compact, see companion.ts), when the runtime can provide them.
+    if (S.CompanionObservation) relay.streamObservations(() => S.CompanionObservation());
   }
   sendShroud(true);
   running = true;
@@ -344,6 +375,8 @@ self.onmessage = async (e: MessageEvent<ToWorker>) => {
         post({ type: "preview", map: m.map, png: buf }, [buf]);
         break;
       }
+      case "sheetGroups": bake?.setWanted(m.groups, m.first); break;
+      case "needSheets": bake?.need(m.ids); break;
       case "start":
         if (lazy) lazy.trace = [];
         start(m.scenario, m.paused ?? false, m.companion ?? false);

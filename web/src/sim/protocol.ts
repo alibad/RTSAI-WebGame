@@ -286,10 +286,14 @@ export interface CatalogQueue { type: string; items: CatalogItem[] }
 
 // Messages between page and worker.
 export type ToWorker =
-  | { type: "init"; runtime: string; base: string; sab: SharedArrayBuffer | null; privateContent: boolean; gcParams?: string; profile?: string }
+  | { type: "init"; runtime: string; base: string; sab: SharedArrayBuffer | null; privateContent: boolean; gcParams?: string; profile?: string; rtBase?: string; dataBase?: string }
   | { type: "prepare"; map: string }
   | { type: "preview"; map: string }
   | { type: "start"; scenario: string; paused?: boolean; companion?: boolean }
+  /** The factions a game will show (null: unknown, all): their sprite sheets are fetched now. */
+  | { type: "sheetGroups"; groups: string[] | null; first?: string[] }
+  /** Sheets the page drew from but does not have. */
+  | { type: "needSheets"; ids: number[] }
   | { type: "refresh" }
   | { type: "step" }
   | { type: "speed"; speed: number }
@@ -317,8 +321,10 @@ export type FromWorker =
   | { type: "companion"; event: CompanionEngineEvent }
   /** The engine disposed a texture (e.g. a finished game's sheets): free the GPU copy. */
   | { type: "texturefree"; id: number }
-  /** Restoring prebaked sheets: how many of all were handed to the page so far. */
-  | { type: "sheets"; done: number; total: number }
+  /** A restored packing's sheets (texture ids) and their pack groups ("" shared, else a faction). */
+  | { type: "sheetList"; sheets: { id: number; group: string }[] }
+  /** A shipped sheet's used rows, raw (planar: one channel plane after another). */
+  | { type: "texturebin"; id: number; width: number; height: number; rows: number; planar: boolean; data: ArrayBuffer }
   /** A prebaked sprite sheet from the cache, gzip-compressed (the page inflates it). */
   | { type: "texturegz"; id: number; width: number; height: number; gz: Blob }
   | { type: "ui"; json: string }

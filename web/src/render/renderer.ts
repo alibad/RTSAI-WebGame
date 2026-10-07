@@ -97,6 +97,8 @@ export class Renderer {
   private colorData = new Float32Array(MAX_RECTS * COLOR_FLOATS);
   private info: StartInfo | null = null;
   stats = { draws: 0, batches: 0, skipped: 0, frameMs: 0 };
+  /** A sprite's sheet is not on the GPU (e.g. a faction's sheets not loaded yet): the page fetches it. */
+  onMissingTexture: (id: number) => void = () => {};
   /** Debug filter (?only=r2): draw only actors whose type passes, no terrain or effects. */
   actorFilter: ((actorType: number) => boolean) | null = null;
   /** Set to request a pixel readback right after the next frame (verification without screenshots). */
@@ -303,6 +305,26 @@ export class Renderer {
 
   get textureCount() { return this.textures.size; }
 
+  hasTexture(id: number) { return this.textures.has(id); }
+
+  /**
+   * A sheet whose first `rows` rows are given (the rest is empty): allocated at full size, so sprite coordinates
+   * stay those of the engine's sheet.
+   */
+  uploadSheetRows(id: number, width: number, height: number, rows: number, data: Uint8Array) {
+    const gl = this.gl;
+    const tex = this.textures.get(id)?.tex ?? gl.createTexture()!;
+    gl.bindTexture(gl.TEXTURE_2D, tex);
+    gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, width, height, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+    if (rows > 0) gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, width, rows, gl.RGBA, gl.UNSIGNED_BYTE, data);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    this.textures.set(id, { tex, width, height, version: 1 });
+  }
+
   /** The engine disposed this texture: its ids are never reused, so the GPU copy can go. */
   freeTexture(id: number) {
     const t = this.textures.get(id);
@@ -314,6 +336,7 @@ export class Renderer {
 
   /** A cameo as a PNG data URL, or null until its sheet and the palette are on the GPU. */
   renderIcon(s: IconSprite): string | null {
+    if (!this.textures.has(s.tex)) this.onMissingTexture(s.tex);
     return this.iconRaster.render(s, this.textures.get(s.tex)?.tex, this.palette?.tex, this.paletteRows);
   }
 
@@ -353,7 +376,7 @@ export class Renderer {
       for (let i = 0; i < 8; i++) {
         const id = b.textures[i];
         const t = id >= 0 ? this.textures.get(id) : undefined;
-        if (id >= 0 && !t) ok = false;
+        if (id >= 0 && !t) { ok = false; this.onMissingTexture(id); }
         gl.activeTexture(gl.TEXTURE0 + i);
         gl.bindTexture(gl.TEXTURE_2D, t?.tex ?? null);
       }
@@ -520,6 +543,7 @@ export class Renderer {
       const sprite = this.sprites[dv.getInt32(o + 4, true)];
       if (!sprite || !this.textures.has(sprite.tex) || (sprite.tex2 >= 0 && !this.textures.has(sprite.tex2))) {
         this.stats.skipped++;
+        if (sprite) this.onMissingTexture(this.textures.has(sprite.tex) ? sprite.tex2 : sprite.tex);
         continue;
       }
 

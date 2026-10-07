@@ -106,6 +106,19 @@ namespace OpenRA.WebSim
 				?? Path.Combine(Root, "mods", ModId, "maps", mapName);
 		}
 
+		/// <summary>
+		/// The VFS path of a game file that sits loose in a folder package (e.g. an audio file mounted lazily), or null
+		/// when it is inside an archive or missing.
+		/// </summary>
+		public static string LoosePath(string filename)
+		{
+			if (ModData.DefaultFileSystem is OpenRA.FileSystem.FileSystem fs
+				&& fs.TryGetPackageContaining(filename, out var package, out var name) && package is OpenRA.FileSystem.Folder folder)
+				return Path.Combine(folder.Name, name).Replace(Path.DirectorySeparatorChar, '/');
+
+			return null;
+		}
+
 		public static Map LoadMap(string path)
 		{
 			var package = ModData.ModFiles.OpenPackage(path) ?? throw new FileNotFoundException($"Map not found: {path}");
@@ -213,6 +226,10 @@ namespace OpenRA.WebSim
 						return true;
 				return false;
 			};
+			// With a sprite store (the browser, the baker), each faction's sprites get sheets of their own (PackGroups).
+			if (SpriteCache.Store != null)
+				Time("prepare.groups", () => SpriteCache.PackGroup = PackGroups.For(map));
+
 			Time("prepare.loaders", () => ModData.InitializeLoaders(map));
 			Time("prepare.sprites", () => map.Sequences.LoadSprites());
 			Time("prepare.music", () =>

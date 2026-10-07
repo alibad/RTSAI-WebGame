@@ -2,6 +2,7 @@
 // commands (selection, orders, modes, control groups); feeds the store the HUD renders from. The engine is the
 // source of truth for selection, order modes and production; the page only predicts what it draws this frame.
 
+import { TouchControls } from "./touch";
 import { CoCommander } from "./cocommander";
 import { Renderer, type Camera, type Overlay } from "./render/renderer";
 import { SimClient } from "./sim/client";
@@ -58,6 +59,8 @@ export class Game {
   private lastGroupTap = { t: 0, index: -1 };
   private iconRequested = new Set<string>();
   private iconQueue = new Map<string, IconSprite>();
+  /** The last pointer was a finger (no edge scrolling, no hover). */
+  private touching = false;
   private pendingLatency: { t0: number; tick: number; snapAt?: number } | null = null;
   private tickArrival = new Map<number, number>();
   private latency: number[] = [];
@@ -76,6 +79,7 @@ export class Game {
     store.set({ shared: this.client.shared });
     this.client.onSnapshot = (s) => this.onSnapshot(s);
     this.client.onSheets = (uploaded, total) => store.set({ sheets: { uploaded, total } });
+    this.renderer.onMissingTexture = (id) => this.client.needSheet(id);
     this.wire();
     this.bind();
     this.raf = requestAnimationFrame(this.frame);
@@ -172,6 +176,8 @@ export class Game {
     this.ui = null;
     this.latency = [];
     store.set({ phase: "loading", stage: "Building the world", ui: null, catalog: [], verify: "", menuOpen: false, paused: false });
+    const sides = scenarioFactions(scenarioJson);
+    this.wantFactions(sides?.all ?? null, sides?.local);
     // Prebaked sprite sheets still streaming in: the world starts once they are on the GPU (nothing drawn invisible).
     const { uploaded, total } = store.get().sheets;
     if (uploaded < total) {
@@ -186,6 +192,14 @@ export class Game {
       return;
     }
     this.launch(scenarioJson, paused);
+  }
+
+  /**
+   * The factions a game will show (null: not known yet, e.g. random): their sprite sheets load first. The game waits
+   * only for `local`'s (the player's own; opponents start out of sight) when given.
+   */
+  wantFactions(factions: string[] | null, local?: string) {
+    this.client.wantGroups(factions, factions && local ? [local] : factions);
   }
 
   private launch(scenarioJson: string, paused: boolean) {
@@ -374,7 +388,7 @@ export class Game {
     if (k.has("arrowup")) dy -= speed;
     if (k.has("arrowdown")) dy += speed;
     // Edge scrolling, only while the pointer is over the battlefield.
-    if (this.mouse.inside && !this.drag && document.hasFocus()) {
+    if (this.mouse.inside && !this.touching && !this.drag && document.hasFocus()) {
       const r = this.canvas.getBoundingClientRect();
       if (this.mouse.sx <= r.left + EDGE_PX) dx -= speed;
       if (this.mouse.sx >= r.right - EDGE_PX - 1) dx += speed;
@@ -622,6 +636,38 @@ export class Game {
 
   private bind() {
     const c = this.canvas;
+    // Edge scrolling and hover follow a mouse; a touch screen has neither (its taps still send mouseenter).
+    window.addEventListener("pointermove", (e) => { this.touching = e.pointerType === "touch"; }, { passive: true });
+    window.addEventListener("pointerdown", (e) => { this.touching = e.pointerType === "touch"; }, { passive: true, capture: true });
+    // Touch (phones, tablets): tap, long-press, one-finger box, two-finger pan and pinch (touch.ts).
+    new TouchControls(c, {
+      toWorld: (x, y) => this.toWorld(x, y),
+      ownAt: (wx, wy) => { const s = this.client.cur; const a = s && this.actorAt(wx, wy, s); return !!(s && a && this.ownSelectable(s, a)); },
+      hasSelection: () => this.overlay.selected.size > 0,
+      mode: () => this.ui?.mode ?? "",
+      select: (wx, wy) => { store.set({ menuOpen: false }); this.clickSelect(wx, wy, false); },
+      order: (wx, wy) => this.click(wx, wy, BTN_RIGHT, 0),
+      modeClick: (wx, wy) => this.click(wx, wy, BTN_LEFT, 0),
+      boxSelect: (x0, y0, x1, y1) => this.boxSelect(x0, y0, x1, y1, false),
+      setBox: (box) => { this.overlay.dragBox = box; },
+      clear: () => { if (this.ui?.mode) this.command({ cmd: "mode", mode: "none" }); else this.select([]); },
+      pan: (dx, dy) => {
+        const dpr = window.devicePixelRatio || 1;
+        this.cam.x -= (dx * dpr) / this.cam.zoom;
+        this.cam.y -= (dy * dpr) / this.cam.zoom;
+        this.clampCam();
+        this.sendView();
+      },
+      zoomAt: (x, y, factor) => {
+        const [wx, wy] = this.toWorld(x, y);
+        const z = Math.min(3, Math.max(0.35, this.cam.zoom * factor));
+        this.cam.x = wx - (wx - this.cam.x) * (this.cam.zoom / z);
+        this.cam.y = wy - (wy - this.cam.y) * (this.cam.zoom / z);
+        this.cam.zoom = z;
+        this.clampCam();
+        this.sendView(true);
+      },
+    });
     c.addEventListener("contextmenu", (e) => e.preventDefault());
     c.addEventListener("mouseenter", () => (this.mouse.inside = true));
     c.addEventListener("mouseleave", () => (this.mouse.inside = false));
@@ -711,5 +757,22 @@ export class Game {
     window.removeEventListener("keyup", this.onKeyUp);
     window.removeEventListener("blur", this.onBlur);
     this.client.worker.terminate();
+  }
+}
+
+/**
+ * The factions of a scenario's players and the local player's (the first one without a bot), or null when one is
+ * random (resolved only when the world is created).
+ */
+function scenarioFactions(scenarioJson: string): { all: string[]; local?: string } | null {
+  try {
+    const s = JSON.parse(scenarioJson) as { players?: { faction?: string; bot?: string }[]; sandbox?: boolean; placements?: unknown[] };
+    const players = s.players ?? [];
+    const factions = players.map((p) => p.faction ?? "random");
+    if (factions.some((f) => !f || f.startsWith("random"))) return null;
+    // A sandbox shows both sides from the start: wait for both.
+    return { all: factions, local: s.sandbox || s.placements?.length ? undefined : players.find((p) => !p.bot)?.faction };
+  } catch {
+    return null;
   }
 }

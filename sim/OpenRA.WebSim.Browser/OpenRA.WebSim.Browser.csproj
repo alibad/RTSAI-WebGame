@@ -39,6 +39,19 @@
     <RunAOTCompilation>true</RunAOTCompilation>
     <WasmStripILAfterAOT>false</WasmStripILAfterAOT>
   </PropertyGroup>
+  <!-- Size experiments (-p:RuntimeVariant=...): "strip" drops the IL of methods compiled ahead of time (their
+       metadata stays for reflection); "full" also trims third-party assemblies to what is used. -->
+  <PropertyGroup Condition="'$(Aot)' == 'true' And ('$(RuntimeVariant)' == 'strip' Or '$(RuntimeVariant)' == 'full' Or '$(RuntimeVariant)' == 'lean')">
+    <WasmStripILAfterAOT>true</WasmStripILAfterAOT>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(RuntimeVariant)' == 'full' Or '$(RuntimeVariant)' == 'lean'">
+    <TrimMode>full</TrimMode>
+  </PropertyGroup>
+  <!-- "lean": assemblies off the per-tick path stay interpreted instead of compiled ahead of time (they run at boot,
+       in menus, or never in the browser): the AOT code shrinks with no effect on game speed. -->
+  <ItemGroup Condition="'$(Aot)' == 'true' And '$(RuntimeVariant)' == 'lean'">
+    <_AOT_InternalForceInterpretAssemblies Include="System.Private.Xml.dll;System.Private.Xml.Linq.dll;System.Xml.dll;System.Xml.Linq.dll;Newtonsoft.Json.dll;TagLibSharp.dll;System.Data.Common.dll;System.Linq.Expressions.dll;Microsoft.CSharp.dll;Google.Protobuf.dll;Linguini.Bundle.dll;Linguini.Syntax.dll;Linguini.Shared.dll;MP3Sharp.dll;Pfim.dll;ICSharpCode.SharpZipLib.dll;DiscordRPC.dll;Mono.Nat.dll;BeaconLib.dll;System.Text.RegularExpressions.dll;System.ComponentModel.TypeConverter.dll;System.Console.dll;Microsoft.Extensions.DependencyModel.dll;System.Reflection.Metadata.dll;System.Private.Uri.dll;System.Net.Http.dll;System.Net.Primitives.dll;System.Security.Cryptography.dll" />
+  </ItemGroup>
   <ItemGroup Condition="'$(Aot)' == 'true' Or '$(Trim)' == 'true'">
     <TrimmerRootAssembly Include="OpenRA.Game" />
     <TrimmerRootAssembly Include="OpenRA.Mods.Common" />

@@ -28,6 +28,7 @@ async function prepare(label) {
   const tp = Date.now();
   await page.evaluate((m) => window.game.prepare(m), map);
   await page.waitForFunction((m) => window.store.getState().preparedMap === m, map, { timeout: 600000, polling: 50 });
+  await page.waitForFunction(() => { const s = window.store.getState().sheets; return s.uploaded >= s.total; }, null, { timeout: 600000, polling: 50 });
   const t = await page.evaluate(() => window.store.getState().timings);
   console.log(`${label}: setup ${ready.toFixed(1)} s, prepare ${((Date.now() - tp) / 1000).toFixed(2)} s`,
     `(map ${t["prepare.map"]?.toFixed(0)} ms, sprites ${t["prepare.sprites"]?.toFixed(0)} ms, restored ${t["sprites.restored"]}, heap ${t["heap.prepared"]} MB)`);
@@ -45,6 +46,7 @@ if (st.phase === "error") { console.log("start failed", JSON.stringify(st)); awa
 await page.waitForFunction(() => !!window.game.client.cur, null, { timeout: 60000, polling: 50 });
 console.log(`start ${((Date.now() - ts) / 1000).toFixed(2)} s`);
 await page.waitForTimeout(4000);
+console.log("sheets", JSON.stringify(await page.evaluate(() => window.store.getState().sheets)));
 console.log("frame", JSON.stringify(await page.evaluate(() => ({ ...window.game.renderer.stats, sheetMs: Math.round(window.game.client.sheetMs), heap: window.store.getState().perf.heapMB, textures: window.game.renderer.textureCount }))));
 console.log("idb", JSON.stringify(await page.evaluate(async () => (await navigator.storage.estimate()))));
 await browser.close();

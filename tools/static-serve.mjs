@@ -1,12 +1,16 @@
 // A plain static host for the public build (tools/build-public.mjs), behaving like a CDN: the build's own header
 // rules (_headers), ETag revalidation, byte ranges, brotli for compressible content. No game APIs. Used to test and
 // measure the build exactly as a static deployment would serve it.
-//   node tools/static-serve.mjs [--dir build/public-web] [--port 3491] [--prefix /play] [--throttle 9000,170]
+//   node tools/static-serve.mjs [--dir build/public-web] [--port 3491] [--prefix /play] [--throttle 9000,170] [--h2]
+// --h2: HTTPS with HTTP/2 (as a CDN serves it: many requests over one connection), with a self-signed certificate
+// made by openssl in the scratch folder (browsers under test must ignore certificate errors).
 // --throttle <kbit/s>,<ms>: a shared downlink of that capacity for every response (all connections together, the way
 // one household link is shared) and that much latency before each response starts: a network profile applied at the
 // server, so it covers the page, its worker and every lazy range read alike.
 import fs from "node:fs";
 import http from "node:http";
+import http2 from "node:http2";
+import { execFileSync } from "node:child_process";
 import path from "node:path";
 import zlib from "node:zlib";
 import { fileURLToPath } from "node:url";
@@ -45,10 +49,13 @@ function shaped() {
   });
 }
 // Bytes sent (GET /__stats returns and resets them: the measurement tools read the total a visit transferred).
-let sent = 0, requests = 0;
+let sent = 0, requests = 0, byRoot = {};
 const trace = argv.includes("--trace");
 function send(res, body) {
   const n = typeof body === "string" ? fs.statSync(body).size : body.length;
+  const url = res.req.url;
+  const root = (url.split("/")[1] || "/").replace(/-[0-9a-f]+$/, "") + (url.includes("/sprites/") ? "/sprites" : url.includes(".pack") ? "/" + url.split("/").pop() : "");
+  byRoot[root] = (byRoot[root] ?? 0) + n;
   if (trace) console.log(`${res.statusCode} ${n} ${res.req.headers.range ?? ""} ${res.req.url} ${res.req.headers["if-none-match"] ? "(had etag)" : ""} ${res.req.headers["cache-control"] ?? ""}`);
   sent += n;
   requests++;
@@ -63,28 +70,47 @@ function send(res, body) {
 const all = [];
 const walk = (d) => { for (const e of fs.readdirSync(d, { withFileTypes: true })) e.isDirectory() ? walk(path.join(d, e.name)) : all.push(path.join(d, e.name)); };
 walk(dir);
+const rulesFor = (p) => rules.filter((r) => r.re.test(p)).flatMap((r) => r.headers);
+const preEncoded = (p) => rulesFor(p).some(([k]) => k.toLowerCase() === "content-encoding");
 for (const file of all) {
   const stat = fs.statSync(file);
-  if (stat.size <= 1024 || /web-(audio|art)\.pack$|\.gz$|\.png$/.test(file)) continue;
+  const rel = "/" + path.relative(dir, file).split(path.sep).join("/");
+  if (stat.size <= 1024 || preEncoded(rel) || /web-(audio|art)\.pack$|\.gz$|\.png$/.test(file)) continue;
   const etag = `"${stat.size.toString(36)}-${Math.floor(stat.mtimeMs).toString(36)}"`;
   compressed.set(file + etag, zlib.brotliCompressSync(fs.readFileSync(file), { params: { [zlib.constants.BROTLI_PARAM_QUALITY]: 9 } }));
 }
 
-http.createServer((req, res) => setTimeout(() => handle(req, res), latency)).listen(port, "127.0.0.1", () =>
-  console.log(`static public build: http://127.0.0.1:${port}${prefix}/ (${dir})${kbps ? `, throttled to ${kbps / 1000} Mbit/s and ${latency} ms` : ""}`));
+const h2 = argv.includes("--h2");
+const onRequest = (req, res) => setTimeout(() => handle(req, res), latency);
+let server;
+if (h2) {
+  const scratch = process.env.RTSAI_WEB_SCRATCH ?? path.join(process.env.LOCALAPPDATA ?? ".", "RTSAI-WebGame", "scratch");
+  const key = path.join(scratch, "static-serve-key.pem"), cert = path.join(scratch, "static-serve-cert.pem");
+  if (!fs.existsSync(key) || !fs.existsSync(cert)) {
+    fs.mkdirSync(scratch, { recursive: true });
+    execFileSync("openssl", ["req", "-x509", "-newkey", "ec", "-pkeyopt", "ec_paramgen_curve:prime256v1", "-nodes", "-keyout", key, "-out", cert,
+      "-days", "30", "-subj", "/CN=127.0.0.1", "-addext", "subjectAltName=IP:127.0.0.1,DNS:localhost"], { stdio: "ignore" });
+  }
+  server = http2.createSecureServer({ key: fs.readFileSync(key), cert: fs.readFileSync(cert), allowHTTP1: true }, onRequest);
+} else server = http.createServer(onRequest);
+server.listen(port, "127.0.0.1", () =>
+  console.log(`static public build: ${h2 ? "https" : "http"}://127.0.0.1:${port}${prefix}/ (${dir})${h2 ? ", HTTP/2" : ""}${kbps ? `, throttled to ${kbps / 1000} Mbit/s and ${latency} ms` : ""}`));
 
 function handle(req, res) {
   let p = decodeURIComponent(new URL(req.url, "http://x").pathname);
   if (p === "/__stats") {
     res.writeHead(200, { "Content-Type": "application/json", "Cache-Control": "no-store" });
-    res.end(JSON.stringify({ sent, requests }));
+    res.end(JSON.stringify({ sent, requests, byRoot }));
     sent = 0;
     requests = 0;
+    byRoot = {};
     return;
   }
   if (prefix && p.startsWith(prefix)) p = p.slice(prefix.length) || "/";
   if (p.endsWith("/")) p += "index.html";
-  for (const r of rules) if (r.re.test(p)) for (const [k, v] of r.headers) res.setHeader(k, v);
+  for (const [k, v] of rulesFor(p)) res.setHeader(k, v);
+  // Precompressed by the build (Content-Encoding from the header rules): sent as stored.
+  const stored = res.hasHeader("Content-Encoding");
   const file = path.normalize(path.join(dir, p));
   if (!file.startsWith(dir) || !fs.existsSync(file) || !fs.statSync(file).isFile()) { res.writeHead(404); return res.end(); }
   const stat = fs.statSync(file);
@@ -93,7 +119,7 @@ function handle(req, res) {
   if (!res.hasHeader("Content-Type")) res.setHeader("Content-Type", MIME[path.extname(file)] ?? "application/octet-stream");
   if (req.headers["if-none-match"] === etag) { res.writeHead(304); return res.end(); }
   const range = /^bytes=(\d+)-(\d*)$/.exec(req.headers.range ?? "");
-  if (range) {
+  if (range && !stored) {
     const start = Number(range[1]), end = Math.min(stat.size - 1, range[2] ? Number(range[2]) : stat.size - 1);
     res.writeHead(206, { "Content-Range": `bytes ${start}-${end}/${stat.size}`, "Content-Length": end - start + 1, "Accept-Ranges": "bytes" });
     const part = Buffer.alloc(end - start + 1);
@@ -102,7 +128,7 @@ function handle(req, res) {
     fs.closeSync(fd);
     return send(res, part);
   }
-  const compressible = stat.size > 1024 && !/web-(audio|art)\.pack$|\.gz$|\.png$/.test(file) && /\bbr\b/.test(req.headers["accept-encoding"] ?? "");
+  const compressible = !stored && stat.size > 1024 && !/web-(audio|art)\.pack$|\.gz$|\.png$/.test(file) && /\bbr\b/.test(req.headers["accept-encoding"] ?? "");
   if (compressible) {
     let buf = compressed.get(file + etag);
     if (!buf) { buf = zlib.brotliCompressSync(fs.readFileSync(file), { params: { [zlib.constants.BROTLI_PARAM_QUALITY]: 9 } }); compressed.set(file + etag, buf); }

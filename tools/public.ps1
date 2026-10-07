@@ -19,7 +19,8 @@ $ws = "bin\OpenRA.WebSim.Native-public\Release\net10.0\websim.exe"
 if (-not $NoBuild) {
 	dotnet build sim\OpenRA.WebSim.Native\OpenRA.WebSim.Native.csproj -c Release -nologo -v q -p:WebProfile=public | Select-String -Pattern " error |rror\(s\)"
 }
-& $ws pack --engine $Engine --mod $Mod --out data\public\web-bundle.pack
+# The standalone mounts no MIX archives, so the XCC filename database is left out.
+& $ws pack --engine $Engine --mod $Mod --out data\public\web-bundle.pack --no-mix-database
 if ($LASTEXITCODE -ne 0) { throw "pack failed" }
 
 $root = Join-Path $scratch "vfs-public-bake"

@@ -1,7 +1,7 @@
 // In-game HUD around the battlefield: selection panel (portraits, health, veterancy), command bar, control
 // groups, game menu, victory/defeat and the developer stats panel (F2).
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { Game } from "../game";
 import { percentile, useStore } from "../store";
 import { Sidebar } from "./Sidebar";
@@ -183,6 +183,29 @@ function Stats({ game }: { game: Game }) {
   );
 }
 
+/** Phones held upright: the battlefield needs landscape. */
+function RotateHint() {
+  const [portrait, setPortrait] = useState(() => window.innerWidth < window.innerHeight && window.innerWidth < 700);
+  useEffect(() => {
+    const r = () => setPortrait(window.innerWidth < window.innerHeight && window.innerWidth < 700);
+    window.addEventListener("resize", r);
+    return () => window.removeEventListener("resize", r);
+  }, []);
+  if (!portrait) return null;
+  return (
+    <div className="absolute inset-0 z-40 grid place-items-center bg-[#0b0d0b]/95">
+      <div className="flex flex-col items-center gap-4 text-[var(--hud-gold)]">
+        <svg viewBox="0 0 64 64" width={72} height={72} fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-label="Turn your device sideways">
+          <rect x="20" y="8" width="24" height="40" rx="4" opacity="0.45" />
+          <rect x="10" y="22" width="40" height="24" rx="4" transform="rotate(0 30 34)" />
+          <path d="M46 10a14 14 0 0 1 8 12" /><path d="m54 16 0 6-6 0" />
+        </svg>
+        <div className="text-[15px] font-semibold tracking-wide">Turn sideways</div>
+      </div>
+    </div>
+  );
+}
+
 export function Hud({ game }: { game: Game }) {
   const statsOpen = useStore((s) => s.statsOpen);
   const paused = useStore((s) => s.paused);
@@ -204,6 +227,7 @@ export function Hud({ game }: { game: Game }) {
       <CoCommander game={game} />
       <HotkeySheet />
       <Outcome game={game} />
+      <RotateHint />
     </>
   );
 }

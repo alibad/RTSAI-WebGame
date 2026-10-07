@@ -73,6 +73,8 @@ await page.evaluate(() => window.game.cc.setOpen(true));
 await page.waitForTimeout(500);
 await shot("cc-3-feed.png");
 
+const relayStats = (await (await fetch("http://127.0.0.1:3490/api/companion/status")).json()).relay;
+log("observation stream:", JSON.stringify(relayStats.observations), "replies:", JSON.stringify(relayStats.replyBytes));
 // Parity: the session, the companion's order included, replayed natively.
 await page.evaluate(() => window.game.requestVerify());
 const verify = await until(() => { const v = window.store.getState().verify; return v && !/\.\.\.$|…$/.test(v) ? v : null; }, null, 300000);
