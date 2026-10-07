@@ -10,14 +10,9 @@ import { Button } from "../components/ui/button";
 import { SearchSelect, type Option } from "../components/ui/fields";
 import { cn } from "../lib/utils";
 import { CommandBar, GameMenu, SelectionPanel } from "./Hud";
+import { Flag } from "./Flag";
 
 const SIDE_COLORS = ["#2A6FDB", "#D83A2E"];
-const FLAGGED = new Set(["america", "china", "cuba", "england", "france", "germany", "iran", "iraq", "israel", "korea", "libya", "russia", "saudi", "turkey", "ukraine", "yemen"]);
-
-function Flag({ id, className }: { id: string; className?: string }) {
-  if (!FLAGGED.has(id)) return <span className={cn("grid place-items-center bg-[#1b211a] text-[10px] font-black text-[var(--hud-gold-dim)]", className)}>{id.slice(0, 2).toUpperCase()}</span>;
-  return <img src={`flags/${id}.svg`} alt="" className={cn("object-cover", className)} draggable={false} />;
-}
 
 function Chevrons({ n }: { n: number }) {
   if (n <= 0) return <span className="text-[11px] text-[var(--muted-foreground)]">–</span>;

@@ -8,22 +8,12 @@ import { useStore } from "../store";
 import { Button } from "../components/ui/button";
 import { OptionSelect, SearchSelect, type Option } from "../components/ui/fields";
 import { cn } from "../lib/utils";
+import { Flag, factionIdentity } from "./Flag";
 
 // The options most players change; the rest stay one click away.
 const KEY_OPTIONS = ["startingcash", "startingunits", "fog", "explored", "crates", "techlevel"];
 
 const COLORS = ["2A6FDB", "D83A2E", "3FAE49", "E7B42F", "E8702A", "25A6A6", "8E4FD1", "E05A9C"];
-const FLAGGED = new Set(["america", "china", "cuba", "england", "france", "germany", "iran", "iraq", "israel", "korea", "libya", "russia", "saudi", "turkey", "ukraine", "yemen"]);
-
-function Flag({ id, className }: { id: string; className?: string }) {
-  if (!FLAGGED.has(id))
-    return (
-      <span className={cn("grid place-items-center bg-[#1b211a] font-black text-[var(--hud-gold-dim)]", className)}>
-        {id === "hezbollah" ? "H" : "?"}
-      </span>
-    );
-  return <img src={`flags/${id}.svg`} alt="" className={cn("object-cover", className)} draggable={false} />;
-}
 
 interface Opponent { faction: string; bot: string; color: string }
 
@@ -93,6 +83,7 @@ export function Setup({ game }: { game: Game }) {
   const backdrop = map && !publicShot ? previews[map.id] : "";
   const ready = prepared === map?.id;
   const factionInfo = factions.find((f) => f.id === faction);
+  const identity = factionIdentity(faction);
 
   return (
     <div className="absolute inset-0 overflow-hidden bg-[#070907]">
@@ -111,7 +102,11 @@ export function Setup({ game }: { game: Game }) {
               <Flag id={faction} className="h-[64px] w-[104px] rounded-[2px] shadow-[0_0_0_1px_#000,0_0_0_2px_var(--hud-gold-dim)]" />
               <div className="min-w-0">
                 <div className="text-[20px] font-bold">{factionInfo?.name ?? faction}</div>
-                {factionInfo?.description && <div className="line-clamp-3 text-[12px] text-[var(--muted-foreground)]">{factionInfo.description.split("\n")[0]}</div>}
+                {identity && (
+                  <div className="text-[13px] text-[var(--muted-foreground)]">
+                    <span className="font-semibold" style={{ color: identity.accent }}>{identity.title}</span> · {identity.tagline}
+                  </div>
+                )}
               </div>
             </div>
             <div className="grid grid-cols-[repeat(auto-fill,minmax(76px,1fr))] gap-2">

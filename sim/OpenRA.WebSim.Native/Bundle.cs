@@ -78,6 +78,7 @@ static class Bundle
 
 			Add("mods/rtsai/mod.yaml", Encoding.UTF8.GetBytes(WebModYaml(File.ReadAllText(Path.Combine(modDir, "mod.yaml")))));
 			Add("mods/rtsai/web/web-rules.yaml", Encoding.UTF8.GetBytes(WebRules));
+			Add("mods/rtsai/web/web-names.ftl", Encoding.UTF8.GetBytes(WebNames));
 
 			var blank = Path.Combine(modDir, "maps", "blank-shellmap");
 			Add("mods/rtsai/maps/web-arena/map.bin", File.ReadAllBytes(Path.Combine(blank, "map.bin")));
@@ -145,8 +146,26 @@ static class Bundle
 		var rules = yaml.IndexOf("\nRules:\n", StringComparison.Ordinal);
 		var end = yaml.IndexOf("\n\n", rules + 1, StringComparison.Ordinal);
 		yaml = yaml.Insert(end + 1, "\tra2|web/web-rules.yaml\n");
+
+		// Player-facing names (the standalone's), loaded last so they override the RA2 preview strings.
+		var fluent = yaml.IndexOf("\nFluentMessages:\n", StringComparison.Ordinal);
+		if (fluent >= 0)
+		{
+			var fluentEnd = yaml.IndexOf("\n\n", fluent + 1, StringComparison.Ordinal);
+			yaml = yaml.Insert(fluentEnd + 1, "\tra2|web/web-names.ftl\n");
+		}
+
 		return yaml;
 	}
+
+	// UI text only (bot names as the standalone build shows them).
+	const string WebNames =
+		"## Web build: player-facing names (RTSAI-WebGame Bundle.cs)\n" +
+		"ra2-bot-normal = Normal AI\n" +
+		"ra2-bot-medium = Medium AI\n" +
+		"ra2-bot-rush = Rush AI\n" +
+		"ra2-bot-turtle = Turtle AI\n" +
+		"ra2-bot-naval = Naval AI\n";
 
 	// UI-only and lobby-only changes; nothing here alters unit, weapon or economy rules.
 	const string WebRules =
