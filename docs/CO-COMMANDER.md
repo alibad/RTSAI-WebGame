@@ -136,7 +136,7 @@ stream, which a replay cannot reproduce. Re-enabling it needs an order of its ow
       - "Build a barracks" before the power plant is placed gets a card for the power plant, and the reply says
         the barracks needs it first.
       - "What should I build first?" and "What should I do next?" answer with a card and almost no model time.
-      - Not re-measured yet.
+      - Re-measured below ("After the companion fixes").
     - In the browser, a card shows every offer the companion holds. A card it no longer holds (cancelled, or
       replaced by a newer offer about the same thing) turns to "–" (no longer offered) instead of failing with
       HTTP 409.
@@ -145,6 +145,30 @@ stream, which a replay cannot reproduce. Re-enabling it needs an order of its ow
       reached the model.
     - Its files had already been deleted, and the two later runs did not reproduce it.
     - The verify endpoint now keeps the files of any mismatch.
+  - **After the companion fixes** (OpenRA-AI 2cb9d25, 8 October).
+    - The OpenRA-AI agent measured this, not this repo. It used the same harness pointed at a second server
+      (:3491), on the same GPU stack. It ran 2 × 12 turns for both the old companion (96171fb) and the new one,
+      on the same day.
+    - Its "before" median is lower than the 1.8 s above, probably because the machine was less loaded. Compare the
+      two columns with each other, not with the table above.
+
+    | Talk key released to reply playing | Before (96171fb) | After (2cb9d25) |
+    |---|---|---|
+    | Median | 0.94 s | 0.98 s |
+    | p95 | 6.3 s | **2.1 s** |
+    | Max | 12.5 s | 3.1 s |
+    | "What should I build first / do next?" | 3.3–12.5 s | **0.6–1.1 s**, a card, no model call |
+    | Orders that became the right card | 9 of 14 | **12 of 14** |
+
+    - The 2 misses are both "Build a power plant" right after the harness accepted the turn-1 advice card, which
+      was itself "Build a Power Plant". The reply ("already 39% built") is correct. The harness counts any order
+      turn without a card as a miss.
+    - Every barracks, refinery and soldiers card executed. The placement offers were accepted between turns.
+    - Parity: both runs replayed identically (1913 of 1913 and 1890 of 1890 net frames).
+    - OpenRA-AI's live-model order benchmark (281 cases):
+      - overall 95.0 → 98.6 %;
+      - executable 95.5 → 99.5 %;
+      - unsafe accepts 1 → 0.
   - **CPU stack** (the product pack: llama.cpp CPU, whisper.cpp base.en, Kokoro ONNX). This was not a usable
     measurement. The machine was at 98 % CPU: the 3D run plus other sessions' software-rendered browsers.
     - The first answer took 129 s and the next six 7.5 to 25 s.

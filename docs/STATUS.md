@@ -37,12 +37,14 @@ deterministic: every test game replays identically in the desktop engine, tick f
 - **Speed:** clicks show on screen in about 50 ms, and Start to playing takes about 1 s.
 - **Co-commander, real local models on the GPU:**
   - The models: the product's Qwen3-VL 2B on CUDA llama.cpp, Whisper large-v3 and Kokoro.
-  - **1.8 s median** from releasing the talk key to the spoken reply starting, over 23 spoken turns.
-  - p95 is 11.8 s. Open "what should I do?" questions use the companion's planner and take 9 to 24 s; without them,
-    the median is 1.6 s and p95 4.0 s.
-  - Transcripts were word-exact on 23 of 24 lines.
-  - Every order the co-commander understood became the right card, and every accepted card was executed.
-  - Both sessions replayed natively with identical SyncHash.
+  - **About 1 s median** from releasing the talk key to the spoken reply starting.
+  - **p95 2.1 s, max 3.1 s** with the companion fixes (OpenRA-AI 2cb9d25, measured by the OpenRA-AI agent with this
+    repo's harness, 24 turns). Before the fixes p95 was 6.3 s.
+  - "What should I build first / do next?" now answers in about 1 s with a card, no longer 3 to 24 s.
+  - 12 of 14 spoken orders became the right card. The other 2 were correctly answered "already being built".
+  - Transcripts were word-exact on 23 of 24 lines in this repo's earlier runs.
+  - Every session replayed natively with identical SyncHash.
+  - This repo's own run on 7 October, on a busier machine and before the fixes: 1.8 s median, p95 11.8 s.
   - Details and caveats are in [CO-COMMANDER.md](CO-COMMANDER.md#latency).
   - The CPU-only pack could not be measured fairly: the machine was saturated by other work.
   - Without the models, the overhead of the browser, relay and companion is 65 ms.
@@ -73,8 +75,9 @@ deterministic: every test game replays identically in the desktop engine, tick f
   this.
 - **Co-commander follow-ups.**
   - Offers that a later question dropped, and *I don't recognize …* for items not yet buildable, are fixed in
-    OpenRA-AI d639b65. That companion keeps up to 3 offers and names the missing prerequisite. The browser shows
-    every offer it holds. The latency numbers above predate that change.
+    OpenRA-AI (d639b65 and later, re-measured at 2cb9d25). That companion keeps up to 3 offers and names the
+    missing prerequisite. The browser shows every offer it holds.
+  - The OpenRA-AI fixes are merged locally and not pushed.
   - The CPU-only stack still needs a measurement on a quiet machine.
 - **Content still landing.** The standalone art is still landing. The rare special-death effects (about 2 MB) still
   ship until the standalone agent confirms they are unused.
