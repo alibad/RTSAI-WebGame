@@ -19,6 +19,7 @@ using OpenRA.Mods.Common.Orders;
 using OpenRA.Mods.Common.Traits;
 using OpenRA.Mods.Common.Traits.Radar;
 using OpenRA.Mods.Common.Traits.Render;
+using OpenRA.Mods.Common;
 using OpenRA.Orders;
 using OpenRA.Primitives;
 using OpenRA.Traits;
@@ -138,6 +139,9 @@ namespace OpenRA.WebSim
 
 				sb.Append(']');
 			}
+
+			if (Sandbox.Active)
+				sb.Append(",\"sandbox\":").Append(Sandbox.Json());
 
 			var catalog = Catalog(p);
 			if (catalog != lastCatalog)
@@ -309,6 +313,63 @@ namespace OpenRA.WebSim
 					break;
 				}
 
+				// ---- battle sandbox (an editing world that does not tick; runs are rebuilt from the placements)
+				case "units":
+					return UnitCatalog(world);
+
+				case "spawn":
+				{
+					var type = Str("type");
+					var players = SimHost.PlayablePlayers();
+					var side = Math.Clamp(Int("player"), 0, players.Count - 1);
+					if (type == null || !world.Map.Rules.Actors.ContainsKey(type))
+						return "{\"error\":\"unknown actor\"}";
+
+					var center = SimHost.CellAtWorldPx(new int2(Int("x"), Int("y")));
+					var count = Math.Clamp(Int("count", 1), 1, 50);
+					var columns = Math.Max(1, (int)Math.Ceiling(Math.Sqrt(count)));
+					var created = 0;
+					for (var i = 0; i < count; i++)
+					{
+						var cell = center + new CVec(i % columns - columns / 2, i / columns - columns / 2);
+						if (!world.Map.Contains(cell))
+							continue;
+						var init = new TypeDictionary
+						{
+							new OwnerInit(players[side]),
+							new LocationInit(cell),
+							new FacingInit(new WAngle(side == 0 ? 768 : 256)),
+							new FactionInit(players[side].Faction.InternalName),
+						};
+						var health = Int("health", 100);
+						if (health > 0 && health < 100)
+							init.Add(new HealthInit(health));
+						var actor = world.CreateActor(type, init);
+						if (Int("level") > 0)
+							actor.TraitOrDefault<GainsExperience>()?.GiveLevels(Int("level"), true);
+						created++;
+					}
+
+					return $"{{\"created\":{created}}}";
+				}
+
+				case "remove":
+				{
+					// The editing world does not tick, so frame-end tasks never run: take the actor out of the world now.
+					var a = world.GetActorById((uint)Int("id"));
+					if (a != null && a.Owner.Playable && !a.Disposed)
+					{
+						if (a.IsInWorld)
+							world.Remove(a);
+						a.Dispose();
+					}
+
+					return "{}";
+				}
+
+				case "placements":
+					return Placements(world);
+
 				case "group":
 				{
 					var i = Int("index");
@@ -326,6 +387,57 @@ namespace OpenRA.WebSim
 			}
 
 			return "{}";
+		}
+
+		/// <summary>Every buildable unit (infantry, vehicles, aircraft, ships) for the sandbox picker.</summary>
+		static string UnitCatalog(World world)
+		{
+			var queues = new HashSet<string> { "Infantry", "Vehicle", "Aircraft", "Ship" };
+			var sb = new StringBuilder("{\"units\":[");
+			var first = true;
+			foreach (var a in world.Map.Rules.Actors.Values.OrderBy(a => a.Name))
+			{
+				if (a.Name.StartsWith('^'))
+					continue;
+				var bi = a.TraitInfoOrDefault<BuildableInfo>();
+				var queue = bi?.Queue.FirstOrDefault(queues.Contains);
+				if (queue == null || !a.HasTraitInfo<RenderSpritesInfo>())
+					continue;
+
+				var tooltip = a.TraitInfos<TooltipInfo>().FirstOrDefault(t => t.EnabledByDefault);
+				if (!first)
+					sb.Append(',');
+				first = false;
+				sb.Append("{\"name\":").Append(J(a.Name))
+					.Append(",\"label\":").Append(J(tooltip != null ? FluentProvider.GetMessage(tooltip.Name) : a.Name))
+					.Append(",\"queue\":").Append(J(queue))
+					.Append(",\"modern\":").Append(a.Name.StartsWith("r2", StringComparison.Ordinal) ? "true" : "false")
+					.Append('}');
+			}
+
+			return sb.Append("]}").ToString();
+		}
+
+		/// <summary>The playable players' units in the editing world as scenario spawns (type, player, MPos, facing).</summary>
+		static string Placements(World world)
+		{
+			var players = SimHost.PlayablePlayers();
+			var sb = new StringBuilder("{\"spawns\":[");
+			var first = true;
+			foreach (var a in world.Actors.Where(a => a.IsInWorld && !a.IsDead && a.OccupiesSpace != null && players.Contains(a.Owner) && !a.Info.HasTraitInfo<BuildingInfo>()).OrderBy(a => a.ActorID))
+			{
+				var uv = a.Location.ToMPos(world.Map);
+				var facing = a.TraitOrDefault<IFacing>()?.Facing.Angle ?? 512;
+				if (!first)
+					sb.Append(',');
+				first = false;
+				var level = a.TraitOrDefault<GainsExperience>()?.Level ?? 0;
+				var hp = a.TraitOrDefault<IHealth>();
+				var pct = hp != null && hp.MaxHP > 0 ? (int)(100L * hp.HP / hp.MaxHP) : 100;
+				sb.Append($"{{\"id\":{a.ActorID},\"type\":{J(a.Info.Name)},\"player\":{players.IndexOf(a.Owner)},\"x\":{uv.U},\"y\":{uv.V},\"facing\":{facing},\"level\":{level},\"health\":{pct}}}");
+			}
+
+			return sb.Append("]}").ToString();
 		}
 
 		/// <summary>Issues orders and plays the acknowledgement voice, like CommandBarLogic.</summary>

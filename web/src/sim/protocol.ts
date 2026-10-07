@@ -235,6 +235,15 @@ export interface UiState {
   selection: { id: number; type: string; own: boolean; hp: number; maxHp: number; rank: number; maxRank: number }[];
   groups?: number[];
   catalog?: CatalogQueue[];
+  sandbox?: SandboxStats | null;
+}
+
+/** The battle sandbox readout (sim/OpenRA.WebSim/Sandbox.cs). Times in seconds of game time. */
+export interface SandboxStats {
+  elapsed: number;
+  firstKill: number | null;
+  sides: { alive: number; total: number; hp: number; hpStart: number; shots: number; kills: number; damageTaken: number; damageDealt: number; eliminatedAt: number | null }[];
+  types: { side: number; type: string; total: number; alive: number; shots: number; damageTaken: number }[];
 }
 
 export interface QueuedItem { name: string; progress: number; paused: boolean; done: boolean; infinite: boolean; remaining: number }
@@ -246,7 +255,10 @@ export type ToWorker =
   | { type: "init"; runtime: string; base: string; sab: SharedArrayBuffer | null; privateContent: boolean; gcParams?: string }
   | { type: "prepare"; map: string }
   | { type: "preview"; map: string }
-  | { type: "start"; scenario: string }
+  | { type: "start"; scenario: string; paused?: boolean }
+  | { type: "refresh" }
+  | { type: "step" }
+  | { type: "speed"; speed: number }
   | { type: "end" }
   | { type: "pause"; paused: boolean }
   | { type: "view"; x0: number; y0: number; x1: number; y1: number }

@@ -195,6 +195,18 @@ namespace OpenRA.WebSim.Browser
 			return ms;
 		}
 
+		/// <summary>A snapshot of the current world without advancing it (paused game, sandbox editing, camera moves).</summary>
+		[JSExport]
+		public static void Refresh()
+		{
+			var world = SimHost.World;
+			if (world == null)
+				return;
+			Sync.RunUnsynced(world, () => world.TickRender(SimHost.WorldRenderer));
+			Snapshot.Build();
+			Publish(Snapshot.Segment.AsSpan());
+		}
+
 		/// <summary>Runs ticks without building snapshots (benchmarks). Returns total sim milliseconds.</summary>
 		[JSExport]
 		public static double TickMany(int count)

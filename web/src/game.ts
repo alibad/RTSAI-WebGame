@@ -9,6 +9,7 @@ import type { IconSprite } from "./render/icons";
 import { store, type Perf } from "./store";
 import { cursorFor } from "./ui/cursors";
 import { AudioEngine } from "./audio";
+import { Sandbox, worldToCell } from "./sandbox";
 
 // OpenRA enums
 const MOD_SHIFT = 1, MOD_ALT = 2, MOD_CTRL = 4, MOD_META = 8;
@@ -40,6 +41,7 @@ export class Game {
   info: StartInfo | null = null;
   ui: UiState | null = null;
   scenarioJson = "";
+  sandbox: Sandbox | null = null;
   private raf = 0;
   private mouse = { x: 0, y: 0, wx: 0, wy: 0, inside: false, sx: 0, sy: 0 };
   private drag: { x0: number; y0: number; active: boolean; pan: boolean; cx: number; cy: number } | null = null;
@@ -157,13 +159,13 @@ export class Game {
     this.client.send({ type: "preview", map });
   }
 
-  start(scenarioJson: string) {
+  start(scenarioJson: string, paused = false) {
     this.scenarioJson = scenarioJson;
     this.overlay.selected.clear();
     this.ui = null;
     this.latency = [];
     store.set({ phase: "loading", stage: "Building the world", ui: null, catalog: [], verify: "", menuOpen: false, paused: false });
-    this.client.start(scenarioJson);
+    this.client.start(scenarioJson, paused);
   }
 
   quit() {
@@ -218,8 +220,11 @@ export class Game {
   private rasterIcons() {
     const done: Record<string, string> = {};
     let n = 0;
+    const publicShot = store.get().publicShot;
     for (const [name, sprite] of this.iconQueue) {
-      const url = this.renderer.renderIcon(sprite);
+      // Screenshot mode: only the project's own (modern-faction) cameos.
+      const url = publicShot && !name.startsWith("r2") ? "" : this.renderer.renderIcon(sprite);
+      if (url === "") { done[name] = ""; this.iconQueue.delete(name); continue; }
       if (url) { done[name] = url; this.iconQueue.delete(name); }
       if (++n >= 12) break;
     }
@@ -241,6 +246,7 @@ export class Game {
     if (this.tickArrival.size > 30) this.tickArrival.delete(this.tickArrival.keys().next().value!);
     const pl = this.pendingLatency;
     if (pl && pl.tick > 0 && s.header.tick >= pl.tick && !pl.snapAt) pl.snapAt = now;
+    this.sandbox?.record(s);
   }
 
   // ---------------------------------------------------------------- frame loop
@@ -253,7 +259,10 @@ export class Game {
     this.client.poll(performance.now());
     const cur = this.client.cur;
     this.updateHover(cur);
-    this.renderer.render(cur, this.client.prev, this.cam, this.overlay, performance.now());
+    this.overlay.markers = this.sandboxMarkers();
+    const replay = this.sandbox?.replayFrame();
+    if (replay) this.renderer.render(replay[0], replay[1], this.cam, this.overlay, replay[0].receivedAt + 40);
+    else this.renderer.render(cur, this.client.prev, this.cam, this.overlay, performance.now());
     if (this.iconQueue.size) this.rasterIcons();
     if (now - this.lastListener > 100) { this.audio.setListener(this.cam.x, this.cam.y); this.lastListener = now; }
 
@@ -509,6 +518,42 @@ export class Game {
     return (e.shiftKey ? MOD_SHIFT : 0) | (e.altKey ? MOD_ALT : 0) | (e.ctrlKey ? MOD_CTRL : 0) | (e.metaKey ? MOD_META : 0);
   }
 
+  private sandboxMarkers() {
+    const st = this.sandbox && store.get().sandbox;
+    if (!st || st.mode !== "edit" || !this.info) return undefined;
+    const [ox, oy] = this.info.cellOrigin;
+    const hw = this.info.tileSize[0] / 2, hh = this.info.tileSize[1] / 2;
+    return st.sides.flatMap((s, i) => s.order === "move" && s.destination
+      ? [{ x: ox + (2 * s.destination.u + (s.destination.v & 1)) * hw, y: oy + s.destination.v * hh, color: (i === 0 ? [0.3, 0.55, 1] : [1, 0.35, 0.3]) as [number, number, number] }]
+      : []);
+  }
+
+  /** Sandbox editing input: place with the brush, set a side's destination, right-click removes. */
+  private sandboxEdit(e: MouseEvent, wx: number, wy: number) {
+    const sb = this.sandbox;
+    if (!sb || sb.state.mode !== "edit" || !this.info) return false;
+    const st = sb.state;
+    if (e.button === 0 && st.pickDestination !== null) {
+      const cell = worldToCell(wx, wy, this.info.cellOrigin, this.info.tileSize);
+      const sides = [...st.sides] as typeof st.sides;
+      sides[st.pickDestination] = { ...sides[st.pickDestination], order: "move", destination: cell };
+      store.set({ sandbox: { ...st, sides, pickDestination: null } });
+      this.overlay.orderFlash = { x: wx, y: wy, t: performance.now(), color: st.pickDestination === 0 ? [0.3, 0.55, 1] : [1, 0.35, 0.3] };
+      return true;
+    }
+    if (e.button === 0 && st.brush) {
+      sb.spawn(st.brush, wx, wy);
+      return true;
+    }
+    if (e.button === 2) {
+      const s = this.client.cur;
+      const a = s && this.actorAt(wx, wy, s);
+      if (a && s.players[a.owner] && s.players[a.owner].flags & 4) sb.remove(a.id);
+      return true;
+    }
+    return false;
+  }
+
   private mouseMove(e: MouseEvent) {
     const [wx, wy] = this.toWorld(e.clientX, e.clientY);
     Object.assign(this.mouse, { x: e.clientX, y: e.clientY, wx, wy, sx: e.clientX, sy: e.clientY });
@@ -548,6 +593,7 @@ export class Game {
       c.focus();
       store.set({ menuOpen: false });
       const [wx, wy] = this.toWorld(e.clientX, e.clientY);
+      if (this.sandboxEdit(e, wx, wy)) { e.preventDefault(); return; }
       const mode = this.ui?.mode ?? "";
       if (e.button === 1) this.drag = { x0: wx, y0: wy, active: true, pan: true, cx: e.clientX, cy: e.clientY };
       else if (mode && e.button === 0) this.click(wx, wy, BTN_LEFT, this.mods(e)); // placement, sell, repair, attack-move, guard
@@ -566,6 +612,15 @@ export class Game {
       this.clampCam();
       this.sendView(true);
     }, { passive: false });
+    // Sandbox: drag a unit from the palette onto the battlefield.
+    c.addEventListener("dragover", (e) => { if (e.dataTransfer?.types.includes("application/x-rtsai-unit")) e.preventDefault(); });
+    c.addEventListener("drop", (e) => {
+      const type = e.dataTransfer?.getData("application/x-rtsai-unit");
+      if (!type || !this.sandbox || this.sandbox.state.mode !== "edit") return;
+      e.preventDefault();
+      const [wx, wy] = this.toWorld(e.clientX, e.clientY);
+      this.sandbox.spawn(type, wx, wy);
+    });
     window.addEventListener("mousemove", this.onMove);
     window.addEventListener("mouseup", this.onUp);
     window.addEventListener("keydown", this.onKeyDown);

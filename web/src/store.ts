@@ -1,8 +1,9 @@
-// App state shared by the game controller (writes) and the React HUD (reads through selectors, so a 25 Hz UI
+﻿// App state shared by the game controller (writes) and the React HUD (reads through selectors, so a 25 Hz UI
 // update only re-renders the components whose slice changed).
 
 import { create } from "zustand";
 import type { CatalogQueue, LazyStats, SetupData, StartInfo, UiState } from "./sim/protocol";
+import type { SandboxState } from "./sandbox";
 
 export type Phase = "boot" | "setup" | "loading" | "playing" | "error";
 
@@ -50,6 +51,9 @@ export interface Store {
   startMs: number;
   perf: Perf;
   verify: string;
+  sandbox: SandboxState | null;
+  /** ?shot=1: project art only (screenshots that may leave this machine): no terrain, map previews or EA cameos. */
+  publicShot: boolean;
   set: (p: Partial<Store>) => void;
 }
 
@@ -80,6 +84,8 @@ export const useStore = create<Store>((set) => ({
   startMs: 0,
   perf: { fps: 0, frameMs: 0, simTickMs: 0, engineTickMs: 0, buildMs: 0, tps: 0, lateTicks: 0, draws: 0, heapMB: 0, managedMB: 0, tick: 0, syncHash: 0, latency: [], missed: 0 },
   verify: "",
+  sandbox: null,
+  publicShot: new URLSearchParams(typeof location !== "undefined" ? location.search : "").get("shot") === "1",
   set: (p) => set(p),
 }));
 

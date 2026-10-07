@@ -19,6 +19,7 @@ export interface Overlay {
   dragBox: [number, number, number, number] | null; // world px
   orderFlash: { x: number; y: number; t: number; color: [number, number, number] } | null;
   ownPlayer: number;
+  markers?: { x: number; y: number; color: [number, number, number] }[];
 }
 
 const INSTANCE_FLOATS = 20;
@@ -650,6 +651,15 @@ export class Renderer {
         rect(x0, y0 - 5 * px - 3, act.bw, 4, 0, 0, 0, 0.75);
         rect(x0 + px, y0 - 4 * px - 3, Math.max(0, (act.bw - 2 * px) * f), 2, col[0], col[1], col[2]);
       }
+    }
+
+    for (const m of ov.markers ?? []) {
+      // Destination flag: a cross with a short pole.
+      const [r, g, b] = m.color;
+      rect(m.x - 7, m.y - px, 14, 2 * px, r, g, b);
+      rect(m.x - px, m.y - 7, 2 * px, 14, r, g, b);
+      rect(m.x, m.y - 22, 2 * px, 16, 0.9, 0.9, 0.9);
+      rect(m.x + 2 * px, m.y - 22, 9, 6, r, g, b);
     }
 
     if (ov.dragBox) {

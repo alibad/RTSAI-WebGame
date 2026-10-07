@@ -1,4 +1,4 @@
-﻿// Skirmish setup: pick a nation (flags), a map (its preview is the backdrop), opponents (nation, AI type,
+// Skirmish setup: pick a nation (flags), a map (its preview is the backdrop), opponents (nation, AI type,
 // colour) and the lobby options the mod offers, then start. The chosen map is prepared in the background while
 // the player decides, so starting only builds the world.
 
@@ -8,6 +8,9 @@ import { useStore } from "../store";
 import { Button } from "../components/ui/button";
 import { OptionSelect, SearchSelect, type Option } from "../components/ui/fields";
 import { cn } from "../lib/utils";
+
+// The options most players change; the rest stay one click away.
+const KEY_OPTIONS = ["startingcash", "startingunits", "fog", "explored", "crates", "techlevel"];
 
 const COLORS = ["2A6FDB", "D83A2E", "3FAE49", "E7B42F", "E8702A", "25A6A6", "8E4FD1", "E05A9C"];
 const FLAGGED = new Set(["america", "china", "cuba", "england", "france", "germany", "iran", "iraq", "israel", "korea", "libya", "russia", "saudi", "turkey", "ukraine", "yemen"]);
@@ -33,6 +36,7 @@ export function Setup({ game }: { game: Game }) {
   const previews = useStore((s) => s.previews);
   const prepared = useStore((s) => s.preparedMap);
   const privateContent = useStore((s) => s.privateContent);
+  const publicShot = useStore((s) => s.publicShot);
 
   const factions = setup.factions.filter((f) => !f.random);
   const modern = new Set(["saudi", "iran", "china", "turkey", "israel", "yemen", "hezbollah"]);
@@ -40,6 +44,7 @@ export function Setup({ game }: { game: Game }) {
   const [mapId, setMapId] = useState<string>(() => load("rtsai.map", setup.maps.find((m) => m.id === "tournament-2A")?.id ?? setup.maps[0]?.id));
   const map = setup.maps.find((m) => m.id === mapId) ?? setup.maps[0];
   const [color, setColor] = useState<string>(() => load("rtsai.color", COLORS[0]));
+  const [moreOptions, setMoreOptions] = useState(false);
   const [opponents, setOpponents] = useState<Opponent[]>(() => load("rtsai.opponents", [{ faction: "iran", bot: setup.bots[0]?.type ?? "normal", color: COLORS[1] }]));
   const [options, setOptions] = useState<Record<string, string>>(() => ({
     ...Object.fromEntries((setup.options ?? []).map((o) => [o.id, o.default])),
@@ -85,7 +90,7 @@ export function Setup({ game }: { game: Game }) {
     game.start(JSON.stringify(scenario));
   };
 
-  const backdrop = map ? previews[map.id] : "";
+  const backdrop = map && !publicShot ? previews[map.id] : "";
   const ready = prepared === map?.id;
   const factionInfo = factions.find((f) => f.id === faction);
 
@@ -130,13 +135,17 @@ export function Setup({ game }: { game: Game }) {
 
           {(setup.options?.length ?? 0) > 0 && (
             <div className="hud-panel grid grid-cols-2 gap-x-4 gap-y-2 p-4">
-              {setup.options!.map((o) => (
+              {setup.options!.filter((o) => moreOptions || KEY_OPTIONS.includes(o.id)).map((o) => (
                 <label key={o.id} className="flex flex-col gap-1 text-[11px] uppercase tracking-wider text-[var(--muted-foreground)]">
                   {o.name}
                   <OptionSelect size="sm" value={options[o.id] ?? o.default} onValueChange={(v) => setOptions({ ...options, [o.id]: v })}
                     options={o.values.map((v) => ({ value: v.value, label: v.label }))} />
                 </label>
               ))}
+              <button type="button" onClick={() => setMoreOptions(!moreOptions)}
+                className="col-span-2 justify-self-start text-[11px] text-[var(--muted-foreground)] underline-offset-2 hover:text-[var(--foreground)] hover:underline">
+                {moreOptions ? "Fewer options" : `More options (${setup.options!.length - KEY_OPTIONS.length})`}
+              </button>
             </div>
           )}
         </section>
@@ -145,13 +154,15 @@ export function Setup({ game }: { game: Game }) {
         <section className="flex min-w-0 flex-col gap-4 pt-[52px] max-[900px]:pt-0">
           <div className="hud-panel flex flex-col gap-3 p-4">
             <div className="hud-inset relative aspect-[16/10] w-full overflow-hidden">
-              {backdrop ? <img src={backdrop} alt={map?.title} className="h-full w-full object-contain" /> : <div className="grid h-full place-items-center"><div className="spinner" /></div>}
+              {backdrop ? <img src={backdrop} alt={map?.title} className="h-full w-full object-contain" />
+                : publicShot ? <div className="grid h-full place-items-center bg-[repeating-linear-gradient(45deg,#0c0f0c_0_10px,#101410_10px_20px)] text-[12px] text-[var(--muted-foreground)]">{map?.title}</div>
+                : <div className="grid h-full place-items-center"><div className="spinner" /></div>}
               <div className="absolute bottom-2 left-2 flex items-center gap-2 rounded-[3px] bg-black/70 px-2 py-1 text-[11px]">
                 {ready ? <span className="size-[7px] rounded-full bg-[var(--hud-green)]" /> : <div className="spinner !size-[10px] !border" />}
-                <span className="text-[var(--muted-foreground)]">{map?.players} players Â· {map?.tileset.toLowerCase()}</span>
+                <span className="text-[var(--muted-foreground)]">{map?.players} players · {map?.tileset.toLowerCase()}</span>
               </div>
             </div>
-            <SearchSelect value={mapId} onValueChange={setMapId} options={mapOptions} aria-label="Map" placeholder="Find a mapâ€¦" />
+            <SearchSelect value={mapId} onValueChange={setMapId} options={mapOptions} aria-label="Map" placeholder="Find a map…" />
           </div>
 
           <div className="hud-panel flex flex-col gap-2 p-4">

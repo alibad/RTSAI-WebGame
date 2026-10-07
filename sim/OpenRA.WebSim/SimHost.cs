@@ -284,12 +284,19 @@ namespace OpenRA.WebSim
 
 			if (s.Script == "battle")
 				ScriptBattle();
+			else
+				ScriptOpening();
+
+			Sandbox.Start(s.Sandbox ? PlayablePlayers() : null);
 
 			GC.Collect();
 		}
 
+		static readonly List<(Actor Actor, SpawnSpec Spec)> Spawned = [];
+
 		static void SpawnActors(ScenarioSpec s)
 		{
+			Spawned.Clear();
 			var players = PlayablePlayers();
 			foreach (var a in s.Spawns)
 			{
@@ -297,13 +304,21 @@ namespace OpenRA.WebSim
 					throw new InvalidDataException($"Spawn {a.Type}: no player {a.Player}.");
 
 				var owner = players[a.Player];
-				World.CreateActor(a.Type.ToLowerInvariant(), new TypeDictionary
+				var init = new TypeDictionary
 				{
 					new OwnerInit(owner),
 					new LocationInit(new MPos(a.X, a.Y).ToCPos(World.Map)),
 					new FacingInit(new WAngle(a.Facing)),
 					new FactionInit(owner.Faction.InternalName),
-				});
+				};
+				if (a.Health > 0 && a.Health < 100)
+					init.Add(new HealthInit(a.Health));
+
+				var actor = World.CreateActor(a.Type.ToLowerInvariant(), init);
+				if (a.Level > 0)
+					actor.TraitOrDefault<GainsExperience>()?.GiveLevels(a.Level, true);
+
+				Spawned.Add((actor, a));
 			}
 		}
 
@@ -335,6 +350,52 @@ namespace OpenRA.WebSim
 			}
 		}
 
+		/// <summary>
+		/// Per-placement opening orders (the sandbox and Studio placements): "engage" attack-moves to the enemy group's
+		/// centre, "hold" sets the Defend stance, "move" moves to the destination, "deploy" deploys. Issued on tick 1.
+		/// </summary>
+		static void ScriptOpening()
+		{
+			var players = PlayablePlayers();
+			foreach (var (actor, spec) in Spawned)
+			{
+				if (actor.Disposed || !actor.IsInWorld)
+					continue;
+
+				switch (spec.Order)
+				{
+					case "engage":
+					{
+						var enemies = Spawned.Where(o => o.Spec.Player != spec.Player && !o.Actor.Disposed).Select(o => o.Actor).ToList();
+						if (enemies.Count == 0 || !actor.Info.HasTraitInfo<AttackMoveInfo>())
+							break;
+						var target = new WPos((int)enemies.Average(a => (long)a.CenterPosition.X), (int)enemies.Average(a => (long)a.CenterPosition.Y), 0);
+						ScriptedOrders.Add(new Order("AttackMove", actor, Target.FromCell(World, World.Map.CellContaining(target)), false));
+						break;
+					}
+
+					case "hold":
+						if (actor.Info.HasTraitInfo<AutoTargetInfo>())
+							ScriptedOrders.Add(new Order("SetUnitStance", actor, false) { ExtraData = (uint)UnitStance.Defend });
+						break;
+
+					case "move":
+						if (spec.DestX >= 0 && spec.DestY >= 0)
+							ScriptedOrders.Add(new Order("Move", actor, Target.FromCell(World, new MPos(spec.DestX, spec.DestY).ToCPos(World.Map)), false));
+						break;
+				}
+
+				if (spec.Deploy)
+					foreach (var d in actor.TraitsImplementing<IIssueDeployOrder>())
+						if (d.CanIssueDeployOrder(actor, false))
+						{
+							var o = d.IssueDeployOrder(actor, false);
+							if (o != null)
+								ScriptedOrders.Add(o);
+						}
+			}
+		}
+
 		/// <summary>One world tick at the engine's net-frame cadence (NetFrameInterval 1). Returns false if the world did not advance.</summary>
 		public static bool Tick()
 		{
@@ -353,6 +414,7 @@ namespace OpenRA.WebSim
 			{
 				Sync.RunUnsynced(world, () => world.OrderGenerator.Tick(world));
 				world.Tick();
+				Sandbox.Tick(world);
 			}
 
 			// TickRender updates the screen map (mouse/selection lookups) and render-only state.

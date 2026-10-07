@@ -1,4 +1,4 @@
-﻿// In-game HUD around the battlefield: selection panel (portraits, health, veterancy), command bar, control
+// In-game HUD around the battlefield: selection panel (portraits, health, veterancy), command bar, control
 // groups, game menu, victory/defeat and the developer stats panel (F2).
 
 import { useMemo, useState } from "react";
@@ -32,7 +32,7 @@ function Rank({ rank }: { rank: number }) {
   );
 }
 
-function SelectionPanel({ game }: { game: Game }) {
+export function SelectionPanel({ game }: { game: Game }) {
   const selection = useStore((s) => s.ui?.selection);
   const icons = useStore((s) => s.icons);
   const catalog = useStore((s) => s.catalog);
@@ -65,7 +65,7 @@ function SelectionPanel({ game }: { game: Game }) {
     groups.set(a.type, g);
   }
   return (
-    <div className="hud-panel grid max-w-[min(520px,calc(100vw-var(--sidebar-w)-24px))] grid-cols-[repeat(auto-fill,64px)] gap-[4px] p-[6px]">
+    <div className="hud-panel grid max-w-[min(520px,calc(100vw-var(--sidebar-w)-24px))] gap-[4px] p-[6px]" style={{ gridTemplateColumns: `repeat(${Math.min(groups.size, 7)}, 64px)` }}>
       {[...groups].map(([type, g]) => (
         <button key={type} type="button" className="flex flex-col gap-[2px]" title={labels.get(type) ?? type} onClick={() => game.selectType(type)}>
           <div className="cameo hud-inset relative w-[64px]">
@@ -80,7 +80,7 @@ function SelectionPanel({ game }: { game: Game }) {
   );
 }
 
-function CommandBar({ game }: { game: Game }) {
+export function CommandBar({ game }: { game: Game }) {
   const selection = useStore((s) => s.ui?.selection);
   const mode = useStore((s) => s.ui?.mode ?? "");
   if (!selection?.some((a) => a.own)) return null;
@@ -119,7 +119,7 @@ function GroupBar({ game }: { game: Game }) {
   );
 }
 
-function GameMenu({ game }: { game: Game }) {
+export function GameMenu({ game }: { game: Game }) {
   const paused = useStore((s) => s.paused);
   const statsOpen = useStore((s) => s.statsOpen);
   const set = useStore((s) => s.set);
@@ -136,7 +136,9 @@ function GameMenu({ game }: { game: Game }) {
         <DropdownMenuCheckboxItem checked={sound} onCheckedChange={(v) => { game.audio.setSoundOn(!!v); setSound(!!v); }}>Sound</DropdownMenuCheckboxItem>
         <DropdownMenuCheckboxItem checked={music} onCheckedChange={(v) => { game.audio.setMusicOn(!!v); setMusic(!!v); }}>Music</DropdownMenuCheckboxItem>
         <DropdownMenuSeparator />
-        <DropdownMenuItem variant="destructive" onClick={() => game.quit()}>Leave game</DropdownMenuItem>
+        {game.sandbox
+          ? <DropdownMenuItem onClick={() => game.sandbox!.backToEdit()}>Back to setup</DropdownMenuItem>
+          : <DropdownMenuItem variant="destructive" onClick={() => game.quit()}>Leave game</DropdownMenuItem>}
       </DropdownMenuContent>
     </DropdownMenu>
   );
@@ -156,16 +158,16 @@ function Stats({ game }: { game: Game }) {
       <dl className="grid grid-cols-[1fr_auto] gap-x-3 gap-y-[2px]">
         {row("Runtime", runtime === "aot" ? "AOT" : "Interpreter")}
         {row("Map", info?.map ?? "")}
-        {row("Tick", `${p.tick} Â· ${p.tps.toFixed(1)} tps`)}
+        {row("Tick", `${p.tick} · ${p.tps.toFixed(1)} tps`)}
         {row("SyncHash", (p.syncHash >>> 0).toString(16).padStart(8, "0"))}
         {row("World.Tick", `${p.engineTickMs.toFixed(2)} ms`)}
         {row("Tick + snapshot", `${p.simTickMs.toFixed(2)} ms`)}
-        {row("Frame", `${p.fps.toFixed(0)} fps Â· ${p.frameMs.toFixed(2)} ms Â· ${p.draws} sprites`)}
-        {row("Input â†’ frame", p.latency.length ? `p50 ${percentile(p.latency, 0.5).toFixed(0)} Â· p95 ${percentile(p.latency, 0.95).toFixed(0)} ms` : "â€“")}
+        {row("Frame", `${p.fps.toFixed(0)} fps · ${p.frameMs.toFixed(2)} ms · ${p.draws} sprites`)}
+        {row("Input → frame", p.latency.length ? `p50 ${percentile(p.latency, 0.5).toFixed(0)} · p95 ${percentile(p.latency, 0.95).toFixed(0)} ms` : "–")}
         {row("WASM heap", `${p.heapMB.toFixed(0)} MB (managed ${p.managedMB.toFixed(0)})`)}
-        {row("Private reads", lazy ? `${(lazy.fetchedBytes / 1048576).toFixed(0)} of ${(lazy.bytes / 1048576).toFixed(0)} MB` : "â€“")}
+        {row("Private reads", lazy ? `${(lazy.fetchedBytes / 1048576).toFixed(0)} of ${(lazy.bytes / 1048576).toFixed(0)} MB` : "–")}
         {row("World start", `${(startMs / 1000).toFixed(2)} s`)}
-        {row("Map prepare", timings["prepare.total"] ? `${(timings["prepare.total"] / 1000).toFixed(2)} s` : "â€“")}
+        {row("Map prepare", timings["prepare.total"] ? `${(timings["prepare.total"] / 1000).toFixed(2)} s` : "–")}
         {row("Late / missed", `${p.lateTicks} / ${p.missed}`)}
       </dl>
       <div className="mt-2 grid grid-cols-3 gap-1">

@@ -144,6 +144,7 @@ static class Program
 		SimHost.Start(ScenarioSpec.Parse(File.ReadAllText(opts["scenario"])));
 		var ticks = opts.TryGetValue("ticks", out var t) ? int.Parse(t) : 200;
 		var maxV = 0; var maxB = 0; var maxM = 0; var others = 0;
+		Console.WriteLine("spawns " + SimHost.Scenario.Spawns.Count + ", owned: " + string.Join(", ", SimHost.World.Actors.Where(a => a.Owner.Playable).GroupBy(a => a.Owner.InternalName + ":" + a.Info.Name).Select(g => g.Key + "x" + g.Count())));
 		for (var i = 0; i < ticks; i++)
 		{
 			SimHost.Tick();
@@ -157,6 +158,8 @@ static class Program
 		}
 
 		Console.WriteLine($"max: vertices {maxV} batches {maxB} model cmds {maxM} failed {others}");
+		if (Sandbox.Active)
+			Console.WriteLine("sandbox: " + Sandbox.Json());
 		return 0;
 	}
 

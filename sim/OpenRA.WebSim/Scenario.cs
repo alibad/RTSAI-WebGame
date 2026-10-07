@@ -1,4 +1,4 @@
-#region Copyright & License Information
+﻿#region Copyright & License Information
 /*
  * Copyright (c) The OpenRA Developers and Contributors
  * This file is part of OpenRA, which is free software. It is made
@@ -30,6 +30,17 @@ namespace OpenRA.WebSim
 		public int Player;
 		public int X, Y;
 		public int Facing = 512;
+
+		/// <summary>Veterancy levels given at spawn (GainsExperience.GiveLevels).</summary>
+		public int Level;
+
+		/// <summary>Health percent at spawn (HealthInit).</summary>
+		public int Health = 100;
+
+		/// <summary>Opening order on tick 1: "engage" (attack-move to the enemy centre), "hold" (Defend stance), "move".</summary>
+		public string Order;
+		public int DestX = -1, DestY = -1;
+		public bool Deploy;
 	}
 
 	/// <summary>
@@ -47,6 +58,13 @@ namespace OpenRA.WebSim
 		/// <summary>"battle": on tick 1 every spawned unit attack-moves to the enemy group's centre.</summary>
 		public string Script;
 
+		public int DefaultLevel;
+		public int DefaultHealth = 100;
+		public string DefaultOrder;
+
+		/// <summary>A battle-sandbox run: track the results readout (shots, damage, kills, survivors).</summary>
+		public bool Sandbox;
+
 		public static ScenarioSpec Parse(string json)
 		{
 			using var doc = JsonDocument.Parse(json);
@@ -56,6 +74,10 @@ namespace OpenRA.WebSim
 				Map = Str(root, "map", null),
 				Seed = Int(root, "seed", 1),
 				Script = Str(root, "script", null),
+				DefaultLevel = Int(root, "level", 0),
+				DefaultHealth = Int(root, "health", 100),
+				DefaultOrder = Str(root, "order", null),
+				Sandbox = root.TryGetProperty("sandbox", out var sbx) && sbx.ValueKind == JsonValueKind.True,
 			};
 
 			if (root.TryGetProperty("players", out var players))
@@ -78,18 +100,26 @@ namespace OpenRA.WebSim
 				foreach (var o in options.EnumerateObject())
 					s.Options[o.Name] = o.Value.ValueKind == JsonValueKind.String ? o.Value.GetString() : o.Value.GetRawText();
 
-			if (root.TryGetProperty("spawns", out var spawns))
+			if (root.TryGetProperty("spawns", out var spawns) || root.TryGetProperty("placements", out spawns))
 			{
 				foreach (var a in spawns.EnumerateArray())
 				{
-					var type = Str(a, "type", null);
-					var player = Int(a, "player", 0);
+					// Field names of the web sandbox and of the Studio's DuelPlacement are both accepted
+					// (type/id, player/side, x/u, y/v, destination {u, v}).
+					var type = Str(a, "type", null) ?? Str(a, "id", null);
+					var player = Int(a, "player", Int(a, "side", 0));
 					var facing = Int(a, "facing", 512);
 					var count = Int(a, "count", 1);
-					var x = Int(a, "x", 0);
-					var y = Int(a, "y", 0);
+					var x = Int(a, "x", Int(a, "u", 0));
+					var y = Int(a, "y", Int(a, "v", 0));
 					var columns = Int(a, "columns", 1);
 					var spacing = Int(a, "spacing", 1);
+					int dx = -1, dy = -1;
+					if (a.TryGetProperty("destination", out var d) && d.ValueKind == JsonValueKind.Object)
+					{
+						dx = Int(d, "u", Int(d, "x", -1));
+						dy = Int(d, "v", Int(d, "y", -1));
+					}
 
 					// "count" lays a block of identical actors out in a grid starting at (x, y).
 					for (var i = 0; i < count; i++)
@@ -101,6 +131,12 @@ namespace OpenRA.WebSim
 							Facing = facing,
 							X = x + i % columns * spacing,
 							Y = y + i / columns * spacing,
+							Level = Int(a, "level", s.DefaultLevel),
+							Health = Int(a, "health", s.DefaultHealth),
+							Order = Str(a, "order", s.DefaultOrder),
+							DestX = dx,
+							DestY = dy,
+							Deploy = a.TryGetProperty("deploy", out var dep) && dep.ValueKind == JsonValueKind.True,
 						});
 					}
 				}

@@ -34,6 +34,15 @@ let lastSecond = 0;
 let ticks = 0;
 let lastUi = "";
 let timer: ReturnType<typeof setTimeout> | null = null;
+let tickMs = TICK_MS; // 40 ms at 1x; the sandbox can run faster
+
+/** A snapshot without advancing the world (paused game, sandbox editing, camera moves while paused). */
+function refresh() {
+  if (!S) return;
+  S.Refresh();
+  sendUi();
+  sendShroud(false);
+}
 
 function post(msg: FromWorker, transfer: Transferable[] = []) {
   self.postMessage(msg, transfer);
@@ -179,8 +188,9 @@ function stopLoop() {
   timer = null;
 }
 
-function start(scenario: string) {
+function start(scenario: string, startPaused = false) {
   stopLoop();
+  paused = startPaused;
   const t0 = performance.now();
   post({ type: "progress", stage: "Building the world" });
   const info = JSON.parse(S.Start(scenario));
@@ -196,6 +206,7 @@ function start(scenario: string) {
   running = true;
   nextTick = performance.now();
   lastSecond = nextTick;
+  if (paused) refresh();
   loop();
 }
 
@@ -237,15 +248,15 @@ function loop() {
     let n = 0;
     while (now >= nextTick && n < 2) {
       tickOnce();
-      nextTick += TICK_MS;
+      nextTick += tickMs;
       n++;
     }
     if (now - nextTick > 200) {
       // Fell more than 5 ticks behind (sim slower than real time): drop the backlog instead of spiralling.
       lateTicks++;
-      nextTick = now + TICK_MS;
+      nextTick = now + tickMs;
     }
-  } else nextTick = now + TICK_MS;
+  } else nextTick = now + tickMs;
 
   if (now - lastSecond >= 1000) {
     tps = (ticksThisSecond * 1000) / (now - lastSecond);
@@ -278,10 +289,16 @@ self.onmessage = async (e: MessageEvent<ToWorker>) => {
         post({ type: "preview", map: m.map, png: buf }, [buf]);
         break;
       }
-      case "start": start(m.scenario); break;
+      case "start": start(m.scenario, m.paused ?? false); break;
+      case "refresh": refresh(); break;
+      case "step": if (running && paused) tickOnce(); break;
+      case "speed": tickMs = TICK_MS / Math.max(0.25, Math.min(8, m.speed)); break;
       case "end": stopLoop(); S.EndGame(); break;
-      case "pause": paused = m.paused; break;
-      case "view": S?.View(m.x0 | 0, m.y0 | 0, m.x1 | 0, m.y1 | 0); break;
+      case "pause": paused = m.paused; if (paused) refresh(); break;
+      case "view":
+        S?.View(m.x0 | 0, m.y0 | 0, m.x1 | 0, m.y1 | 0);
+        if (running && paused) refresh();
+        break;
       case "select": post({ type: "reply", req: m.req, json: S.Select(JSON.stringify(m.ids), m.additive) }); break;
       case "command": {
         let json: string;

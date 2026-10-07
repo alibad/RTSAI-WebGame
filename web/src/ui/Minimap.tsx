@@ -1,4 +1,4 @@
-// The radar: terrain colours from the engine (Map.GetTerrainColorPair), blips from IRadarSignature, the render
+﻿// The radar: terrain colours from the engine (Map.GetTerrainColorPair), blips from IRadarSignature, the render
 // player's shroud, and the camera frame. Left click/drag moves the camera, right click orders the selection.
 // Offline (static) until the player owns a working radar building, as in the desktop game.
 
@@ -10,6 +10,7 @@ export function Minimap({ game, size }: { game: Game; size: number }) {
   const ref = useRef<HTMLCanvasElement>(null);
   const online = useStore((s) => s.ui?.radar ?? false);
   const info = useStore((s) => s.info);
+  const publicShot = useStore((s) => s.publicShot);
 
   useEffect(() => {
     const canvas = ref.current;
@@ -133,7 +134,7 @@ export function Minimap({ game, size }: { game: Game; size: number }) {
 
   return (
     <div className="hud-inset relative" style={{ width: size, height: size }}>
-      <canvas ref={ref} style={{ width: size, height: size, display: "block", opacity: online ? 1 : 0, transition: "opacity 600ms" }} />
+      <canvas ref={ref} style={{ width: size, height: size, display: "block", opacity: online && !publicShot ? 1 : 0, transition: "opacity 600ms" }} />
       {!online && (
         <div className="absolute inset-0 grid place-items-center overflow-hidden">
           <div className="absolute inset-0 opacity-30" style={{ background: "repeating-linear-gradient(0deg, rgba(255,255,255,0.06) 0 1px, transparent 1px 3px)" }} />

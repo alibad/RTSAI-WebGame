@@ -71,13 +71,13 @@ export class SimClient {
     this.send({ type: "init", runtime, base, sab: this.sab, privateContent, gcParams });
   }
 
-  start(scenario: string) {
+  start(scenario: string, paused = false) {
     this.cur = this.prev = null;
     this.lastSeq = this.header ? Atomics.load(this.header, 0) : 0;
     this.strings = [];
     this.pending = [];
     this.renderer.resetSprites();
-    this.send({ type: "start", scenario });
+    this.send({ type: "start", scenario, paused });
   }
 
   private handle(m: FromWorker) {

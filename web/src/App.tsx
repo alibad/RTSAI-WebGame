@@ -4,6 +4,8 @@ import { useStore } from "./store";
 import { Hud } from "./ui/Hud";
 import { Setup } from "./ui/Setup";
 import { loadCursors } from "./ui/cursors";
+import { SandboxHud } from "./ui/SandboxHud";
+import { ARENA, Sandbox, parseSandboxUrl } from "./sandbox";
 
 function Loading() {
   const stage = useStore((s) => s.stage);
@@ -49,7 +51,7 @@ export default function App() {
     const params = new URLSearchParams(location.search);
     const g = new Game(canvasRef.current!);
     Object.assign(window as object, { game: g, store: useStore });
-    const only = params.get("only");
+    const only = params.get("only") ?? (params.get("shot") === "1" ? "r2" : null);
     if (only) g.renderer.actorFilter = (t) => g.client.str(t).startsWith(only);
     setGame(g);
     loadCursors();
@@ -57,6 +59,16 @@ export default function App() {
     g.boot(params.get("runtime") ?? "aot", params.get("private") !== "0");
     return () => g.dispose();
   }, []);
+
+  // ?mode=sandbox: the battle sandbox instead of a skirmish (the Studio's Encounter opens it with placements).
+  const sandboxMode = new URLSearchParams(location.search).get("mode") === "sandbox";
+  useEffect(() => {
+    if (!game || !sandboxMode || phase !== "setup" || game.sandbox) return;
+    const sb = new Sandbox(game, parseSandboxUrl(new URLSearchParams(location.search)));
+    game.sandbox = sb;
+    game.prepare(ARENA);
+    sb.edit();
+  }, [game, phase, sandboxMode]);
 
   // ?scenario=<name> starts a bundled scenario as soon as the engine is ready (benchmarks, tests).
   useEffect(() => {
@@ -69,11 +81,11 @@ export default function App() {
 
   const playing = phase === "playing";
   return (
-    <div className="fixed inset-0">
+    <div className="fixed inset-0" style={sandboxMode ? ({ "--sidebar-w": "300px" } as React.CSSProperties) : undefined}>
       <canvas ref={canvasRef} className="stage" tabIndex={0} style={{ right: playing ? "var(--sidebar-w)" : 0, width: playing ? "calc(100% - var(--sidebar-w))" : "100%", visibility: playing ? "visible" : "hidden" }} />
-      {game && playing && <Hud game={game} />}
-      {game && phase === "setup" && <Setup game={game} />}
-      {(phase === "boot" || phase === "loading") && <Loading />}
+      {game && playing && (sandboxMode ? <SandboxHud game={game} /> : <Hud game={game} />)}
+      {game && phase === "setup" && !sandboxMode && <Setup game={game} />}
+      {(phase === "boot" || phase === "loading" || (phase === "setup" && sandboxMode)) && <Loading />}
       {phase === "error" && <ErrorCard game={game} />}
     </div>
   );
