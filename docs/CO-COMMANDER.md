@@ -127,11 +127,19 @@ stream, which a replay cannot reproduce. Re-enabling it needs an order of its ow
       - barracks and refinery need the power plant placed;
       - training needs the barracks.
     - The power plant was never placed, for this reason. The co-commander offers to place the finished building
-      (pending action, shown as a card). Any later question replaces that offer in the companion.
-    - In the browser such a card now turns to "–" (no longer offered) instead of failing with HTTP 409.
-    - For an item that isn't available yet, the companion says *I don't recognize "barracks"*. On the RA2-based
-      mod it has no catalogue of everything buildable, so it cannot explain the missing prerequisite (an
-      OpenRA-AI issue).
+      (pending action, shown as a card). In the companion measured here, any later question replaced that offer.
+    - For an item that isn't available yet, the companion said *I don't recognize "barracks"* instead of naming
+      the missing prerequisite.
+    - Both are fixed in OpenRA-AI d639b65, after this measurement:
+      - The companion holds up to 3 offers (`pending_actions` in `GET /v1/state`, newest first). A question no
+        longer drops one. A finished building always keeps its "Place the completed X" offer.
+      - "Build a barracks" before the power plant is placed gets a card for the power plant, and the reply says
+        the barracks needs it first.
+      - "What should I build first?" and "What should I do next?" answer with a card and almost no model time.
+      - Not re-measured yet.
+    - In the browser, a card shows every offer the companion holds. A card it no longer holds (cancelled, or
+      replaced by a newer offer about the same thing) turns to "–" (no longer offered) instead of failing with
+      HTTP 409.
   - **Parity.** Both runs replayed identically: 2605 of 2605 and 2999 of 2999 net frames.
     - An earlier run reported a mismatch at frame 5224 of 5259, and it also had two stalls (47 s and 71 s) that never
       reached the model.

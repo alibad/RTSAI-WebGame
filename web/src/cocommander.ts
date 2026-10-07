@@ -116,13 +116,18 @@ export class CoCommander {
       const asked = Date.now();
       const res = await fetch(new URL(`${API}v1/state`, base()));
       if (!res.ok) return;
-      const state = await res.json() as { pending_action?: { proposal_id: string; summary: string } | null };
-      const p = state.pending_action;
-      // The companion holds one proposal at a time: older cards it no longer holds can't be accepted any more.
+      type Offer = { proposal_id: string; summary: string };
+      const state = await res.json() as { pending_action?: Offer | null; pending_actions?: Offer[] };
+      // Every offer the companion still holds, newest first (pending_actions; older companions send only the newest).
+      const held = state.pending_actions ?? (state.pending_action ? [state.pending_action] : []);
+      const ids = new Set(held.map((p) => p.proposal_id));
+      // Cards the companion no longer holds (cancelled, replaced by an offer about the same thing) can't be accepted.
       for (const f of this.s.feed)
-        if (f.kind === "proposal" && f.state === "pending" && f.at < asked && f.proposalId !== p?.proposal_id) this.update(f.id, { state: "expired" });
-      if (p && !this.s.feed.some((f) => f.proposalId === p.proposal_id) && (!this.focus || this.focus.test(p.summary)))
-        this.push("proposal", p.summary, { proposalId: p.proposal_id, state: "pending" });
+        if (f.kind === "proposal" && f.state === "pending" && f.at < asked && !ids.has(f.proposalId ?? "")) this.update(f.id, { state: "expired" });
+      // New offers as cards, oldest first so the feed keeps their order.
+      for (const p of [...held].reverse())
+        if (!this.s.feed.some((f) => f.proposalId === p.proposal_id) && (!this.focus || this.focus.test(p.summary)))
+          this.push("proposal", p.summary, { proposalId: p.proposal_id, state: "pending" });
     } catch { /* the companion is restarting */ }
   }
 

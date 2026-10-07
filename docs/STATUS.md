@@ -72,9 +72,9 @@ deterministic: every test game replays identically in the desktop engine, tick f
 - **Hosting.** A host or rewrite that drops the custom headers would break loading. The preview check above catches
   this.
 - **Co-commander follow-ups.**
-  - When a building is finished, the co-commander offers to place it. Any question asked before the player accepts
-    replaces that offer in the companion (OpenRA-AI). In the browser the card now shows it is no longer offered.
-  - Items that aren't buildable yet get *I don't recognize …* instead of naming the missing prerequisite.
+  - Offers that a later question dropped, and *I don't recognize …* for items not yet buildable, are fixed in
+    OpenRA-AI d639b65. That companion keeps up to 3 offers and names the missing prerequisite. The browser shows
+    every offer it holds. The latency numbers above predate that change.
   - The CPU-only stack still needs a measurement on a quiet machine.
 - **Content still landing.** The standalone art is still landing. The rare special-death effects (about 2 MB) still
   ship until the standalone agent confirms they are unused.
