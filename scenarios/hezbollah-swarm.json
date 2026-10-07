@@ -1,0 +1,16 @@
+{
+  "map": "web-arena",
+  "seed": 2604,
+  "sandbox": true,
+  "players": [
+    { "slot": "Multi0", "faction": "hezbollah", "color": "E0C02A" },
+    { "slot": "Multi1", "faction": "saudi", "bot": "webidle", "color": "2A6FDB" }
+  ],
+  "options": { "explored": "True", "fog": "False", "crates": "False", "shortgame": "False" },
+  "placements": [
+    { "id": "r2hzfpv", "side": 0, "u": 44, "v": 68, "count": 3, "columns": 3, "spacing": 2, "order": "engage", "facing": 768 },
+    { "id": "r2hzrail", "side": 0, "u": 40, "v": 70, "count": 2, "columns": 2, "spacing": 3, "order": "engage", "facing": 768 },
+    { "id": "r2m1a2s", "side": 1, "u": 78, "v": 68, "count": 4, "columns": 2, "spacing": 2, "order": "hold", "facing": 256 },
+    { "id": "r2sang", "side": 1, "u": 84, "v": 70, "count": 4, "columns": 2, "spacing": 2, "order": "hold", "facing": 256 }
+  ]
+}
