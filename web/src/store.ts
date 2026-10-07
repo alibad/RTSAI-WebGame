@@ -32,6 +32,8 @@ export interface Store {
   runtime: string;
   shared: boolean;
   privateContent: boolean;
+  /** "" (the RA2 mod with the player's own files) or "public" (the standalone game). */
+  profile: string;
   setup: SetupData | null;
   preparedMap: string | null;
   preparing: string | null;
@@ -65,6 +67,7 @@ export const useStore = create<Store>((set) => ({
   runtime: "aot",
   shared: false,
   privateContent: false,
+  profile: "",
   setup: null,
   preparedMap: null,
   preparing: null,

@@ -1,0 +1,9 @@
+{
+  "map": "twin-fords",
+  "seed": 4242,
+  "players": [
+    { "slot": "Multi0", "faction": "saudi", "color": "2A6FDB" },
+    { "slot": "Multi1", "faction": "iran", "bot": "normal", "color": "D83A2E" }
+  ],
+  "options": { "startingunits": "medium", "explored": "True", "fog": "False", "crates": "False" }
+}

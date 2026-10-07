@@ -45,7 +45,8 @@ static class Bundle
 		Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(output)));
 		long total = 0;
 		var count = 0;
-		using (var fs = File.Create(output))
+		// Written to a temporary file and moved into place, so a concurrent or interrupted run never leaves a torn pack.
+		using (var fs = File.Create(output + ".tmp"))
 		using (var pack = new Pack.Writer(fs))
 		{
 			void Add(string name, byte[] data)
@@ -85,6 +86,7 @@ static class Bundle
 			Add("mods/rtsai/maps/web-arena/map.yaml", Encoding.UTF8.GetBytes(ArenaYaml()));
 		}
 
+		File.Move(output + ".tmp", output, true);
 		Console.WriteLine($"{output}: {count} files, {total / 1048576.0:F1} MB raw, {new FileInfo(output).Length / 1048576.0:F1} MB pack");
 
 		// The mod's own (licensed) audio: a separate pack plus a JSON index of byte offsets for lazy range reads.
@@ -92,7 +94,7 @@ static class Bundle
 		var index = new StringBuilder("{\"files\":[");
 		var audioCount = 0;
 		long audioTotal = 0;
-		using (var fs = File.Create(audioOut))
+		using (var fs = File.Create(audioOut + ".tmp"))
 		using (var pack = new Pack.Writer(fs))
 		{
 			foreach (var f in Directory.EnumerateFiles(modDir, "*", SearchOption.AllDirectories).OrderBy(f => f, StringComparer.Ordinal))
@@ -112,7 +114,9 @@ static class Bundle
 		}
 
 		index.Append("]}");
-		File.WriteAllText(Path.ChangeExtension(audioOut, ".json"), index.ToString());
+		File.WriteAllText(Path.ChangeExtension(audioOut, ".json.tmp"), index.ToString());
+		File.Move(audioOut + ".tmp", audioOut, true);
+		File.Move(Path.ChangeExtension(audioOut, ".json.tmp"), Path.ChangeExtension(audioOut, ".json"), true);
 		Console.WriteLine($"{audioOut}: {audioCount} files, {audioTotal / 1048576.0:F1} MB (mounted lazily)");
 		return 0;
 	}

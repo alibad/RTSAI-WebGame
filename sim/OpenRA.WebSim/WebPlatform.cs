@@ -1,4 +1,4 @@
-﻿#region Copyright & License Information
+#region Copyright & License Information
 /*
  * Copyright (c) The OpenRA Developers and Contributors
  * This file is part of OpenRA, which is free software. It is made
@@ -139,6 +139,16 @@ namespace OpenRA.WebSim
 
 		/// <summary>Our copy was dropped after the page received it (the page keeps the pixels on the GPU).</summary>
 		public bool Released { get; private set; }
+
+		/// <summary>A restored prebaked sheet: the page fills it from its cache; there are never pixels here.</summary>
+		public bool External { get; private set; }
+
+		public void MarkExternal()
+		{
+			External = true;
+			Released = true;
+			Data = null;
+		}
 
 		/// <summary>Reads of a dropped copy (would lose pixels; must stay 0 — watched in the stats).</summary>
 		public static int DroppedReads;

@@ -26,12 +26,13 @@ export function Setup({ game }: { game: Game }) {
   const previews = useStore((s) => s.previews);
   const prepared = useStore((s) => s.preparedMap);
   const privateContent = useStore((s) => s.privateContent);
+  const profile = useStore((s) => s.profile);
   const publicShot = useStore((s) => s.publicShot);
 
   const factions = setup.factions.filter((f) => !f.random);
   const modern = new Set(["saudi", "iran", "china", "turkey", "israel", "yemen", "hezbollah"]);
   const [faction, setFaction] = useState<string>(() => load("rtsai.faction", "saudi"));
-  const [mapId, setMapId] = useState<string>(() => load("rtsai.map", setup.maps.find((m) => m.id === "tournament-2A")?.id ?? setup.maps[0]?.id));
+  const [mapId, setMapId] = useState<string>(() => load("rtsai.map", setup.maps.find((m) => m.id === "tournament-2A" || m.id === "twin-fords")?.id ?? setup.maps[0]?.id));
   const map = setup.maps.find((m) => m.id === mapId) ?? setup.maps[0];
   const [color, setColor] = useState<string>(() => load("rtsai.color", COLORS[0]));
   const [moreOptions, setMoreOptions] = useState(false);
@@ -182,7 +183,7 @@ export function Setup({ game }: { game: Game }) {
           </div>
 
           <div className="mt-auto flex items-center justify-end gap-3">
-            {!privateContent && <span className="text-[11px] text-[var(--muted-foreground)]">Original game files not mounted</span>}
+            {!privateContent && !profile && <span className="text-[11px] text-[var(--muted-foreground)]">Original game files not mounted</span>}
             <Button size="lg" onClick={start} disabled={!map}
               className="h-[46px] min-w-[180px] rounded-[3px] bg-[linear-gradient(180deg,#f6dc9c,#c9a253)] text-[16px] font-bold uppercase tracking-[0.18em] text-[#1a160c] shadow-[0_0_0_1px_#000,0_6px_20px_rgba(241,210,139,0.25)] hover:brightness-110">
               Start

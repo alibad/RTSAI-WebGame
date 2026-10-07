@@ -56,7 +56,9 @@ export default function App() {
     setGame(g);
     loadCursors();
     // AOT by default; ?runtime=interp is the developer fallback. ?private=0 runs without the player's own files.
-    g.boot(params.get("runtime") ?? "aot", params.get("private") !== "0");
+    // ?profile=public: the standalone game (project art and audio only, never the player's files).
+    const profile = params.get("profile") === "public" ? "public" : "";
+    g.boot(params.get("runtime") ?? "aot", params.get("private") !== "0", profile);
     return () => g.dispose();
   }, []);
 

@@ -30,6 +30,9 @@ const scratch = process.env.RTSAI_WEB_SCRATCH ?? path.join(appData, "scratch");
 const brDir = path.join(appData, "brotli-cache");
 const websim = path.join(repo, "bin", "OpenRA.WebSim.Native", "Release", "net10.0", "websim.exe");
 const runtimes = { interp: path.join(data, "wasm-interp", "wwwroot"), aot: path.join(data, "wasm-aot", "wwwroot") };
+// The public profile (standalone mod, project art only) has its own bundle and runtimes under data/public.
+const profiles = { public: path.join(data, "public") };
+const runtimeDir = (profile, runtime) => profile ? path.join(profiles[profile], `wasm-${runtime}`, "wwwroot") : runtimes[runtime];
 
 const MIME = {
   ".html": "text/html; charset=utf-8", ".js": "text/javascript", ".mjs": "text/javascript", ".css": "text/css",
@@ -67,10 +70,12 @@ function compressed(file, stat) {
 function warmCompression() {
   const files = [];
   const walk = (d) => { if (fs.existsSync(d)) for (const e of fs.readdirSync(d, { withFileTypes: true })) e.isDirectory() ? walk(path.join(d, e.name)) : files.push(path.join(d, e.name)); };
-  walk(path.join(runtimes.aot, "_framework"));
-  walk(path.join(runtimes.interp, "_framework"));
-  const pack = path.join(data, "web-bundle.pack");
-  if (fs.existsSync(pack)) files.unshift(pack);
+  for (const profile of ["", ...Object.keys(profiles)]) {
+    walk(path.join(runtimeDir(profile, "aot"), "_framework"));
+    walk(path.join(runtimeDir(profile, "interp"), "_framework"));
+    const pack = path.join(profile ? profiles[profile] : data, "web-bundle.pack");
+    if (fs.existsSync(pack)) files.unshift(pack);
+  }
   let i = 0;
   const next = () => {
     if (i >= files.length) return;
@@ -246,21 +251,26 @@ const server = http.createServer(async (req, res) => {
   else if (p.startsWith("/play/")) p = p.slice(5);
   try {
     if (p === "/api/verify" && req.method === "POST") return await verify(req, res);
-    if (p === "/api/health") return json(res, { ok: true, private: fs.existsSync(privateFiles), runtimes: Object.keys(runtimes).filter((k) => fs.existsSync(runtimes[k])) });
+    if (p === "/api/health") {
+      return json(res, {
+        ok: true, private: fs.existsSync(privateFiles), runtimes: Object.keys(runtimes).filter((k) => fs.existsSync(runtimes[k])),
+        profiles: Object.fromEntries(Object.keys(profiles).map((pr) => [pr, Object.keys(runtimes).filter((k) => fs.existsSync(runtimeDir(pr, k)))])),
+      });
+    }
     if (p === "/api/metrics" && req.method === "POST") {
       fs.appendFileSync(path.join(data, "metrics.jsonl"), (await readBody(req)).trim() + "\n");
       return json(res, { ok: true });
     }
-    const rt = p.match(/^\/rt\/(interp|aot)\/(.*)$/);
+    const rt = p.match(/^\/rt\/(?:(public)\/)?(interp|aot)\/(.*)$/);
     if (rt) {
-      const f = safeJoin(runtimes[rt[1]], rt[2]);
+      const f = safeJoin(runtimeDir(rt[1], rt[2]), rt[3]);
       return f ? sendFile(req, res, f) : res.writeHead(400).end();
     }
     if (p.startsWith("/data/")) {
       const f = safeJoin(data, p.slice(6));
       if (!f || !/\.(pack|json)$/.test(f) || /(measure|fidelity|verify|metrics)/.test(f)) return res.writeHead(404).end();
       // The audio pack is read by byte range (lazily, per sound), so it is served uncompressed.
-      return sendFile(req, res, f, { compress: !f.endsWith("web-audio.pack") });
+      return sendFile(req, res, f, { compress: !/web-(audio|art)\.pack$/.test(f) });
     }
     if (p.startsWith("/private/")) {
       if (!isLocal(req)) return res.writeHead(403).end("local only");

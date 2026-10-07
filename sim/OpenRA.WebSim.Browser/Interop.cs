@@ -1,4 +1,4 @@
-﻿#region Copyright & License Information
+#region Copyright & License Information
 /*
  * Copyright (c) The OpenRA Developers and Contributors
  * This file is part of OpenRA, which is free software. It is made
@@ -71,6 +71,15 @@ namespace OpenRA.WebSim.Browser
 			public void Pause(int sound, bool paused) => SoundPause(sound, paused);
 		}
 
+		[JSImport("spriteLoad", "websim")]
+		internal static partial byte[] SpriteLoad(string key);
+
+		[JSImport("spriteSaved", "websim")]
+		static partial void SpriteSaved(string key, byte[] table, [JSMarshalAs<JSType.Array<JSType.Number>>] int[] textureIds);
+
+		[JSImport("spriteRestored", "websim")]
+		static partial void SpriteRestored(string key, [JSMarshalAs<JSType.Array<JSType.Number>>] int[] textureIds);
+
 		[JSImport("texture", "websim")]
 		static partial void StreamTexture(int id, int version, int width, int height, [JSMarshalAs<JSType.MemoryView>] Span<byte> data);
 
@@ -80,6 +89,12 @@ namespace OpenRA.WebSim.Browser
 		{
 			SimHost.OnProgress = Progress;
 			WebSoundEngine.Sink = new AudioSink();
+
+			// Prebaked sprite sheets, kept by the page between sessions.
+			OpenRA.Graphics.SpriteCache.Store = new SpriteStore();
+			SpriteStore.Load = SpriteLoad;
+			SpriteStore.Saved = SpriteSaved;
+			SpriteStore.Restored = SpriteRestored;
 
 			// Sheets go to the page as soon as the engine commits them (during map preparation, on the setup
 			// screen), so the WebAssembly heap keeps no copy of them.

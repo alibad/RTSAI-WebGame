@@ -6,6 +6,8 @@
   -->
   <PropertyGroup>
     <EngineRoot Condition="'$(EngineRoot)' == ''">$(MSBuildThisFileDirectory)..\OpenRA-wt-web\</EngineRoot>
+    <!-- WebProfile "public": the standalone mod (rtsai/standalone, no EA content); default: the RA2 mod (private content). -->
+    <ModRoot Condition="'$(ModRoot)' == '' And '$(WebProfile)' == 'public'">$(MSBuildThisFileDirectory)..\RTSAI-Mod-wt-web-public\</ModRoot>
     <ModRoot Condition="'$(ModRoot)' == ''">$(MSBuildThisFileDirectory)..\RTSAI-Mod\</ModRoot>
     <TargetFramework>net10.0</TargetFramework>
     <LangVersion>13</LangVersion>
@@ -16,8 +18,10 @@
     <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
     <NoWarn>$(NoWarn);CS1591;CA1416;IDE0005;NU1900</NoWarn>
     <NuGetAudit>false</NuGetAudit>
-    <!-- AOT and interpreter browser builds relink different native runtimes: keep their intermediates apart. -->
-    <VariantSuffix Condition="'$(Aot)' == 'true'">-aot</VariantSuffix>
+    <!-- AOT and interpreter browser builds relink different native runtimes, and profiles compile different mod
+         sources: keep their intermediates apart. -->
+    <VariantSuffix Condition="'$(WebProfile)' != ''">-$(WebProfile)</VariantSuffix>
+    <VariantSuffix Condition="'$(Aot)' == 'true'">$(VariantSuffix)-aot</VariantSuffix>
     <BaseOutputPath>$(MSBuildThisFileDirectory)bin\$(MSBuildProjectName)$(VariantSuffix)\</BaseOutputPath>
     <BaseIntermediateOutputPath>$(MSBuildThisFileDirectory)obj\$(MSBuildProjectName)$(VariantSuffix)\</BaseIntermediateOutputPath>
   </PropertyGroup>

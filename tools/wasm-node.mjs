@@ -15,9 +15,12 @@ const args = Object.fromEntries(process.argv.slice(2).reduce((acc, a, i, all) =>
 const runtime = args.runtime ?? "interp";
 const ticks = Number(args.ticks ?? 300);
 const privatePack = path.join(process.env.LOCALAPPDATA, "RTSAI-WebGame", "private", "ra2-all.pack");
+// --profile public: the standalone game's runtime and bundle (data/public), with no private content.
+const profile = args.profile && args.profile !== "true" ? args.profile : "";
+const dataDir = path.join(repo, "data", profile);
 
 const t0 = performance.now();
-const fw = path.join(repo, "data", `wasm-${runtime}`, "wwwroot", "_framework");
+const fw = path.join(dataDir, `wasm-${runtime}`, "wwwroot", "_framework");
 const { dotnet } = await import(pathToFileURL(path.join(fw, "dotnet.js")).href);
 let snapshots = 0, snapshotBytes = 0;
 const api = await dotnet.create();
@@ -29,8 +32,8 @@ const S = (await api.getAssemblyExports(api.getConfig().mainAssemblyName)).OpenR
 const tRuntime = performance.now() - t0;
 if (args["debug-fluent"]) { console.log("fluent:", S.DebugFluent()); process.exit(0); }
 
-S.Mount(new Uint8Array(fs.readFileSync(path.join(repo, "data", "web-bundle.pack"))));
-S.Mount(new Uint8Array(fs.readFileSync(privatePack)));
+S.Mount(new Uint8Array(fs.readFileSync(path.join(dataDir, "web-bundle.pack"))));
+if (!profile) S.Mount(new Uint8Array(fs.readFileSync(privatePack)));
 const tMount = performance.now() - t0;
 const boot = JSON.parse(S.Boot());
 const tBoot = performance.now() - t0;

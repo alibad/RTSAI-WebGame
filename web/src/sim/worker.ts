@@ -1,4 +1,4 @@
-﻿/// <reference lib="webworker" />
+/// <reference lib="webworker" />
 // The simulation worker: hosts the .NET WebAssembly runtime running the real OpenRA engine + RTS AI mod,
 // ticks the world at 25 tps and publishes one snapshot per tick into a SharedArrayBuffer ring, plus the game-UI
 // state (credits, power, queues, selection), shroud and radar for the page's HUD.
@@ -8,6 +8,7 @@ import {
   textureUpdates, type FromWorker, type ToWorker,
 } from "./protocol";
 import { LazyMount, httpRangeReader, mountPack } from "./lazyfs";
+import { SpriteBake, hashString } from "./spritecache";
 
 declare const self: DedicatedWorkerGlobalScope;
 
@@ -35,6 +36,7 @@ let ticks = 0;
 let lastUi = "";
 let timer: ReturnType<typeof setTimeout> | null = null;
 let tickMs = TICK_MS; // 40 ms at 1x; the sandbox can run faster
+let bake: SpriteBake | null = null; // prebaked sprite sheets (IndexedDB)
 
 /** A snapshot without advancing the world (paused game, sandbox editing, camera moves while paused). */
 function refresh() {
@@ -82,10 +84,13 @@ function publish(view: { slice(): Uint8Array; length: number }) {
     }
 }
 
+let bundleTag = "";
+
 async function fetchBytes(url: string, stage: string) {
   post({ type: "progress", stage, detail: url });
   const res = await fetch(url);
   if (!res.ok) throw new Error(`${url}: HTTP ${res.status}`);
+  bundleTag = res.headers.get("etag") ?? String(res.headers.get("content-length"));
   return new Uint8Array(await res.arrayBuffer());
 }
 
@@ -110,7 +115,9 @@ async function init(msg: Extract<ToWorker, { type: "init" }>) {
   }
 
   post({ type: "progress", stage: "Starting the engine", detail: msg.runtime });
-  const runtimeUrl = new URL(`rt/${msg.runtime}/_framework/dotnet.js`, base).href;
+  // Profiles (e.g. "public", the standalone game) have their own runtime build and data under data/<profile>/.
+  const profileDir = msg.profile ? `${msg.profile}/` : "";
+  const runtimeUrl = new URL(`rt/${profileDir}${msg.runtime}/_framework/dotnet.js`, base).href;
   // dotnet.js treats a worker that already has an onmessage handler as one of its own pthread workers and
   // waits for a thread handshake that never comes. Declare this worker a "sidecar" (a single-threaded host).
   (globalThis as unknown as { dotnetSidecar: boolean }).dotnetSidecar = true;
@@ -134,9 +141,15 @@ async function init(msg: Extract<ToWorker, { type: "init" }>) {
     soundStop: (sound: number) => post({ type: "audio", op: "stop", sound }),
     soundVolume: (sound: number, volume: number) => post({ type: "audio", op: "volume", sound, volume }),
     soundPause: (sound: number, paused: boolean) => post({ type: "audio", op: "pause", sound, paused }),
+    // Prebaked sprite sheets (SpriteStore.cs).
+    spriteLoad: (key: string) => bake?.load(key) ?? new Uint8Array(0),
+    spriteSaved: (key: string, table: Uint8Array, ids: ArrayLike<number>) => bake?.saved(key, table, ids),
+    spriteRestored: (key: string, ids: ArrayLike<number>) => bake?.restored(key, ids),
     // Sheets committed by the engine go straight to the page (no copy kept in the WebAssembly heap).
     texture: (id: number, version: number, width: number, height: number, view: { slice(): Uint8Array }) => {
-      const data = view.slice().buffer;
+      const bytes = view.slice();
+      bake?.onTexture(id, bytes);
+      const data = bytes.buffer;
       post({ type: "texture", id, version, width, height, kind: 0, data: data as ArrayBuffer }, [data as ArrayBuffer]);
     },
     progress: (step: string) => post({ type: "progress", stage: step, detail: `${((performance.now() - t0) / 1000).toFixed(1)} s` }),
@@ -146,7 +159,7 @@ async function init(msg: Extract<ToWorker, { type: "init" }>) {
   S = exports.OpenRA.WebSim.Browser.Interop;
   const runtimeMs = performance.now() - t0;
 
-  const bundle = await fetchBytes(new URL("data/web-bundle.pack", base).href, "Downloading game data");
+  const bundle = await fetchBytes(new URL(`data/${profileDir}web-bundle.pack`, base).href, "Downloading game data");
   post({ type: "progress", stage: "Mounting game data", detail: `${(bundle.length / 1048576).toFixed(1)} MB` });
   // Files read straight from the downloaded bundle: nothing is copied into the WebAssembly heap.
   lazy = new LazyMount(runtimeApi.Module.FS);
@@ -154,19 +167,22 @@ async function init(msg: Extract<ToWorker, { type: "init" }>) {
   mountPack(lazy, bundle, "/vfs");
 
   let privateContent = false;
+  let privateTag = "none";
   // The mod's own (licensed) audio, fetched by byte range from web-audio.pack when a sound is first played.
-  const audioIndex = await fetch(new URL("data/web-audio.json", base));
+  const audioIndex = await fetch(new URL(`data/${profileDir}web-audio.json`, base));
   if (audioIndex.ok) {
     const { files } = (await audioIndex.json()) as { files: { path: string; offset: number; size: number }[] };
-    const read = httpRangeReader(new URL("data/web-audio.pack", base).href);
+    const read = httpRangeReader(new URL(`data/${profileDir}web-audio.pack`, base).href);
     for (const f of files) lazy.add(`/vfs/${f.path}`, f.size, (s, e) => read(f.offset + s, f.offset + e));
   }
 
-  if (msg.privateContent) {
+  if (msg.privateContent && !msg.profile) {
     // The player's own RA2 files: mounted lazily (only the chunks a game reads are fetched), local only.
     const res = await fetch(new URL("private/manifest.json", base));
     if (res.ok) {
-      const { files } = (await res.json()) as { files: { path: string; size: number }[] };
+      const manifestText = await res.text();
+      privateTag = hashString(manifestText);
+      const { files } = JSON.parse(manifestText) as { files: { path: string; size: number }[] };
       if (files.length) {
         for (const f of files)
           lazy.add(`/vfs/support/Content/ra2/${f.path}`, f.size, httpRangeReader(new URL(`private/files/${f.path.split("/").map(encodeURIComponent).join("/")}`, base).href));
@@ -174,6 +190,10 @@ async function init(msg: Extract<ToWorker, { type: "init" }>) {
       }
     }
   }
+
+  bake = new SpriteBake(`${msg.profile ?? ""}|${bundleTag}|${privateTag}|ORASPR01`, (id, width, height, gz) =>
+    post({ type: "texturegz", id, width, height, gz }));
+  await bake.init();
 
   post({ type: "progress", stage: "Loading rules" });
   const timings = JSON.parse(S.Boot());
@@ -193,7 +213,9 @@ function start(scenario: string, startPaused = false) {
   paused = startPaused;
   const t0 = performance.now();
   post({ type: "progress", stage: "Building the world" });
+  bake?.beginCapture();
   const info = JSON.parse(S.Start(scenario));
+  bake?.endCapture();
   info.timings["heap.started"] = (runtimeApi.Module.HEAPU8.length / 1048576) | 0;
   const terrain: Uint8Array = S.Terrain();
   const tbuf = terrain.slice().buffer;
@@ -278,7 +300,10 @@ self.onmessage = async (e: MessageEvent<ToWorker>) => {
       case "init": await init(m); break;
       case "prepare": {
         const t0 = performance.now();
+        bake?.beginCapture();
         const timings = JSON.parse(S.Prepare(m.map));
+        bake?.endCapture();
+        timings["sprites.restored"] = bake?.stats.restored ?? 0;
         timings["heap.prepared"] = (runtimeApi.Module.HEAPU8.length / 1048576) | 0;
         post({ type: "prepared", map: m.map, ms: performance.now() - t0, timings, lazy: lazy?.stats });
         break;

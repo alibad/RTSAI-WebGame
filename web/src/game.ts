@@ -141,9 +141,9 @@ export class Game {
     store.set({ perf: { ...store.get().perf, ...p } });
   }
 
-  boot(runtime: string, privateContent: boolean) {
-    store.set({ phase: "boot", runtime, stage: "Starting the engine", error: "" });
-    this.client.init(runtime, new URL("./", location.href).href, privateContent, new URLSearchParams(location.search).get("gc") ?? undefined);
+  boot(runtime: string, privateContent: boolean, profile = "") {
+    store.set({ phase: "boot", runtime, profile, stage: "Starting the engine", error: "" });
+    this.client.init(runtime, new URL("./", location.href).href, privateContent && !profile, new URLSearchParams(location.search).get("gc") ?? undefined, profile || undefined);
   }
 
   prepare(map: string) {

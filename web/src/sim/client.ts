@@ -7,6 +7,7 @@ import {
   type FromWorker, type Snapshot, type ToWorker,
 } from "./protocol";
 import type { Renderer } from "../render/renderer";
+import { gunzipSheet } from "./spritecache";
 
 type Handler<T extends FromWorker["type"]> = (m: Extract<FromWorker, { type: T }>) => void;
 
@@ -18,6 +19,8 @@ export class SimClient {
   private bytes: Uint8Array | null = null;
   private lastSeq = 0;
   private pending: { bytes: Uint8Array; seq: number }[] = [];
+  /** Longest time a cached sprite sheet took to inflate and upload (ms). */
+  sheetMs = 0;
   private handlers = new Map<string, ((m: FromWorker) => void)[]>();
   private replies = new Map<number, (json: string) => void>();
   private nextReq = 1;
@@ -67,8 +70,8 @@ export class SimClient {
     return this.request<T>({ type: "command", json: JSON.stringify(cmd) });
   }
 
-  init(runtime: string, base: string, privateContent: boolean, gcParams?: string) {
-    this.send({ type: "init", runtime, base, sab: this.sab, privateContent, gcParams });
+  init(runtime: string, base: string, privateContent: boolean, gcParams?: string, profile?: string) {
+    this.send({ type: "init", runtime, base, sab: this.sab, privateContent, gcParams, profile });
   }
 
   start(scenario: string, paused = false) {
@@ -88,6 +91,14 @@ export class SimClient {
       case "texture":
         this.renderer.uploadTexture(m.id, m.version, m.width, m.height, m.kind, m.data);
         return;
+      case "texturegz": {
+        const t0 = performance.now();
+        gunzipSheet(m.gz).then((data) => {
+          this.renderer.uploadTexture(m.id, 1, m.width, m.height, 0, data.buffer as ArrayBuffer);
+          this.sheetMs = Math.max(this.sheetMs, performance.now() - t0);
+        }).catch((e) => console.warn("sprite cache: sheet inflate failed", e));
+        return;
+      }
       case "modelbuffer":
         this.renderer.setModelBuffer(m.id, m.data);
         return;

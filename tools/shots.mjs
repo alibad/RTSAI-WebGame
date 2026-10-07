@@ -1,6 +1,7 @@
-// Review screenshots with project art only (?shot=1: no terrain, map previews or EA cameos), safe to share:
-// setup screen, skirmish HUD with production running, sandbox setup, sandbox fight with results.
-//   node tools/shots.mjs [--runtime aot] --out <dir>
+// Review screenshots with project art only, safe to share: setup screen, skirmish HUD with production running,
+// sandbox setup, sandbox fight with results. The RA2 profile hides terrain, map previews and EA cameos (?shot=1);
+// --profile public (the standalone game) is project art throughout, so it is shot as players see it.
+//   node tools/shots.mjs [--runtime aot] [--profile public] --out <dir>
 import fs from "node:fs";
 import path from "node:path";
 import { chromium } from "../web/node_modules/playwright-core/index.mjs";
@@ -13,7 +14,8 @@ fs.mkdirSync(out, { recursive: true });
 const exe = path.join(process.env.LOCALAPPDATA, "ms-playwright", "chromium-1228", "chrome-win64", "chrome.exe");
 const browser = await chromium.launch({ executablePath: fs.existsSync(exe) ? exe : undefined, headless: true,
   args: ["--use-angle=d3d11", "--enable-gpu", "--ignore-gpu-blocklist"] });
-const base = `http://127.0.0.1:3490/?runtime=${runtime}&shot=1`;
+const profile = opt("profile", "");
+const base = profile ? `http://127.0.0.1:3490/?runtime=${runtime}&profile=${profile}` : `http://127.0.0.1:3490/?runtime=${runtime}&shot=1`;
 const W = 1600, H = 900;
 
 async function page(url) {
@@ -41,7 +43,7 @@ const shot = async (p, name) => { const f = path.join(out, name); await p.screen
 
 // 2. Skirmish: deploy, power plant, barracks, infantry in production, a modern squad selected.
 {
-  const p = await page(`${base}&scenario=skirmish`);
+  const p = await page(`${base}&scenario=${profile ? `skirmish-${profile}` : "skirmish"}`);
   await phase(p, "playing");
   await until(p, () => !!window.game.client.cur && !!window.store.getState().ui);
   const g = "window.game";

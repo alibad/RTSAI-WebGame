@@ -252,7 +252,7 @@ export interface CatalogQueue { type: string; items: CatalogItem[] }
 
 // Messages between page and worker.
 export type ToWorker =
-  | { type: "init"; runtime: string; base: string; sab: SharedArrayBuffer | null; privateContent: boolean; gcParams?: string }
+  | { type: "init"; runtime: string; base: string; sab: SharedArrayBuffer | null; privateContent: boolean; gcParams?: string; profile?: string }
   | { type: "prepare"; map: string }
   | { type: "preview"; map: string }
   | { type: "start"; scenario: string; paused?: boolean }
@@ -279,6 +279,8 @@ export type FromWorker =
   | { type: "started"; info: StartInfo; terrain: ArrayBuffer; radarTerrain: ArrayBuffer; startMs: number; lazy?: LazyStats }
   | { type: "snapshot"; bytes: ArrayBuffer; seq: number } // postMessage fallback when SharedArrayBuffer is unavailable
   | { type: "texture"; id: number; version: number; width: number; height: number; kind: number; data: ArrayBuffer }
+  /** A prebaked sprite sheet from the cache, gzip-compressed (the page inflates it). */
+  | { type: "texturegz"; id: number; width: number; height: number; gz: Blob }
   | { type: "ui"; json: string }
   | { type: "shroud"; cells: ArrayBuffer }
   | { type: "radar"; blips: ArrayBuffer }
