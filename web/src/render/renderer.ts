@@ -83,6 +83,10 @@ export class Renderer {
   private colorData = new Float32Array(MAX_RECTS * COLOR_FLOATS);
   private info: StartInfo | null = null;
   stats = { draws: 0, batches: 0, skipped: 0, frameMs: 0 };
+  /** Debug filter (?only=r2): draw only actors whose type passes, no terrain or effects. */
+  actorFilter: ((actorType: number) => boolean) | null = null;
+  /** Set to request a pixel readback right after the next frame (verification without screenshots). */
+  pixelProbe: ((stats: { nonBackground: number; colors: number; meanRGB: number[] }) => void) | null = null;
 
   constructor(readonly canvas: HTMLCanvasElement) {
     const gl = canvas.getContext("webgl2", { antialias: false, depth: true, premultipliedAlpha: true, alpha: false, powerPreference: "high-performance" });
@@ -166,6 +170,10 @@ export class Renderer {
     this.terrainIndexCount = idx.length;
   }
 
+  resetSprites() {
+    this.sprites = [];
+  }
+
   addSprites(s: SpriteInfo[]) {
     for (const x of s) this.sprites.push(x);
   }
@@ -247,7 +255,7 @@ export class Renderer {
     gl.bindTexture(gl.TEXTURE_2D, this.palette.tex);
 
     // Terrain
-    if (this.terrainVao) {
+    if (this.terrainVao && !this.actorFilter) {
       gl.useProgram(this.terrainProg);
       this.viewUniforms(this.terrainProg, cam);
       for (let i = 0; i < 8; i++) {
@@ -265,6 +273,25 @@ export class Renderer {
     if (cur) this.drawOverlay(cur, prev, cam, overlay, now);
     gl.bindVertexArray(null);
     this.stats.frameMs = performance.now() - t0;
+
+    if (this.pixelProbe) {
+      const px = new Uint8Array(w * h * 4);
+      gl.readPixels(0, 0, w, h, gl.RGBA, gl.UNSIGNED_BYTE, px);
+      let non = 0;
+      const sum = [0, 0, 0];
+      const colors = new Set<number>();
+      for (let i = 0; i < px.length; i += 4) {
+        const r = px[i], g = px[i + 1], b = px[i + 2];
+        if (r > 12 || g > 12 || b > 14) {
+          non++;
+          sum[0] += r; sum[1] += g; sum[2] += b;
+          if (colors.size < 100000) colors.add((r << 16) | (g << 8) | b);
+        }
+      }
+      const cb = this.pixelProbe;
+      this.pixelProbe = null;
+      cb({ nonBackground: non / (w * h), colors: colors.size, meanRGB: sum.map((s) => Math.round(s / Math.max(1, non))) });
+    }
   }
 
   private drawSprites(cur: Snapshot, prev: Snapshot | null, cam: Camera, now: number) {
@@ -315,6 +342,10 @@ export class Renderer {
     for (let i = 0; i < cur.header.drawCount && n < MAX_INSTANCES; i++) {
       const o = i * DRAW_BYTES;
       const key = dv.getUint32(o, true);
+      if (this.actorFilter) {
+        const owner = key !== 0 && key < 0x80000000 ? cur.actorById.get(key) : undefined;
+        if (!owner || !this.actorFilter(owner.type)) continue;
+      }
       const sprite = this.sprites[dv.getInt32(o + 4, true)];
       if (!sprite || !this.textures.has(sprite.tex) || (sprite.tex2 >= 0 && !this.textures.has(sprite.tex2))) {
         this.stats.skipped++;

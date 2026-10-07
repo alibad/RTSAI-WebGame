@@ -41,7 +41,10 @@ namespace OpenRA.WebSim
 
 		public readonly int Id;
 
-		/// <summary>BGRA bytes (or null). The array is shared with the engine's Sheet, not copied.</summary>
+		/// <summary>
+		/// BGRA bytes (or null): our own copy. The engine recycles a released sheet's buffer for the next sheet
+		/// (Sheet.ReleaseBufferAndTryTransferTo), so keeping a reference would show another sheet's pixels.
+		/// </summary>
 		public byte[] Data { get; private set; }
 		public float[] FloatData { get; private set; }
 
@@ -59,16 +62,33 @@ namespace OpenRA.WebSim
 
 		public void SetData(byte[] colors, int width, int height)
 		{
-			Data = colors;
+			if (colors == null)
+				Data = null;
+			else
+			{
+				if (Data == null || Data.Length != colors.Length)
+					Data = new byte[colors.Length];
+
+				Buffer.BlockCopy(colors, 0, Data, 0, colors.Length);
+			}
+
 			Size = new Size(width, height);
 			Version++;
 		}
 
 		public void SetSubData(byte[] colors, int xoffset, int yoffset, int width, int height)
 		{
-			// Sheets pass their whole backing array along with the dirty region.
-			if (Data == null || Data.Length == colors.Length)
-				Data = colors;
+			// Sheets pass their whole backing array along with the dirty region: copy that region's rows.
+			if (Data == null || Data.Length != colors.Length)
+			{
+				Data = (byte[])colors.Clone();
+				Version++;
+				return;
+			}
+
+			var stride = 4 * Size.Width;
+			for (var y = yoffset; y < yoffset + height; y++)
+				Buffer.BlockCopy(colors, y * stride + 4 * xoffset, Data, y * stride + 4 * xoffset, 4 * width);
 
 			Version++;
 		}
@@ -84,8 +104,9 @@ namespace OpenRA.WebSim
 
 		public byte[] GetData()
 		{
+			// The engine writes into what it gets back (Sheet.CreateBuffer), so hand out a copy.
 			if (Data != null)
-				return Data;
+				return (byte[])Data.Clone();
 
 			return new byte[4 * Size.Width * Size.Height];
 		}

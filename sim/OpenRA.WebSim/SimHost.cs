@@ -44,8 +44,12 @@ namespace OpenRA.WebSim
 
 		static readonly List<Order> ScriptedOrders = [];
 
+		/// <summary>Called before each load step (the browser forwards it to the page's loading screen).</summary>
+		public static Action<string> OnProgress = _ => { };
+
 		static void Time(string name, Action a)
 		{
+			OnProgress(name);
 			var start = Stopwatch.GetTimestamp();
 			a();
 			Timings[name] = Stopwatch.GetElapsedTime(start).TotalMilliseconds;
@@ -183,7 +187,14 @@ namespace OpenRA.WebSim
 			Game.OrderManager = OrderManager;
 			OrderManager.LobbyInfo = BuildSession(s, map);
 
-			Time("start.preparemap", () => ModData.PrepareMap(map));
+			// ModData.PrepareMap, split so each step is timed separately.
+			Time("start.loaders", () => ModData.InitializeLoaders(map));
+			Time("start.sprites", () => map.Sequences.LoadSprites());
+			Time("start.music", () =>
+			{
+				foreach (var entry in map.Rules.Music)
+					entry.Value.Load(map);
+			});
 			if (map.Grid.EnableDepthBuffer)
 				Game.Renderer.SetDepthMargin(map.Rules.TerrainInfo.TileSize.Height * map.Grid.MaximumTerrainHeight);
 

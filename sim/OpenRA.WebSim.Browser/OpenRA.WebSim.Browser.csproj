@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk.WebAssembly">
+﻿<Project Sdk="Microsoft.NET.Sdk.WebAssembly">
   <!--
     The OpenRA simulation for the browser (Mono WebAssembly runtime), driven from a Web Worker.
     Interpreter by default; -p:Aot=true compiles every assembly ahead of time (needs the wasm-tools workload).
@@ -12,7 +12,9 @@
     <!-- OpenRA builds everything by reflection (ObjectCreator, FieldLoader, Sync): keep all IL. -->
     <PublishTrimmed>false</PublishTrimmed>
     <TrimMode>partial</TrimMode>
+    <!-- No ICU download: invariant culture data, but allow CultureInfo("en") (Fluent asks for it). -->
     <InvariantGlobalization>true</InvariantGlobalization>
+    <PredefinedCulturesOnly>false</PredefinedCulturesOnly>
     <WasmEnableThreads>false</WasmEnableThreads>
     <WasmEnableSIMD>true</WasmEnableSIMD>
     <WasmFingerprintAssets>false</WasmFingerprintAssets>
@@ -22,10 +24,28 @@
     <CompressionEnabled>false</CompressionEnabled>
     <GenerateDocumentationFile>false</GenerateDocumentationFile>
   </PropertyGroup>
+  <PropertyGroup Condition="'$(Aot)' == 'true' Or '$(Trim)' == 'true'">
+    <!-- AOT requires the trimmer. Partial mode only trims framework assemblies marked trimmable; OpenRA and
+         mod assemblies (reflection-heavy) are rooted whole below. -->
+    <PublishTrimmed>true</PublishTrimmed>
+    <TrimMode>partial</TrimMode>
+    <SuppressTrimAnalysisWarnings>true</SuppressTrimAnalysisWarnings>
+  </PropertyGroup>
   <PropertyGroup Condition="'$(Aot)' == 'true'">
     <RunAOTCompilation>true</RunAOTCompilation>
     <WasmStripILAfterAOT>false</WasmStripILAfterAOT>
   </PropertyGroup>
+  <ItemGroup Condition="'$(Aot)' == 'true' Or '$(Trim)' == 'true'">
+    <TrimmerRootAssembly Include="OpenRA.Game" />
+    <TrimmerRootAssembly Include="OpenRA.Mods.Common" />
+    <TrimmerRootAssembly Include="OpenRA.Mods.Cnc" />
+    <TrimmerRootAssembly Include="OpenRA.Mods.RA2" />
+    <TrimmerRootAssembly Include="OpenRA.Mods.RTSAI" />
+    <TrimmerRootAssembly Include="OpenRA.WebSim" />
+    <TrimmerRootAssembly Include="System.Collections.Immutable" />
+    <TrimmerRootAssembly Include="System.Collections" />
+    <TrimmerRootAssembly Include="System.Linq" />
+  </ItemGroup>
   <ItemGroup>
     <Compile Include="*.cs" />
   </ItemGroup>

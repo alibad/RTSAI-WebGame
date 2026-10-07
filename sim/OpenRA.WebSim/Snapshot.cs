@@ -33,6 +33,7 @@ namespace OpenRA.WebSim
 	public static class Snapshot
 	{
 		public const uint Magic = 0x314E5357; // "WSN1"
+		public const uint ResyncMagic = 0x31525357; // "WSR1": sprite/string tables restart at id 0
 		public const int HeaderBytes = 64;
 		public const int PlayerBytes = 16;
 		public const int SpriteBytes = 60;
@@ -83,6 +84,16 @@ namespace OpenRA.WebSim
 			lastPalette = null;
 			viewSet = false;
 		}
+
+		/// <summary>The page lost snapshots (e.g. a hidden tab): resend the sprite/string tables from id 0 in the next one.</summary>
+		public static void Resync()
+		{
+			spritesSent = 0;
+			stringsSent = 0;
+			resync = true;
+		}
+
+		static bool resync;
 
 		public static void SetView(int x0, int y0, int x1, int y1)
 		{
@@ -491,7 +502,8 @@ namespace OpenRA.WebSim
 			// ---- header
 			var end = pos;
 			pos = 0;
-			U32(Magic);
+			U32(resync ? ResyncMagic : Magic);
+			resync = false;
 			I32(world.WorldTick);
 			I32(SimHost.OrderManager.NetFrameNumber);
 			I32(SimHost.Connection.SyncHashes.Count > 0 ? SimHost.Connection.SyncHashes[^1] : 0);

@@ -1,6 +1,6 @@
 ﻿# Native (CoreCLR) runner for RTSAI-WebGame: rebuild, repack the bundle, rebuild the native VFS root, run a scenario.
 #   tools\native.ps1 -Scenario scenarios\battle-50.json -Ticks 300 [-NoBuild] [-NoPack] [-Extra '--snapshot']
-# The native VFS root lives in $env:RTSAI_WEB_SCRATCH (default: %TEMP%\rtsai-webgame) and holds private EA content:
+# The native VFS root lives in $env:RTSAI_WEB_SCRATCH (default: %LOCALAPPDATA%\RTSAI-WebGame\scratch) and holds private EA content:
 # it is a plain directory (no links), safe to delete.
 param(
 	[string]$Scenario = "scenarios\battle-50.json",
@@ -15,7 +15,7 @@ param(
 $ErrorActionPreference = "Stop"
 $repo = Split-Path -Parent $PSScriptRoot
 Set-Location $repo
-$scratch = if ($env:RTSAI_WEB_SCRATCH) { $env:RTSAI_WEB_SCRATCH } else { Join-Path $env:TEMP "rtsai-webgame" }
+$scratch = if ($env:RTSAI_WEB_SCRATCH) { $env:RTSAI_WEB_SCRATCH } else { Join-Path $env:LOCALAPPDATA "RTSAI-WebGame\scratch" }
 New-Item -ItemType Directory -Force $scratch | Out-Null
 $ws = "bin\OpenRA.WebSim.Native\Release\net10.0\websim.exe"
 

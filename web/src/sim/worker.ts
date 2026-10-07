@@ -79,9 +79,15 @@ async function init(msg: Extract<ToWorker, { type: "init" }>) {
 
   post({ type: "progress", stage: "Starting .NET WebAssembly runtime", detail: msg.runtime });
   const runtimeUrl = `/rt/${msg.runtime}/_framework/dotnet.js`;
+  // dotnet.js treats a worker that already has an onmessage handler as one of its own pthread workers and
+  // waits for a thread handshake that never comes. Declare this worker a "sidecar" (a single-threaded host).
+  (globalThis as unknown as { dotnetSidecar: boolean }).dotnetSidecar = true;
   const { dotnet } = await import(/* @vite-ignore */ runtimeUrl);
   runtimeApi = await dotnet.withDiagnosticTracing(false).create();
-  runtimeApi.setModuleImports("websim", { publish });
+  runtimeApi.setModuleImports("websim", {
+    publish,
+    progress: (step: string) => post({ type: "progress", stage: "Loading: " + step, detail: `${((performance.now() - t0) / 1000).toFixed(1)} s` }),
+  });
   const config = runtimeApi.getConfig();
   const exports = await runtimeApi.getAssemblyExports(config.mainAssemblyName);
   S = exports.OpenRA.WebSim.Browser.Interop;
@@ -182,6 +188,7 @@ self.onmessage = async (e: MessageEvent<ToWorker>) => {
         break;
       }
       case "log": post({ type: "log", json: S.SessionLog() }); break;
+      case "resync": S.Resync(); break;
     }
   } catch (err) {
     post({ type: "error", message: err instanceof Error ? `${err.message}\n${err.stack ?? ""}` : String(err) });

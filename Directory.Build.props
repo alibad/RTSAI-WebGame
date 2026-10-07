@@ -16,7 +16,9 @@
     <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
     <NoWarn>$(NoWarn);CS1591;CA1416;IDE0005;NU1900</NoWarn>
     <NuGetAudit>false</NuGetAudit>
-    <BaseOutputPath>$(MSBuildThisFileDirectory)bin\$(MSBuildProjectName)\</BaseOutputPath>
-    <BaseIntermediateOutputPath>$(MSBuildThisFileDirectory)obj\$(MSBuildProjectName)\</BaseIntermediateOutputPath>
+    <!-- AOT and interpreter browser builds relink different native runtimes: keep their intermediates apart. -->
+    <VariantSuffix Condition="'$(Aot)' == 'true'">-aot</VariantSuffix>
+    <BaseOutputPath>$(MSBuildThisFileDirectory)bin\$(MSBuildProjectName)$(VariantSuffix)\</BaseOutputPath>
+    <BaseIntermediateOutputPath>$(MSBuildThisFileDirectory)obj\$(MSBuildProjectName)$(VariantSuffix)\</BaseIntermediateOutputPath>
   </PropertyGroup>
 </Project>

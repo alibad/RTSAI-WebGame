@@ -1,7 +1,8 @@
-// Snapshot wire format written by sim/OpenRA.WebSim/Snapshot.cs. Little-endian, 4-byte aligned.
+﻿// Snapshot wire format written by sim/OpenRA.WebSim/Snapshot.cs. Little-endian, 4-byte aligned.
 // Section order: header, actors, draws, players, new sprites, texture updates, new strings.
 
 export const MAGIC = 0x314e5357; // "WSN1"
+export const RESYNC_MAGIC = 0x31525357; // "WSR1": sprite/string tables restart at id 0
 export const HEADER_BYTES = 64;
 export const ACTOR_BYTES = 52;
 export const DRAW_BYTES = 48;
@@ -85,13 +86,15 @@ export interface Snapshot {
   textures: TextureUpdate[];
   strings: string[];
   receivedAt: number;
+  resync: boolean;
 }
 
 const decoder = new TextDecoder();
 
 export function parseSnapshot(bytes: Uint8Array, receivedAt: number): Snapshot {
   const dv = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
-  if (dv.getUint32(0, true) !== MAGIC) throw new Error("bad snapshot magic");
+  const magic = dv.getUint32(0, true);
+  if (magic !== MAGIC && magic !== RESYNC_MAGIC) throw new Error("bad snapshot magic");
   const i = (o: number) => dv.getInt32(o, true);
   const f = (o: number) => dv.getFloat32(o, true);
   const header: Header = {
@@ -145,7 +148,7 @@ export function parseSnapshot(bytes: Uint8Array, receivedAt: number): Snapshot {
     p += len;
   }
 
-  return { header, actors, actorById, draws, players, sprites, textures, strings, receivedAt };
+  return { header, actors, actorById, draws, players, sprites, textures, strings, receivedAt, resync: magic === RESYNC_MAGIC };
 }
 
 /** Texture section only (the worker uses it to ship changed sheets to the page). */
@@ -189,7 +192,8 @@ export type ToWorker =
   | { type: "cursor"; x: number; y: number; mods: number; seq: number }
   | { type: "stop"; t: number }
   | { type: "bench"; ticks: number }
-  | { type: "log" };
+  | { type: "log" }
+  | { type: "resync" };
 
 export type FromWorker =
   | { type: "progress"; stage: string; detail?: string }

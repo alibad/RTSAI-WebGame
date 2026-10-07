@@ -38,8 +38,15 @@ namespace OpenRA.WebSim.Browser
 		[JSImport("publish", "websim")]
 		static partial void Publish([JSMarshalAs<JSType.MemoryView>] Span<byte> snapshot);
 
+		[JSImport("progress", "websim")]
+		static partial void Progress(string step);
+
 		[JSExport]
-		public static int Mount(byte[] pack) => Pack.Unpack(pack, Root);
+		public static int Mount(byte[] pack)
+		{
+			SimHost.OnProgress = Progress;
+			return Pack.Unpack(pack, Root);
+		}
 
 		[JSExport]
 		public static string Boot()
@@ -110,6 +117,9 @@ namespace OpenRA.WebSim.Browser
 
 		[JSExport]
 		public static int Stop() => SimHost.Stop();
+
+		[JSExport]
+		public static void Resync() => Snapshot.Resync();
 
 		[JSExport]
 		public static int SyncHash() => SimHost.SyncHash;
