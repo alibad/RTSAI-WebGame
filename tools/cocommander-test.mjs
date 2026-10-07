@@ -62,11 +62,39 @@ if (proposal) {
 await page.evaluate(() => window.game.cc.ask("What should I build next?"));
 await until(() => !window.store.getState().cc.thinking, null, 60000);
 
-// Push-to-talk through the (fake) microphone.
-await page.evaluate(() => window.game.cc.startListening());
-await page.waitForTimeout(1500);
-await page.evaluate(() => window.game.cc.stopListening());
-await until(() => !window.store.getState().cc.thinking && !window.store.getState().cc.listening, null, 60000);
+// Push-to-talk through the (fake) microphone, timed per stage: release of the talk key -> transcript -> answer ->
+// speech audio -> the reply starts playing.
+await page.evaluate(() => {
+  const g = window.game;
+  window.__marks = [];
+  const mark = (name) => window.__marks.push([name, performance.now()]);
+  const f = window.fetch.bind(window);
+  window.fetch = async (input, init) => {
+    const url = String(input instanceof Request ? input.url : input);
+    const stage = /v1\/transcribe/.test(url) ? "transcribe" : /v1\/ask/.test(url) ? "answer" : /v1\/speak/.test(url) ? "speech" : null;
+    const res = await f(input, init);
+    if (stage) mark(stage);
+    return res;
+  };
+  const voice = g.audio.voice.bind(g.audio);
+  g.audio.voice = (wav) => { mark("playing"); return voice(wav); };
+});
+const rounds = [];
+for (let i = 0; i < 5; i++) {
+  await page.evaluate(() => window.game.cc.startListening());
+  await page.waitForTimeout(1500);
+  const released = await page.evaluate(() => { const t = performance.now(); window.__marks = []; window.game.cc.stopListening(); return t; });
+  await until(() => window.__marks.some(([n]) => n === "playing") && window.__marks.findIndex(([n]) => n === "answer") >= 0 ? true : null, null, 60000);
+  await page.waitForTimeout(300);
+  const marks = await page.evaluate(() => window.__marks);
+  const at = (name, after = 0) => marks.find(([n, t]) => n === name && t >= after)?.[1];
+  const tr = at("transcribe"), an = at("answer", tr ?? 0), sp = at("speech", an ?? 0), pl = at("playing", sp ?? 0);
+  if (tr && an && sp && pl) rounds.push({ transcribe: tr - released, answer: an - tr, speech: sp - an, play: pl - sp, total: pl - released });
+  await until(() => !window.store.getState().cc.thinking && !window.store.getState().cc.listening, null, 60000);
+  await page.waitForTimeout(1200);
+}
+const med = (k) => { const v = rounds.map((r) => r[k]).sort((a, b) => a - b); return v.length ? Math.round(v[Math.floor(v.length / 2)]) : null; };
+log(`push-to-talk -> spoken reply, ${rounds.length} rounds, median ms:`, JSON.stringify({ transcribe: med("transcribe"), answer: med("answer"), speech: med("speech"), play: med("play"), total: med("total") }));
 await page.waitForTimeout(800);
 log("feed:\n  " + (await feed()).join("\n  "));
 await page.evaluate(() => window.game.cc.setOpen(true));

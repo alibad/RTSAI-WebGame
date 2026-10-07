@@ -180,7 +180,7 @@ function Palette({ game, height }: { game: Game; height: number }) {
   for (const it of state?.items ?? []) byItem.set(it.name, [...(byItem.get(it.name) ?? []), it]);
 
   return (
-    <div className="no-scrollbar grid content-start grid-cols-2 gap-[3px] overflow-y-auto pr-[1px]" style={{ height }}>
+    <div className="no-scrollbar grid content-start grid-cols-2 gap-[3px] overflow-y-auto pr-[1px]" style={{ height, gridAutoRows: "max-content" }}>
       {q?.items.map((item) => {
         const queued = byItem.get(item.name) ?? [];
         const first = queued[0];

@@ -43,8 +43,10 @@ html, body, #root {
   box-shadow: inset 0 0 0 1px var(--hud-edge), inset 0 2px 6px rgba(0, 0, 0, 0.8);
 }
 
-.cameo { position: relative; aspect-ratio: 60 / 48; overflow: hidden; cursor: pointer; background: #000; }
-.cameo img, .cameo canvas { width: 100%; height: 100%; display: block; image-rendering: pixelated; }
+/* A cameo always keeps the art's 60x48 shape and scales as a whole (its name bar is part of the art): never cropped,
+   whatever the sidebar width, and never squeezed by a short palette (the palette scrolls instead). */
+.cameo { position: relative; aspect-ratio: 60 / 48; height: auto; align-self: start; overflow: hidden; cursor: pointer; background: #000; }
+.cameo img, .cameo canvas { width: 100%; height: auto; aspect-ratio: 60 / 48; object-fit: contain; display: block; image-rendering: pixelated; }
 .cameo .wipe { position: absolute; inset: 0; pointer-events: none; }
 .cameo:hover { outline: 1px solid var(--hud-gold); outline-offset: -1px; }
 .cameo[data-disabled="true"] { cursor: not-allowed; filter: grayscale(1) brightness(0.45); }

@@ -88,6 +88,20 @@ Native verify then reports 755 of 755 net frames identical.
 AUTO (the native bot takes the local player) is kept off in the browser. It grants a condition outside the order
 stream, which a replay cannot reproduce. Re-enabling it needs an order of its own.
 
+## Latency
+
+- **Measured** with the scripted brain, which answers instantly (`tools/cocommander-test.mjs`, 5 push-to-talk
+  rounds): from releasing the talk key to the spoken reply starting to play took 65 ms (median). By stage:
+  - transcript 10 ms;
+  - answer 30 ms;
+  - speech audio 10 ms;
+  - start of playback 0 ms.
+
+  That is the whole cost of the browser, relay and companion; real models add their own time on top.
+- **Real local models** (Whisper, the local LLM, Kokoro) are not measured yet. On 7 October the GPU was claimed by the
+  owner's open-ended 3D run (`AI\logs\gpu-claim.txt`). The same test with `--mode local` measures them once the GPU
+  is free.
+
 ## The panel (`web/src/ui/CoCommander.tsx`, `web/src/cocommander.ts`)
 
 - **Strip** over the battlefield:
