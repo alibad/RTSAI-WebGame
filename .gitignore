@@ -5,6 +5,7 @@ node_modules/
 web/dist/
 build/
 data/
+artifacts/
 
 # Bundles are generated from the mod checkout; never commit them.
 *.pack
