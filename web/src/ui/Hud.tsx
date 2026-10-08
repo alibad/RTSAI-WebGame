@@ -98,9 +98,9 @@ export function CommandBar({ game }: { game: Game }) {
   return (
     <div className="hud-panel flex gap-[3px] p-[4px]">
       {btn("Attack move", "A", mode === "attackmove", () => game.setMode("attackmove"), AttackMoveIcon)}
-      {btn("Guard", "G", mode === "guard", () => game.setMode("guard"), GuardIcon)}
-      {btn("Deploy", "D", false, () => game.command({ cmd: "deploy" }), DeployIcon)}
-      {btn("Scatter", "X", false, () => game.command({ cmd: "scatter" }), ScatterIcon)}
+      {btn("Guard", "D", mode === "guard", () => game.setMode("guard"), GuardIcon)}
+      {btn("Deploy", "F", false, () => game.command({ cmd: "deploy" }), DeployIcon)}
+      {btn("Scatter", "Ctrl+X", false, () => game.command({ cmd: "scatter" }), ScatterIcon)}
       {btn("Stop", "S", false, () => game.command({ cmd: "stop" }), StopIcon)}
     </div>
   );
@@ -125,19 +125,26 @@ function GroupBar({ game }: { game: Game }) {
 export function GameMenu({ game }: { game: Game }) {
   const paused = useStore((s) => s.paused);
   const statsOpen = useStore((s) => s.statsOpen);
+  // Esc opens and closes it, as the desktop game's options menu (game.ts).
+  const menuOpen = useStore((s) => s.menuOpen);
   const set = useStore((s) => s.set);
   const [sound, setSound] = useState(game.audio.soundOn);
   const [music, setMusic] = useState(game.audio.musicOn);
+  const [lock, setLock] = useState(game.lock.enabled);
+  const touch = typeof matchMedia !== "undefined" && matchMedia("(pointer: coarse)").matches;
   return (
-    <DropdownMenu>
+    <DropdownMenu open={menuOpen} onOpenChange={(o) => set({ menuOpen: o })}>
       <DropdownMenuTrigger render={<Button variant="outline" size="icon" className="hud-panel size-[32px] rounded-[3px]" aria-label="Menu" />}>
         <svg viewBox="0 0 24 24" width={16} height={16} fill="currentColor"><path d="M4 6h16v2H4Zm0 5h16v2H4Zm0 5h16v2H4Z" /></svg>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="min-w-[180px]">
         <DropdownMenuItem onClick={() => game.setPaused(!paused)}>{paused ? "Resume" : "Pause"} <span className="ml-auto text-xs text-muted-foreground">P</span></DropdownMenuItem>
-        <DropdownMenuItem onClick={() => set({ statsOpen: !statsOpen })}>Engine stats <span className="ml-auto text-xs text-muted-foreground">F2</span></DropdownMenuItem>
+        <DropdownMenuItem onClick={() => set({ statsOpen: !statsOpen })}>Engine stats</DropdownMenuItem>
         <DropdownMenuCheckboxItem checked={sound} onCheckedChange={(v) => { game.audio.setSoundOn(!!v); setSound(!!v); }}>Sound</DropdownMenuCheckboxItem>
         <DropdownMenuCheckboxItem checked={music} onCheckedChange={(v) => { game.audio.setMusicOn(!!v); setMusic(!!v); }}>Music</DropdownMenuCheckboxItem>
+        {!touch && (
+          <DropdownMenuCheckboxItem checked={lock} onCheckedChange={(v) => { game.setMouseLock(!!v); setLock(!!v); }}>Keep the mouse in the game</DropdownMenuCheckboxItem>
+        )}
         <DropdownMenuSeparator />
         {game.sandbox
           ? <DropdownMenuItem onClick={() => game.sandbox!.backToEdit()}>Back to setup</DropdownMenuItem>

@@ -246,8 +246,8 @@ export function Sidebar({ game }: { game: Game }) {
       <div className="flex items-center justify-between gap-2 px-[2px]">
         <Credits />
         <div className="flex gap-[3px]">
-          <ModeButton active={mode === "repair"} title="Repair" hotkey="Z" onClick={() => game.setMode("repair")}><RepairIcon width={18} height={18} /></ModeButton>
-          <ModeButton active={mode === "sell"} title="Sell" hotkey="Q" onClick={() => game.setMode("sell")}><SellIcon width={18} height={18} /></ModeButton>
+          <ModeButton active={mode === "repair"} title="Repair" hotkey="C" onClick={() => game.setMode("repair")}><RepairIcon width={18} height={18} /></ModeButton>
+          <ModeButton active={mode === "sell"} title="Sell" hotkey="Z" onClick={() => game.setMode("sell")}><SellIcon width={18} height={18} /></ModeButton>
         </div>
       </div>
       <Tabs />

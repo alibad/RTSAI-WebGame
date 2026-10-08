@@ -305,6 +305,7 @@ export type ToWorker =
   | { type: "click"; x: number; y: number; button: number; mods: number; t: number }
   | { type: "cursor"; x: number; y: number; mods: number; seq: number }
   | { type: "icons"; names: string[] }
+  | { type: "cursorset" }
   | { type: "bench"; ticks: number }
   | { type: "log" }
   | { type: "resync" };
@@ -340,6 +341,7 @@ export type FromWorker =
   | { type: "audio"; op: "volume"; sound: number; volume: number }
   | { type: "audio"; op: "pause"; sound: number; paused: boolean }
   | { type: "cursor"; cursor: string; seq: number }
+  | { type: "cursorset"; data: ArrayBuffer }
   | { type: "ordered"; count: number; t: number; tick: number }
   | { type: "bench"; ticks: number; ms: number }
   | { type: "log"; json: string }

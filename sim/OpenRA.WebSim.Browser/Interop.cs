@@ -325,7 +325,10 @@ namespace OpenRA.WebSim.Browser
 			SimHost.Click(new int2(x, y), (MouseButton)button, (Modifiers)modifiers);
 
 		[JSExport]
-		public static string Cursor(int x, int y, int modifiers) => SimHost.Cursor(new int2(x, y), (Modifiers)modifiers);
+		public static string Cursor(int x, int y, int modifiers) => SimHost.Cursor(new int2(x, y), (Modifiers)(modifiers & 0xFFFF), (modifiers & 0x10000) != 0);
+
+		[JSExport]
+		public static byte[] CursorSet() => Ui.CursorSet();
 
 		[JSExport]
 		public static int Stop() => SimHost.Stop();

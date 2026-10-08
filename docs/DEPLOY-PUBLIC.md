@@ -9,7 +9,7 @@ apply:
 ## What gets published
 
 `node tools/build-public.mjs` writes `build/public-web/`. This is the standalone game: project art and audio only,
-no EA content, no server APIs. It is pinned by `tools/pin-standalone.ps1`; today that is rtsai/standalone e2efdd2.
+no EA content, no server APIs. It is pinned by `tools/pin-standalone.ps1`; today that is rtsai/standalone 246897b (the latest, re-checked 8 October).
 
 | Path | Contents | Raw | Stored and sent | Downloaded |
 |---|---|---|---|---|

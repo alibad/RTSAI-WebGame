@@ -3,7 +3,7 @@
   "name": "RTS AI",
   "short_name": "RTS AI",
   "description": "Play RTS AI in your browser: skirmish with seven modern factions and an AI co-commander.",
-  "start_url": "./",
+  "start_url": "./?profile=public",
   "scope": "./",
   "display": "standalone",
   "orientation": "landscape",

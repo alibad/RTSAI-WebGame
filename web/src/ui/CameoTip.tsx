@@ -8,6 +8,9 @@ const TICK_S = 0.04;
 
 const STRONG = /\bstrong (?:vs\.?|against) ([^;.]+?)(?=[;.]|,\s*(?:weak|vulnerable)\b|$)/gi;
 const WEAK = /\b(?:weak|vulnerable) (?:vs\.?|to|against) ([^;.]+?)(?=[;.]|$)/gi;
+// The same clauses in the raw text, where a line break may fall anywhere inside them.
+const STRONG_ML = /\bstrong\s+(?:vs\.?|against)\s+[^;.]+?(?=[;.]|,\s*(?:weak|vulnerable)\b|$)/gi;
+const WEAK_ML = /\b(?:weak|vulnerable)\s+(?:vs\.?|to|against)\s+[^;.]+?(?=[;.]|$)/gi;
 
 /** Role line plus strong/weak lists from a description such as "Line infantry.\nStrong vs infantry; weak vs armor." */
 export function parseDescription(desc: string | undefined) {
@@ -15,10 +18,13 @@ export function parseDescription(desc: string | undefined) {
   const text = desc.replace(/\s+/g, " ").trim();
   const strong = [...text.matchAll(STRONG)].map((m) => m[1].trim());
   const weak = [...text.matchAll(WEAK)].map((m) => m[1].trim());
-  // The first sentence that is not about strengths: what the unit is for.
-  const role = desc.split("\n")
-    .map((l) => l.replace(STRONG, "").replace(WEAK, "").replace(/^[\s;,.]+|[\s;,]+$/g, "").trim())
-    .find((l) => l.length > 2) ?? "";
+  // Everything else, as the engine's localisation gives it: every line of the description (a Fluent value's
+  // continuation lines included) with the line breaks the desktop tooltip shows, minus the strong/weak clauses
+  // listed below it (matched across line breaks too).
+  const role = desc.replace(STRONG_ML, "").replace(WEAK_ML, "").split("\n")
+    .map((l) => l.replace(/^[\s;,.]+|[\s;,]+$/g, "").trim())
+    .filter((l) => l.length > 2)
+    .join("\n");
   return { role, strong, weak };
 }
 
@@ -37,7 +43,7 @@ function Clock() {
 export function CameoTip({ item, top }: { item: CatalogItem; top: number }) {
   const { role, strong, weak } = parseDescription(item.desc);
   const seconds = Math.round(item.time * TICK_S);
-  const height = 150;
+  const height = 150 + 17 * Math.max(0, role.split("\n").length - 1);
   const y = Math.max(8, Math.min(top, window.innerHeight - height - 8));
   return (
     <div
@@ -55,7 +61,7 @@ export function CameoTip({ item, top }: { item: CatalogItem; top: number }) {
           </Stat>
         )}
       </div>
-      {role && <p className="mt-1.5 text-[var(--muted-foreground)]">{role}</p>}
+      {role && <p className="mt-1.5 whitespace-pre-line text-[var(--muted-foreground)]">{role}</p>}
       {(strong.length > 0 || weak.length > 0) && (
         <div className="mt-1.5 grid gap-[2px]">
           {strong.map((s) => (

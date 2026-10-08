@@ -160,6 +160,14 @@ export class AudioEngine {
     }
   }
 
+  /** ToggleMute (M): every sound and the music, until pressed again. */
+  muted = false;
+
+  setMuted(m: boolean) {
+    this.muted = m;
+    if (this.master) this.master.gain.value = m ? 0 : 1;
+  }
+
   setSoundOn(on: boolean) {
     this.soundOn = on;
     if (!on) for (const id of [...this.playing.keys()]) this.stop(id);

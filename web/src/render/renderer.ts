@@ -20,6 +20,8 @@ export interface Overlay {
   orderFlash: { x: number; y: number; t: number; color: [number, number, number] } | null;
   ownPlayer: number;
   markers?: { x: number; y: number; color: [number, number, number] }[];
+  /** CycleStatusBars (,): 0 selected and hovered only, 1 also every damaged unit, 2 every unit. */
+  statusBars?: number;
 }
 
 const INSTANCE_FLOATS = 20;
@@ -659,28 +661,32 @@ export class Renderer {
     for (const act of cur.actors) {
       const selected = ov.selected.has(act.id);
       const hovered = ov.hover === act.id;
-      if (!selected && !hovered) continue;
+      const bars = ov.statusBars ?? 0;
+      const barOnly = !selected && !hovered && act.maxHp > 0 && (act.flags & 1) !== 0 && (bars === 2 || (bars === 1 && act.hp < act.maxHp));
+      if (!selected && !hovered && !barOnly) continue;
       if (act.bw <= 0 || act.bh <= 0) continue;
       const [sx, sy] = Renderer.lerpActor(prev?.actorById.get(act.id), act, a);
       const x0 = Math.round(sx) + act.bx;
       const y0 = Math.round(sy) + act.by;
       const x1 = x0 + act.bw;
       const y1 = y0 + act.bh;
-      // RA2-style corner brackets
+      // RA2-style corner brackets (not for a unit that only shows its status bar)
       const c = selected ? [1, 1, 1] : [0.7, 0.7, 0.7];
-      const L = Math.max(3, Math.min(act.bw, act.bh) / 4);
-      const t = px;
-      rect(x0, y0, L, t, c[0], c[1], c[2]); rect(x0, y0, t, L, c[0], c[1], c[2]);
-      rect(x1 - L, y0, L, t, c[0], c[1], c[2]); rect(x1 - t, y0, t, L, c[0], c[1], c[2]);
-      rect(x0, y1 - t, L, t, c[0], c[1], c[2]); rect(x0, y1 - L, t, L, c[0], c[1], c[2]);
-      rect(x1 - L, y1 - t, L, t, c[0], c[1], c[2]); rect(x1 - t, y1 - L, t, L, c[0], c[1], c[2]);
-      if (act.rank > 0) {
-        // Veterancy chevrons at the bottom right (gold: veteran, red-gold: elite).
-        const col = act.rank >= 2 ? [1, 0.45, 0.2] : [0.95, 0.82, 0.45];
-        for (let k = 0; k < act.rank; k++) {
-          const cx = x1 - 6 - k * 5, cy = y1 - 4;
-          rect(cx, cy, 4, 1.5, col[0], col[1], col[2]);
-          rect(cx + 1, cy - 1.5, 2, 1.5, col[0], col[1], col[2]);
+      if (!barOnly) {
+        const L = Math.max(3, Math.min(act.bw, act.bh) / 4);
+        const t = px;
+        rect(x0, y0, L, t, c[0], c[1], c[2]); rect(x0, y0, t, L, c[0], c[1], c[2]);
+        rect(x1 - L, y0, L, t, c[0], c[1], c[2]); rect(x1 - t, y0, t, L, c[0], c[1], c[2]);
+        rect(x0, y1 - t, L, t, c[0], c[1], c[2]); rect(x0, y1 - L, t, L, c[0], c[1], c[2]);
+        rect(x1 - L, y1 - t, L, t, c[0], c[1], c[2]); rect(x1 - t, y1 - L, t, L, c[0], c[1], c[2]);
+        if (act.rank > 0) {
+          // Veterancy chevrons at the bottom right (gold: veteran, red-gold: elite).
+          const col = act.rank >= 2 ? [1, 0.45, 0.2] : [0.95, 0.82, 0.45];
+          for (let k = 0; k < act.rank; k++) {
+            const cx = x1 - 6 - k * 5, cy = y1 - 4;
+            rect(cx, cy, 4, 1.5, col[0], col[1], col[2]);
+            rect(cx + 1, cy - 1.5, 2, 1.5, col[0], col[1], col[2]);
+          }
         }
       }
       if (act.maxHp > 0) {

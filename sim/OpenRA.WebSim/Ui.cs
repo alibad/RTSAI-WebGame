@@ -21,6 +21,7 @@ using OpenRA.Mods.RTSAI.Traits;
 using OpenRA.Mods.Common.Traits.Radar;
 using OpenRA.Mods.Common.Traits.Render;
 using OpenRA.Mods.Common;
+using OpenRA.Mods.Common.Widgets;
 using OpenRA.Orders;
 using OpenRA.Primitives;
 using OpenRA.Traits;
@@ -233,6 +234,7 @@ namespace OpenRA.WebSim
 			RepairOrderGenerator => "repair",
 			AttackMoveOrderGenerator => "attackmove",
 			GuardOrderGenerator => "guard",
+			BeaconOrderGenerator => "beacon",
 			UnitOrderGenerator => "",
 			null => "",
 			_ => og.GetType().Name,
@@ -323,6 +325,7 @@ namespace OpenRA.WebSim
 						"repair" => new RepairOrderGenerator(world),
 						"attackmove" when selected.Count > 0 => new AttackMoveOrderGenerator(world, selected),
 						"guard" when selected.Count > 0 => new GuardOrderGenerator(world, selected, "Guard", "guard"),
+						"beacon" => new BeaconOrderGenerator(world),
 						_ => new UnitOrderGenerator(world),
 					};
 					break;
@@ -406,6 +409,135 @@ namespace OpenRA.WebSim
 				case "placements":
 					return Placements(world);
 
+				// ---- the desktop game's hotkey logics (mods/common/hotkeys, the mod's ingame chrome), same calls
+				case "selectall":
+				case "selecttype":
+				{
+					// SelectAllUnitsHotkeyLogic / SelectUnitsByTypeHotkeyLogic: the units on screen (the page's view),
+					// or across the map when the screen adds nothing new.
+					var eligible = SelectionUtils.GetPlayersToIncludeInSelection(world);
+					var mods = (Modifiers)Int("mods");
+					HashSet<string> classes = null;
+					if (cmd == "selecttype")
+					{
+						var owned = world.Selection.Actors.Where(x => !x.IsDead && eligible.Contains(x.Owner)).ToList();
+						if (owned.Count == 0)
+							return "{\"feedback\":\"nothing\"}";
+
+						classes = owned.Select(a => a.Trait<ISelectable>().Class).ToHashSet();
+					}
+
+					var onScreen = world.ScreenMap.ActorsInMouseBox(new int2(Int("x0"), Int("y0")), new int2(Int("x1"), Int("y1"))).Select(a => a.Actor);
+					var pick = SelectionUtils.SelectActorsByOwnerAndSelectionClass(onScreen, eligible, classes);
+					if (classes == null)
+						pick = pick.SubsetWithHighestSelectionPriority(mods);
+
+					var list = pick.ToList();
+					var scope = "screen";
+					if (list.Count <= world.Selection.Actors.Count)
+					{
+						var all = SelectionUtils.SelectActorsInWorld(world, classes, eligible);
+						if (classes == null)
+							all = all.SubsetWithHighestSelectionPriority(mods);
+
+						list = all.ToList();
+						scope = "map";
+					}
+
+					world.Selection.Combine(world, list, classes != null, false);
+					return SelectionReply(world, extra: $",\"feedback\":\"{scope}\",\"count\":{list.Count}");
+				}
+
+				case "cyclebase":
+				{
+					// CycleBasesHotkeyLogic.
+					var player = world.RenderPlayer ?? world.LocalPlayer;
+					var bases = world.ActorsHavingTrait<BaseBuilding>().Where(a => a.Owner == player)
+						.OrderByDescending(a => a.TraitOrDefault<PrimaryBuilding>() is { IsPrimary: true }).ThenBy(a => a.ActorID).ToList();
+					if (bases.Count == 0)
+					{
+						var building = world.ActorsHavingTrait<Building>().FirstOrDefault(a => a.Owner == player && a.Info.HasTraitInfo<SelectableInfo>());
+						if (building == null)
+							return "{}";
+
+						world.Selection.Combine(world, [building], false, true);
+						return SelectionReply(world, center: world.Selection.Actors);
+					}
+
+					var next = bases.SkipWhile(b => !world.Selection.Contains(b)).Skip(1).FirstOrDefault() ?? bases[0];
+					world.Selection.Combine(world, [next], false, true);
+					return SelectionReply(world, center: world.Selection.Actors);
+				}
+
+				case "cycleharvester":
+				{
+					// CycleHarvestersHotkeyLogic.
+					var player = world.RenderPlayer ?? world.LocalPlayer;
+					var harvesters = world.ActorsHavingTrait<Harvester>().Where(a => a.IsInWorld && a.Owner == player).ToList();
+					if (harvesters.Count == 0)
+						return "{}";
+
+					var next = harvesters.SkipWhile(b => !world.Selection.Contains(b)).Skip(1).FirstOrDefault() ?? harvesters[0];
+					world.Selection.Combine(world, [next], false, true);
+					return SelectionReply(world, center: world.Selection.Actors);
+				}
+
+				case "cycleproduction":
+				{
+					// CycleProductionActorsHotkeyLogic.
+					var player = world.RenderPlayer ?? world.LocalPlayer;
+					var facilities = world.ActorsHavingTrait<Production>()
+						.Where(a => a.Owner == player && a.OccupiesSpace != null && !a.Info.HasTraitInfo<BaseBuildingInfo>()
+							&& a.TraitsImplementing<Production>().Any(t => !t.IsTraitDisabled))
+						.OrderBy(f => f.TraitsImplementing<Production>().First(t => !t.IsTraitDisabled).Info.Produces[0])
+						.ToList();
+					if (facilities.Count == 0)
+						return "{}";
+
+					var next = facilities.SkipWhile(b => !world.Selection.Contains(b)).Skip(1).FirstOrDefault() ?? facilities[0];
+					world.Selection.Combine(world, [next], false, true);
+					return SelectionReply(world, center: world.Selection.Actors);
+				}
+
+				case "toselection":
+					// JumpToSelectedActorsHotkeyLogic.
+					return SelectionReply(world, center: world.Selection.Actors);
+
+				case "lastevent":
+				{
+					// JumpToLastEventHotkeyLogic: the last radar ping.
+					var pings = world.WorldActor.TraitOrDefault<RadarPings>();
+					if (pings?.LastPingPosition == null)
+						return "{}";
+
+					var px = SimHost.WorldRenderer.ScreenPxPosition(pings.LastPingPosition.Value);
+					return $"{{\"center\":[{px.X},{px.Y}]}}";
+				}
+
+				case "stance":
+				{
+					// StanceSelectorLogic.SetSelectionStance (the command bar's stance buttons and their hotkeys).
+					var stance = Str("stance") switch
+					{
+						"attackanything" => UnitStance.AttackAnything,
+						"defend" => UnitStance.Defend,
+						"returnfire" => UnitStance.ReturnFire,
+						_ => UnitStance.HoldFire,
+					};
+					var actorStances = world.Selection.Actors.Where(a => a.Owner == world.LocalPlayer && a.IsInWorld)
+						.SelectMany(a => a.TraitsImplementing<AutoTarget>().Where(at => at.Info.EnableStances).Select(at => new TraitPair<AutoTarget>(a, at)))
+						.ToArray();
+					foreach (var at in actorStances)
+					{
+						if (!at.Trait.IsTraitDisabled)
+							at.Trait.PredictedStance = stance;
+
+						world.IssueOrder(new Order("SetUnitStance", at.Actor, false) { ExtraData = (uint)stance });
+					}
+
+					return $"{{\"count\":{actorStances.Length}}}";
+				}
+
 				case "group":
 				{
 					var i = Int("index");
@@ -415,6 +547,7 @@ namespace OpenRA.WebSim
 						case "create": groups.CreateControlGroup(i); break;
 						case "add": groups.AddSelectionToControlGroup(i); break;
 						case "combine": groups.CombineSelectionWithControlGroup(i); break;
+						case "jump": return SelectionReply(world, center: groups.GetActorsInControlGroup(i));
 						default: groups.SelectControlGroup(i); break;
 					}
 
@@ -524,10 +657,18 @@ namespace OpenRA.WebSim
 		}
 
 		/// <summary>The selection after a control-group command, plus where the group is (for a double-tap camera jump).</summary>
-		static string SelectionReply(World world, int group = -1)
+		static string SelectionReply(World world, int group = -1, IEnumerable<Actor> center = null, string extra = "")
 		{
 			var ids = world.Selection.Actors.Where(a => a.IsInWorld).Select(a => a.ActorID).ToList();
-			var sb = new StringBuilder("{\"selection\":[").Append(string.Join(",", ids)).Append(']');
+			var sb = new StringBuilder("{\"selection\":[").Append(string.Join(",", ids)).Append(']').Append(extra);
+			// Viewport.Center(actors): the mean of their centre positions.
+			var at = center?.Where(a => a.IsInWorld).ToList();
+			if (at != null && at.Count > 0)
+			{
+				var px = SimHost.WorldRenderer.ScreenPxPosition(at.Select(a => a.CenterPosition).Average());
+				sb.Append(",\"center\":[").Append(px.X).Append(',').Append(px.Y).Append(']');
+			}
+
 			if (group >= 0)
 			{
 				var members = world.ControlGroups.GetActorsInControlGroup(group).ToList();
@@ -540,6 +681,70 @@ namespace OpenRA.WebSim
 			}
 
 			return sb.Append('}').ToString();
+		}
+
+		// ---------------------------------------------------------------- cursors
+
+		/// <summary>
+		/// The mod's cursor set exactly as CursorManager loads it (Cursors in mod.yaml, their palettes, the hotspot
+		/// relative to the frame centre): u32 header length, the JSON header
+		/// [{"name","frames":[[x,y,w,h,offset]...]}] (x, y: the frame's top-left relative to the hotspot; offset into
+		/// the RGBA payload), then the RGBA pixels.
+		/// </summary>
+		public static byte[] CursorSet()
+		{
+			var modData = Game.ModData;
+			var pals = new Dictionary<string, IProvidesCursorPaletteInfo>();
+			foreach (var p in modData.DefaultRules.Actors[SystemActors.World].TraitInfos<IProvidesCursorPaletteInfo>())
+				if (p.Palette != null)
+					pals[p.Palette] = p;
+
+			var paletteCache = new Cache<string, ImmutablePalette>(p => pals[p].ReadPalette(modData.DefaultFileSystem));
+			var frameCache = new FrameCache(modData.DefaultFileSystem, modData.SpriteLoaders);
+			var header = new StringBuilder("[");
+			var payload = new System.IO.MemoryStream();
+			var first = true;
+			foreach (var kv in modData.Cursors)
+			{
+				ISpriteFrame[] all;
+				try { all = frameCache[kv.Value.Src]; }
+				catch { continue; }
+
+				var length = kv.Value.Length ?? all.Length - kv.Value.Start;
+				var frames = all.Skip(kv.Value.Start).Take(length).ToArray();
+				var palette = !string.IsNullOrEmpty(kv.Value.Palette) ? paletteCache[kv.Value.Palette] : null;
+				header.Append(first ? "" : ",").Append("{\"name\":").Append(J(kv.Key)).Append(",\"frames\":[");
+				first = false;
+				for (var i = 0; i < frames.Length; i++)
+				{
+					var f = frames[i];
+					var hotspot = int2.FromVector(f.Offset) - kv.Value.Hotspot - new int2(f.Size) / 2;
+					var data = f.Type == SpriteFrameType.Indexed8 ? CursorManager.ConvertIndexedToBgra(kv.Key, f, palette) : f.Data;
+					// BGRA (indexed frames resolve to BGRA) to RGBA.
+					var rgba = new byte[f.Size.Width * f.Size.Height * 4];
+					var swap = f.Type != SpriteFrameType.Rgba32;
+					for (var k = 0; k + 3 < rgba.Length && k + 3 < data.Length; k += 4)
+					{
+						rgba[k] = swap ? data[k + 2] : data[k];
+						rgba[k + 1] = data[k + 1];
+						rgba[k + 2] = swap ? data[k] : data[k + 2];
+						rgba[k + 3] = data[k + 3];
+					}
+
+					header.Append(i == 0 ? "" : ",").Append('[').Append(hotspot.X).Append(',').Append(hotspot.Y).Append(',')
+						.Append(f.Size.Width).Append(',').Append(f.Size.Height).Append(',').Append(payload.Length).Append(']');
+					payload.Write(rgba);
+				}
+
+				header.Append("]}");
+			}
+
+			var json = Encoding.UTF8.GetBytes(header.Append(']').ToString());
+			var result = new byte[4 + json.Length + payload.Length];
+			BitConverter.TryWriteBytes(result.AsSpan(0, 4), json.Length);
+			json.CopyTo(result, 4);
+			payload.ToArray().CopyTo(result, 4 + json.Length);
+			return result;
 		}
 
 		// ---------------------------------------------------------------- cameos

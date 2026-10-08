@@ -529,14 +529,19 @@ namespace OpenRA.WebSim
 		public static void MouseMove(int2 worldPx) => Viewport.LastMousePos = WorldRenderer.Viewport.WorldToViewPx(worldPx);
 
 		/// <summary>The cursor the game would show for the current selection at this world pixel.</summary>
-		public static string Cursor(int2 worldPx, Modifiers mods)
+		public static string Cursor(int2 worldPx, Modifiers mods, bool minimap = false)
 		{
 			var world = World;
 			return Sync.RunUnsynced(world, () =>
 			{
 				var cell = CellAtWorldPx(worldPx);
 				var mi = Mouse(worldPx, world.OrderGenerator.ActionButton, mods);
-				return world.OrderGenerator.GetCursor(world, cell, worldPx, mi) ?? "default";
+				var cursor = world.OrderGenerator.GetCursor(world, cell, worldPx, mi);
+				if (cursor == null)
+					return "default";
+
+				// RadarWidget.GetCursor: the minimap variant where the mod has one.
+				return minimap && Game.ModData.Cursors.ContainsKey(cursor + "-minimap") ? cursor + "-minimap" : cursor;
 			});
 		}
 

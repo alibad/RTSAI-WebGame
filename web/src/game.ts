@@ -9,14 +9,22 @@ import { SimClient } from "./sim/client";
 import type { Actor, Snapshot, StartInfo, UiState } from "./sim/protocol";
 import type { IconSprite } from "./render/icons";
 import { store, type Perf } from "./store";
-import { cursorFor } from "./ui/cursors";
+import { cursorFor, loadModCursors } from "./ui/cursors";
+import { MouseLock } from "./pointer";
 import { AudioEngine } from "./audio";
 import { Sandbox, worldToCell } from "./sandbox";
 
 // OpenRA enums
 const MOD_SHIFT = 1, MOD_ALT = 2, MOD_CTRL = 4, MOD_META = 8;
 const BTN_LEFT = 1, BTN_RIGHT = 2;
-const EDGE_PX = 6;
+// ViewportControllerWidget with the default settings: edge scrolling within 5 px of the edge
+// (ViewportEdgeScrollMargin), 30 view px per 25 ms (ViewportEdgeScrollStep), the same for the arrow keys.
+const EDGE_PX = 5;
+const SCROLL_PX_PER_MS = 30 / 25;
+// The production tabs' hotkeys (the mod's ProductionTypeButton keys, hotkeys.yaml): E R T Y U I.
+const TAB_KEYS: Record<string, string> = { KeyE: "Building", KeyR: "Support", KeyT: "Infantry", KeyY: "Vehicle", KeyU: "Aircraft", KeyI: "Ship" };
+// MapBookmarkSave/Restore 01-04: Q W E R with Ctrl / Alt.
+const BOOKMARK_KEYS: Record<string, number> = { KeyQ: 0, KeyW: 1, KeyE: 2, KeyR: 3 };
 
 /** Minimap data: terrain image, blips and shroud, with a version so the canvas redraws only on change. */
 export class RadarModel {
@@ -51,6 +59,21 @@ export class Game {
   private keys = new Set<string>();
   private cursorSeq = 0;
   private lastCursorKey = "";
+  private cursorInFlight = false;
+  /** When the hovered cell (or what is on it) last changed without the cursor answer yet. */
+  private cursorAsked = 0;
+  private cursorName = "default";
+  private cursorAnswered = false;
+  private cursorCss = new WeakMap<HTMLElement, string>();
+  /** Hover-to-cursor times (ms): from the frame the pointer reached a new cell to the frame showing its cursor. */
+  readonly cursorLatency: number[] = [];
+  /** The minimap under the pointer (Minimap.tsx): the world position it points at. */
+  minimapHover: { wx: number; wy: number; el: HTMLElement } | null = null;
+  /** Shift, Alt, Ctrl, Meta held (engine Modifiers): they change the cursor (force-fire, force-move). */
+  private modState = 0;
+  private bookmarks: ([number, number, number] | null)[] = [null, null, null, null];
+  /** Mouse lock (pointer.ts): keeps the mouse inside the game; edge scrolling at the window edges. */
+  readonly lock: MouseLock;
   private lastView = "";
   private frames = 0;
   private fpsT = 0;
@@ -67,9 +90,10 @@ export class Game {
   private onKeyDown = (e: KeyboardEvent) => this.keyDown(e);
   private onKeyUp = (e: KeyboardEvent) => {
     this.keys.delete(e.key.toLowerCase());
+    this.modState = this.mods(e);
     if (e.key.toLowerCase() === "v" && store.get().cc.listening) this.cc.stopListening();
   };
-  private onBlur = () => this.keys.clear();
+  private onBlur = () => { this.keys.clear(); this.modState = 0; };
   private onMove = (e: MouseEvent) => this.mouseMove(e);
   private onUp = (e: MouseEvent) => this.mouseUp(e);
 
@@ -80,6 +104,7 @@ export class Game {
     this.client.onSnapshot = (s) => this.onSnapshot(s);
     this.client.onSheets = (uploaded, total) => store.set({ sheets: { uploaded, total } });
     this.renderer.onMissingTexture = (id) => this.client.needSheet(id);
+    this.lock = new MouseLock(canvas, () => { this.lastCursorKey = ""; });
     this.wire();
     this.bind();
     this.raf = requestAnimationFrame(this.frame);
@@ -116,10 +141,13 @@ export class Game {
       else store.set({ icons: { ...store.get().icons, [m.name]: null } });
     });
     c.on("cursor", (m) => {
+      this.cursorInFlight = false;
       if (m.seq !== this.cursorSeq) return;
-      this.canvas.style.cursor = cursorFor(m.cursor);
+      this.cursorName = m.cursor;
       if (m.cursor !== store.get().cursor) store.set({ cursor: m.cursor });
+      this.cursorAnswered = true; // shown by the next frame (updateHover), which closes the measurement
     });
+    c.on("cursorset", (m) => { loadModCursors(new Uint8Array(m.data)); this.lastCursorKey = ""; });
     c.on("ordered", (m) => {
       const pl = this.pendingLatency;
       if (pl && pl.t0 === m.t) {
@@ -231,7 +259,10 @@ export class Game {
     store.set({ paused });
   }
 
+  private cursorsRequested = false;
+
   private started(info: StartInfo, radarTerrain: ArrayBuffer, startMs: number) {
+    if (!this.cursorsRequested) { this.cursorsRequested = true; this.client.send({ type: "cursorset" }); }
     // The sandbox keeps its camera between editing and running (it frames the placements itself).
     if (!this.sandbox || !this.info) this.cam = { x: info.start[0], y: info.start[1], zoom: 1 };
     this.info = info;
@@ -379,28 +410,56 @@ export class Game {
     this.sendView(true);
   }
 
+  /** Edge directions (x, y in -1..1) of the pointer: the window edges while locked, else none. */
+  private edgeDirections(): [number, number] {
+    if (!this.lock.locked || !document.hasFocus()) return [0, 0];
+    const x = this.lock.x, y = this.lock.y;
+    return [x < EDGE_PX ? -1 : x >= window.innerWidth - EDGE_PX ? 1 : 0, y < EDGE_PX ? -1 : y >= window.innerHeight - EDGE_PX ? 1 : 0];
+  }
+
   private scroll(dt: number) {
-    const speed = (0.9 * dt) / this.cam.zoom;
-    let dx = 0, dy = 0;
+    let ux = 0, uy = 0;
     const k = this.keys;
-    if (k.has("arrowleft")) dx -= speed;
-    if (k.has("arrowright")) dx += speed;
-    if (k.has("arrowup")) dy -= speed;
-    if (k.has("arrowdown")) dy += speed;
-    // Edge scrolling, only while the pointer is over the battlefield.
-    if (this.mouse.inside && !this.touching && !this.drag && document.hasFocus()) {
-      const r = this.canvas.getBoundingClientRect();
-      if (this.mouse.sx <= r.left + EDGE_PX) dx -= speed;
-      if (this.mouse.sx >= r.right - EDGE_PX - 1) dx += speed;
-      if (this.mouse.sy <= r.top + EDGE_PX) dy -= speed;
-      if (this.mouse.sy >= r.bottom - EDGE_PX - 1) dy += speed;
+    if (!k.has("alt")) {
+      if (k.has("arrowleft")) ux -= 1;
+      if (k.has("arrowright")) ux += 1;
+      if (k.has("arrowup")) uy -= 1;
+      if (k.has("arrowdown")) uy += 1;
     }
-    if (dx || dy) {
-      this.cam.x += dx;
-      this.cam.y += dy;
+    if (this.lock.locked) {
+      // Mouse locked: the drawn cursor at a window edge (ViewportControllerWidget.CheckForDirections).
+      const [ex, ey] = this.edgeDirections();
+      ux = ux || ex;
+      uy = uy || ey;
+    } else if (!this.lock.enabled && this.mouse.inside && !this.touching && !this.drag && document.hasFocus()) {
+      // Mouse lock turned off: the battlefield's own edges, as before. (Unlocked with the lock on: none, the
+      // cursor could leave the window.)
+      const r = this.canvas.getBoundingClientRect();
+      if (this.mouse.sx < r.left + EDGE_PX) ux = ux || -1;
+      if (this.mouse.sx >= r.right - EDGE_PX) ux = ux || 1;
+      if (this.mouse.sy < r.top + EDGE_PX) uy = uy || -1;
+      if (this.mouse.sy >= r.bottom - EDGE_PX) uy = uy || 1;
+    }
+    if (ux || uy) {
+      // Rate for a 25 ms step, diagonals no faster (UpdateCameraTick); view px to world px.
+      const dpr = window.devicePixelRatio || 1;
+      const step = (Math.min(dt, 25) * SCROLL_PX_PER_MS * dpr) / (this.cam.zoom * Math.max(1, Math.hypot(ux, uy)));
+      this.cam.x += ux * step;
+      this.cam.y += uy * step;
       this.clampCam();
       this.sendView();
     }
+  }
+
+  /** The scroll cursor at a window edge while locked, "-blocked" where the map ends (ViewportControllerWidget). */
+  private edgeCursor(): string | null {
+    const [ex, ey] = this.edgeDirections();
+    if (!ex && !ey) return null;
+    const b = this.info?.bounds;
+    const blockedX = !!b && ((ex < 0 && this.cam.x <= b[0]) || (ex > 0 && this.cam.x >= b[2]));
+    const blockedY = !!b && ((ey < 0 && this.cam.y <= b[1]) || (ey > 0 && this.cam.y >= b[3]));
+    const name = "scroll-" + (ey < 0 ? "t" : ey > 0 ? "b" : "") + (ex < 0 ? "l" : ex > 0 ? "r" : "");
+    return name + ((ex && ey ? blockedX && blockedY : blockedX || blockedY) ? "-blocked" : "");
   }
 
   // ---------------------------------------------------------------- selection
@@ -418,17 +477,68 @@ export class Game {
   }
 
   private updateHover(s: Snapshot | null) {
-    if (!s || !this.mouse.inside || store.get().phase !== "playing") {
-      this.overlay.hover = null;
-      return;
-    }
-    const a = this.actorAt(this.mouse.wx, this.mouse.wy, s);
+    const playing = store.get().phase === "playing";
+    const locked = this.lock.locked;
+    // What the pointer is over: the battlefield, the minimap, or the HUD.
+    let surface: "map" | "minimap" | null = null;
+    let wx = 0, wy = 0;
+    let el: HTMLElement | null = null;
+    if (locked) {
+      const under = this.lock.elementAt();
+      if (under === this.canvas) { surface = "map"; [wx, wy] = this.toWorld(this.lock.x, this.lock.y); el = this.canvas; }
+      else if (this.minimapHover && under === this.minimapHover.el) { surface = "minimap"; ({ wx, wy, el } = this.minimapHover); }
+    } else if (this.minimapHover) { surface = "minimap"; ({ wx, wy, el } = this.minimapHover); }
+    else if (this.mouse.inside) { surface = "map"; wx = this.mouse.wx; wy = this.mouse.wy; el = this.canvas; }
+    if (!playing || !s) surface = null;
+
+    const a = surface === "map" && s ? this.actorAt(wx, wy, s) : null;
     this.overlay.hover = a && a.flags & 1 ? a.id : null;
-    const key = `${Math.round(this.mouse.wx)},${Math.round(this.mouse.wy)},${this.overlay.selected.size},${this.ui?.mode ?? ""}`;
-    if (key !== this.lastCursorKey && !this.drag?.active) {
-      this.lastCursorKey = key;
-      this.client.send({ type: "cursor", x: this.mouse.wx, y: this.mouse.wy, mods: 0, seq: ++this.cursorSeq });
+
+    let name = "default";
+    if (surface) {
+      // The engine's answer (OrderGenerator.GetCursor) for this cell and what is on it, asked at most once per
+      // frame and never twice at once; a 4 px grid keeps it exact at cell borders.
+      const sel = [...this.overlay.selected].join(",");
+      const key = `${surface}|${Math.round(wx / 4)},${Math.round(wy / 4)}|${a?.id ?? -1}|${sel}|${this.ui?.mode ?? ""}|${this.modState}`;
+      if (key !== this.lastCursorKey && !this.drag?.active) {
+        if (!this.cursorAsked) this.cursorAsked = performance.now();
+        if (!this.cursorInFlight) {
+          this.lastCursorKey = key;
+          this.cursorInFlight = true;
+          this.client.send({ type: "cursor", x: wx, y: wy, mods: this.modState | (surface === "minimap" ? 0x10000 : 0), seq: ++this.cursorSeq });
+        }
+      }
+      name = this.cursorName;
     }
+    const edge = locked ? this.edgeCursor() : null;
+    if (edge) name = edge;
+    if (this.cursorAnswered && !this.cursorInFlight && this.lastCursorKey) {
+      // Hover to cursor shown: from the frame the pointer reached the new cell to this frame.
+      this.cursorAnswered = false;
+      if (this.cursorAsked) {
+        this.cursorLatency.push(performance.now() - this.cursorAsked);
+        if (this.cursorLatency.length > 300) this.cursorLatency.shift();
+        this.cursorAsked = 0;
+      }
+    }
+    if (locked) {
+      this.lock.setCursor(name);
+      this.lock.draw();
+    } else if (el) {
+      const css = cursorFor(name, performance.now());
+      if (this.cursorCss.get(el) !== css) { el.style.cursor = css; this.cursorCss.set(el, css); }
+    }
+  }
+
+  /** Hover-to-cursor time (ms): median and p95 of the last changes. */
+  cursorLatencyStats() {
+    const v = [...this.cursorLatency].sort((x, y) => x - y);
+    const q = (f: number) => (v.length ? v[Math.min(v.length - 1, Math.floor(f * v.length))] : 0);
+    return { n: v.length, median: q(0.5), p95: q(0.95), max: v.at(-1) ?? 0 };
+  }
+
+  setMouseLock(on: boolean) {
+    this.lock.setEnabled(on);
   }
 
   async select(ids: number[], additive = false) {
@@ -501,8 +611,9 @@ export class Game {
     this.command({ cmd: "mode", mode: current === mode ? "none" : mode });
   }
 
-  async group(index: number, action: "select" | "create" | "add" | "combine") {
+  async group(index: number, action: "select" | "create" | "add" | "combine" | "jump") {
     const r = await this.command<{ selection?: number[]; center?: [number, number] }>({ cmd: "group", index, action });
+    if (action === "jump") { if (r.center) this.lookAt(r.center[0], r.center[1]); return; }
     if (r.selection) this.overlay.selected = new Set(r.selection);
     const now = performance.now();
     if (action === "select" && this.lastGroupTap.index === index && now - this.lastGroupTap.t < 400 && r.center) this.lookAt(r.center[0], r.center[1]);
@@ -672,6 +783,7 @@ export class Game {
     c.addEventListener("mouseenter", () => (this.mouse.inside = true));
     c.addEventListener("mouseleave", () => (this.mouse.inside = false));
     c.addEventListener("mousedown", (e) => {
+      this.lock.maybeLock(e);
       c.focus();
       store.set({ menuOpen: false });
       const [wx, wy] = this.toWorld(e.clientX, e.clientY);
@@ -710,43 +822,147 @@ export class Game {
     window.addEventListener("blur", this.onBlur);
   }
 
+  /**
+   * The desktop game's hotkeys, as the mod binds them (mods/common/hotkeys/*.yaml and the mod's hotkeys.yaml, wired by
+   * its ingame chrome), each doing what its widget logic does. ui/Hotkeys.tsx lists them.
+   */
   private keyDown(e: KeyboardEvent) {
     const tag = (e.target as HTMLElement)?.tagName;
+    this.modState = this.mods(e);
     if (tag === "INPUT" || tag === "TEXTAREA" || store.get().phase !== "playing") return;
     const k = e.key.toLowerCase();
+    const code = e.code;
     this.keys.add(k);
-    if (e.key === "F2") { store.set({ statsOpen: !store.get().statsOpen }); e.preventDefault(); return; }
-    if (e.key === "F1" || e.key === "?") { store.set({ keysOpen: !store.get().keysOpen }); e.preventDefault(); return; }
+    const ctrl = e.ctrlKey || e.metaKey, alt = e.altKey, shift = e.shiftKey;
+    const done = () => e.preventDefault();
+
     if (e.key === "Escape") {
-      if (store.get().keysOpen) store.set({ keysOpen: false });
+      // The Esc that released the mouse lock is the browser's, not the game's.
+      if (this.lock.locked || performance.now() - this.lock.releasedAt < 400) return;
+      const st = store.get();
+      if (st.keysOpen) store.set({ keysOpen: false });
+      else if (st.menuOpen) store.set({ menuOpen: false });
       else if (this.ui?.mode) this.command({ cmd: "mode", mode: "none" });
-      else if (store.get().menuOpen) store.set({ menuOpen: false });
-      else this.select([]);
-      return;
+      else store.set({ menuOpen: true }); // the options menu (MenuButton OPTIONS_BUTTON, Key: escape)
+      return done();
     }
-    if (e.key === "F10" || (k === "p" && !e.ctrlKey)) { this.setPaused(!store.get().paused); e.preventDefault(); return; }
-    // Control groups: N select (double-tap jumps), Ctrl+N create, Shift+N add, Alt+N combine.
-    const digit = e.code.startsWith("Digit") ? Number(e.code.slice(5)) : -1;
+    if (e.key === "?" || (e.key === "/" && shift)) { store.set({ keysOpen: !store.get().keysOpen }); return done(); }
+    if (e.key === "Pause" || (k === "p" && !ctrl && !alt)) { this.setPaused(!store.get().paused); return done(); }
+
+    // Control groups (ControlGroupsWidget): N select (twice: jump), Ctrl+N create, Ctrl+Shift+N add to,
+    // Shift+N combine with, Alt+N jump to.
+    const digit = code.startsWith("Digit") ? Number(code.slice(5)) : -1;
     if (digit >= 0) {
       const index = digit === 0 ? 9 : digit - 1;
-      this.group(index, e.ctrlKey || e.metaKey ? "create" : e.shiftKey ? "add" : e.altKey ? "combine" : "select");
-      e.preventDefault();
+      if (alt) this.group(index, "jump");
+      else if (ctrl && shift) this.group(index, "add");
+      else if (ctrl) this.group(index, "create");
+      else if (shift) this.group(index, "combine");
+      else this.group(index, "select");
+      return done();
+    }
+
+    // Production (ProductionPaletteWidget, HotkeyPrefix Production, HotkeyCount 24): F1-F12 the palette's icons,
+    // Ctrl+F1-F12 the 13th-24th; Shift builds five. A left click on the icon, as the desktop.
+    const fkey = /^F(\d{1,2})$/.exec(e.key);
+    if (fkey && !alt) {
+      const n = Number(fkey[1]) - 1 + (ctrl ? 12 : 0);
+      const tab = store.get().tab;
+      const item = store.get().catalog.find((c) => c.type === tab)?.items[n];
+      if (item) this.command({ cmd: "produce", queue: tab, item: item.name, count: shift ? 5 : 1, front: false });
+      return done();
+    }
+    // Production tabs (ProductionTypeButton): E R T Y U I.
+    if (TAB_KEYS[code] && !ctrl && !alt) {
+      // As its button: only when that production is available (ProductionTypeButton.IsDisabled).
+      const type = TAB_KEYS[code];
+      const st = store.get();
+      const enabled = (st.ui?.queues?.find((q) => q.type === type)?.enabled ?? false) && !!st.catalog.find((c) => c.type === type)?.items.length;
+      if (enabled) store.set({ tab: type });
+      return done();
+    }
+
+    // Viewport (ViewportControllerWidget): Alt+arrows jump to the map edges, [ ] zoom, . reset, Ctrl+Q/W/E/R save a
+    // bookmark, Alt+Q/W/E/R go back to it. Plain arrows scroll (scroll()).
+    if (alt && k.startsWith("arrow") && this.info) {
+      const b = this.info.bounds;
+      if (k === "arrowup") this.lookAt(this.cam.x, b[1]);
+      if (k === "arrowdown") this.lookAt(this.cam.x, b[3]);
+      if (k === "arrowleft") this.lookAt(b[0], this.cam.y);
+      if (k === "arrowright") this.lookAt(b[2], this.cam.y);
+      return done();
+    }
+    if (code in BOOKMARK_KEYS && (ctrl || alt) && !(ctrl && alt)) {
+      const i = BOOKMARK_KEYS[code];
+      if (ctrl) this.bookmarks[i] = [this.cam.x, this.cam.y, this.cam.zoom];
+      else if (this.bookmarks[i]) { const [x, y, z] = this.bookmarks[i]!; this.cam.zoom = z; this.lookAt(x, y); }
+      return done();
+    }
+    if (!ctrl && !alt && (code === "BracketRight" || code === "BracketLeft" || code === "Period")) {
+      this.cam.zoom = code === "Period" ? 1 : Math.min(3, Math.max(0.35, this.cam.zoom * (code === "BracketRight" ? 1.25 : 0.8)));
+      this.clampCam();
+      this.sendView(true);
+      return done();
+    }
+    // DisableUserInterface (Shift+=) / DisableAllUserInterface (Alt+Shift+=): hide the HUD.
+    if (code === "Equal" && shift) { store.set({ uiHidden: !store.get().uiHidden }); return done(); }
+
+    // Co-commander (the mod's hotkeys-ai.yaml): Ctrl+Space ask, Ctrl+Enter accept, Ctrl+Backspace reject.
+    if (ctrl && code === "Space") { (document.querySelector("[data-cc-input]") as HTMLInputElement | null)?.focus(); return done(); }
+    if (ctrl && (code === "Enter" || code === "Backspace")) {
+      const p = this.cc.pending();
+      if (p) this.cc.decide(p, code === "Enter");
+      return done();
+    }
+
+    // Unit stances (StanceSelector, Alt+A/S/D/F).
+    if (alt && !ctrl) {
+      const stance = ({ KeyA: "attackanything", KeyS: "defend", KeyD: "returnfire", KeyF: "holdfire" } as Record<string, string>)[code];
+      if (stance) { this.command({ cmd: "stance", stance }); return done(); }
       return;
     }
-    if (e.ctrlKey || e.metaKey) return;
-    switch (k) {
-      case "s": this.command({ cmd: "stop" }); break;
-      case "d": this.command({ cmd: "deploy", queued: e.shiftKey }); break;
-      case "x": this.command({ cmd: "scatter", queued: e.shiftKey }); break;
-      case "a": this.setMode("attackmove"); break;
-      case "g": this.setMode("guard"); break;
-      case "z": this.setMode("repair"); break;
-      case "q": this.setMode("sell"); break;
-      case "h": if (this.info) this.lookAt(this.info.start[0], this.info.start[1]); break;
-      case "v": if (store.get().cc.enabled && !e.repeat) this.cc.startListening(); break;
+
+    // Command bar: A attack move (also with Ctrl/Shift held), D guard, F deploy, Ctrl+X scatter, S stop; Shift queues.
+    if (code === "KeyA") { this.setMode("attackmove"); return done(); }
+    if (code === "KeyX" && ctrl) { this.command({ cmd: "scatter", queued: shift }); return done(); }
+    if (ctrl && code === "Tab") { this.cycle("cycleproduction"); return done(); }
+    if (ctrl) return;
+    switch (code) {
+      case "KeyS": this.command({ cmd: "stop" }); break;
+      case "KeyD": this.setMode("guard"); break;
+      case "KeyF": this.command({ cmd: "deploy", queued: shift }); break;
+      // Sidebar buttons: Z sell, C repair, B beacon.
+      case "KeyZ": this.setMode("sell"); break;
+      case "KeyC": this.setMode("repair"); break;
+      case "KeyB": this.setMode("beacon"); break;
+      // WORLD_KEYHANDLER logics.
+      case "KeyQ": this.selectHotkey("selectall"); break;
+      case "KeyW": this.selectHotkey("selecttype"); break;
+      case "KeyH": this.cycle("cyclebase"); break;
+      case "KeyN": this.cycle("cycleharvester"); break;
+      case "Home": this.cycle("toselection"); break;
+      case "Space": this.cycle("lastevent"); break;
+      case "Comma": this.overlay.statusBars = ((this.overlay.statusBars ?? 0) + 1) % 3; break;
+      case "KeyM": this.audio.setMuted(!this.audio.muted); break;
+      // Co-commander push-to-talk (this page's own).
+      case "KeyV": if (store.get().cc.enabled && !e.repeat) this.cc.startListening(); break;
       default: return;
     }
-    e.preventDefault();
+    done();
+  }
+
+  /** SelectAllUnits (Q) / SelectUnitsByType (W): the units on screen, or across the map when that adds nothing. */
+  private async selectHotkey(cmd: "selectall" | "selecttype") {
+    const [x0, y0, x1, y1] = this.viewRect();
+    const r = await this.command<{ selection?: number[] }>({ cmd, x0: Math.floor(x0), y0: Math.floor(y0), x1: Math.ceil(x1), y1: Math.ceil(y1), mods: this.modState });
+    if (r.selection) { this.overlay.selected = new Set(r.selection); this.lastCursorKey = ""; }
+  }
+
+  /** Cycle base / harvesters / production buildings, jump to the selection or the last event. */
+  private async cycle(cmd: string) {
+    const r = await this.command<{ selection?: number[]; center?: [number, number] }>({ cmd });
+    if (r.selection) { this.overlay.selected = new Set(r.selection); this.lastCursorKey = ""; }
+    if (r.center) this.lookAt(r.center[0], r.center[1]);
   }
 
   dispose() {
@@ -757,6 +973,7 @@ export class Game {
     window.removeEventListener("keyup", this.onKeyUp);
     window.removeEventListener("blur", this.onBlur);
     this.client.worker.terminate();
+    this.lock.dispose();
   }
 }
 

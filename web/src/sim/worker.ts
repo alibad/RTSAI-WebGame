@@ -406,6 +406,11 @@ self.onmessage = async (e: MessageEvent<ToWorker>) => {
         break;
       }
       case "cursor": post({ type: "cursor", cursor: S.Cursor(m.x | 0, m.y | 0, m.mods), seq: m.seq }); break;
+      case "cursorset": {
+        const data = (S.CursorSet() as Uint8Array).slice();
+        post({ type: "cursorset", data: data.buffer }, [data.buffer]);
+        break;
+      }
       case "icons": {
         for (const name of m.names) post({ type: "icon", name, info: S.Icon(name) });
         break;

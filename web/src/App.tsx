@@ -3,7 +3,6 @@ import { Game } from "./game";
 import { useStore } from "./store";
 import { Hud } from "./ui/Hud";
 import { Setup } from "./ui/Setup";
-import { loadCursors } from "./ui/cursors";
 import { SandboxHud } from "./ui/SandboxHud";
 import { ARENA, Sandbox, parseSandboxUrl } from "./sandbox";
 
@@ -46,6 +45,7 @@ export default function App() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [game, setGame] = useState<Game | null>(null);
   const phase = useStore((s) => s.phase);
+  const uiHidden = useStore((s) => s.uiHidden);
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -54,11 +54,12 @@ export default function App() {
     const only = params.get("only") ?? (params.get("shot") === "1" ? "r2" : null);
     if (only) g.renderer.actorFilter = (t) => g.client.str(t).startsWith(only);
     setGame(g);
-    loadCursors();
     // AOT by default; ?runtime=interp is the developer fallback. ?private=0 runs without the player's own files.
     // ?profile=public: the standalone game (project art and audio only, never the player's files).
-    // A static public build (tools/build-public.mjs) defaults to the standalone game.
-    const profile = (params.get("profile") ?? import.meta.env.VITE_DEFAULT_PROFILE) === "public" ? "public" : "";
+    // A static public build (tools/build-public.mjs) defaults to the standalone game, and so does the installed app
+    // (its window opens without a query; ?profile=classic there still opens the RA2 game with the player's files).
+    const installed = matchMedia("(display-mode: standalone)").matches || matchMedia("(display-mode: window-controls-overlay)").matches;
+    const profile = (params.get("profile") ?? import.meta.env.VITE_DEFAULT_PROFILE ?? (installed ? "public" : "")) === "public" ? "public" : "";
     // The co-commander needs the local server (it starts the companion and relays its RPCs); a static host has none.
     fetch(new URL("api/companion/status", new URL("./", location.href)))
       .then((r) => (r.ok ? r.json() : null)).then((s) => useStore.getState().set({ ccAvailable: !!s && typeof s.running === "boolean" }))
@@ -90,7 +91,7 @@ export default function App() {
   return (
     <div className="fixed inset-0" style={sandboxMode ? ({ "--sidebar-w": "300px" } as React.CSSProperties) : undefined}>
       <canvas ref={canvasRef} className="stage" tabIndex={0} style={{ right: playing ? "var(--sidebar-w)" : 0, width: playing ? "calc(100% - var(--sidebar-w))" : "100%", visibility: playing ? "visible" : "hidden" }} />
-      {game && playing && (sandboxMode ? <SandboxHud game={game} /> : <Hud game={game} />)}
+      {game && playing && !uiHidden && (sandboxMode ? <SandboxHud game={game} /> : <Hud game={game} />)}
       {game && phase === "setup" && !sandboxMode && <Setup game={game} />}
       {(phase === "boot" || phase === "loading" || (phase === "setup" && sandboxMode)) && <Loading />}
       {phase === "error" && <ErrorCard game={game} />}

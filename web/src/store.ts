@@ -47,8 +47,10 @@ export interface Store {
   cursor: string;
   statsOpen: boolean;
   menuOpen: boolean;
-  /** The hotkey sheet (F1). */
+  /** The hotkey sheet (?). */
   keysOpen: boolean;
+  /** DisableUserInterface (Shift+=): the HUD hidden, the battlefield only. */
+  uiHidden: boolean;
   /** The AI co-commander (cocommander.ts), and whether this server can run it (local mode). */
   cc: CoCommanderState;
   ccAvailable: boolean;
@@ -89,6 +91,7 @@ export const useStore = create<Store>((set) => ({
   statsOpen: false,
   menuOpen: false,
   keysOpen: false,
+  uiHidden: false,
   cc: initialCoCommander(),
   ccAvailable: false,
   sheets: { uploaded: 0, total: 0 },

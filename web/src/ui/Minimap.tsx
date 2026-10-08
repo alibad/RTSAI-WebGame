@@ -111,16 +111,23 @@ export function Minimap({ game, size }: { game: Game; size: number }) {
       if (e.button === 2) game.orderAt(wx, wy);
       else if (e.button === 0) {
         dragging = true;
-        canvas.setPointerCapture(e.pointerId);
+        try { canvas.setPointerCapture(e.pointerId); } catch { /* the mouse lock's drawn pointer has no capture */ }
         game.lookAt(wx, wy);
       }
     };
-    const move = (e: PointerEvent) => { if (dragging) { const [wx, wy] = at(e); game.lookAt(wx, wy); } };
+    // The cursor over the minimap is the engine's too (RadarWidget.GetCursor, its "-minimap" variants).
+    const move = (e: PointerEvent) => {
+      const [wx, wy] = at(e);
+      game.minimapHover = game.ui?.radar && e.pointerType !== "touch" ? { wx, wy, el: canvas } : null;
+      if (dragging) game.lookAt(wx, wy);
+    };
+    const leave = () => { game.minimapHover = null; canvas.style.cursor = ""; };
     const up = () => { dragging = false; };
     const menu = (e: Event) => e.preventDefault();
     canvas.addEventListener("pointerdown", down);
     canvas.addEventListener("pointermove", move);
     canvas.addEventListener("pointerup", up);
+    canvas.addEventListener("pointerleave", leave);
     canvas.addEventListener("contextmenu", menu);
     return () => {
       cancelAnimationFrame(raf);
@@ -128,6 +135,8 @@ export function Minimap({ game, size }: { game: Game; size: number }) {
       canvas.removeEventListener("pointerdown", down);
       canvas.removeEventListener("pointermove", move);
       canvas.removeEventListener("pointerup", up);
+      canvas.removeEventListener("pointerleave", leave);
+      game.minimapHover = null;
       canvas.removeEventListener("contextmenu", menu);
     };
   }, [game, info, size]);

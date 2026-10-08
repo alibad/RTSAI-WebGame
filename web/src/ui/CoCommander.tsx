@@ -136,7 +136,7 @@ export function CoCommander({ game }: { game: Game }) {
               {cc.feed.map((item) => <Line key={item.id} game={game} item={item} />)}
             </div>
             <form className="flex items-center gap-2 border-t border-white/10 px-2.5 py-2" onSubmit={(e) => { e.preventDefault(); send(); }}>
-              <input value={text} onChange={(e) => setText(e.target.value)} placeholder="Ask or order…" aria-label="Ask the co-commander"
+              <input value={text} onChange={(e) => setText(e.target.value)} placeholder="Ask or order…" aria-label="Ask the co-commander" data-cc-input
                 className="min-w-0 flex-1 rounded-[2px] bg-black/50 px-2 py-1.5 text-[13px] text-[var(--foreground)] outline-none placeholder:text-[var(--muted-foreground)] focus:ring-1 focus:ring-[var(--hud-gold-dim)]" />
               <button type="submit" disabled={!text.trim()} className="rounded-[2px] bg-[var(--hud-gold)] px-3 py-1.5 text-[12px] font-bold text-[#1a160c] disabled:opacity-40">Send</button>
               <span className="text-[10px] text-[var(--hud-gold-dim)]"><Kbd>V</Kbd> talk</span>
