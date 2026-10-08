@@ -10,6 +10,7 @@ import { Minimap } from "./Minimap";
 import { PowerIcon, QUEUE_ICONS, RepairIcon, SellIcon } from "./icons";
 import { cn } from "../lib/utils";
 import { CameoTip } from "./CameoTip";
+import { PowerMeter } from "./PowerMeter";
 
 function Credits() {
   const cash = useStore((s) => s.ui?.cash ?? 0);
@@ -38,25 +39,27 @@ function Credits() {
   );
 }
 
-function PowerBar({ height }: { height: number }) {
-  const power = useStore((s) => s.ui?.power);
-  const provided = power?.provided ?? 0;
-  const drained = power?.drained ?? 0;
-  const max = Math.max(100, provided, drained) * 1.1;
-  const color = power?.state === "Critical" ? "var(--hud-red)" : power?.state === "Low" ? "var(--hud-yellow)" : "var(--hud-green)";
-  const segs = Math.floor(height / 5);
-  const lit = Math.round((provided / max) * segs);
-  const drainAt = height - (drained / max) * height;
-  return (
-    <div className="hud-inset relative shrink-0" style={{ width: 12, height }} title={`Power ${provided} / ${drained}`}>
-      <div className="absolute inset-x-[2px] bottom-[2px] top-[2px] flex flex-col-reverse gap-[1px]">
-        {Array.from({ length: segs - 1 }, (_, i) => (
-          <div key={i} className="h-[4px] rounded-[1px]" style={{ background: i < lit ? color : "#141814", boxShadow: i < lit ? `0 0 4px ${color}` : undefined }} />
-        ))}
-      </div>
-      <div className="absolute inset-x-[-2px] h-[2px] bg-white/90 shadow-[0_0_3px_#fff]" style={{ top: Math.max(0, Math.min(height - 2, drainAt)) }} />
-    </div>
-  );
+// The cameo overlays of the mod's ProductionPalette (OpenRA ProductionPaletteWidget with chrome/ingame-player.yaml):
+// the build clock, READY / ON HOLD / remaining time centred, and the queued count at QueuedOffset (left aligned).
+const READY_TEXT = "READY"; // supportpowers-support-powers-palette.ready (mods/common/fluent/chrome.ftl)
+const HOLD_TEXT = "ON HOLD"; // supportpowers-support-powers-palette.hold
+const CLOCK_FRAMES = 55; // sequences/misc.yaml clock: clock-rtsai.png, 55 frames
+const TICK_MS = 40; // the web sim's GameTimestep (SimHost.BuildSession)
+const READY_BLINK_MS = 360; // ReadyTextStyle AlternatingColor: TextColor / ReadyTextAltColor every 360 ms of game time
+
+/** The clock frame for this progress, as the cleared angle of clock-rtsai.png (frame i shades angles >= 360 * i / 55). */
+function clockAngle(progress: number) {
+  const frame = Math.min(CLOCK_FRAMES - 1, Math.floor(progress * (CLOCK_FRAMES - 1) + 1e-6));
+  return (360 * frame) / CLOCK_FRAMES;
+}
+
+/** WidgetUtils.FormatTime(ticks, leadingMinuteZero: true). */
+function formatTime(ticks: number) {
+  const seconds = Math.ceil((ticks * TICK_MS) / 1000);
+  const minutes = Math.floor(seconds / 60);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  if (minutes >= 60) return `${Math.floor(minutes / 60)}:${pad(minutes % 60)}:${pad(seconds % 60)}`;
+  return `${pad(minutes)}:${pad(seconds % 60)}`;
 }
 
 interface CameoProps {
@@ -67,6 +70,12 @@ interface CameoProps {
   count: number;
   paused: boolean;
   done: boolean;
+  /** Queued but not the one the queue is building (ProductionQueue.IsProducing is false). */
+  waiting: boolean;
+  /** RemainingTimeActual of the first queued copy in ticks (0 until it starts). */
+  remaining: number;
+  /** READY in its alternate colour (gold) this frame. */
+  readyAlt: boolean;
   placing: boolean;
   onPress: (item: string, e: { button: number; shiftKey: boolean; ctrlKey: boolean }) => void;
   onHover: (item: CatalogItem | null, top: number) => void;
@@ -74,14 +83,14 @@ interface CameoProps {
 
 const LONG_PRESS_MS = 450;
 
-const Cameo = memo(function Cameo({ item, queue, icon, progress, count, paused, done, placing, onPress, onHover }: CameoProps) {
-  const deg = progress >= 0 ? progress * 360 : 0;
+const Cameo = memo(function Cameo({ item, queue, icon, progress, count, paused, done, waiting, remaining, readyAlt, placing, onPress, onHover }: CameoProps) {
+  const label = done ? READY_TEXT : paused ? HOLD_TEXT : !waiting && remaining > 0 ? formatTime(remaining) : "";
   // Touch: tap builds, a long press holds (and cancels) like a right-click.
   const press = useRef<{ timer: ReturnType<typeof setTimeout> | null; held: boolean }>({ timer: null, held: false });
   return (
     <button
       type="button"
-      className={cn("cameo hud-inset group", done && "ring-1 ring-[var(--hud-gold)]", placing && "ring-2 ring-[var(--hud-gold)]")}
+      className={cn("cameo hud-inset group", placing && "ring-2 ring-[var(--hud-gold)]")}
       data-disabled={!item.buildable && count === 0}
       onPointerDown={(e) => {
         e.preventDefault();
@@ -108,16 +117,9 @@ const Cameo = memo(function Cameo({ item, queue, icon, progress, count, paused, 
       data-item={item.name}
     >
       {icon ? <img src={icon} alt="" draggable={false} /> : <div className="grid h-full w-full place-items-center bg-[#111] px-1 text-center text-[10px] leading-tight text-[var(--muted-foreground)]">{item.label}</div>}
-      {progress >= 0 && !done && (
-        <div className="wipe" style={{ background: `conic-gradient(transparent 0deg ${deg}deg, rgba(0, 0, 0, 0.62) ${deg}deg 360deg)` }} />
-      )}
-      {done && <div className="wipe ready-pulse" style={{ boxShadow: "inset 0 0 0 2px var(--hud-gold), inset 0 0 16px rgba(241,210,139,0.45)" }} />}
-      {paused && (
-        <div className="wipe grid place-items-center bg-black/35">
-          <svg viewBox="0 0 24 24" width={20} height={20} fill="var(--hud-gold)"><path d="M7 5h4v14H7Zm6 0h4v14h-4Z" /></svg>
-        </div>
-      )}
-      {count > 1 && <span className="digits absolute left-[3px] top-[1px] text-[12px] font-bold text-white drop-shadow-[0_1px_1px_#000]">{count}</span>}
+      {count > 0 && <div className="wipe clock" style={{ "--clock": `${clockAngle(progress)}deg` } as React.CSSProperties} />}
+      {label && <span className={cn("cameo-text cameo-label", done && readyAlt && "alt")}>{label}</span>}
+      {count > 0 && <span className="cameo-text cameo-count">{count}</span>}
     </button>
   );
 });
@@ -164,6 +166,8 @@ function Palette({ game, height }: { game: Game; height: number }) {
   const queues = useStore((s) => s.ui?.queues);
   const icons = useStore((s) => s.icons);
   const mode = useStore((s) => s.ui?.mode ?? "");
+  const tick = useStore((s) => s.ui?.tick ?? 0);
+  const readyAlt = Math.floor((tick * TICK_MS) / READY_BLINK_MS) % 2 !== 0;
   const q = catalog.find((c) => c.type === tab);
   const state = queues?.find((x) => x.type === tab);
   const [hover, setHover] = useState<{ name: string; top: number } | null>(null);
@@ -194,6 +198,10 @@ function Palette({ game, height }: { game: Game; height: number }) {
             count={queued.length}
             paused={!!first?.paused}
             done={!!first?.done}
+            // ClassicProductionQueue builds only the front of the queue.
+            waiting={!!first && !first.done && state?.items[0] !== first}
+            remaining={first?.remaining ?? 0}
+            readyAlt={!!first?.done && readyAlt}
             placing={mode === "place" && !!first?.done}
             onPress={onPress}
             onHover={onHover}
@@ -246,7 +254,7 @@ export function Sidebar({ game }: { game: Game }) {
       <div className="flex min-h-0 flex-1 gap-[5px]">
         <div className="flex flex-col items-center gap-1">
           <PowerIcon width={12} height={12} className="text-[var(--hud-power)]" />
-          <PowerBar height={paletteH - 16} />
+          <PowerMeter height={paletteH - 16} pitch={compact ? 3 : 5} />
         </div>
         <div className="min-w-0 flex-1"><Palette game={game} height={paletteH} /></div>
       </div>

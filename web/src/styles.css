@@ -51,6 +51,26 @@ html, body, #root {
 .cameo:hover { outline: 1px solid var(--hud-gold); outline-offset: -1px; }
 .cameo[data-disabled="true"] { cursor: not-allowed; filter: grayscale(1) brightness(0.45); }
 
+/* Production palette overlays as the mod's ProductionPalette draws them, measured in the cameo's native pixels
+   (60 across, so one is 100cqw / 60) to keep the desktop proportions at every sidebar size.
+   Build clock: sequences/misc.yaml clock (clock-rtsai.png, Multiply): rgb(96,100,110) over the angles not yet built. */
+.cameo { container-type: inline-size; }
+.cameo .clock { mix-blend-mode: multiply; background: conic-gradient(transparent 0deg var(--clock), rgb(96 100 110) var(--clock) 360deg); }
+/* OverlayFont TinyBold = FreeSansBold 10 (mod.yaml Fonts), white with a 1 px black contrast outline (DrawTextWithContrast). */
+.cameo-text {
+  position: absolute; pointer-events: none; white-space: nowrap;
+  font-family: "FreeSans", "Nimbus Sans", "Liberation Sans", Arial, Helvetica, sans-serif;
+  font-weight: 700; font-size: calc(1000cqw / 60); line-height: 1; letter-spacing: 0; color: #fff;
+  -webkit-text-stroke: calc(200cqw / 60) #000; paint-order: stroke fill;
+}
+/* READY / ON HOLD / time centred on the art; READY alternates with ReadyTextAltColor (Color.Gold). */
+.cameo-label { inset: 0; display: flex; align-items: center; justify-content: center; }
+.cameo-label.alt { color: #ffd700; }
+/* Queued count: QueuedOffset 4,2 from the icon cell, whose art is drawn at IconSpriteOffset -1,-1 (so 5,3 on the art). */
+.cameo-count { left: calc(500cqw / 60); top: calc(300cqw / 60); }
+
+.power-meter > div { position: absolute; left: 2px; right: 2px; }
+
 .digits { font-family: "Consolas", ui-monospace, monospace; font-variant-numeric: tabular-nums; letter-spacing: 0.04em; }
 
 @keyframes pulse-ready { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
