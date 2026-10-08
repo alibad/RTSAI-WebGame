@@ -1,0 +1,230 @@
+MapFormat: 12
+RequiresMod: rtsai
+Title: 03: Haitan Network
+Author: RTS AI — browser adaptation
+Tileset: TEMPERATE
+MapSize: 96,96
+Bounds: 1,1,94,94
+Visibility: MissionSelector
+Categories: Campaign
+LockPreview: True
+Players:
+	PlayerReference@China:
+		Name: China
+		AllowBots: False
+		Playable: True
+		Required: True
+		LockFaction: True
+		Faction: china
+		LockColor: True
+		Color: C83A32
+		LockSpawn: True
+		LockTeam: True
+		Enemies: Obsidian Directorate
+	PlayerReference@Obsidian:
+		Name: Obsidian Directorate
+		Faction: russia
+		Color: 505A67
+		Enemies: China
+	PlayerReference@Neutral:
+		Name: Neutral
+		OwnsWorld: True
+		NonCombatant: True
+		Faction: china
+Actors:
+	ChinaConyard: gacnst
+		Location: 35,-1
+		Owner: China
+	ChinaRefinery: garefn
+		Location: 43,-9
+		Owner: China
+	ChinaPower: gapowr
+		Location: 30,4
+		Owner: China
+	ChinaPowerTwo: gapowr
+		Location: 53,-19
+		Owner: China
+	ChinaPowerThree: gapowr
+		Location: 57,-23
+		Owner: China
+	ChinaBarracks: gapile
+		Location: 39,1
+		Owner: China
+	ChinaWarFactory: gaweap
+		Location: 45,-5
+		Owner: China
+	ChinaRadar: gaairc
+		Location: 51,-11
+		Owner: China
+	ChinaTech: gatech
+		Location: 48,-14
+		Owner: China
+	ChinaRepair: gadept
+		Location: 29,10
+		Owner: China
+	ChinaHelipad: gaairc
+		Location: 26,8
+		Owner: China
+	NetworkRelay: caoutp
+		Location: 66,-23
+		Owner: China
+	BastionDefense: r2bastion
+		Location: 39,4
+		Owner: China
+	SkyShieldDefense: r2skyshield
+		Location: 48,-10
+		Owner: China
+	SpectrumDefense: r2spectrum
+		Location: 53,-15
+		Owner: China
+	NetworkSpecialist: r2cnnetwork
+		Location: 57,-14
+		Owner: China
+	RifleOne: r2cnrifle
+		Location: 54,-10
+		Owner: China
+	RifleTwo: r2cnrifle
+		Location: 55,-11
+		Owner: China
+	RifleThree: r2cnrifle
+		Location: 56,-12
+		Owner: China
+	PortableOne: r2cnportable
+		Location: 53,-11
+		Owner: China
+	PortableTwo: r2cnportable
+		Location: 54,-12
+		Owner: China
+	RedSpear: r2redspear
+		Location: 55,-13
+		Owner: China
+	QilinOne: r2qilin
+		Location: 46,-3
+		Owner: China
+	QilinTwo: r2qilin
+		Location: 48,-5
+		Owner: China
+	LynxOne: r2lynx
+		Location: 50,-7
+		Owner: China
+	LongbowOne: r2phl
+		Location: 44,-1
+		Owner: China
+	MantisOne: r2mantis
+		Location: 51,-8
+		Owner: China
+	SeaDragonOne: r2zbd
+		Location: 36,-6
+		Owner: China
+	SeaDragonTwo: r2zbd
+		Location: 38,-8
+		Owner: China
+	SeaDragonThree: r2zbd
+		Location: 40,-10
+		Owner: China
+	SkySpearOne: r2skyspear
+		Location: 36,3
+		Owner: China
+	CloudOne: r2cloud
+		Location: 34,6
+		Owner: China
+	CraneOne: r2crane
+		Location: 32,10
+		Owner: China
+	LuyangOne: r2luyang
+		Location: 62,-38
+		Owner: China
+	HaiwangOne: r2haiwang
+		Location: 69,-45
+		Owner: China
+	HaiyingOne: r2haiying
+		Location: 64,-42
+		Owner: China
+	KunlunOne: r2kunlun
+		Location: 73,-48
+		Owner: China
+	JiaolongOne: r2jiaolong
+		Location: 58,-36
+		Owner: China
+	EnemyConyard: nacnst
+		Location: 104,-51
+		Owner: Obsidian Directorate
+	EnemyPower: napowr
+		Location: 99,-45
+		Owner: Obsidian Directorate
+	EnemyBarracks: nahand
+		Location: 102,-43
+		Owner: Obsidian Directorate
+	EnemyWarFactory: naweap
+		Location: 108,-49
+		Owner: Obsidian Directorate
+	EnemyRadar: naradr
+		Location: 111,-58
+		Owner: Obsidian Directorate
+	EnemyCommand: caoutp
+		Location: 115,-57
+		Owner: Obsidian Directorate
+	JammerOne: r2spectrum
+		Location: 91,-38
+		Owner: Obsidian Directorate
+		Facing: 640
+	JammerTwo: r2spectrum
+		Location: 101,-40
+		Owner: Obsidian Directorate
+		Facing: 640
+	JammerThree: r2spectrum
+		Location: 117,-63
+		Owner: Obsidian Directorate
+		Facing: 640
+	EnemyTankOne: htnk
+		Location: 96,-41
+		Owner: Obsidian Directorate
+		Facing: 640
+	EnemyTankTwo: htnk
+		Location: 97,-39
+		Owner: Obsidian Directorate
+		Facing: 640
+	EnemyV2: r2ymlr
+		Location: 106,-43
+		Owner: Obsidian Directorate
+		Facing: 640
+	NetworkNode: waypoint
+		Location: 66,-22
+		Owner: Neutral
+	AmphibiousGate: waypoint
+		Location: 88,-44
+		Owner: Neutral
+	EastBeach: waypoint
+		Location: 97,-47
+		Owner: Neutral
+	GroundWaveEntry: waypoint
+		Location: 120,-62
+		Owner: Neutral
+	GroundWaveRally: waypoint
+		Location: 90,-36
+		Owner: Neutral
+	AirWaveEntry: waypoint
+		Location: 114,-69
+		Owner: Neutral
+	NavalWaveEntry: waypoint
+		Location: 109,-71
+		Owner: Neutral
+	NavalWaveRally: waypoint
+		Location: 90,-46
+		Owner: Neutral
+	WestCamera: waypoint
+		Location: 47,-8
+		Owner: Neutral
+	EastCamera: waypoint
+		Location: 104,-49
+		Owner: Neutral
+	MissionSpawn: mpspawn
+		Owner: Neutral
+		Location: 35,-1
+Rules:
+	World:
+		-SpawnStartingUnits:
+		-CrateSpawner:
+		-StartGameNotification:
+	Player:
+		-ConquestVictoryConditions:

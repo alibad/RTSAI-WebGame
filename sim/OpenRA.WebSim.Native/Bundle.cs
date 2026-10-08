@@ -107,7 +107,12 @@ static class Bundle
 				Add("mods/rtsai/" + rel, bytes);
 			}
 
-			Add("mods/rtsai/mod.yaml", Encoding.UTF8.GetBytes(WebModYaml(File.ReadAllText(Path.Combine(modDir, "mod.yaml")))));
+			var publicProfile = File.Exists(Path.Combine(modDir, "standalone", "base-kit.yaml"));
+			var content = opts.TryGetValue("content", out var contentPath) ? contentPath : "content";
+			if (publicProfile && Directory.Exists(content))
+				foreach (var f in Files(content))
+					Add("mods/rtsai/web/content/" + Rel(content, f), File.ReadAllBytes(f));
+			Add("mods/rtsai/mod.yaml", Encoding.UTF8.GetBytes(WebModYaml(File.ReadAllText(Path.Combine(modDir, "mod.yaml")), publicProfile && Directory.Exists(content))));
 			Add("mods/rtsai/web/web-rules.yaml", Encoding.UTF8.GetBytes(WebRules));
 			Add("mods/rtsai/web/web-names.ftl", Encoding.UTF8.GetBytes(WebNames));
 
@@ -221,7 +226,7 @@ static class Bundle
 	/// The web mod.yaml: identical to the mod's (the AI co-commander's CompanionBridge included; the page's host relays
 	/// its RPCs) plus a small overlay for what the embedded host needs. Everything that affects the simulation is unchanged.
 	/// </summary>
-	static string WebModYaml(string yaml)
+	static string WebModYaml(string yaml, bool expansion)
 	{
 		yaml = yaml.Replace("\r\n", "\n");
 
@@ -235,6 +240,18 @@ static class Bundle
 		var rules = yaml.IndexOf("\nRules:\n", StringComparison.Ordinal);
 		var end = yaml.IndexOf("\n\n", rules + 1, StringComparison.Ordinal);
 		yaml = yaml.Insert(end + 1, "\tra2|web/web-rules.yaml\n");
+		if (expansion)
+		{
+			yaml = yaml.Insert(end + 1, "\tra2|web/content/countries.yaml\n");
+			var sequences = yaml.IndexOf("\nSequences:\n", StringComparison.Ordinal);
+			var seqEnd = yaml.IndexOf("\n\n", sequences + 1, StringComparison.Ordinal);
+			yaml = yaml.Insert(seqEnd + 1, "\tra2|web/content/country-sequences.yaml\n");
+			var notifications = yaml.IndexOf("\nNotifications:\n", StringComparison.Ordinal);
+			var notificationEnd = yaml.IndexOf("\n\n", notifications + 1, StringComparison.Ordinal);
+			yaml = yaml.Insert(notificationEnd + 1, "\tra2|web/content/country-notifications.yaml\n");
+			var folders = yaml.IndexOf("\nMapFolders:\n", StringComparison.Ordinal);
+			yaml = yaml.Insert(folders + "\nMapFolders:\n".Length, "\tra2|web/content/maps: System\n");
+		}
 
 		// Player-facing names (the standalone's), loaded last so they override the RA2 preview strings.
 		var fluent = yaml.IndexOf("\nFluentMessages:\n", StringComparison.Ordinal);

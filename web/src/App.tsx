@@ -3,6 +3,7 @@ import { Game } from "./game";
 import { useStore } from "./store";
 import { Hud } from "./ui/Hud";
 import { Setup } from "./ui/Setup";
+import { Missions, MissionHud } from "./ui/Missions";
 import { SandboxHud } from "./ui/SandboxHud";
 import { ARENA, Sandbox, parseSandboxUrl } from "./sandbox";
 
@@ -44,6 +45,7 @@ let autostarted = false;
 export default function App() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [game, setGame] = useState<Game | null>(null);
+  const [mode, setMode] = useState<"home" | "skirmish" | "missions">(() => new URLSearchParams(location.search).get("mode") === "missions" ? "missions" : "home");
   const phase = useStore((s) => s.phase);
   const uiHidden = useStore((s) => s.uiHidden);
 
@@ -92,7 +94,31 @@ export default function App() {
     <div className="fixed inset-0" style={sandboxMode ? ({ "--sidebar-w": "300px" } as React.CSSProperties) : undefined}>
       <canvas ref={canvasRef} className="stage" tabIndex={0} style={{ right: playing ? "var(--sidebar-w)" : 0, width: playing ? "calc(100% - var(--sidebar-w))" : "100%", visibility: playing ? "visible" : "hidden" }} />
       {game && playing && !uiHidden && (sandboxMode ? <SandboxHud game={game} /> : <Hud game={game} />)}
-      {game && phase === "setup" && !sandboxMode && <Setup game={game} />}
+      {game && phase === "setup" && !sandboxMode && <>
+        {mode === "home" ? <div className="absolute inset-0 grid place-items-center overflow-auto bg-[radial-gradient(ellipse_at_40%_30%,#24301b,#070907_75%)] p-6">
+          <div className="w-[min(760px,100%)]">
+            <h1 className="mb-3 text-5xl font-black tracking-wide text-[var(--hud-gold)]">RTS AI</h1>
+            <p className="mb-8 text-[var(--muted-foreground)]">Choose your command.</p>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <button type="button" className="hud-panel p-7 text-left hover:bg-white/5" onClick={() => setMode("skirmish")}>
+                <h2 className="mb-2 text-2xl font-bold text-[var(--hud-gold)]">Skirmish</h2>
+                <p className="text-sm text-[var(--muted-foreground)]">Choose a faction, build your base, and fight AI opponents.</p>
+              </button>
+              <button type="button" className="hud-panel p-7 text-left hover:bg-white/5" onClick={() => setMode("missions")}>
+                <h2 className="mb-2 text-2xl font-bold text-[var(--hud-gold)]">Missions</h2>
+                <p className="text-sm text-[var(--muted-foreground)]">Briefings, objectives, relief convoys, and combined arms operations.</p>
+              </button>
+            </div>
+          </div>
+        </div> : <>
+          {mode === "missions" ? <Missions game={game} /> : <Setup game={game} />}
+          <nav className="absolute left-4 top-3 z-20 flex gap-3 rounded bg-black/80 p-2 text-sm" aria-label="Game modes">
+            <button type="button" onClick={() => setMode("home")} className="text-[var(--hud-gold)]">← Main menu</button>
+            <button type="button" onClick={() => setMode(mode === "missions" ? "skirmish" : "missions")}>{mode === "missions" ? "Skirmish" : "Missions"}</button>
+          </nav>
+        </>}
+      </>}
+      {game && playing && !sandboxMode && !uiHidden && <MissionHud game={game} />}
       {(phase === "boot" || phase === "loading" || (phase === "setup" && sandboxMode)) && <Loading />}
       {phase === "error" && <ErrorCard game={game} />}
     </div>

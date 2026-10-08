@@ -1,0 +1,374 @@
+[
+  {
+    "id": "jizan-corridor",
+    "source": "red-sea-2026/jizan-corridor",
+    "faction": "saudi",
+    "campaign": "Red Sea",
+    "title": "Jizan Corridor",
+    "enemy": "Yemen",
+    "protect": [
+      "SaudiConyard"
+    ],
+    "objectives": [
+      {
+        "text": "Capture Radar Node Seven.",
+        "kind": "capture",
+        "targets": [
+          "RadarNode"
+        ]
+      },
+      {
+        "text": "Destroy both mobile launchers.",
+        "kind": "destroy",
+        "targets": [
+          "LauncherWest",
+          "LauncherEast"
+        ]
+      },
+      {
+        "text": "Escort at least two relief trucks to the port.",
+        "kind": "escort",
+        "targets": [],
+        "entry": "ConvoyEntry",
+        "route": [
+          "ConvoyRally",
+          "CorridorOne",
+          "CorridorTwo",
+          "CorridorThree",
+          "PortGate",
+          "ConvoyExit"
+        ],
+        "requires": [
+          0,
+          1
+        ],
+        "count": 2
+      },
+      {
+        "text": "Keep the port depot and desalination plant intact.",
+        "kind": "protect",
+        "targets": [
+          "PortDepot",
+          "Desalination"
+        ],
+        "secondary": true
+      }
+    ],
+    "slot": "Saudi Arabia",
+    "briefing": "Factual cutoff: 11 August 2026.\n\nA regional escalation has interrupted radar coverage along the Jizan coastal\ncorridor while mobile launch systems threaten civilian navigation and port\nlogistics. Capture Radar Node Seven, establish layered air defense, destroy\nboth launchers, and escort the relief convoy into the port perimeter.\n\nYour forward construction yard and refinery are operational. Expand the base,\nestablish a war factory, and replace losses as the corridor battle develops.\n\nThe background is source-dated. Force composition, routes, positions, timing,\nand outcomes are fictional gameplay abstractions.",
+    "adaptation": "Adapted from the original Red Alert mission for RTS AI units and project terrain."
+  },
+  {
+    "id": "hodeidah-lifeline",
+    "source": "red-sea-2026/hodeidah-lifeline",
+    "faction": "yemen",
+    "campaign": "Red Sea",
+    "title": "Hodeidah Lifeline",
+    "enemy": "Saudi Arabia",
+    "protect": [
+      "YemenConyard"
+    ],
+    "objectives": [
+      {
+        "text": "Deliver relief supplies inland.",
+        "kind": "escort",
+        "targets": [],
+        "entry": "PortEntry",
+        "route": [
+          "PortRally",
+          "ReliefOne",
+          "ReliefTwo",
+          "ReliefThree",
+          "DistributionGate",
+          "ReliefExit"
+        ],
+        "count": 2
+      },
+      {
+        "text": "Move the mobile force out of the marked surveillance zone before the sweep.",
+        "kind": "disperse",
+        "targets": [],
+        "area": [
+          20,
+          62,
+          43,
+          82
+        ],
+        "seconds": 120,
+        "allowed": 1
+      },
+      {
+        "text": "Protect the evacuation convoy on its return to port.",
+        "kind": "escort",
+        "targets": [],
+        "entry": "EvacEntry",
+        "route": [
+          "DistributionGate",
+          "ReliefThree",
+          "ReliefTwo",
+          "ReliefOne",
+          "PortRally",
+          "EvacExit"
+        ],
+        "count": 2,
+        "requires": [
+          0,
+          1
+        ]
+      },
+      {
+        "text": "Keep lifeline infrastructure intact.",
+        "kind": "protect",
+        "targets": [
+          "PortControl",
+          "FisheriesDepot",
+          "CoastalClinic",
+          "InlandDistribution"
+        ]
+      }
+    ],
+    "slot": "Yemen",
+    "briefing": "Factual cutoff: 11 August 2026.\n\nKeep a coastal aid and fisheries corridor operational while fixed civilian\ninfrastructure and dispersed mobile forces face sustained pressure. Escort\nrelief supplies inland, move the mobile force out of the announced surveillance\nzone, and protect the return route for the final evacuation convoy.\n\nThe playable Yemen base begins with a complete economy, ground-production\nbranch, radar, and airfield so the technical, mobile launcher, and Samad drone\nall matter during the mission.\n\nThe background is source-dated. Force composition, routes, positions, timing,\nand outcomes are fictional gameplay abstractions.",
+    "adaptation": "Adapted from the original Red Alert mission for RTS AI units and project terrain."
+  },
+  {
+    "id": "straits-shield",
+    "source": "turkey-faction/straits-shield",
+    "faction": "turkey",
+    "campaign": "Combined Arms",
+    "title": "Straits Shield",
+    "enemy": "Orion Group",
+    "protect": [
+      "TurkeyConyard"
+    ],
+    "objectives": [
+      {
+        "text": "Build the land, air, technology, repair and naval production network.",
+        "kind": "build",
+        "targets": [],
+        "types": [
+          "gaweap",
+          "gaairc",
+          "gatech",
+          "gadept",
+          "gayard"
+        ]
+      },
+      {
+        "text": "Destroy all three drone uplinks.",
+        "kind": "destroy",
+        "targets": [
+          "UplinkNorth",
+          "UplinkEast",
+          "UplinkSouth"
+        ]
+      },
+      {
+        "text": "Capture the harbor relay with an engineer.",
+        "kind": "capture",
+        "targets": [
+          "HarborRelay"
+        ]
+      },
+      {
+        "text": "Neutralize the five-ship surface group.",
+        "kind": "destroy",
+        "targets": [
+          "OrionFrigate",
+          "OrionCorvette1",
+          "OrionCorvette2",
+          "OrionUSV1",
+          "OrionUSV2"
+        ]
+      }
+    ],
+    "slot": "Turkey",
+    "briefing": "This polished fictional construction mission demonstrates the complete Turkey\nfaction progression on an island strait. The player builds the land, air,\ntechnology, repair, and naval branches, then combines drone designation,\nmechanized infantry, amphibious assault, and sea-control combat.\n\nThe Orion Group, route, locations, force composition, and outcome are invented.\nNo real political leader or recent real attack is represented.\n",
+    "adaptation": "Adapted from the original Red Alert mission for RTS AI units and project terrain."
+  },
+  {
+    "id": "haitan-network",
+    "source": "china-faction/haitan-network",
+    "faction": "china",
+    "campaign": "Combined Arms",
+    "title": "Haitan Network",
+    "enemy": "Obsidian Directorate",
+    "protect": [
+      "ChinaConyard"
+    ],
+    "objectives": [
+      {
+        "text": "Deploy a network specialist at the command node.",
+        "kind": "reach",
+        "targets": [],
+        "types": [
+          "r2cnnetwork"
+        ],
+        "target": "NetworkNode",
+        "radius": 3,
+        "deploy": true
+      },
+      {
+        "text": "Sail two amphibious IFVs through the sea gate and land on the eastern beach.",
+        "kind": "reach",
+        "targets": [],
+        "types": [
+          "r2zbd"
+        ],
+        "via": "AmphibiousGate",
+        "target": "EastBeach",
+        "radius": 5,
+        "count": 2
+      },
+      {
+        "text": "Destroy the enemy control node.",
+        "kind": "destroy",
+        "targets": [
+          "EnemyCommand"
+        ]
+      },
+      {
+        "text": "Protect the network relay.",
+        "kind": "protect",
+        "targets": [
+          "NetworkRelay"
+        ],
+        "secondary": true
+      }
+    ],
+    "slot": "China",
+    "briefing": "This is a fictional combined-arms exercise set on a native-generated island map.\nThe player restores a command network, moves amphibious IFVs through a verified\nwater gate, and coordinates land, air, missile, drone, and naval forces against\nthe fictional Obsidian Directorate.\n\nNo real attack, real operation, real leader, or real force disposition is\nrepresented. See `docs/china-faction-research.md` for the dated sources and the\ncapability-to-gameplay translation boundary.\n",
+    "adaptation": "Adapted from the original Red Alert mission for RTS AI units and project terrain."
+  },
+  {
+    "id": "bab-al-mandab-passage",
+    "source": "red-sea-2026/bab-al-mandab-passage",
+    "faction": "saudi",
+    "campaign": "Red Sea",
+    "title": "Bab al-Mandab Passage",
+    "enemy": "Yemen",
+    "protect": [
+      "SaudiConyard",
+      "PassageControl"
+    ],
+    "objectives": [
+      {
+        "text": "Build radar and a technology center.",
+        "kind": "build",
+        "targets": [],
+        "types": [
+          "gaairc",
+          "gatech"
+        ]
+      },
+      {
+        "text": "Reconnoiter the three coastal sectors.",
+        "kind": "scout",
+        "targets": [
+          "ReconNorth",
+          "ReconCenter",
+          "ReconSouth"
+        ],
+        "radius": 7
+      },
+      {
+        "text": "Neutralize the mobile launchers.",
+        "kind": "destroy",
+        "targets": [
+          "ThreatNorth",
+          "ThreatCenter",
+          "ThreatSouth"
+        ]
+      },
+      {
+        "text": "Protect four merchant vessels through the strait.",
+        "kind": "shipping",
+        "targets": [],
+        "count": 4,
+        "requires": [
+          0,
+          1,
+          2
+        ],
+        "lanes": [
+          [
+            "ShipEntryWest",
+            "ShipWestOne",
+            "ShipWestTwo",
+            "ShipWestThree",
+            "ShipWestFour",
+            "ShipWestExit"
+          ],
+          [
+            "ShipEntryInnerWest",
+            "ShipInnerWestOne",
+            "ShipInnerWestTwo",
+            "ShipInnerWestThree",
+            "ShipInnerWestFour",
+            "ShipInnerWestExit"
+          ],
+          [
+            "ShipEntryInnerEast",
+            "ShipInnerEastOne",
+            "ShipInnerEastTwo",
+            "ShipInnerEastThree",
+            "ShipInnerEastFour",
+            "ShipInnerEastExit"
+          ],
+          [
+            "ShipEntryEast",
+            "ShipEastOne",
+            "ShipEastTwo",
+            "ShipEastThree",
+            "ShipEastFour",
+            "ShipEastExit"
+          ]
+        ]
+      }
+    ],
+    "slot": "Saudi Arabia",
+    "briefing": "Factual cutoff: **11 August 2026**. Sources were last checked on that date.\n\nBab al-Mandab is a strait between the Arabian Peninsula and the Horn of Africa\nthat connects the Red Sea with the Gulf of Aden and Arabian Sea. The UK\nPermanent Committee on Geographical Names places Bab el Mandeb at approximately\n12\u00c2\u00b035\u00e2\u20ac\u00b2N, 43\u00c2\u00b021\u00e2\u20ac\u00b2E and identifies Jaz\u00c4\u00abrat Mayy\u00c5\u00abn (Perim Island) inside the strait.\nThe U.S. Energy Information Administration describes it as a strategic energy\nroute and estimated that 4.2 million barrels per day of crude oil and petroleum\nproducts transited it in the first half of 2025. UNCTAD reported that the strait\ncarried 8.7% of global seaborne trade volume in 2023, including substantial\ncontainer, vehicle, oil-product, and crude-oil shares. On 23 July 2026, the\nInternational Maritime Organization again called the Red Sea a critical\ninternational trade corridor and emphasized that seafarers are civilians.\n\nA Saudi maritime-security post must establish a coastal picture before a\ncivilian merchant group enters the strait. Build through the normal economy to\na Radar Dome and Tech Center, produce an additional M1A2S or SADS, reconnoiter\nthree coastal sectors, neutralize mobile launchers, protect four merchant\nvessels in separate lanes around the stylized Mayyun island, and keep Passage\nControl open during the final escalation.\n\nAll forces, weapons, threats, routes, incidents, positions, timings, dialogue,\nand outcomes are fictional gameplay abstractions. The mission does not depict\nor claim a real operation.",
+    "adaptation": "Adapted from the original Red Alert mission for RTS AI units and project terrain."
+  },
+  {
+    "id": "hezbollah-relay",
+    "title": "Relay Under Siege",
+    "faction": "hezbollah",
+    "campaign": "Combined Arms",
+    "slot": "Hezbollah",
+    "enemy": "Opposition",
+    "protect": [
+      "HezbollahConyard"
+    ],
+    "briefing": "A fictional training exercise: establish a relay and field workshop, defend your supply base through repeated attacks, then destroy the opposing command post. Use rifle teams, anti-tank specialists, mobile launchers and reconnaissance drones together. Expand the economy before the main assault. No real operation or force disposition is represented.",
+    "adaptation": "An original RTS AI mission using project units, art and terrain.",
+    "objectives": [
+      {
+        "text": "Build a field relay and workshop.",
+        "kind": "build",
+        "targets": [],
+        "types": [
+          "r2hzrelay",
+          "r2hzworkshop"
+        ]
+      },
+      {
+        "text": "Hold the base through four minutes of attacks.",
+        "kind": "survive",
+        "targets": [],
+        "seconds": 240
+      },
+      {
+        "text": "Destroy the opposing command post.",
+        "kind": "destroy",
+        "targets": [
+          "EnemyCommand"
+        ],
+        "requires": [
+          0,
+          1
+        ]
+      }
+    ]
+  }
+]

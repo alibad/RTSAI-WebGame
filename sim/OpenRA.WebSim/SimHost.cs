@@ -253,6 +253,7 @@ namespace OpenRA.WebSim
 		/// <summary>Disposes the current game (world, renderer, order manager) so another can start.</summary>
 		public static void EndGame()
 		{
+			Missions.Reset();
 			if (World == null)
 				return;
 
@@ -316,6 +317,7 @@ namespace OpenRA.WebSim
 				ScriptOpening();
 
 			Sandbox.Start(s.Sandbox ? PlayablePlayers() : null);
+			Missions.Start(s.Mission);
 
 			GC.Collect();
 		}
@@ -442,6 +444,7 @@ namespace OpenRA.WebSim
 			{
 				Sync.RunUnsynced(world, () => world.OrderGenerator.Tick(world));
 				world.Tick();
+				Missions.Tick(world);
 				Sandbox.Tick(world);
 			}
 

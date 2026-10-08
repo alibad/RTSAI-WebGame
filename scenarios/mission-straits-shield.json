@@ -1,0 +1,18 @@
+{
+  "map": "straits-shield",
+  "mission": "straits-shield",
+  "seed": 2026,
+  "players": [
+    {
+      "slot": "Turkey",
+      "faction": "turkey",
+      "color": "2A6FDB"
+    }
+  ],
+  "options": {
+    "startingcash": "10000",
+    "difficulty": "normal",
+    "fog": "True",
+    "explored": "False"
+  }
+}

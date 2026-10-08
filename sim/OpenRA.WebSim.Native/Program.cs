@@ -41,6 +41,8 @@ static class Program
 				"run" => Run(opts),
 				"uitest" => UiTest(opts),
 				"capturetest" => CaptureTest(opts),
+				"contenttest" => ContentTest.Run(opts),
+				"missiontest" => MissionTest.Run(opts),
 				_ => throw new ArgumentException("Unknown command " + args[0]),
 			};
 		}

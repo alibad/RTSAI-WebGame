@@ -69,7 +69,7 @@ namespace OpenRA.WebSim
 				return $"{{\"id\":{J(Path.GetFileName(p.Path))},\"uid\":{J(p.Uid)},\"title\":{J(p.Title)},\"players\":{p.PlayerCount}," +
 					$"\"tileset\":{J(p.TileSet)},\"author\":{J(p.Author)},\"slots\":[{string.Join(",", slots.Select(J))}]}}";
 			})));
-			sb.Append("]}");
+			sb.Append("],\"missions\":").Append(Missions.CatalogJson()).Append('}');
 			return sb.ToString();
 		}
 

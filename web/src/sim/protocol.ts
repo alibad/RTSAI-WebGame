@@ -216,6 +216,7 @@ export interface StartInfo {
 export interface LazyStats { files: number; bytes: number; fetchedBytes: number; cachedBytes: number; fetches: number }
 
 export interface SetupData {
+  missions?: MissionDefinition[];
   factions: { id: string; name: string; side: string; description: string; random: boolean }[];
   bots: { type: string; name: string }[];
   maps: { id: string; uid: string; title: string; players: number; tileset: string; author: string; slots: string[] }[];
@@ -224,6 +225,7 @@ export interface SetupData {
 
 /** Per-tick game-UI state (sim/OpenRA.WebSim/Ui.cs). `catalog` is present only when it changed. */
 export interface UiState {
+  mission?: MissionState | null;
   tick: number;
   cash?: number;
   storage?: number;
@@ -237,6 +239,16 @@ export interface UiState {
   catalog?: CatalogQueue[];
   sandbox?: SandboxStats | null;
   companion?: CompanionHud;
+}
+
+export interface MissionDefinition {
+  id: string; title: string; faction: string; campaign: string; briefing: string; adaptation: string; slot: string;
+  objectives: { text: string; secondary: boolean }[];
+}
+
+export interface MissionState {
+  id: string; title: string; difficulty: string;
+  objectives: { text: string; secondary: boolean; status: "active" | "complete" | "failed"; progress: string; markers?: { name: string; x: number; y: number }[] }[];
 }
 
 /** The battle sandbox readout (sim/OpenRA.WebSim/Sandbox.cs). Times in seconds of game time. */

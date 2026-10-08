@@ -1,0 +1,11 @@
+Speech:
+	Prefixes:
+		america: ra2|modern-factions/audio/eva/saudi/
+		germany: ra2|modern-factions/audio/eva/china/
+		england: ra2|modern-factions/audio/eva/turkey/
+		france: ra2|modern-factions/audio/eva/israel/
+		korea: ra2|modern-factions/audio/eva/china/
+		cuba: ra2|modern-factions/audio/eva/hezbollah/
+		libya: ra2|modern-factions/audio/eva/yemen/
+		iraq: ra2|modern-factions/audio/eva/iran/
+		russia: ra2|modern-factions/audio/eva/iran/

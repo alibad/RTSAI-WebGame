@@ -1,0 +1,191 @@
+MapFormat: 12
+RequiresMod: rtsai
+Title: 01: Jizan Corridor
+Author: RTS AI — browser adaptation
+Tileset: TEMPERATE
+MapSize: 96,96
+Bounds: 1,1,94,94
+Visibility: MissionSelector
+Categories: Campaign
+LockPreview: True
+Players:
+	PlayerReference@Saudi:
+		Name: Saudi Arabia
+		AllowBots: False
+		Playable: True
+		Required: True
+		LockFaction: True
+		Faction: saudi
+		LockColor: True
+		Color: D6B566
+		LockSpawn: True
+		LockTeam: True
+		Allies: Civilians
+		Enemies: Yemen
+	PlayerReference@Yemen:
+		Name: Yemen
+		Faction: yemen
+		Color: 8F7A45
+		Enemies: Saudi Arabia, Civilians
+	PlayerReference@Civilians:
+		Name: Civilians
+		Faction: china
+		Color: 76AFC4
+		Allies: Saudi Arabia
+		Enemies: Yemen
+	PlayerReference@Neutral:
+		Name: Neutral
+		OwnsWorld: True
+		NonCombatant: True
+		Faction: china
+Actors:
+	SaudiConyard: gacnst
+		Location: 60,16
+		Owner: Saudi Arabia
+	SaudiRefinery: garefn
+		Location: 79,-2
+		Owner: Saudi Arabia
+	RadarNode: gaairc
+		Location: 67,0
+		Owner: Neutral
+	PortDepot: caoutp
+		Location: 82,-62
+		Owner: Saudi Arabia
+	Desalination: cahosp
+		Location: 89,-66
+		Owner: Saudi Arabia
+	SaudiPower1: gapowr
+		Location: 66,9
+		Owner: Saudi Arabia
+	SaudiPower2: gapowr
+		Location: 69,6
+		Owner: Saudi Arabia
+	SaudiRepair: gadept
+		Location: 73,3
+		Owner: Saudi Arabia
+	SaudiBarracks: gapile
+		Location: 68,11
+		Owner: Saudi Arabia
+	SaudiTank1: r2m1a2s
+		Location: 69,3
+		Owner: Saudi Arabia
+		Facing: 128
+	SaudiTank2: r2m1a2s
+		Location: 71,1
+		Owner: Saudi Arabia
+		Facing: 128
+	SaudiAirDefense1: r2sads
+		Location: 65,5
+		Owner: Saudi Arabia
+		Facing: 128
+	SaudiAirDefense2: r2sads
+		Location: 72,-2
+		Owner: Saudi Arabia
+		Facing: 128
+	SaudiEngineer: engineer
+		Location: 67,5
+		Owner: Saudi Arabia
+	SaudiRifle1: r2sang
+		Location: 69,4
+		Owner: Saudi Arabia
+	SaudiRifle2: r2sang
+		Location: 69,4
+		Owner: Saudi Arabia
+	SaudiRifle3: r2sang
+		Location: 73,0
+		Owner: Saudi Arabia
+	SaudiRifle4: r2sang
+		Location: 73,0
+		Owner: Saudi Arabia
+	LauncherWest: r2ymlr
+		Location: 39,2
+		Owner: Yemen
+		Facing: 256
+	LauncherEast: r2ymlr
+		Location: 105,-47
+		Owner: Yemen
+		Facing: 768
+	WestGuard1: r2technical
+		Location: 41,1
+		Owner: Yemen
+		Facing: 256
+	WestGuard2: r2ymr
+		Location: 41,2
+		Owner: Yemen
+	EastGuard1: r2technical
+		Location: 104,-45
+		Owner: Yemen
+		Facing: 768
+	EastGuard2: r2ymr
+		Location: 105,-45
+		Owner: Yemen
+	SaudiEntry: waypoint
+		Location: 68,6
+		Owner: Neutral
+	RadarCamera: waypoint
+		Location: 68,-1
+		Owner: Neutral
+	ConvoyEntry: waypoint
+		Location: 56,30
+		Owner: Neutral
+	ConvoyRally: waypoint
+		Location: 64,10
+		Owner: Neutral
+	CorridorOne: waypoint
+		Location: 71,-10
+		Owner: Neutral
+	CorridorTwo: waypoint
+		Location: 77,-28
+		Owner: Neutral
+	CorridorThree: waypoint
+		Location: 82,-45
+		Owner: Neutral
+	PortGate: waypoint
+		Location: 85,-60
+		Owner: Neutral
+	ConvoyExit: waypoint
+		Location: 90,-78
+		Owner: Neutral
+	WestEntry: waypoint
+		Location: 26,22
+		Owner: Neutral
+	WestRally: waypoint
+		Location: 49,9
+		Owner: Neutral
+	EastEntry: waypoint
+		Location: 117,-70
+		Owner: Neutral
+	EastRally: waypoint
+		Location: 96,-48
+		Owner: Neutral
+	SouthEntry: waypoint
+		Location: 99,-6
+		Owner: Neutral
+	SouthRally: waypoint
+		Location: 85,-15
+		Owner: Neutral
+	DroneEntryNorth: waypoint
+		Location: 96,-86
+		Owner: Neutral
+	DroneEntrySouth: waypoint
+		Location: 53,38
+		Owner: Neutral
+	LauncherWestCamera: waypoint
+		Location: 39,2
+		Owner: Neutral
+	LauncherEastCamera: waypoint
+		Location: 105,-47
+		Owner: Neutral
+	PortCamera: waypoint
+		Location: 85,-63
+		Owner: Neutral
+	MissionSpawn: mpspawn
+		Owner: Neutral
+		Location: 60,16
+Rules:
+	World:
+		-SpawnStartingUnits:
+		-CrateSpawner:
+		-StartGameNotification:
+	Player:
+		-ConquestVictoryConditions:

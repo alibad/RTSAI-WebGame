@@ -1,0 +1,18 @@
+{
+  "map": "hezbollah-relay",
+  "mission": "hezbollah-relay",
+  "seed": 2026,
+  "players": [
+    {
+      "slot": "Hezbollah",
+      "faction": "hezbollah",
+      "color": "2A6FDB"
+    }
+  ],
+  "options": {
+    "startingcash": "10000",
+    "difficulty": "normal",
+    "fog": "True",
+    "explored": "False"
+  }
+}

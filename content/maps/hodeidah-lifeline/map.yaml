@@ -1,0 +1,182 @@
+MapFormat: 12
+RequiresMod: rtsai
+Title: 02: Hodeidah Lifeline
+Author: RTS AI — browser adaptation
+Tileset: TEMPERATE
+MapSize: 96,96
+Bounds: 1,1,94,94
+Visibility: MissionSelector
+Categories: Campaign
+LockPreview: True
+Players:
+	PlayerReference@Yemen:
+		Name: Yemen
+		AllowBots: False
+		Playable: True
+		Required: True
+		LockFaction: True
+		Faction: yemen
+		LockColor: True
+		Color: 8F7A45
+		LockSpawn: True
+		LockTeam: True
+		Allies: Civilians
+		Enemies: Saudi Arabia
+	PlayerReference@Saudi:
+		Name: Saudi Arabia
+		Faction: saudi
+		Color: D6B566
+		Enemies: Yemen, Civilians
+	PlayerReference@Civilians:
+		Name: Civilians
+		Faction: china
+		Color: 76AFC4
+		Allies: Yemen
+		Enemies: Saudi Arabia
+	PlayerReference@Neutral:
+		Name: Neutral
+		OwnsWorld: True
+		NonCombatant: True
+		Faction: china
+Actors:
+	YemenConyard: nacnst
+		Location: 60,16
+		Owner: Yemen
+	YemenRefinery: narefn
+		Location: 79,-2
+		Owner: Yemen
+	YemenPower1: napowr
+		Location: 66,9
+		Owner: Yemen
+	YemenPower2: napowr
+		Location: 69,6
+		Owner: Yemen
+	YemenBarracks: nahand
+		Location: 68,11
+		Owner: Yemen
+	YemenWarFactory: naweap
+		Location: 73,3
+		Owner: Yemen
+	YemenAirfield: naradr
+		Location: 79,-6
+		Owner: Yemen
+	YemenRadar: naradr
+		Location: 67,0
+		Owner: Yemen
+	YemenTechCenter: natech
+		Location: 55,14
+		Owner: Yemen
+	PortControl: caoutp
+		Location: 56,26
+		Owner: Yemen
+	FisheriesDepot: cahosp
+		Location: 60,22
+		Owner: Yemen
+	CoastalClinic: cahosp
+		Location: 65,19
+		Owner: Civilians
+	InlandDistribution: caoutp
+		Location: 87,-72
+		Owner: Civilians
+	LauncherOne: r2ymlr
+		Location: 62,8
+		Owner: Yemen
+		Facing: 128
+	LauncherTwo: r2ymlr
+		Location: 64,5
+		Owner: Yemen
+		Facing: 128
+	TechnicalOne: r2technical
+		Location: 66,4
+		Owner: Yemen
+		Facing: 128
+	TechnicalTwo: r2technical
+		Location: 68,1
+		Owner: Yemen
+		Facing: 128
+	DroneOne: r2samad
+		Location: 75,-5
+		Owner: Yemen
+		Facing: 128
+	DroneTwo: r2samad
+		Location: 77,-8
+		Owner: Yemen
+		Facing: 128
+	YemenRifle1: r2ymr
+		Location: 62,11
+		Owner: Yemen
+	YemenRifle2: r2ymr
+		Location: 62,11
+		Owner: Yemen
+	YemenRocket1: r2yrpg
+		Location: 64,9
+		Owner: Yemen
+	YemenDroneSpotter: r2yspot
+		Location: 62,10
+		Owner: Yemen
+	SaudiRadar: gaairc
+		Location: 86,-66
+		Owner: Saudi Arabia
+	SaudiAirDefense: r2sads
+		Location: 84,-62
+		Owner: Saudi Arabia
+		Facing: 640
+	SaudiTank: r2m1a2s
+		Location: 92,-69
+		Owner: Saudi Arabia
+		Facing: 640
+	PortEntry: waypoint
+		Location: 56,30
+		Owner: Neutral
+	PortRally: waypoint
+		Location: 64,10
+		Owner: Neutral
+	ReliefOne: waypoint
+		Location: 71,-10
+		Owner: Neutral
+	ReliefTwo: waypoint
+		Location: 77,-28
+		Owner: Neutral
+	ReliefThree: waypoint
+		Location: 82,-45
+		Owner: Neutral
+	DistributionGate: waypoint
+		Location: 85,-60
+		Owner: Neutral
+	ReliefExit: waypoint
+		Location: 90,-78
+		Owner: Neutral
+	EvacEntry: waypoint
+		Location: 90,-78
+		Owner: Neutral
+	EvacExit: waypoint
+		Location: 56,30
+		Owner: Neutral
+	NorthEntry: waypoint
+		Location: 53,-51
+		Owner: Neutral
+	EastEntry: waypoint
+		Location: 117,-70
+		Owner: Neutral
+	WestEntry: waypoint
+		Location: 26,22
+		Owner: Neutral
+	SweepCameraOne: waypoint
+		Location: 61,7
+		Owner: Neutral
+	SweepCameraTwo: waypoint
+		Location: 73,1
+		Owner: Neutral
+	PortCamera: waypoint
+		Location: 61,15
+		Owner: Neutral
+	MissionSpawn: mpspawn
+		Owner: Neutral
+		Location: 60,16
+Rules:
+	World:
+		-SpawnStartingUnits:
+		-CrateSpawner:
+		-StartGameNotification:
+	Player:
+		-ConquestVictoryConditions:

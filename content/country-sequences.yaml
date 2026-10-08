@@ -1,0 +1,3137 @@
+web-e1:
+	mindcontrol:
+		Filename: yuricntl.shp
+		Length: *
+		Offset: 0, -24, 24
+	Defaults:
+		Filename: ra2|modern-factions/infantry/r2cnrifle.shp
+		Offset: 0, 0, 16
+	stand:
+		Start: 0
+		Length: 1
+		Facings: 8
+		Tick: 160
+		ShadowStart: 508
+	run:
+		Start: 8
+		Length: 8
+		Facings: 8
+		Tick: 90
+		ShadowStart: 516
+	idle1:
+		Start: 72
+		Length: 12
+		Facings: 8
+		Tick: 120
+		ShadowStart: 580
+	idle2:
+		Start: 168
+		Length: 12
+		Facings: 8
+		Tick: 120
+		ShadowStart: 676
+	prone-run:
+		Start: 264
+		Length: 6
+		Facings: 8
+		Tick: 110
+		ShadowStart: 772
+	prone-stand:
+		Start: 312
+		Length: 1
+		Facings: 8
+		Tick: 160
+		ShadowStart: 820
+	die1:
+		Start: 320
+		Length: 14
+		Facings: 1
+		Tick: 70
+		ShadowStart: 828
+	die2:
+		Start: 334
+		Length: 14
+		Facings: 1
+		Tick: 70
+		ShadowStart: 842
+	shoot:
+		Start: 348
+		Length: 6
+		Facings: 8
+		Tick: 80
+		ShadowStart: 856
+	prone-shoot:
+		Start: 396
+		Length: 6
+		Facings: 8
+		Tick: 80
+		ShadowStart: 904
+	liedown:
+		Start: 444
+		Length: 4
+		Facings: 8
+		Tick: 80
+		ShadowStart: 952
+	standup:
+		Start: 476
+		Length: 4
+		Facings: 8
+		Tick: 80
+		ShadowStart: 984
+	icon:
+		Filename: ra2|modern-factions/icons/r2cnrifle.png
+		Offset: 0, 0
+	paradrop:
+		Start: 0
+		Length: 1
+		Facings: 8
+		Tick: 160
+		ShadowStart: 508
+	cheer:
+		Start: 0
+		Length: 1
+		Facings: 8
+		Tick: 160
+		ShadowStart: 508
+	die4:
+		Start: 320
+		Length: 14
+		Facings: 1
+		Tick: 70
+		ShadowStart: 828
+	die5:
+		Start: 320
+		Length: 14
+		Facings: 1
+		Tick: 70
+		ShadowStart: 828
+	die6:
+		Start: 320
+		Length: 14
+		Facings: 1
+		Tick: 70
+		ShadowStart: 828
+	deployed:
+		Start: 0
+		Length: 1
+		Facings: 8
+		Tick: 160
+		ShadowStart: 508
+	deploy:
+		Start: 0
+		Length: 1
+		Facings: 8
+		Tick: 160
+		ShadowStart: 508
+	undeploy:
+		Start: 0
+		Length: 1
+		Facings: 8
+		Tick: 160
+		ShadowStart: 508
+	shoot-deployed:
+		Start: 348
+		Length: 6
+		Facings: 8
+		Tick: 80
+		ShadowStart: 856
+	turret:
+		Start: 0
+		Length: 1
+		Facings: 8
+		Tick: 160
+		ShadowStart: 508
+web-e2:
+	mindcontrol:
+		Filename: yuricntl.shp
+		Length: *
+		Offset: 0, -24, 24
+	Defaults:
+		Filename: ra2|modern-factions/infantry/r2basij.shp
+		Offset: 0, 0, 16
+	stand:
+		Start: 0
+		Length: 1
+		Facings: 8
+		Tick: 160
+		ShadowStart: 508
+	run:
+		Start: 8
+		Length: 8
+		Facings: 8
+		Tick: 90
+		ShadowStart: 516
+	idle1:
+		Start: 72
+		Length: 12
+		Facings: 8
+		Tick: 120
+		ShadowStart: 580
+	idle2:
+		Start: 168
+		Length: 12
+		Facings: 8
+		Tick: 120
+		ShadowStart: 676
+	prone-run:
+		Start: 264
+		Length: 6
+		Facings: 8
+		Tick: 110
+		ShadowStart: 772
+	prone-stand:
+		Start: 312
+		Length: 1
+		Facings: 8
+		Tick: 160
+		ShadowStart: 820
+	die1:
+		Start: 320
+		Length: 14
+		Facings: 1
+		Tick: 70
+		ShadowStart: 828
+	die2:
+		Start: 334
+		Length: 14
+		Facings: 1
+		Tick: 70
+		ShadowStart: 842
+	shoot:
+		Start: 348
+		Length: 6
+		Facings: 8
+		Tick: 80
+		ShadowStart: 856
+	prone-shoot:
+		Start: 396
+		Length: 6
+		Facings: 8
+		Tick: 80
+		ShadowStart: 904
+	liedown:
+		Start: 444
+		Length: 4
+		Facings: 8
+		Tick: 80
+		ShadowStart: 952
+	standup:
+		Start: 476
+		Length: 4
+		Facings: 8
+		Tick: 80
+		ShadowStart: 984
+	icon:
+		Filename: ra2|modern-factions/icons/r2basij.png
+		Offset: 0, 0
+	paradrop:
+		Start: 0
+		Length: 1
+		Facings: 8
+		Tick: 160
+		ShadowStart: 508
+	cheer:
+		Start: 0
+		Length: 1
+		Facings: 8
+		Tick: 160
+		ShadowStart: 508
+	die4:
+		Start: 320
+		Length: 14
+		Facings: 1
+		Tick: 70
+		ShadowStart: 828
+	die5:
+		Start: 320
+		Length: 14
+		Facings: 1
+		Tick: 70
+		ShadowStart: 828
+	die6:
+		Start: 320
+		Length: 14
+		Facings: 1
+		Tick: 70
+		ShadowStart: 828
+web-snipe:
+	mindcontrol:
+		Filename: yuricntl.shp
+		Length: *
+		Offset: 0, -24, 24
+	Defaults:
+		Filename: ra2|modern-factions/infantry/r2wadighost.shp
+		Offset: 0, 0, 16
+	stand:
+		Start: 0
+		Length: 1
+		Facings: 8
+		Tick: 160
+		ShadowStart: 508
+	run:
+		Start: 8
+		Length: 8
+		Facings: 8
+		Tick: 90
+		ShadowStart: 516
+	idle1:
+		Start: 72
+		Length: 12
+		Facings: 8
+		Tick: 120
+		ShadowStart: 580
+	idle2:
+		Start: 168
+		Length: 12
+		Facings: 8
+		Tick: 120
+		ShadowStart: 676
+	prone-run:
+		Start: 264
+		Length: 6
+		Facings: 8
+		Tick: 110
+		ShadowStart: 772
+	prone-stand:
+		Start: 312
+		Length: 1
+		Facings: 8
+		Tick: 160
+		ShadowStart: 820
+	die1:
+		Start: 320
+		Length: 14
+		Facings: 1
+		Tick: 70
+		ShadowStart: 828
+	die2:
+		Start: 334
+		Length: 14
+		Facings: 1
+		Tick: 70
+		ShadowStart: 842
+	shoot:
+		Start: 348
+		Length: 6
+		Facings: 8
+		Tick: 80
+		ShadowStart: 856
+	prone-shoot:
+		Start: 396
+		Length: 6
+		Facings: 8
+		Tick: 80
+		ShadowStart: 904
+	liedown:
+		Start: 444
+		Length: 4
+		Facings: 8
+		Tick: 80
+		ShadowStart: 952
+	standup:
+		Start: 476
+		Length: 4
+		Facings: 8
+		Tick: 80
+		ShadowStart: 984
+	icon:
+		Filename: ra2|modern-factions/icons/r2wadighost.png
+		Offset: 0, 0
+	paradrop:
+		Start: 0
+		Length: 1
+		Facings: 8
+		Tick: 160
+		ShadowStart: 508
+	cheer:
+		Start: 0
+		Length: 1
+		Facings: 8
+		Tick: 160
+		ShadowStart: 508
+	die4:
+		Start: 320
+		Length: 14
+		Facings: 1
+		Tick: 70
+		ShadowStart: 828
+	die5:
+		Start: 320
+		Length: 14
+		Facings: 1
+		Tick: 70
+		ShadowStart: 828
+	die6:
+		Start: 320
+		Length: 14
+		Facings: 1
+		Tick: 70
+		ShadowStart: 828
+web-ghost:
+	mindcontrol:
+		Filename: yuricntl.shp
+		Length: *
+		Offset: 0, -24, 24
+	Defaults:
+		Filename: ra2|modern-factions/infantry/r2ilrifle.shp
+		Offset: 0, 0, 16
+	stand:
+		Start: 0
+		Length: 1
+		Facings: 8
+		Tick: 160
+		ShadowStart: 508
+	run:
+		Start: 8
+		Length: 8
+		Facings: 8
+		Tick: 90
+		ShadowStart: 516
+	idle1:
+		Start: 72
+		Length: 12
+		Facings: 8
+		Tick: 120
+		ShadowStart: 580
+	idle2:
+		Start: 168
+		Length: 12
+		Facings: 8
+		Tick: 120
+		ShadowStart: 676
+	prone-run:
+		Start: 264
+		Length: 6
+		Facings: 8
+		Tick: 110
+		ShadowStart: 772
+	prone-stand:
+		Start: 312
+		Length: 1
+		Facings: 8
+		Tick: 160
+		ShadowStart: 820
+	die1:
+		Start: 320
+		Length: 14
+		Facings: 1
+		Tick: 70
+		ShadowStart: 828
+	die2:
+		Start: 334
+		Length: 14
+		Facings: 1
+		Tick: 70
+		ShadowStart: 842
+	shoot:
+		Start: 348
+		Length: 6
+		Facings: 8
+		Tick: 80
+		ShadowStart: 856
+	prone-shoot:
+		Start: 396
+		Length: 6
+		Facings: 8
+		Tick: 80
+		ShadowStart: 904
+	liedown:
+		Start: 444
+		Length: 4
+		Facings: 8
+		Tick: 80
+		ShadowStart: 952
+	standup:
+		Start: 476
+		Length: 4
+		Facings: 8
+		Tick: 80
+		ShadowStart: 984
+	icon:
+		Filename: ra2|modern-factions/icons/r2ilrifle.png
+		Offset: 0, 0
+	paradrop:
+		Start: 0
+		Length: 1
+		Facings: 8
+		Tick: 160
+		ShadowStart: 508
+	cheer:
+		Start: 0
+		Length: 1
+		Facings: 8
+		Tick: 160
+		ShadowStart: 508
+	die4:
+		Start: 320
+		Length: 14
+		Facings: 1
+		Tick: 70
+		ShadowStart: 828
+	die5:
+		Start: 320
+		Length: 14
+		Facings: 1
+		Tick: 70
+		ShadowStart: 828
+	die6:
+		Start: 320
+		Length: 14
+		Facings: 1
+		Tick: 70
+		ShadowStart: 828
+	swim-stand:
+		Start: 0
+		Length: 1
+		Facings: 8
+		Tick: 160
+		ShadowStart: 508
+	swim-idle1:
+		Start: 0
+		Length: 1
+		Facings: 8
+		Tick: 160
+		ShadowStart: 508
+	swim-idle2:
+		Start: 0
+		Length: 1
+		Facings: 8
+		Tick: 160
+		ShadowStart: 508
+	swim-run:
+		Start: 8
+		Length: 8
+		Facings: 8
+		Tick: 90
+		ShadowStart: 516
+	swim-die1:
+		Start: 0
+		Length: 1
+		Facings: 8
+		Tick: 160
+		ShadowStart: 508
+	swim-die2:
+		Start: 0
+		Length: 1
+		Facings: 8
+		Tick: 160
+		ShadowStart: 508
+	swim-shoot:
+		Start: 348
+		Length: 6
+		Facings: 8
+		Tick: 80
+		ShadowStart: 856
+	swim-cheer:
+		Start: 0
+		Length: 1
+		Facings: 8
+		Tick: 160
+		ShadowStart: 508
+web-ccomand:
+	mindcontrol:
+		Filename: yuricntl.shp
+		Length: *
+		Offset: 0, -24, 24
+	Defaults:
+		Filename: ra2|modern-factions/infantry/r2ilrifle.shp
+		Offset: 0, 0, 16
+	stand:
+		Start: 0
+		Length: 1
+		Facings: 8
+		Tick: 160
+		ShadowStart: 508
+	run:
+		Start: 8
+		Length: 8
+		Facings: 8
+		Tick: 90
+		ShadowStart: 516
+	idle1:
+		Start: 72
+		Length: 12
+		Facings: 8
+		Tick: 120
+		ShadowStart: 580
+	idle2:
+		Start: 168
+		Length: 12
+		Facings: 8
+		Tick: 120
+		ShadowStart: 676
+	prone-run:
+		Start: 264
+		Length: 6
+		Facings: 8
+		Tick: 110
+		ShadowStart: 772
+	prone-stand:
+		Start: 312
+		Length: 1
+		Facings: 8
+		Tick: 160
+		ShadowStart: 820
+	die1:
+		Start: 320
+		Length: 14
+		Facings: 1
+		Tick: 70
+		ShadowStart: 828
+	die2:
+		Start: 334
+		Length: 14
+		Facings: 1
+		Tick: 70
+		ShadowStart: 842
+	shoot:
+		Start: 348
+		Length: 6
+		Facings: 8
+		Tick: 80
+		ShadowStart: 856
+	prone-shoot:
+		Start: 396
+		Length: 6
+		Facings: 8
+		Tick: 80
+		ShadowStart: 904
+	liedown:
+		Start: 444
+		Length: 4
+		Facings: 8
+		Tick: 80
+		ShadowStart: 952
+	standup:
+		Start: 476
+		Length: 4
+		Facings: 8
+		Tick: 80
+		ShadowStart: 984
+	icon:
+		Filename: ra2|modern-factions/icons/r2ilrifle.png
+		Offset: 0, 0
+	cheer:
+		Start: 0
+		Length: 1
+		Facings: 8
+		Tick: 160
+		ShadowStart: 508
+	die4:
+		Start: 320
+		Length: 14
+		Facings: 1
+		Tick: 70
+		ShadowStart: 828
+	die5:
+		Start: 320
+		Length: 14
+		Facings: 1
+		Tick: 70
+		ShadowStart: 828
+	die6:
+		Start: 320
+		Length: 14
+		Facings: 1
+		Tick: 70
+		ShadowStart: 828
+web-ptroop:
+	mindcontrol:
+		Filename: yuricntl.shp
+		Length: *
+		Offset: 0, -24, 24
+	strike:
+		Filename: ra2|modern-factions/icons/r2f15sa.png
+		Offset: 0, 0
+	Defaults:
+		Filename: ra2|modern-factions/infantry/r2falcon.shp
+		Offset: 0, 0, 16
+	stand:
+		Start: 0
+		Length: 1
+		Facings: 8
+		Tick: 160
+		ShadowStart: 508
+	run:
+		Start: 8
+		Length: 8
+		Facings: 8
+		Tick: 90
+		ShadowStart: 516
+	idle1:
+		Start: 72
+		Length: 12
+		Facings: 8
+		Tick: 120
+		ShadowStart: 580
+	idle2:
+		Start: 168
+		Length: 12
+		Facings: 8
+		Tick: 120
+		ShadowStart: 676
+	prone-run:
+		Start: 264
+		Length: 6
+		Facings: 8
+		Tick: 110
+		ShadowStart: 772
+	prone-stand:
+		Start: 312
+		Length: 1
+		Facings: 8
+		Tick: 160
+		ShadowStart: 820
+	die1:
+		Start: 320
+		Length: 14
+		Facings: 1
+		Tick: 70
+		ShadowStart: 828
+	die2:
+		Start: 334
+		Length: 14
+		Facings: 1
+		Tick: 70
+		ShadowStart: 842
+	shoot:
+		Start: 348
+		Length: 6
+		Facings: 8
+		Tick: 80
+		ShadowStart: 856
+	prone-shoot:
+		Start: 396
+		Length: 6
+		Facings: 8
+		Tick: 80
+		ShadowStart: 904
+	liedown:
+		Start: 444
+		Length: 4
+		Facings: 8
+		Tick: 80
+		ShadowStart: 952
+	standup:
+		Start: 476
+		Length: 4
+		Facings: 8
+		Tick: 80
+		ShadowStart: 984
+	icon:
+		Filename: ra2|modern-factions/icons/r2falcon.png
+		Offset: 0, 0
+	cheer:
+		Start: 0
+		Length: 1
+		Facings: 8
+		Tick: 160
+		ShadowStart: 508
+	die4:
+		Start: 320
+		Length: 14
+		Facings: 1
+		Tick: 70
+		ShadowStart: 828
+	die5:
+		Start: 320
+		Length: 14
+		Facings: 1
+		Tick: 70
+		ShadowStart: 828
+	die6:
+		Start: 320
+		Length: 14
+		Facings: 1
+		Tick: 70
+		ShadowStart: 828
+	muzzle:
+		Start: 0
+		Length: 1
+		Facings: 8
+		Tick: 160
+		ShadowStart: 508
+web-tany:
+	mindcontrol:
+		Filename: yuricntl.shp
+		Length: *
+		Offset: 0, -24, 24
+	Defaults:
+		Filename: ra2|modern-factions/infantry/r2ilrifle.shp
+		Offset: 0, 0, 16
+	stand:
+		Start: 0
+		Length: 1
+		Facings: 8
+		Tick: 160
+		ShadowStart: 508
+	run:
+		Start: 8
+		Length: 8
+		Facings: 8
+		Tick: 90
+		ShadowStart: 516
+	idle1:
+		Start: 72
+		Length: 12
+		Facings: 8
+		Tick: 120
+		ShadowStart: 580
+	idle2:
+		Start: 168
+		Length: 12
+		Facings: 8
+		Tick: 120
+		ShadowStart: 676
+	prone-run:
+		Start: 264
+		Length: 6
+		Facings: 8
+		Tick: 110
+		ShadowStart: 772
+	prone-stand:
+		Start: 312
+		Length: 1
+		Facings: 8
+		Tick: 160
+		ShadowStart: 820
+	die1:
+		Start: 320
+		Length: 14
+		Facings: 1
+		Tick: 70
+		ShadowStart: 828
+	die2:
+		Start: 334
+		Length: 14
+		Facings: 1
+		Tick: 70
+		ShadowStart: 842
+	shoot:
+		Start: 348
+		Length: 6
+		Facings: 8
+		Tick: 80
+		ShadowStart: 856
+	prone-shoot:
+		Start: 396
+		Length: 6
+		Facings: 8
+		Tick: 80
+		ShadowStart: 904
+	liedown:
+		Start: 444
+		Length: 4
+		Facings: 8
+		Tick: 80
+		ShadowStart: 952
+	standup:
+		Start: 476
+		Length: 4
+		Facings: 8
+		Tick: 80
+		ShadowStart: 984
+	icon:
+		Filename: ra2|modern-factions/icons/r2ilrifle.png
+		Offset: 0, 0
+	paradrop:
+		Start: 0
+		Length: 1
+		Facings: 8
+		Tick: 160
+		ShadowStart: 508
+	cheer:
+		Start: 0
+		Length: 1
+		Facings: 8
+		Tick: 160
+		ShadowStart: 508
+	die4:
+		Start: 320
+		Length: 14
+		Facings: 1
+		Tick: 70
+		ShadowStart: 828
+	die5:
+		Start: 320
+		Length: 14
+		Facings: 1
+		Tick: 70
+		ShadowStart: 828
+	die6:
+		Start: 320
+		Length: 14
+		Facings: 1
+		Tick: 70
+		ShadowStart: 828
+	swim-stand:
+		Start: 0
+		Length: 1
+		Facings: 8
+		Tick: 160
+		ShadowStart: 508
+	swim-idle1:
+		Start: 0
+		Length: 1
+		Facings: 8
+		Tick: 160
+		ShadowStart: 508
+	swim-idle2:
+		Start: 0
+		Length: 1
+		Facings: 8
+		Tick: 160
+		ShadowStart: 508
+	swim-run:
+		Start: 8
+		Length: 8
+		Facings: 8
+		Tick: 90
+		ShadowStart: 516
+	swim-die1:
+		Start: 0
+		Length: 1
+		Facings: 8
+		Tick: 160
+		ShadowStart: 508
+	swim-die2:
+		Start: 0
+		Length: 1
+		Facings: 8
+		Tick: 160
+		ShadowStart: 508
+	swim-shoot:
+		Start: 348
+		Length: 6
+		Facings: 8
+		Tick: 80
+		ShadowStart: 856
+	swim-cheer:
+		Start: 0
+		Length: 1
+		Facings: 8
+		Tick: 160
+		ShadowStart: 508
+web-jumpjet:
+	mindcontrol:
+		Filename: yuricntl.shp
+		Length: *
+		Offset: 0, -24, 24
+	strike:
+		Filename: ra2|modern-factions/icons/r2f15sa.png
+		Offset: 0, 0
+	Defaults:
+		Filename: ra2|modern-factions/infantry/r2falcon.shp
+		Offset: 0, 0, 16
+	stand:
+		Start: 0
+		Length: 1
+		Facings: 8
+		Tick: 160
+		ShadowStart: 508
+	run:
+		Start: 8
+		Length: 8
+		Facings: 8
+		Tick: 90
+		ShadowStart: 516
+	idle1:
+		Start: 72
+		Length: 12
+		Facings: 8
+		Tick: 120
+		ShadowStart: 580
+	idle2:
+		Start: 168
+		Length: 12
+		Facings: 8
+		Tick: 120
+		ShadowStart: 676
+	prone-run:
+		Start: 264
+		Length: 6
+		Facings: 8
+		Tick: 110
+		ShadowStart: 772
+	prone-stand:
+		Start: 312
+		Length: 1
+		Facings: 8
+		Tick: 160
+		ShadowStart: 820
+	die1:
+		Start: 320
+		Length: 14
+		Facings: 1
+		Tick: 70
+		ShadowStart: 828
+	die2:
+		Start: 334
+		Length: 14
+		Facings: 1
+		Tick: 70
+		ShadowStart: 842
+	shoot:
+		Start: 348
+		Length: 6
+		Facings: 8
+		Tick: 80
+		ShadowStart: 856
+	prone-shoot:
+		Start: 396
+		Length: 6
+		Facings: 8
+		Tick: 80
+		ShadowStart: 904
+	liedown:
+		Start: 444
+		Length: 4
+		Facings: 8
+		Tick: 80
+		ShadowStart: 952
+	standup:
+		Start: 476
+		Length: 4
+		Facings: 8
+		Tick: 80
+		ShadowStart: 984
+	icon:
+		Filename: ra2|modern-factions/icons/r2falcon.png
+		Offset: 0, 0
+	die4:
+		Start: 320
+		Length: 14
+		Facings: 1
+		Tick: 70
+		ShadowStart: 828
+	die6:
+		Start: 320
+		Length: 14
+		Facings: 1
+		Tick: 70
+		ShadowStart: 828
+	fly:
+		Start: 0
+		Length: 1
+		Facings: 8
+		Tick: 160
+		ShadowStart: 508
+	die-air:
+		Start: 320
+		Length: 14
+		Facings: 1
+		Tick: 70
+		ShadowStart: 828
+	shoot-air:
+		Start: 348
+		Length: 6
+		Facings: 8
+		Tick: 80
+		ShadowStart: 856
+	idle-air:
+		Start: 0
+		Length: 1
+		Facings: 8
+		Tick: 160
+		ShadowStart: 508
+	shadow:
+		Start: 0
+		Length: 1
+		Facings: 8
+		Tick: 160
+		ShadowStart: 508
+web-cleg:
+	mindcontrol:
+		Filename: yuricntl.shp
+		Length: *
+		Offset: 0, -24, 24
+	Defaults:
+		Filename: ra2|modern-factions/infantry/r2cnnetwork.shp
+		Offset: 0, 0, 16
+	stand:
+		Start: 0
+		Length: 1
+		Facings: 8
+		Tick: 160
+		ShadowStart: 508
+	run:
+		Start: 8
+		Length: 8
+		Facings: 8
+		Tick: 90
+		ShadowStart: 516
+	idle1:
+		Start: 72
+		Length: 12
+		Facings: 8
+		Tick: 120
+		ShadowStart: 580
+	idle2:
+		Start: 168
+		Length: 12
+		Facings: 8
+		Tick: 120
+		ShadowStart: 676
+	prone-run:
+		Start: 264
+		Length: 6
+		Facings: 8
+		Tick: 110
+		ShadowStart: 772
+	prone-stand:
+		Start: 312
+		Length: 1
+		Facings: 8
+		Tick: 160
+		ShadowStart: 820
+	die1:
+		Start: 320
+		Length: 14
+		Facings: 1
+		Tick: 70
+		ShadowStart: 828
+	die2:
+		Start: 334
+		Length: 14
+		Facings: 1
+		Tick: 70
+		ShadowStart: 842
+	shoot:
+		Start: 348
+		Length: 6
+		Facings: 8
+		Tick: 80
+		ShadowStart: 856
+	prone-shoot:
+		Start: 396
+		Length: 6
+		Facings: 8
+		Tick: 80
+		ShadowStart: 904
+	liedown:
+		Start: 444
+		Length: 4
+		Facings: 8
+		Tick: 80
+		ShadowStart: 952
+	standup:
+		Start: 476
+		Length: 4
+		Facings: 8
+		Tick: 80
+		ShadowStart: 984
+	icon:
+		Filename: ra2|modern-factions/icons/r2cnnetwork.png
+		Offset: 0, 0
+	paradrop:
+		Start: 0
+		Length: 1
+		Facings: 8
+		Tick: 160
+		ShadowStart: 508
+	cheer:
+		Start: 0
+		Length: 1
+		Facings: 8
+		Tick: 160
+		ShadowStart: 508
+	die4:
+		Start: 320
+		Length: 14
+		Facings: 1
+		Tick: 70
+		ShadowStart: 828
+	die5:
+		Start: 320
+		Length: 14
+		Facings: 1
+		Tick: 70
+		ShadowStart: 828
+	die6:
+		Start: 320
+		Length: 14
+		Facings: 1
+		Tick: 70
+		ShadowStart: 828
+web-flakt:
+	mindcontrol:
+		Filename: yuricntl.shp
+		Length: *
+		Offset: 0, -24, 24
+	Defaults:
+		Filename: ra2|modern-factions/infantry/r2yrpg.shp
+		Offset: 0, 0, 16
+	stand:
+		Start: 0
+		Length: 1
+		Facings: 8
+		Tick: 160
+		ShadowStart: 508
+	run:
+		Start: 8
+		Length: 8
+		Facings: 8
+		Tick: 90
+		ShadowStart: 516
+	idle1:
+		Start: 72
+		Length: 12
+		Facings: 8
+		Tick: 120
+		ShadowStart: 580
+	idle2:
+		Start: 168
+		Length: 12
+		Facings: 8
+		Tick: 120
+		ShadowStart: 676
+	prone-run:
+		Start: 264
+		Length: 6
+		Facings: 8
+		Tick: 110
+		ShadowStart: 772
+	prone-stand:
+		Start: 312
+		Length: 1
+		Facings: 8
+		Tick: 160
+		ShadowStart: 820
+	die1:
+		Start: 320
+		Length: 14
+		Facings: 1
+		Tick: 70
+		ShadowStart: 828
+	die2:
+		Start: 334
+		Length: 14
+		Facings: 1
+		Tick: 70
+		ShadowStart: 842
+	shoot:
+		Start: 348
+		Length: 6
+		Facings: 8
+		Tick: 80
+		ShadowStart: 856
+	prone-shoot:
+		Start: 396
+		Length: 6
+		Facings: 8
+		Tick: 80
+		ShadowStart: 904
+	liedown:
+		Start: 444
+		Length: 4
+		Facings: 8
+		Tick: 80
+		ShadowStart: 952
+	standup:
+		Start: 476
+		Length: 4
+		Facings: 8
+		Tick: 80
+		ShadowStart: 984
+	icon:
+		Filename: ra2|modern-factions/icons/r2yrpg.png
+		Offset: 0, 0
+	paradrop:
+		Start: 0
+		Length: 1
+		Facings: 8
+		Tick: 160
+		ShadowStart: 508
+	cheer:
+		Start: 0
+		Length: 1
+		Facings: 8
+		Tick: 160
+		ShadowStart: 508
+	die4:
+		Start: 320
+		Length: 14
+		Facings: 1
+		Tick: 70
+		ShadowStart: 828
+	die5:
+		Start: 320
+		Length: 14
+		Facings: 1
+		Tick: 70
+		ShadowStart: 828
+	die6:
+		Start: 320
+		Length: 14
+		Facings: 1
+		Tick: 70
+		ShadowStart: 828
+	muzzle:
+		Start: 0
+		Length: 1
+		Facings: 8
+		Tick: 160
+		ShadowStart: 508
+web-shk:
+	mindcontrol:
+		Filename: yuricntl.shp
+		Length: *
+		Offset: 0, -24, 24
+	Defaults:
+		Filename: ra2|modern-factions/infantry/r2cnportable.shp
+		Offset: 0, 0, 16
+	stand:
+		Start: 0
+		Length: 1
+		Facings: 8
+		Tick: 160
+		ShadowStart: 508
+	run:
+		Start: 8
+		Length: 8
+		Facings: 8
+		Tick: 90
+		ShadowStart: 516
+	idle1:
+		Start: 72
+		Length: 12
+		Facings: 8
+		Tick: 120
+		ShadowStart: 580
+	idle2:
+		Start: 168
+		Length: 12
+		Facings: 8
+		Tick: 120
+		ShadowStart: 676
+	prone-run:
+		Start: 264
+		Length: 6
+		Facings: 8
+		Tick: 110
+		ShadowStart: 772
+	prone-stand:
+		Start: 312
+		Length: 1
+		Facings: 8
+		Tick: 160
+		ShadowStart: 820
+	die1:
+		Start: 320
+		Length: 14
+		Facings: 1
+		Tick: 70
+		ShadowStart: 828
+	die2:
+		Start: 334
+		Length: 14
+		Facings: 1
+		Tick: 70
+		ShadowStart: 842
+	shoot:
+		Start: 348
+		Length: 6
+		Facings: 8
+		Tick: 80
+		ShadowStart: 856
+	prone-shoot:
+		Start: 396
+		Length: 6
+		Facings: 8
+		Tick: 80
+		ShadowStart: 904
+	liedown:
+		Start: 444
+		Length: 4
+		Facings: 8
+		Tick: 80
+		ShadowStart: 952
+	standup:
+		Start: 476
+		Length: 4
+		Facings: 8
+		Tick: 80
+		ShadowStart: 984
+	icon:
+		Filename: ra2|modern-factions/icons/r2cnportable.png
+		Offset: 0, 0
+	paradrop:
+		Start: 0
+		Length: 1
+		Facings: 8
+		Tick: 160
+		ShadowStart: 508
+	cheer:
+		Start: 0
+		Length: 1
+		Facings: 8
+		Tick: 160
+		ShadowStart: 508
+	die4:
+		Start: 320
+		Length: 14
+		Facings: 1
+		Tick: 70
+		ShadowStart: 828
+	die5:
+		Start: 320
+		Length: 14
+		Facings: 1
+		Tick: 70
+		ShadowStart: 828
+	die6:
+		Start: 320
+		Length: 14
+		Facings: 1
+		Tick: 70
+		ShadowStart: 828
+web-terror:
+	mindcontrol:
+		Filename: yuricntl.shp
+		Length: *
+		Offset: 0, -24, 24
+	Defaults:
+		Filename: ra2|modern-factions/infantry/r2hzrifle.shp
+		Offset: 0, 0, 16
+	stand:
+		Start: 0
+		Length: 1
+		Facings: 8
+		Tick: 160
+		ShadowStart: 508
+	run:
+		Start: 8
+		Length: 8
+		Facings: 8
+		Tick: 90
+		ShadowStart: 516
+	idle1:
+		Start: 72
+		Length: 12
+		Facings: 8
+		Tick: 120
+		ShadowStart: 580
+	idle2:
+		Start: 168
+		Length: 12
+		Facings: 8
+		Tick: 120
+		ShadowStart: 676
+	prone-run:
+		Start: 264
+		Length: 6
+		Facings: 8
+		Tick: 110
+		ShadowStart: 772
+	prone-stand:
+		Start: 312
+		Length: 1
+		Facings: 8
+		Tick: 160
+		ShadowStart: 820
+	die1:
+		Start: 320
+		Length: 14
+		Facings: 1
+		Tick: 70
+		ShadowStart: 828
+	die2:
+		Start: 334
+		Length: 14
+		Facings: 1
+		Tick: 70
+		ShadowStart: 842
+	shoot:
+		Start: 348
+		Length: 6
+		Facings: 8
+		Tick: 80
+		ShadowStart: 856
+	prone-shoot:
+		Start: 396
+		Length: 6
+		Facings: 8
+		Tick: 80
+		ShadowStart: 904
+	liedown:
+		Start: 444
+		Length: 4
+		Facings: 8
+		Tick: 80
+		ShadowStart: 952
+	standup:
+		Start: 476
+		Length: 4
+		Facings: 8
+		Tick: 80
+		ShadowStart: 984
+	icon:
+		Filename: ra2|modern-factions/icons/r2hzrifle.png
+		Offset: 0, 0
+	paradrop:
+		Start: 0
+		Length: 1
+		Facings: 8
+		Tick: 160
+		ShadowStart: 508
+	cheer:
+		Start: 0
+		Length: 1
+		Facings: 8
+		Tick: 160
+		ShadowStart: 508
+	die4:
+		Start: 320
+		Length: 14
+		Facings: 1
+		Tick: 70
+		ShadowStart: 828
+	die5:
+		Start: 320
+		Length: 14
+		Facings: 1
+		Tick: 70
+		ShadowStart: 828
+	die6:
+		Start: 320
+		Length: 14
+		Facings: 1
+		Tick: 70
+		ShadowStart: 828
+	deploy:
+		Start: 0
+		Length: 1
+		Facings: 8
+		Tick: 160
+		ShadowStart: 508
+web-deso:
+	mindcontrol:
+		Filename: yuricntl.shp
+		Length: *
+		Offset: 0, -24, 24
+	Defaults:
+		Filename: ra2|modern-factions/infantry/r2hzat.shp
+		Offset: 0, 0, 16
+	stand:
+		Start: 0
+		Length: 1
+		Facings: 8
+		Tick: 160
+		ShadowStart: 508
+	run:
+		Start: 8
+		Length: 8
+		Facings: 8
+		Tick: 90
+		ShadowStart: 516
+	idle1:
+		Start: 72
+		Length: 12
+		Facings: 8
+		Tick: 120
+		ShadowStart: 580
+	idle2:
+		Start: 168
+		Length: 12
+		Facings: 8
+		Tick: 120
+		ShadowStart: 676
+	prone-run:
+		Start: 264
+		Length: 6
+		Facings: 8
+		Tick: 110
+		ShadowStart: 772
+	prone-stand:
+		Start: 312
+		Length: 1
+		Facings: 8
+		Tick: 160
+		ShadowStart: 820
+	die1:
+		Start: 320
+		Length: 14
+		Facings: 1
+		Tick: 70
+		ShadowStart: 828
+	die2:
+		Start: 334
+		Length: 14
+		Facings: 1
+		Tick: 70
+		ShadowStart: 842
+	shoot:
+		Start: 348
+		Length: 6
+		Facings: 8
+		Tick: 80
+		ShadowStart: 856
+	prone-shoot:
+		Start: 396
+		Length: 6
+		Facings: 8
+		Tick: 80
+		ShadowStart: 904
+	liedown:
+		Start: 444
+		Length: 4
+		Facings: 8
+		Tick: 80
+		ShadowStart: 952
+	standup:
+		Start: 476
+		Length: 4
+		Facings: 8
+		Tick: 80
+		ShadowStart: 984
+	icon:
+		Filename: ra2|modern-factions/icons/r2hzat.png
+		Offset: 0, 0
+	paradrop:
+		Start: 0
+		Length: 1
+		Facings: 8
+		Tick: 160
+		ShadowStart: 508
+	cheer:
+		Start: 0
+		Length: 1
+		Facings: 8
+		Tick: 160
+		ShadowStart: 508
+	die4:
+		Start: 320
+		Length: 14
+		Facings: 1
+		Tick: 70
+		ShadowStart: 828
+	die5:
+		Start: 320
+		Length: 14
+		Facings: 1
+		Tick: 70
+		ShadowStart: 828
+	die6:
+		Start: 320
+		Length: 14
+		Facings: 1
+		Tick: 70
+		ShadowStart: 828
+	deploy:
+		Start: 0
+		Length: 1
+		Facings: 8
+		Tick: 160
+		ShadowStart: 508
+	deployed:
+		Start: 0
+		Length: 1
+		Facings: 8
+		Tick: 160
+		ShadowStart: 508
+	deployed-shoot:
+		Start: 348
+		Length: 6
+		Facings: 8
+		Tick: 80
+		ShadowStart: 856
+web-ivan:
+	mindcontrol:
+		Filename: yuricntl.shp
+		Length: *
+		Offset: 0, -24, 24
+	Defaults:
+		Filename: ra2|modern-factions/infantry/r2dronecontrol.shp
+		Offset: 0, 0, 16
+	stand:
+		Start: 0
+		Length: 1
+		Facings: 8
+		Tick: 160
+		ShadowStart: 508
+	run:
+		Start: 8
+		Length: 8
+		Facings: 8
+		Tick: 90
+		ShadowStart: 516
+	idle1:
+		Start: 72
+		Length: 12
+		Facings: 8
+		Tick: 120
+		ShadowStart: 580
+	idle2:
+		Start: 168
+		Length: 12
+		Facings: 8
+		Tick: 120
+		ShadowStart: 676
+	prone-run:
+		Start: 264
+		Length: 6
+		Facings: 8
+		Tick: 110
+		ShadowStart: 772
+	prone-stand:
+		Start: 312
+		Length: 1
+		Facings: 8
+		Tick: 160
+		ShadowStart: 820
+	die1:
+		Start: 320
+		Length: 14
+		Facings: 1
+		Tick: 70
+		ShadowStart: 828
+	die2:
+		Start: 334
+		Length: 14
+		Facings: 1
+		Tick: 70
+		ShadowStart: 842
+	shoot:
+		Start: 348
+		Length: 6
+		Facings: 8
+		Tick: 80
+		ShadowStart: 856
+	prone-shoot:
+		Start: 396
+		Length: 6
+		Facings: 8
+		Tick: 80
+		ShadowStart: 904
+	liedown:
+		Start: 444
+		Length: 4
+		Facings: 8
+		Tick: 80
+		ShadowStart: 952
+	standup:
+		Start: 476
+		Length: 4
+		Facings: 8
+		Tick: 80
+		ShadowStart: 984
+	icon:
+		Filename: ra2|modern-factions/icons/r2dronecontrol.png
+		Offset: 0, 0
+	paradrop:
+		Start: 0
+		Length: 1
+		Facings: 8
+		Tick: 160
+		ShadowStart: 508
+	cheer:
+		Start: 0
+		Length: 1
+		Facings: 8
+		Tick: 160
+		ShadowStart: 508
+	die4:
+		Start: 320
+		Length: 14
+		Facings: 1
+		Tick: 70
+		ShadowStart: 828
+	die5:
+		Start: 320
+		Length: 14
+		Facings: 1
+		Tick: 70
+		ShadowStart: 828
+	die6:
+		Start: 320
+		Length: 14
+		Facings: 1
+		Tick: 70
+		ShadowStart: 828
+	deploy:
+		Start: 0
+		Length: 1
+		Facings: 8
+		Tick: 160
+		ShadowStart: 508
+web-civan:
+	mindcontrol:
+		Filename: yuricntl.shp
+		Length: *
+		Offset: 0, -24, 24
+	Defaults:
+		Filename: ra2|modern-factions/infantry/r2dronecontrol.shp
+		Offset: 0, 0, 16
+	stand:
+		Start: 0
+		Length: 1
+		Facings: 8
+		Tick: 160
+		ShadowStart: 508
+	run:
+		Start: 8
+		Length: 8
+		Facings: 8
+		Tick: 90
+		ShadowStart: 516
+	idle1:
+		Start: 72
+		Length: 12
+		Facings: 8
+		Tick: 120
+		ShadowStart: 580
+	idle2:
+		Start: 168
+		Length: 12
+		Facings: 8
+		Tick: 120
+		ShadowStart: 676
+	prone-run:
+		Start: 264
+		Length: 6
+		Facings: 8
+		Tick: 110
+		ShadowStart: 772
+	prone-stand:
+		Start: 312
+		Length: 1
+		Facings: 8
+		Tick: 160
+		ShadowStart: 820
+	die1:
+		Start: 320
+		Length: 14
+		Facings: 1
+		Tick: 70
+		ShadowStart: 828
+	die2:
+		Start: 334
+		Length: 14
+		Facings: 1
+		Tick: 70
+		ShadowStart: 842
+	shoot:
+		Start: 348
+		Length: 6
+		Facings: 8
+		Tick: 80
+		ShadowStart: 856
+	prone-shoot:
+		Start: 396
+		Length: 6
+		Facings: 8
+		Tick: 80
+		ShadowStart: 904
+	liedown:
+		Start: 444
+		Length: 4
+		Facings: 8
+		Tick: 80
+		ShadowStart: 952
+	standup:
+		Start: 476
+		Length: 4
+		Facings: 8
+		Tick: 80
+		ShadowStart: 984
+	icon:
+		Filename: ra2|modern-factions/icons/r2dronecontrol.png
+		Offset: 0, 0
+	paradrop:
+		Start: 0
+		Length: 1
+		Facings: 8
+		Tick: 160
+		ShadowStart: 508
+	cheer:
+		Start: 0
+		Length: 1
+		Facings: 8
+		Tick: 160
+		ShadowStart: 508
+	die4:
+		Start: 320
+		Length: 14
+		Facings: 1
+		Tick: 70
+		ShadowStart: 828
+	die5:
+		Start: 320
+		Length: 14
+		Facings: 1
+		Tick: 70
+		ShadowStart: 828
+	die6:
+		Start: 320
+		Length: 14
+		Facings: 1
+		Tick: 70
+		ShadowStart: 828
+	deploy:
+		Start: 0
+		Length: 1
+		Facings: 8
+		Tick: 160
+		ShadowStart: 508
+web-yuri:
+	mindcontrol:
+		Filename: yuricntl.shp
+		Length: *
+		Offset: 0, -24, 24
+	Defaults:
+		Filename: ra2|modern-factions/infantry/r2cnnetwork.shp
+		Offset: 0, 0, 16
+	stand:
+		Start: 0
+		Length: 1
+		Facings: 8
+		Tick: 160
+		ShadowStart: 508
+	run:
+		Start: 8
+		Length: 8
+		Facings: 8
+		Tick: 90
+		ShadowStart: 516
+	idle1:
+		Start: 72
+		Length: 12
+		Facings: 8
+		Tick: 120
+		ShadowStart: 580
+	idle2:
+		Start: 168
+		Length: 12
+		Facings: 8
+		Tick: 120
+		ShadowStart: 676
+	prone-run:
+		Start: 264
+		Length: 6
+		Facings: 8
+		Tick: 110
+		ShadowStart: 772
+	prone-stand:
+		Start: 312
+		Length: 1
+		Facings: 8
+		Tick: 160
+		ShadowStart: 820
+	die1:
+		Start: 320
+		Length: 14
+		Facings: 1
+		Tick: 70
+		ShadowStart: 828
+	die2:
+		Start: 334
+		Length: 14
+		Facings: 1
+		Tick: 70
+		ShadowStart: 842
+	shoot:
+		Start: 348
+		Length: 6
+		Facings: 8
+		Tick: 80
+		ShadowStart: 856
+	prone-shoot:
+		Start: 396
+		Length: 6
+		Facings: 8
+		Tick: 80
+		ShadowStart: 904
+	liedown:
+		Start: 444
+		Length: 4
+		Facings: 8
+		Tick: 80
+		ShadowStart: 952
+	standup:
+		Start: 476
+		Length: 4
+		Facings: 8
+		Tick: 80
+		ShadowStart: 984
+	icon:
+		Filename: ra2|modern-factions/icons/r2cnnetwork.png
+		Offset: 0, 0
+	paradrop:
+		Start: 0
+		Length: 1
+		Facings: 8
+		Tick: 160
+		ShadowStart: 508
+	cheer:
+		Start: 0
+		Length: 1
+		Facings: 8
+		Tick: 160
+		ShadowStart: 508
+	die4:
+		Start: 320
+		Length: 14
+		Facings: 1
+		Tick: 70
+		ShadowStart: 828
+	die5:
+		Start: 320
+		Length: 14
+		Facings: 1
+		Tick: 70
+		ShadowStart: 828
+	die6:
+		Start: 320
+		Length: 14
+		Facings: 1
+		Tick: 70
+		ShadowStart: 828
+	deploy:
+		Start: 0
+		Length: 1
+		Facings: 8
+		Tick: 160
+		ShadowStart: 508
+	deployed:
+		Start: 0
+		Length: 1
+		Facings: 8
+		Tick: 160
+		ShadowStart: 508
+	undeploy:
+		Start: 0
+		Length: 1
+		Facings: 8
+		Tick: 160
+		ShadowStart: 508
+	muzzle:
+		Start: 0
+		Length: 1
+		Facings: 8
+		Tick: 160
+		ShadowStart: 508
+web-yuripr:
+	mindcontrol:
+		Filename: yuricntl.shp
+		Length: *
+		Offset: 0, -24, 24
+	Defaults:
+		Filename: ra2|modern-factions/infantry/r2cnnetwork.shp
+		Offset: 0, 0, 16
+	stand:
+		Start: 0
+		Length: 1
+		Facings: 8
+		Tick: 160
+		ShadowStart: 508
+	run:
+		Start: 8
+		Length: 8
+		Facings: 8
+		Tick: 90
+		ShadowStart: 516
+	idle1:
+		Start: 72
+		Length: 12
+		Facings: 8
+		Tick: 120
+		ShadowStart: 580
+	idle2:
+		Start: 168
+		Length: 12
+		Facings: 8
+		Tick: 120
+		ShadowStart: 676
+	prone-run:
+		Start: 264
+		Length: 6
+		Facings: 8
+		Tick: 110
+		ShadowStart: 772
+	prone-stand:
+		Start: 312
+		Length: 1
+		Facings: 8
+		Tick: 160
+		ShadowStart: 820
+	die1:
+		Start: 320
+		Length: 14
+		Facings: 1
+		Tick: 70
+		ShadowStart: 828
+	die2:
+		Start: 334
+		Length: 14
+		Facings: 1
+		Tick: 70
+		ShadowStart: 842
+	shoot:
+		Start: 348
+		Length: 6
+		Facings: 8
+		Tick: 80
+		ShadowStart: 856
+	prone-shoot:
+		Start: 396
+		Length: 6
+		Facings: 8
+		Tick: 80
+		ShadowStart: 904
+	liedown:
+		Start: 444
+		Length: 4
+		Facings: 8
+		Tick: 80
+		ShadowStart: 952
+	standup:
+		Start: 476
+		Length: 4
+		Facings: 8
+		Tick: 80
+		ShadowStart: 984
+	icon:
+		Filename: ra2|modern-factions/icons/r2cnnetwork.png
+		Offset: 0, 0
+	paradrop:
+		Start: 0
+		Length: 1
+		Facings: 8
+		Tick: 160
+		ShadowStart: 508
+	cheer:
+		Start: 0
+		Length: 1
+		Facings: 8
+		Tick: 160
+		ShadowStart: 508
+	die4:
+		Start: 320
+		Length: 14
+		Facings: 1
+		Tick: 70
+		ShadowStart: 828
+	die5:
+		Start: 320
+		Length: 14
+		Facings: 1
+		Tick: 70
+		ShadowStart: 828
+	die6:
+		Start: 320
+		Length: 14
+		Facings: 1
+		Tick: 70
+		ShadowStart: 828
+	deploy:
+		Start: 0
+		Length: 1
+		Facings: 8
+		Tick: 160
+		ShadowStart: 508
+	deployed:
+		Start: 0
+		Length: 1
+		Facings: 8
+		Tick: 160
+		ShadowStart: 508
+	undeploy:
+		Start: 0
+		Length: 1
+		Facings: 8
+		Tick: 160
+		ShadowStart: 508
+	muzzle:
+		Start: 0
+		Length: 1
+		Facings: 8
+		Tick: 160
+		ShadowStart: 508
+web-mtnk:
+	mindcontrol:
+		Filename: yuricntl.shp
+		Length: *
+		Offset: 0, -24, 24
+	muzzle:
+		Filename: gunfire.shp
+		Length: *
+	muzzle-2:
+		Filename: vtmuzzle.shp
+		Length: *
+	idle:
+		Filename: ra2|modern-factions/vehicles/r2m1a2s.shp
+		Facings: 32
+		ShadowStart: 32
+		Offset: 0, 0, 19
+	turret:
+		Filename: ra2|modern-factions/vehicles/r2m1a2s.shp
+		Start: 64
+		Facings: 32
+		ShadowStart: 96
+		Offset: 0, 0, 19
+	icon:
+		Filename: ra2|modern-factions/icons/r2m1a2s.png
+		Offset: 0, 0
+web-tnkd:
+	mindcontrol:
+		Filename: yuricntl.shp
+		Length: *
+		Offset: 0, -24, 24
+	muzzle:
+		Filename: gunfire.shp
+		Length: *
+	muzzle-2:
+		Filename: vtmuzzle.shp
+		Length: *
+	idle:
+		Filename: ra2|modern-factions/vehicles/r2qilin.shp
+		Facings: 32
+		ShadowStart: 32
+		Offset: 0, 0, 17
+	turret:
+		Filename: ra2|modern-factions/vehicles/r2qilin.shp
+		Start: 64
+		Facings: 32
+		ShadowStart: 96
+		Offset: 0, 0, 17
+	icon:
+		Filename: ra2|modern-factions/icons/r2qilin.png
+		Offset: 0, 0
+web-fv:
+	mindcontrol:
+		Filename: yuricntl.shp
+		Length: *
+		Offset: 0, -24, 24
+	muzzle:
+		Filename: gunfire.shp
+		Length: *
+	muzzle-2:
+		Filename: vtmuzzle.shp
+		Length: *
+	idle:
+		Filename: ra2|modern-factions/vehicles/r2aras.shp
+		Facings: 32
+		ShadowStart: 32
+		Offset: 0, 0, 13
+	turret:
+		Filename: ra2|modern-factions/vehicles/r2aras.shp
+		Start: 64
+		Facings: 32
+		ShadowStart: 96
+		Offset: 0, 0, 13
+	icon:
+		Filename: ra2|modern-factions/icons/r2aras.png
+		Offset: 0, 0
+web-sref:
+	mindcontrol:
+		Filename: yuricntl.shp
+		Length: *
+		Offset: 0, -24, 24
+	muzzle:
+		Filename: gunfire.shp
+		Length: *
+	muzzle-2:
+		Filename: vtmuzzle.shp
+		Length: *
+	idle:
+		Filename: ra2|modern-factions/vehicles/r2merkava.shp
+		Facings: 32
+		ShadowStart: 32
+		Offset: 0, 0, 18
+	turret:
+		Filename: ra2|modern-factions/vehicles/r2merkava.shp
+		Start: 64
+		Facings: 32
+		ShadowStart: 96
+		Offset: 0, 0, 18
+	icon:
+		Filename: ra2|modern-factions/icons/r2merkava.png
+		Offset: 0, 0
+web-mgtk:
+	mindcontrol:
+		Filename: yuricntl.shp
+		Length: *
+		Offset: 0, -24, 24
+	muzzle:
+		Filename: gunfire.shp
+		Length: *
+	muzzle-2:
+		Filename: vtmuzzle.shp
+		Length: *
+	idle:
+		Filename: ra2|modern-factions/vehicles/r2zbd.shp
+		Facings: 32
+		ShadowStart: 32
+		Offset: 0, 0, 14
+	turret:
+		Filename: ra2|modern-factions/vehicles/r2zbd.shp
+		Start: 64
+		Facings: 32
+		ShadowStart: 96
+		Offset: 0, 0, 14
+	icon:
+		Filename: ra2|modern-factions/icons/r2zbd.png
+		Offset: 0, 0
+web-htnk:
+	mindcontrol:
+		Filename: yuricntl.shp
+		Length: *
+		Offset: 0, -24, 24
+	muzzle:
+		Filename: gunfire.shp
+		Length: *
+	muzzle-2:
+		Filename: vtmuzzle.shp
+		Length: *
+	idle:
+		Filename: ra2|modern-factions/vehicles/r2karrar.shp
+		Facings: 32
+		ShadowStart: 32
+		Offset: 0, 0, 16
+	turret:
+		Filename: ra2|modern-factions/vehicles/r2karrar.shp
+		Start: 64
+		Facings: 32
+		ShadowStart: 96
+		Offset: 0, 0, 16
+	icon:
+		Filename: ra2|modern-factions/icons/r2karrar.png
+		Offset: 0, 0
+web-apoc:
+	mindcontrol:
+		Filename: yuricntl.shp
+		Length: *
+		Offset: 0, -24, 24
+	muzzle:
+		Filename: gunfire.shp
+		Length: *
+	muzzle-2:
+		Filename: vtmuzzle.shp
+		Length: *
+	idle:
+		Filename: ra2|modern-factions/vehicles/r2karrar.shp
+		Facings: 32
+		ShadowStart: 32
+		Offset: 0, 0, 16
+	turret:
+		Filename: ra2|modern-factions/vehicles/r2karrar.shp
+		Start: 64
+		Facings: 32
+		ShadowStart: 96
+		Offset: 0, 0, 16
+	icon:
+		Filename: ra2|modern-factions/icons/r2karrar.png
+		Offset: 0, 0
+web-ttnk:
+	mindcontrol:
+		Filename: yuricntl.shp
+		Length: *
+		Offset: 0, -24, 24
+	muzzle:
+		Filename: gunfire.shp
+		Length: *
+	muzzle-2:
+		Filename: vtmuzzle.shp
+		Length: *
+	idle:
+		Filename: ra2|modern-factions/vehicles/r2qilin.shp
+		Facings: 32
+		ShadowStart: 32
+		Offset: 0, 0, 17
+	turret:
+		Filename: ra2|modern-factions/vehicles/r2qilin.shp
+		Start: 64
+		Facings: 32
+		ShadowStart: 96
+		Offset: 0, 0, 17
+	icon:
+		Filename: ra2|modern-factions/icons/r2qilin.png
+		Offset: 0, 0
+web-dtruck:
+	mindcontrol:
+		Filename: yuricntl.shp
+		Length: *
+		Offset: 0, -24, 24
+	muzzle:
+		Filename: gunfire.shp
+		Length: *
+	muzzle-2:
+		Filename: vtmuzzle.shp
+		Length: *
+	idle:
+		Filename: ra2|modern-factions/vehicles/r2ymlr.shp
+		Facings: 32
+		ShadowStart: 32
+		Offset: 0, 0, 13
+	empty:
+		Filename: ra2|modern-factions/vehicles/r2ymlr.shp
+		Start: 64
+		Facings: 32
+		ShadowStart: 96
+		Offset: 0, 0, 13
+	muzzle-launch:
+		Filename: sgrysmk1.shp
+		Length: *
+	icon:
+		Filename: ra2|modern-factions/icons/r2ymlr.png
+		Offset: 0, 0
+web-dron:
+	mindcontrol:
+		Filename: yuricntl.shp
+		Length: *
+		Offset: 0, -24, 24
+	muzzle:
+		Filename: gunfire.shp
+		Length: *
+	muzzle-2:
+		Filename: vtmuzzle.shp
+		Length: *
+	idle:
+		Filename: ra2|modern-factions/vehicles/r2lynx.shp
+		Facings: 32
+		ShadowStart: 32
+		Offset: 0, 0, 13
+	turret:
+		Filename: ra2|modern-factions/vehicles/r2lynx.shp
+		Start: 64
+		Facings: 32
+		ShadowStart: 96
+		Offset: 0, 0, 13
+	icon:
+		Filename: ra2|modern-factions/icons/r2lynx.png
+		Offset: 0, 0
+	stand:
+		Filename: ra2|modern-factions/vehicles/r2lynx.shp
+		Facings: 32
+		ShadowStart: 32
+		Offset: 0, 0, 13
+	run:
+		Filename: yuricntl.shp
+		Length: *
+		Offset: 0, -24, 24
+	jump:
+		Filename: ra2|modern-factions/vehicles/r2lynx.shp
+		Facings: 32
+		ShadowStart: 32
+		Offset: 0, 0, 13
+	shoot:
+		Filename: yuricntl.shp
+		Length: *
+		Offset: 0, -24, 24
+web-dest:
+	mindcontrol:
+		Filename: yuricntl.shp
+		Length: *
+		Offset: 0, -24, 24
+	muzzle:
+		Filename: gunfire.shp
+		Length: *
+	muzzle-2:
+		Filename: vtmuzzle.shp
+		Length: *
+	idle:
+		Filename: ra2|modern-factions/vehicles/r2ege.shp
+		Facings: 32
+		ShadowStart: 32
+		Offset: 0, 0, 24
+	turret:
+		Filename: ra2|modern-factions/vehicles/r2ege.shp
+		Start: 64
+		Facings: 32
+		ShadowStart: 96
+		Offset: 0, 0, 24
+	muzzle-launch:
+		Filename: sgrysmk1.shp
+		Length: *
+	icon:
+		Filename: ra2|modern-factions/icons/r2ege.png
+		Offset: 0, 0
+web-aegis:
+	mindcontrol:
+		Filename: yuricntl.shp
+		Length: *
+		Offset: 0, -24, 24
+	muzzle:
+		Filename: gunfire.shp
+		Length: *
+	muzzle-2:
+		Filename: vtmuzzle.shp
+		Length: *
+	idle:
+		Filename: ra2|modern-factions/vehicles/r2luyang.shp
+		Facings: 32
+		ShadowStart: 32
+		Offset: 0, 0, 27
+	turret:
+		Filename: ra2|modern-factions/vehicles/r2luyang.shp
+		Start: 64
+		Facings: 32
+		ShadowStart: 96
+		Offset: 0, 0, 27
+	icon:
+		Filename: ra2|modern-factions/icons/r2luyang.png
+		Offset: 0, 0
+web-dlph:
+	mindcontrol:
+		Filename: yuricntl.shp
+		Length: *
+		Offset: 0, -24, 24
+	muzzle:
+		Filename: gunfire.shp
+		Length: *
+	muzzle-2:
+		Filename: vtmuzzle.shp
+		Length: *
+	idle:
+		Filename: ra2|modern-factions/vehicles/r2jiaolong.shp
+		Facings: 32
+		ShadowStart: 32
+		Offset: 0, 0, 25
+	icon:
+		Filename: ra2|modern-factions/icons/r2jiaolong.png
+		Offset: 0, 0
+	stand:
+		Filename: ra2|modern-factions/vehicles/r2jiaolong.shp
+		Facings: 32
+		ShadowStart: 32
+		Offset: 0, 0, 25
+	run:
+		Filename: yuricntl.shp
+		Length: *
+		Offset: 0, -24, 24
+	cheer:
+		Filename: ra2|modern-factions/vehicles/r2jiaolong.shp
+		Facings: 32
+		ShadowStart: 32
+		Offset: 0, 0, 25
+	die:
+		Filename: yuricntl.shp
+		Length: *
+		Offset: 0, -24, 24
+	shoot:
+		Filename: yuricntl.shp
+		Length: *
+		Offset: 0, -24, 24
+web-carrier:
+	mindcontrol:
+		Filename: yuricntl.shp
+		Length: *
+		Offset: 0, -24, 24
+	muzzle:
+		Filename: gunfire.shp
+		Length: *
+	muzzle-2:
+		Filename: vtmuzzle.shp
+		Length: *
+	idle:
+		Filename: ra2|modern-factions/vehicles/r2haiwang.shp
+		Facings: 32
+		ShadowStart: 32
+		Offset: 0, 0, 26
+	icon:
+		Filename: ra2|modern-factions/icons/r2haiwang.png
+		Offset: 0, 0
+web-sub:
+	mindcontrol:
+		Filename: yuricntl.shp
+		Length: *
+		Offset: 0, -24, 24
+	muzzle:
+		Filename: gunfire.shp
+		Length: *
+	muzzle-2:
+		Filename: vtmuzzle.shp
+		Length: *
+	idle:
+		Filename: ra2|modern-factions/vehicles/r2jiaolong.shp
+		Facings: 32
+		ShadowStart: 32
+		Offset: 0, 0, 25
+	icon:
+		Filename: ra2|modern-factions/icons/r2jiaolong.png
+		Offset: 0, 0
+web-hyd:
+	mindcontrol:
+		Filename: yuricntl.shp
+		Length: *
+		Offset: 0, -24, 24
+	muzzle:
+		Filename: gunfire.shp
+		Length: *
+	muzzle-2:
+		Filename: vtmuzzle.shp
+		Length: *
+	idle:
+		Filename: ra2|modern-factions/vehicles/r2ege.shp
+		Facings: 32
+		ShadowStart: 32
+		Offset: 0, 0, 24
+	turret:
+		Filename: ra2|modern-factions/vehicles/r2ege.shp
+		Start: 64
+		Facings: 32
+		ShadowStart: 96
+		Offset: 0, 0, 24
+	muzzle-launch:
+		Filename: sgrysmk1.shp
+		Length: *
+	icon:
+		Filename: ra2|modern-factions/icons/r2ege.png
+		Offset: 0, 0
+web-sqd:
+	mindcontrol:
+		Filename: yuricntl.shp
+		Length: *
+		Offset: 0, -24, 24
+	muzzle:
+		Filename: gunfire.shp
+		Length: *
+	muzzle-2:
+		Filename: vtmuzzle.shp
+		Length: *
+	idle:
+		Filename: ra2|modern-factions/vehicles/r2jiaolong.shp
+		Facings: 32
+		ShadowStart: 32
+		Offset: 0, 0, 25
+	icon:
+		Filename: ra2|modern-factions/icons/r2jiaolong.png
+		Offset: 0, 0
+	stand:
+		Filename: ra2|modern-factions/vehicles/r2jiaolong.shp
+		Facings: 32
+		ShadowStart: 32
+		Offset: 0, 0, 25
+	run:
+		Filename: yuricntl.shp
+		Length: *
+		Offset: 0, -24, 24
+	punch:
+		Filename: ra2|modern-factions/vehicles/r2jiaolong.shp
+		Facings: 32
+		ShadowStart: 32
+		Offset: 0, 0, 25
+web-shad:
+	mindcontrol:
+		Filename: yuricntl.shp
+		Length: *
+		Offset: 0, -24, 24
+	muzzle:
+		Filename: gunfire.shp
+		Length: *
+	muzzle-2:
+		Filename: vtmuzzle.shp
+		Length: *
+	idle:
+		Filename: ra2|modern-factions/vehicles/r2crane.shp
+		Length: 4
+		Tick: 40
+		Stride: 4
+		Facings: 32
+		Offset: 0, 0, 16
+	idle-still:
+		Filename: ra2|modern-factions/vehicles/r2crane.shp
+		Stride: 4
+		Facings: 32
+		Offset: 0, 0, 16
+	idle-landed:
+		Filename: ra2|modern-factions/vehicles/r2crane.shp
+		Stride: 4
+		Facings: 32
+		Offset: 0, 0, 16
+	icon:
+		Filename: ra2|modern-factions/icons/r2crane.png
+		Offset: 0, 0
+web-zep:
+	idle:
+		Filename: ra2|modern-factions/vehicles/r2cloud.shp
+		Facings: 32
+		Offset: 0, 0, 11
+	muzzle-launch:
+		Filename: sgrysmk1.shp
+		Length: *
+	icon:
+		Filename: ra2|modern-factions/icons/r2cloud.png
+		Offset: 0, 0
+web-orca:
+	mindcontrol:
+		Filename: yuricntl.shp
+		Length: *
+		Offset: 0, -24, 24
+	muzzle:
+		Filename: gunfire.shp
+		Length: *
+	muzzle-2:
+		Filename: vtmuzzle.shp
+		Length: *
+	idle:
+		Filename: ra2|modern-factions/vehicles/r2haiying.shp
+		Facings: 32
+		ShadowStart: 32
+		Offset: 0, 0, 19
+	turret:
+		Filename: ra2|modern-factions/vehicles/r2haiying.shp
+		Start: 64
+		Facings: 32
+		ShadowStart: 96
+		Offset: 0, 0, 19
+	muzzle-launch:
+		Filename: sgrysmk1.shp
+		Length: *
+	icon:
+		Filename: ra2|modern-factions/icons/r2haiying.png
+		Offset: 0, 0
+web-beag:
+	mindcontrol:
+		Filename: yuricntl.shp
+		Length: *
+		Offset: 0, -24, 24
+	muzzle:
+		Filename: gunfire.shp
+		Length: *
+	muzzle-2:
+		Filename: vtmuzzle.shp
+		Length: *
+	idle:
+		Filename: ra2|modern-factions/vehicles/r2skyspear.shp
+		Facings: 32
+		Offset: 0, 0, 14
+	muzzle-launch:
+		Filename: sgrysmk1.shp
+		Length: *
+	icon:
+		Filename: ra2|modern-factions/icons/r2skyspear.png
+		Offset: 0, 0
+web-pdplane:
+	mindcontrol:
+		Filename: yuricntl.shp
+		Length: *
+		Offset: 0, -24, 24
+	muzzle:
+		Filename: gunfire.shp
+		Length: *
+	muzzle-2:
+		Filename: vtmuzzle.shp
+		Length: *
+	idle:
+		Filename: ra2|modern-factions/vehicles/r2haiying.shp
+		Facings: 32
+		ShadowStart: 32
+		Offset: 0, 0, 19
+	turret:
+		Filename: ra2|modern-factions/vehicles/r2haiying.shp
+		Start: 64
+		Facings: 32
+		ShadowStart: 96
+		Offset: 0, 0, 19
+	muzzle-launch:
+		Filename: sgrysmk1.shp
+		Length: *
+	icon:
+		Filename: ra2|modern-factions/icons/r2haiying.png
+		Offset: 0, 0
+web-hornet:
+	mindcontrol:
+		Filename: yuricntl.shp
+		Length: *
+		Offset: 0, -24, 24
+	muzzle:
+		Filename: gunfire.shp
+		Length: *
+	muzzle-2:
+		Filename: vtmuzzle.shp
+		Length: *
+	idle:
+		Filename: ra2|modern-factions/vehicles/r2haiying.shp
+		Facings: 32
+		ShadowStart: 32
+		Offset: 0, 0, 19
+	turret:
+		Filename: ra2|modern-factions/vehicles/r2haiying.shp
+		Start: 64
+		Facings: 32
+		ShadowStart: 96
+		Offset: 0, 0, 19
+	muzzle-launch:
+		Filename: sgrysmk1.shp
+		Length: *
+	icon:
+		Filename: ra2|modern-factions/icons/r2haiying.png
+		Offset: 0, 0
+web-asw:
+	mindcontrol:
+		Filename: yuricntl.shp
+		Length: *
+		Offset: 0, -24, 24
+	muzzle:
+		Filename: gunfire.shp
+		Length: *
+	muzzle-2:
+		Filename: vtmuzzle.shp
+		Length: *
+	idle:
+		Filename: ra2|modern-factions/vehicles/r2crane.shp
+		Length: 4
+		Tick: 40
+		Stride: 4
+		Facings: 32
+		Offset: 0, 0, 16
+	idle-still:
+		Filename: ra2|modern-factions/vehicles/r2crane.shp
+		Stride: 4
+		Facings: 32
+		Offset: 0, 0, 16
+	idle-landed:
+		Filename: ra2|modern-factions/vehicles/r2crane.shp
+		Stride: 4
+		Facings: 32
+		Offset: 0, 0, 16
+	icon:
+		Filename: ra2|modern-factions/icons/r2crane.png
+		Offset: 0, 0
+web-gapill:
+	Defaults:
+		Filename: ra2|modern-factions/buildings/r2saguard.shp
+		Offset: 4, -20, 20
+	idle:
+		Start: 0
+		ShadowStart: 3
+	damaged-idle:
+		Start: 1
+		ShadowStart: 4
+	critical-idle:
+		Start: 2
+		ShadowStart: 5
+	turret:
+		Start: 6
+		Facings: 32
+		ShadowStart: 102
+	damaged-turret:
+		Start: 38
+		Facings: 32
+		ShadowStart: 102
+	critical-turret:
+		Start: 70
+		Facings: 32
+		ShadowStart: 102
+	fire:
+		Start: 134
+		Length: 2
+		Facings: 32
+		ShadowStart: 326
+		Tick: 40
+	damaged-fire:
+		Start: 198
+		Length: 2
+		Facings: 32
+		ShadowStart: 326
+		Tick: 40
+	critical-fire:
+		Start: 262
+		Length: 2
+		Facings: 32
+		ShadowStart: 326
+		Tick: 40
+	make:
+		Start: 390
+		Length: 12
+		ShadowStart: 402
+		Tick: 50
+		ZOffset: 0
+	icon:
+		Filename: ra2|modern-factions/icons/r2saguard.png
+		Offset: 0, 0
+	muzzle:
+		Start: 0
+		ShadowStart: 3
+web-nasam:
+	Defaults:
+		Filename: ra2|modern-factions/buildings/r2iraasite.shp
+		Offset: 4, -20, 20
+	idle:
+		Start: 0
+		ShadowStart: 3
+	damaged-idle:
+		Start: 1
+		ShadowStart: 4
+	critical-idle:
+		Start: 2
+		ShadowStart: 5
+	turret:
+		Start: 6
+		Facings: 32
+		ShadowStart: 102
+	damaged-turret:
+		Start: 38
+		Facings: 32
+		ShadowStart: 102
+	critical-turret:
+		Start: 70
+		Facings: 32
+		ShadowStart: 102
+	fire:
+		Start: 134
+		Length: 3
+		Facings: 32
+		ShadowStart: 422
+		Tick: 60
+	damaged-fire:
+		Start: 230
+		Length: 3
+		Facings: 32
+		ShadowStart: 422
+		Tick: 60
+	critical-fire:
+		Start: 326
+		Length: 3
+		Facings: 32
+		ShadowStart: 422
+		Tick: 60
+	make:
+		Start: 518
+		Length: 12
+		ShadowStart: 530
+		Tick: 50
+		ZOffset: 0
+	icon:
+		Filename: ra2|modern-factions/icons/r2iraasite.png
+		Offset: 0, 0
+web-naflak:
+	Defaults:
+		Filename: ra2|modern-factions/buildings/r2iraasite.shp
+		Offset: 4, -20, 20
+	idle:
+		Start: 0
+		ShadowStart: 3
+	damaged-idle:
+		Start: 1
+		ShadowStart: 4
+	critical-idle:
+		Start: 2
+		ShadowStart: 5
+	turret:
+		Start: 6
+		Facings: 32
+		ShadowStart: 102
+	damaged-turret:
+		Start: 38
+		Facings: 32
+		ShadowStart: 102
+	critical-turret:
+		Start: 70
+		Facings: 32
+		ShadowStart: 102
+	fire:
+		Start: 134
+		Length: 3
+		Facings: 32
+		ShadowStart: 422
+		Tick: 60
+	damaged-fire:
+		Start: 230
+		Length: 3
+		Facings: 32
+		ShadowStart: 422
+		Tick: 60
+	critical-fire:
+		Start: 326
+		Length: 3
+		Facings: 32
+		ShadowStart: 422
+		Tick: 60
+	make:
+		Start: 518
+		Length: 12
+		ShadowStart: 530
+		Tick: 50
+		ZOffset: 0
+	icon:
+		Filename: ra2|modern-factions/icons/r2iraasite.png
+		Offset: 0, 0
+	muzzle:
+		Start: 0
+		ShadowStart: 3
+web-tesla:
+	Defaults:
+		Filename: ra2|modern-factions/buildings/r2spectrum.shp
+		Offset: 4, -18, 18
+	idle:
+		Start: 0
+		ShadowStart: 3
+	damaged-idle:
+		Start: 1
+		ShadowStart: 4
+	critical-idle:
+		Start: 2
+		ShadowStart: 5
+	active:
+		Start: 6
+		Length: 32
+		ShadowStart: 70
+		Tick: 100
+	damaged-active:
+		Start: 38
+		Length: 32
+		ShadowStart: 70
+		Tick: 100
+	make:
+		Start: 102
+		Length: 12
+		ShadowStart: 114
+		Tick: 50
+		ZOffset: 0
+	icon:
+		Filename: ra2|modern-factions/icons/r2spectrum.png
+		Offset: 0, 0
+	idle-powered:
+		Start: 0
+		ShadowStart: 3
+	damaged-idle-powered:
+		Start: 0
+		ShadowStart: 3
+	dead:
+		Start: 0
+		ShadowStart: 3
+web-atesla:
+	Defaults:
+		Filename: ra2|modern-factions/buildings/r2spectrum.shp
+		Offset: 4, -18, 18
+	idle:
+		Start: 0
+		ShadowStart: 3
+	damaged-idle:
+		Start: 1
+		ShadowStart: 4
+	critical-idle:
+		Start: 2
+		ShadowStart: 5
+	active:
+		Start: 6
+		Length: 32
+		ShadowStart: 70
+		Tick: 100
+	damaged-active:
+		Start: 38
+		Length: 32
+		ShadowStart: 70
+		Tick: 100
+	make:
+		Start: 102
+		Length: 12
+		ShadowStart: 114
+		Tick: 50
+		ZOffset: 0
+	icon:
+		Filename: ra2|modern-factions/icons/r2spectrum.png
+		Offset: 0, 0
+	idle-normal:
+		Start: 0
+		ShadowStart: 3
+	damaged-idle-normal:
+		Start: 0
+		ShadowStart: 3
+	dead:
+		Start: 0
+		ShadowStart: 3
+web-nalasr:
+	mindcontrol:
+		Filename: yuricntl.shp
+		Length: *
+		Offset: 0, -24, 24
+	Defaults:
+		Filename: ra2|modern-factions/buildings/r2hzbunker.shp
+		Offset: 4, -20, 20
+	idle:
+		Start: 0
+		ShadowStart: 3
+	damaged-idle:
+		Start: 1
+		ShadowStart: 4
+	critical-idle:
+		Start: 2
+		ShadowStart: 5
+	fire:
+		Start: 6
+		Length: 2
+		ShadowStart: 8
+		Tick: 50
+	damaged-fire:
+		Start: 10
+		Length: 2
+		ShadowStart: 12
+		Tick: 50
+	critical-fire:
+		Start: 14
+		Length: 2
+		ShadowStart: 16
+		Tick: 50
+	make:
+		Start: 18
+		Length: 12
+		ShadowStart: 30
+		Tick: 50
+		ZOffset: 0
+	icon:
+		Filename: ra2|modern-factions/icons/r2hzbunker.png
+		Offset: 0, 0
+	muzzle:
+		Start: 0
+		ShadowStart: 3
+	turret:
+		Start: 0
+		ShadowStart: 3
+web-gtgcan:
+	Defaults:
+		Filename: ra2|modern-factions/buildings/r2bastion.shp
+		Offset: 4, -16, 16
+	idle:
+		Start: 0
+		ShadowStart: 3
+	damaged-idle:
+		Start: 1
+		ShadowStart: 4
+	critical-idle:
+		Start: 2
+		ShadowStart: 5
+	turret:
+		Start: 6
+		Facings: 32
+		ShadowStart: 102
+	damaged-turret:
+		Start: 38
+		Facings: 32
+		ShadowStart: 102
+	critical-turret:
+		Start: 70
+		Facings: 32
+		ShadowStart: 102
+	fire:
+		Start: 134
+		Length: 4
+		Facings: 32
+		ShadowStart: 518
+		Tick: 40
+	damaged-fire:
+		Start: 262
+		Length: 4
+		Facings: 32
+		ShadowStart: 518
+		Tick: 40
+	critical-fire:
+		Start: 390
+		Length: 4
+		Facings: 32
+		ShadowStart: 518
+		Tick: 40
+	make:
+		Start: 646
+		Length: 12
+		ShadowStart: 658
+		Tick: 50
+		ZOffset: 0
+	icon:
+		Filename: ra2|modern-factions/icons/r2bastion.png
+		Offset: 0, 0
+	muzzle:
+		Start: 0
+		ShadowStart: 3

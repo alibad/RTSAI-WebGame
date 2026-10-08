@@ -249,7 +249,8 @@ namespace OpenRA.WebSim
 				if (body.IsTraitEnabled())
 					return body.DefaultAnimation;
 
-			var infantry = a.TraitOrDefault<OpenRA.Mods.Common.Traits.Render.WithInfantryBody>();
+			// GIs/desolators have separate conditional bodies for deployed and mobile states.
+			var infantry = a.TraitsImplementing<OpenRA.Mods.Common.Traits.Render.WithInfantryBody>().FirstOrDefault(body => body.IsTraitEnabled());
 			return infantry != null ? (Animation)InfantryAnimationField.GetValue(infantry) : null;
 		}
 

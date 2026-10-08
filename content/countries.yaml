@@ -1,0 +1,983 @@
+^BaseWorld:
+	Faction@random:
+		RandomFactionMembers: america, germany, england, france, korea, cuba, libya, iraq, russia, china, iran, turkey, saudi, israel, yemen, hezbollah
+	Faction@allies:
+		Name: faction-random-allies-name
+		InternalName: random-allies
+		RandomFactionMembers: america, germany, england, france, korea, china, turkey, saudi, israel
+		Side: Randoms
+		Description: faction-random-allies-description
+	Faction@soviets:
+		Name: faction-random-soviets-name
+		InternalName: random-soviets
+		RandomFactionMembers: cuba, libya, iraq, russia, iran, yemen, hezbollah
+		Side: Randoms
+		Description: faction-random-soviets-description
+	Faction@1:
+		Name: faction-america-name
+		InternalName: america
+		Side: Allies
+		Description: faction-america-description
+	Faction@2:
+		Name: faction-germany-name
+		InternalName: germany
+		Side: Allies
+		Description: faction-germany-description
+	Faction@3:
+		Name: faction-england-name
+		InternalName: england
+		Side: Allies
+		Description: faction-england-description
+	Faction@4:
+		Name: faction-france-name
+		InternalName: france
+		Side: Allies
+		Description: faction-france-description
+	Faction@5:
+		Name: faction-korea-name
+		InternalName: korea
+		Side: Allies
+		Description: faction-korea-description
+	Faction@6:
+		Name: faction-cuba-name
+		InternalName: cuba
+		Side: Soviets
+		Description: faction-cuba-description
+	Faction@7:
+		Name: faction-libya-name
+		InternalName: libya
+		Side: Soviets
+		Description: faction-libya-description
+	Faction@8:
+		Name: faction-iraq-name
+		InternalName: iraq
+		Side: Soviets
+		Description: faction-iraq-description
+	Faction@9:
+		Name: faction-russia-name
+		InternalName: russia
+		Side: Soviets
+		Description: faction-russia-description
+World:
+	StartingUnits@amcv:
+		Class: none
+		ClassName: options-starting-units.mcv-only
+		Factions: allies, america, germany, england, france, korea
+		BaseActor: amcv
+		BaseActorFacing: 896
+	StartingUnits@lightallies:
+		Class: light
+		ClassName: options-starting-units.light
+		Factions: allies, america, germany, england, france, korea
+		BaseActor: amcv
+		BaseActorFacing: 896
+		SupportActors: dog,e1,e1
+		SupportActorsFacing: 896
+		InnerSupportRadius: 3
+		OuterSupportRadius: 5
+	StartingUnits@mediumallies:
+		Class: medium
+		ClassName: options-starting-units.medium
+		Factions: allies, america, germany, england, france, korea
+		BaseActor: amcv
+		BaseActorFacing: 896
+		SupportActors: dog,e1,e1,e1,mtnk,engineer
+		SupportActorsFacing: 896
+		InnerSupportRadius: 3
+		OuterSupportRadius: 5
+	StartingUnits@heavyallies:
+		Class: heavy
+		ClassName: options-starting-units.heavy
+		Factions: allies, america, germany, england, france, korea
+		BaseActor: amcv
+		BaseActorFacing: 896
+		SupportActors: dog,e1,e1,e1,e1,mtnk,mtnk,fv,engineer
+		SupportActorsFacing: 896
+		InnerSupportRadius: 3
+		OuterSupportRadius: 5
+	StartingUnits@smcv:
+		Class: none
+		ClassName: options-starting-units.mcv-only
+		Factions: soviets, cuba, libya, iraq, russia
+		BaseActor: smcv
+		BaseActorFacing: 896
+	StartingUnits@lightsoviets:
+		Class: light
+		ClassName: options-starting-units.light
+		Factions: soviets, cuba, libya, iraq, russia
+		BaseActor: smcv
+		BaseActorFacing: 896
+		SupportActors: dog,e2,e2,e2
+		SupportActorsFacing: 896
+		InnerSupportRadius: 3
+		OuterSupportRadius: 5
+	StartingUnits@mediumsoviets:
+		Class: medium
+		ClassName: options-starting-units.medium
+		Factions: soviets, cuba, libya, iraq, russia
+		BaseActor: smcv
+		BaseActorFacing: 896
+		SupportActors: dog,e2,e2,e2,e2,htnk,engineer
+		SupportActorsFacing: 896
+		InnerSupportRadius: 3
+		OuterSupportRadius: 5
+	StartingUnits@heavysoviets:
+		Class: heavy
+		ClassName: options-starting-units.heavy
+		Factions: soviets, cuba, libya, iraq, russia
+		BaseActor: smcv
+		BaseActorFacing: 896
+		SupportActors: dog,e2,e2,e2,e2,e2,htnk,htnk,htk,engineer
+		SupportActorsFacing: 896
+		InnerSupportRadius: 3
+		OuterSupportRadius: 5
+gacnst:
+	RenderSprites:
+		FactionImages:
+			america: cnst-saudi
+			germany: cnst-china
+			england: cnst-turkey
+			france: cnst-israel
+			korea: cnst-china
+			cuba: cnst-hezbollah
+			libya: cnst-yemen
+			iraq: cnst-iran
+			russia: cnst-iran
+nacnst:
+	RenderSprites:
+		FactionImages:
+			america: cnst-saudi
+			germany: cnst-china
+			england: cnst-turkey
+			france: cnst-israel
+			korea: cnst-china
+			cuba: cnst-hezbollah
+			libya: cnst-yemen
+			iraq: cnst-iran
+			russia: cnst-iran
+gapowr:
+	RenderSprites:
+		FactionImages:
+			america: powr-saudi
+			germany: powr-china
+			england: powr-turkey
+			france: powr-israel
+			korea: powr-china
+			cuba: powr-hezbollah
+			libya: powr-yemen
+			iraq: powr-iran
+			russia: powr-iran
+napowr:
+	RenderSprites:
+		FactionImages:
+			america: powr-saudi
+			germany: powr-china
+			england: powr-turkey
+			france: powr-israel
+			korea: powr-china
+			cuba: powr-hezbollah
+			libya: powr-yemen
+			iraq: powr-iran
+			russia: powr-iran
+garefn:
+	RenderSprites:
+		FactionImages:
+			america: refn-saudi
+			germany: refn-china
+			england: refn-turkey
+			france: refn-israel
+			korea: refn-china
+			cuba: refn-hezbollah
+			libya: refn-yemen
+			iraq: refn-iran
+			russia: refn-iran
+narefn:
+	RenderSprites:
+		FactionImages:
+			america: refn-saudi
+			germany: refn-china
+			england: refn-turkey
+			france: refn-israel
+			korea: refn-china
+			cuba: refn-hezbollah
+			libya: refn-yemen
+			iraq: refn-iran
+			russia: refn-iran
+gapile:
+	RenderSprites:
+		FactionImages:
+			america: barr-saudi
+			germany: barr-china
+			england: barr-turkey
+			france: barr-israel
+			korea: barr-china
+			cuba: barr-hezbollah
+			libya: barr-yemen
+			iraq: barr-iran
+			russia: barr-iran
+nahand:
+	RenderSprites:
+		FactionImages:
+			america: barr-saudi
+			germany: barr-china
+			england: barr-turkey
+			france: barr-israel
+			korea: barr-china
+			cuba: barr-hezbollah
+			libya: barr-yemen
+			iraq: barr-iran
+			russia: barr-iran
+gaweap:
+	RenderSprites:
+		FactionImages:
+			america: weap-saudi
+			germany: weap-china
+			england: weap-turkey
+			france: weap-israel
+			korea: weap-china
+			cuba: weap-hezbollah
+			libya: weap-yemen
+			iraq: weap-iran
+			russia: weap-iran
+naweap:
+	RenderSprites:
+		FactionImages:
+			america: weap-saudi
+			germany: weap-china
+			england: weap-turkey
+			france: weap-israel
+			korea: weap-china
+			cuba: weap-hezbollah
+			libya: weap-yemen
+			iraq: weap-iran
+			russia: weap-iran
+naradr:
+	RenderSprites:
+		FactionImages:
+			america: radr-saudi
+			germany: radr-china
+			england: radr-turkey
+			france: radr-israel
+			korea: radr-china
+			cuba: radr-hezbollah
+			libya: radr-yemen
+			iraq: radr-iran
+			russia: radr-iran
+gaairc:
+	RenderSprites:
+		FactionImages:
+			america: airf-saudi
+			germany: airf-china
+			england: airf-turkey
+			france: airf-israel
+			korea: airf-china
+			cuba: airf-hezbollah
+			libya: airf-yemen
+			iraq: airf-iran
+			russia: airf-iran
+gayard:
+	RenderSprites:
+		FactionImages:
+			america: yard-saudi
+			germany: yard-china
+			england: yard-turkey
+			france: yard-israel
+			korea: yard-china
+			cuba: yard-hezbollah
+			libya: yard-yemen
+			iraq: yard-iran
+			russia: yard-iran
+nayard:
+	RenderSprites:
+		FactionImages:
+			america: yard-saudi
+			germany: yard-china
+			england: yard-turkey
+			france: yard-israel
+			korea: yard-china
+			cuba: yard-hezbollah
+			libya: yard-yemen
+			iraq: yard-iran
+			russia: yard-iran
+gadept:
+	RenderSprites:
+		FactionImages:
+			america: dept-saudi
+			germany: dept-china
+			england: dept-turkey
+			france: dept-israel
+			korea: dept-china
+			cuba: dept-hezbollah
+			libya: dept-yemen
+			iraq: dept-iran
+			russia: dept-iran
+nadept:
+	RenderSprites:
+		FactionImages:
+			america: dept-saudi
+			germany: dept-china
+			england: dept-turkey
+			france: dept-israel
+			korea: dept-china
+			cuba: dept-hezbollah
+			libya: dept-yemen
+			iraq: dept-iran
+			russia: dept-iran
+gatech:
+	RenderSprites:
+		FactionImages:
+			america: tech-saudi
+			germany: tech-china
+			england: tech-turkey
+			france: tech-israel
+			korea: tech-china
+			cuba: tech-hezbollah
+			libya: tech-yemen
+			iraq: tech-iran
+			russia: tech-iran
+natech:
+	RenderSprites:
+		FactionImages:
+			america: tech-saudi
+			germany: tech-china
+			england: tech-turkey
+			france: tech-israel
+			korea: tech-china
+			cuba: tech-hezbollah
+			libya: tech-yemen
+			iraq: tech-iran
+			russia: tech-iran
+gacsph:
+	RenderSprites:
+		FactionImages:
+			america: sw1-saudi
+			germany: sw1-china
+			england: sw1-turkey
+			france: sw1-israel
+			korea: sw1-china
+			cuba: sw1-hezbollah
+			libya: sw1-yemen
+			iraq: sw1-iran
+			russia: sw1-iran
+nairon:
+	RenderSprites:
+		FactionImages:
+			america: sw2-saudi
+			germany: sw2-china
+			england: sw2-turkey
+			france: sw2-israel
+			korea: sw2-china
+			cuba: sw2-hezbollah
+			libya: sw2-yemen
+			iraq: sw2-iran
+			russia: sw2-iran
+gawall:
+	RenderSprites:
+		FactionImages:
+			america: wall-saudi
+			germany: wall-china
+			england: wall-turkey
+			france: wall-israel
+			korea: wall-china
+			cuba: wall-hezbollah
+			libya: wall-yemen
+			iraq: wall-iran
+			russia: wall-iran
+nawall:
+	RenderSprites:
+		FactionImages:
+			america: wall-saudi
+			germany: wall-china
+			england: wall-turkey
+			france: wall-israel
+			korea: wall-china
+			cuba: wall-hezbollah
+			libya: wall-yemen
+			iraq: wall-iran
+			russia: wall-iran
+nanrct:
+	RenderSprites:
+		FactionImages:
+			america: hpwr-saudi
+			germany: hpwr-china
+			england: hpwr-turkey
+			france: hpwr-israel
+			korea: hpwr-china
+			cuba: hpwr-hezbollah
+			libya: hpwr-yemen
+			iraq: hpwr-iran
+			russia: hpwr-iran
+amcv:
+	RenderSprites:
+		FactionImages:
+			america: unit-mcv-saudi
+			germany: unit-mcv-china
+			england: unit-mcv-turkey
+			france: unit-mcv-israel
+			korea: unit-mcv-china
+			cuba: unit-mcv-hezbollah
+			libya: unit-mcv-yemen
+			iraq: unit-mcv-iran
+			russia: unit-mcv-iran
+smcv:
+	RenderSprites:
+		FactionImages:
+			america: unit-mcv-saudi
+			germany: unit-mcv-china
+			england: unit-mcv-turkey
+			france: unit-mcv-israel
+			korea: unit-mcv-china
+			cuba: unit-mcv-hezbollah
+			libya: unit-mcv-yemen
+			iraq: unit-mcv-iran
+			russia: unit-mcv-iran
+cmin:
+	RenderSprites:
+		FactionImages:
+			america: unit-harv-saudi
+			germany: unit-harv-china
+			england: unit-harv-turkey
+			france: unit-harv-israel
+			korea: unit-harv-china
+			cuba: unit-harv-hezbollah
+			libya: unit-harv-yemen
+			iraq: unit-harv-iran
+			russia: unit-harv-iran
+harv:
+	RenderSprites:
+		FactionImages:
+			america: unit-harv-saudi
+			germany: unit-harv-china
+			england: unit-harv-turkey
+			france: unit-harv-israel
+			korea: unit-harv-china
+			cuba: unit-harv-hezbollah
+			libya: unit-harv-yemen
+			iraq: unit-harv-iran
+			russia: unit-harv-iran
+htk:
+	RenderSprites:
+		FactionImages:
+			america: unit-htk-saudi
+			germany: unit-htk-china
+			england: unit-htk-turkey
+			france: unit-htk-israel
+			korea: unit-htk-china
+			cuba: unit-htk-hezbollah
+			libya: unit-htk-yemen
+			iraq: unit-htk-iran
+			russia: unit-htk-iran
+sapc:
+	RenderSprites:
+		FactionImages:
+			america: unit-sapc-saudi
+			germany: unit-sapc-china
+			england: unit-sapc-turkey
+			france: unit-sapc-israel
+			korea: unit-sapc-china
+			cuba: unit-sapc-hezbollah
+			libya: unit-sapc-yemen
+			iraq: unit-sapc-iran
+			russia: unit-sapc-iran
+lcrf:
+	RenderSprites:
+		FactionImages:
+			america: unit-lcrf-saudi
+			germany: unit-lcrf-china
+			england: unit-lcrf-turkey
+			france: unit-lcrf-israel
+			korea: unit-lcrf-china
+			cuba: unit-lcrf-hezbollah
+			libya: unit-lcrf-yemen
+			iraq: unit-lcrf-iran
+			russia: unit-lcrf-iran
+spy:
+	RenderSprites:
+		FactionImages:
+			america: unit-spy-saudi
+			germany: unit-spy-china
+			england: unit-spy-turkey
+			france: unit-spy-israel
+			korea: unit-spy-china
+			cuba: unit-spy-hezbollah
+			libya: unit-spy-yemen
+			iraq: unit-spy-iran
+			russia: unit-spy-iran
+dog:
+	RenderSprites:
+		FactionImages:
+			america: unit-dog-saudi
+			germany: unit-dog-china
+			england: unit-dog-turkey
+			france: unit-dog-israel
+			korea: unit-dog-china
+			cuba: unit-dog-hezbollah
+			libya: unit-dog-yemen
+			iraq: unit-dog-iran
+			russia: unit-dog-iran
+engineer:
+	RenderSprites:
+		FactionImages:
+			america: unit-engineer-saudi
+			germany: unit-engineer-china
+			england: unit-engineer-turkey
+			france: unit-engineer-israel
+			korea: unit-engineer-china
+			cuba: unit-engineer-hezbollah
+			libya: unit-engineer-yemen
+			iraq: unit-engineer-iran
+			russia: unit-engineer-iran
+r2kunlun:
+	RenderSprites:
+		FactionImages:
+			america: r2kunlun
+			germany: r2kunlun
+			england: r2kunlun
+			france: r2kunlun
+			korea: r2kunlun
+			cuba: r2kunlun
+			libya: r2kunlun
+			iraq: r2kunlun
+			russia: r2kunlun
+gapurifier:
+	RenderSprites:
+		FactionImages:
+			america: purifier-saudi
+			germany: purifier-china
+			england: purifier-turkey
+			france: purifier-israel
+			korea: purifier-china
+			cuba: purifier-hezbollah
+			libya: purifier-yemen
+			iraq: purifier-iran
+			russia: purifier-iran
+e1:
+	RenderSprites:
+		Image: web-e1
+		PlayerPalette: r2cnrifle-glb-player
+	WithDeathAnimation@normal:
+		DeathSequencePalette: r2cnrifle-glb-player
+		DeathPaletteIsPlayerPalette: true
+	TakeCover:
+		ProneSequencePrefix: prone-
+e2:
+	RenderSprites:
+		Image: web-e2
+		PlayerPalette: r2basij-glb-player
+	WithDeathAnimation@normal:
+		DeathSequencePalette: r2basij-glb-player
+		DeathPaletteIsPlayerPalette: true
+	TakeCover:
+		ProneSequencePrefix: prone-
+snipe:
+	RenderSprites:
+		Image: web-snipe
+		PlayerPalette: r2wadighost-glb-player
+	WithDeathAnimation@normal:
+		DeathSequencePalette: r2wadighost-glb-player
+		DeathPaletteIsPlayerPalette: true
+	TakeCover:
+		ProneSequencePrefix: prone-
+ghost:
+	RenderSprites:
+		Image: web-ghost
+		PlayerPalette: r2ilrifle-glb-player
+	WithDeathAnimation@normal:
+		DeathSequencePalette: r2ilrifle-glb-player
+		DeathPaletteIsPlayerPalette: true
+ccomand:
+	RenderSprites:
+		Image: web-ccomand
+		PlayerPalette: r2ilrifle-glb-player
+	WithDeathAnimation@normal:
+		DeathSequencePalette: r2ilrifle-glb-player
+		DeathPaletteIsPlayerPalette: true
+	TakeCover:
+		ProneSequencePrefix: prone-
+ptroop:
+	RenderSprites:
+		Image: web-ptroop
+		PlayerPalette: r2falcon-glb-player
+	WithDeathAnimation@normal:
+		DeathSequencePalette: r2falcon-glb-player
+		DeathPaletteIsPlayerPalette: true
+	TakeCover:
+		ProneSequencePrefix: prone-
+tany:
+	RenderSprites:
+		Image: web-tany
+		PlayerPalette: r2ilrifle-glb-player
+	WithDeathAnimation@normal:
+		DeathSequencePalette: r2ilrifle-glb-player
+		DeathPaletteIsPlayerPalette: true
+jumpjet:
+	RenderSprites:
+		Image: web-jumpjet
+		PlayerPalette: r2falcon-glb-player
+cleg:
+	RenderSprites:
+		Image: web-cleg
+		PlayerPalette: r2cnnetwork-glb-player
+	WithDeathAnimation@normal:
+		DeathSequencePalette: r2cnnetwork-glb-player
+		DeathPaletteIsPlayerPalette: true
+flakt:
+	RenderSprites:
+		Image: web-flakt
+		PlayerPalette: r2yrpg-glb-player
+	WithDeathAnimation@normal:
+		DeathSequencePalette: r2yrpg-glb-player
+		DeathPaletteIsPlayerPalette: true
+	TakeCover:
+		ProneSequencePrefix: prone-
+shk:
+	RenderSprites:
+		Image: web-shk
+		PlayerPalette: r2cnportable-glb-player
+	WithDeathAnimation@normal:
+		DeathSequencePalette: r2cnportable-glb-player
+		DeathPaletteIsPlayerPalette: true
+	TakeCover:
+		ProneSequencePrefix: prone-
+terror:
+	RenderSprites:
+		Image: web-terror
+		PlayerPalette: r2hzrifle-glb-player
+	WithDeathAnimation@normal:
+		DeathSequencePalette: r2hzrifle-glb-player
+		DeathPaletteIsPlayerPalette: true
+deso:
+	RenderSprites:
+		Image: web-deso
+		PlayerPalette: r2hzat-glb-player
+	WithDeathAnimation@normal:
+		DeathSequencePalette: r2hzat-glb-player
+		DeathPaletteIsPlayerPalette: true
+	TakeCover:
+		ProneSequencePrefix: prone-
+ivan:
+	RenderSprites:
+		Image: web-ivan
+		PlayerPalette: r2dronecontrol-glb-player
+	WithDeathAnimation@normal:
+		DeathSequencePalette: r2dronecontrol-glb-player
+		DeathPaletteIsPlayerPalette: true
+	TakeCover:
+		ProneSequencePrefix: prone-
+civan:
+	RenderSprites:
+		Image: web-civan
+		PlayerPalette: r2dronecontrol-glb-player
+	WithDeathAnimation@normal:
+		DeathSequencePalette: r2dronecontrol-glb-player
+		DeathPaletteIsPlayerPalette: true
+	TakeCover:
+		ProneSequencePrefix: prone-
+yuri:
+	RenderSprites:
+		Image: web-yuri
+		PlayerPalette: r2cnnetwork-glb-player
+	WithDeathAnimation@normal:
+		DeathSequencePalette: r2cnnetwork-glb-player
+		DeathPaletteIsPlayerPalette: true
+	TakeCover:
+		ProneSequencePrefix: prone-
+yuripr:
+	RenderSprites:
+		Image: web-yuripr
+		PlayerPalette: r2cnnetwork-glb-player
+	WithDeathAnimation@normal:
+		DeathSequencePalette: r2cnnetwork-glb-player
+		DeathPaletteIsPlayerPalette: true
+	TakeCover:
+		ProneSequencePrefix: prone-
+mtnk:
+	RenderSprites:
+		Image: web-mtnk
+		PlayerPalette: r2prerender-saudiplayer
+	WithVoxelBody:
+		RequiresCondition: false
+	WithVoxelTurret:
+		RequiresCondition: false
+	WithVoxelBarrel:
+		RequiresCondition: false
+	BodyOrientation:
+		QuantizedFacings: 32
+	WithFacingSpriteBody:
+	WithSpriteTurret:
+tnkd:
+	RenderSprites:
+		Image: web-tnkd
+		PlayerPalette: r2prerender-chinaplayer
+	WithVoxelBody:
+		RequiresCondition: false
+	BodyOrientation:
+		QuantizedFacings: 32
+	WithFacingSpriteBody:
+fv:
+	RenderSprites:
+		Image: web-fv
+		PlayerPalette: r2prerender-turkeyplayer
+	WithVoxelBody:
+		RequiresCondition: false
+	WithVoxelTurret@default:
+		RequiresCondition: false
+	WithVoxelTurret@mg:
+		RequiresCondition: false
+	WithVoxelTurret@engineer:
+		RequiresCondition: false
+	WithVoxelTurret@hitech:
+		RequiresCondition: false
+	BodyOrientation:
+		QuantizedFacings: 32
+	WithFacingSpriteBody:
+	WithSpriteTurret:
+sref:
+	RenderSprites:
+		Image: web-sref
+		PlayerPalette: r2prerender-israelplayer
+	WithVoxelTurret:
+		RequiresCondition: false
+	WithVoxelTurret@stage1:
+		RequiresCondition: false
+	WithVoxelTurret@stage2:
+		RequiresCondition: false
+	WithVoxelTurret@stage3:
+		RequiresCondition: false
+	WithVoxelBody:
+		RequiresCondition: false
+	BodyOrientation:
+		QuantizedFacings: 32
+	WithFacingSpriteBody:
+	WithSpriteTurret:
+mgtk:
+	RenderSprites:
+		Image: web-mgtk
+		PlayerPalette: r2prerender-chinaplayer
+	WithVoxelBody:
+		RequiresCondition: false
+	BodyOrientation:
+		QuantizedFacings: 32
+	WithFacingSpriteBody:
+htnk:
+	RenderSprites:
+		Image: web-htnk
+		PlayerPalette: r2prerender-iranplayer
+	WithVoxelBody:
+		RequiresCondition: false
+	WithVoxelTurret:
+		RequiresCondition: false
+	WithVoxelBarrel:
+		RequiresCondition: false
+	BodyOrientation:
+		QuantizedFacings: 32
+	WithFacingSpriteBody:
+	WithSpriteTurret:
+apoc:
+	RenderSprites:
+		Image: web-apoc
+		PlayerPalette: r2prerender-iranplayer
+	WithVoxelBody:
+		RequiresCondition: false
+	WithVoxelTurret:
+		RequiresCondition: false
+	WithVoxelBarrel:
+		RequiresCondition: false
+	BodyOrientation:
+		QuantizedFacings: 32
+	WithFacingSpriteBody:
+	WithSpriteTurret:
+ttnk:
+	RenderSprites:
+		Image: web-ttnk
+		PlayerPalette: r2prerender-chinaplayer
+	WithVoxelBody:
+		RequiresCondition: false
+	WithVoxelTurret:
+		RequiresCondition: false
+	BodyOrientation:
+		QuantizedFacings: 32
+	WithFacingSpriteBody:
+	WithSpriteTurret:
+dtruck:
+	RenderSprites:
+		Image: web-dtruck
+		PlayerPalette: r2prerender-yemenplayer
+	WithVoxelBody:
+		RequiresCondition: false
+	BodyOrientation:
+		QuantizedFacings: 32
+	WithFacingSpriteBody:
+dron:
+	RenderSprites:
+		Image: web-dron
+		PlayerPalette: r2prerender-chinaplayer
+dest:
+	RenderSprites:
+		Image: web-dest
+		PlayerPalette: r2prerender-turkeyplayer
+	WithVoxelBody@FULL:
+		RequiresCondition: false
+	WithVoxelBody@EMPTY:
+		RequiresCondition: false
+	BodyOrientation:
+		QuantizedFacings: 32
+	WithFacingSpriteBody:
+aegis:
+	RenderSprites:
+		Image: web-aegis
+		PlayerPalette: r2prerender-chinaplayer
+	WithVoxelBody:
+		RequiresCondition: false
+	BodyOrientation:
+		QuantizedFacings: 32
+	WithFacingSpriteBody:
+dlph:
+	RenderSprites:
+		Image: web-dlph
+		PlayerPalette: r2prerender-chinaplayer
+carrier:
+	RenderSprites:
+		Image: web-carrier
+		PlayerPalette: r2prerender-chinaplayer
+	WithVoxelBody:
+		RequiresCondition: false
+	BodyOrientation:
+		QuantizedFacings: 32
+	WithFacingSpriteBody:
+sub:
+	RenderSprites:
+		Image: web-sub
+		PlayerPalette: r2prerender-chinaplayer
+	WithVoxelBody:
+		RequiresCondition: false
+	BodyOrientation:
+		QuantizedFacings: 32
+	WithFacingSpriteBody:
+hyd:
+	RenderSprites:
+		Image: web-hyd
+		PlayerPalette: r2prerender-turkeyplayer
+	WithVoxelBody:
+		RequiresCondition: false
+	BodyOrientation:
+		QuantizedFacings: 32
+	WithFacingSpriteBody:
+sqd:
+	RenderSprites:
+		Image: web-sqd
+		PlayerPalette: r2prerender-chinaplayer
+shad:
+	RenderSprites:
+		Image: web-shad
+		PlayerPalette: r2prerender-chinaplayer
+	WithVoxelHelicopterBody:
+		RequiresCondition: false
+	BodyOrientation:
+		QuantizedFacings: 32
+	WithFacingSpriteBody:
+zep:
+	RenderSprites:
+		Image: web-zep
+		PlayerPalette: r2prerender-chinaplayer
+	WithVoxelBody:
+		RequiresCondition: false
+	BodyOrientation:
+		QuantizedFacings: 32
+	WithFacingSpriteBody:
+orca:
+	RenderSprites:
+		Image: web-orca
+		PlayerPalette: r2prerender-chinaplayer
+	WithVoxelBody:
+		RequiresCondition: false
+	BodyOrientation:
+		QuantizedFacings: 32
+	WithFacingSpriteBody:
+beag:
+	RenderSprites:
+		Image: web-beag
+		PlayerPalette: r2prerender-chinaplayer
+	WithVoxelBody:
+		RequiresCondition: false
+	BodyOrientation:
+		QuantizedFacings: 32
+	WithFacingSpriteBody:
+pdplane:
+	RenderSprites:
+		Image: web-pdplane
+		PlayerPalette: r2prerender-chinaplayer
+	WithVoxelBody:
+		RequiresCondition: false
+	BodyOrientation:
+		QuantizedFacings: 32
+	WithFacingSpriteBody:
+hornet:
+	RenderSprites:
+		Image: web-hornet
+		PlayerPalette: r2prerender-chinaplayer
+	WithVoxelBody:
+		RequiresCondition: false
+	BodyOrientation:
+		QuantizedFacings: 32
+	WithFacingSpriteBody:
+asw:
+	RenderSprites:
+		Image: web-asw
+		PlayerPalette: r2prerender-chinaplayer
+	WithVoxelBody:
+		RequiresCondition: false
+	BodyOrientation:
+		QuantizedFacings: 32
+	WithFacingSpriteBody:
+gapill:
+	RenderSprites:
+		Image: web-gapill
+		PlayerPalette: r2bldsaguardplayer
+	WithSpriteTurret:
+nasam:
+	RenderSprites:
+		Image: web-nasam
+		PlayerPalette: r2bldiraasiteplayer
+	WithVoxelTurret:
+		RequiresCondition: false
+	BodyOrientation:
+		QuantizedFacings: 32
+	WithSpriteTurret:
+naflak:
+	RenderSprites:
+		Image: web-naflak
+		PlayerPalette: r2bldiraasiteplayer
+	WithVoxelTurret:
+		RequiresCondition: false
+	BodyOrientation:
+		QuantizedFacings: 32
+	WithSpriteTurret:
+tesla:
+	RenderSprites:
+		Image: web-tesla
+		PlayerPalette: r2bldspectrumplayer
+atesla:
+	RenderSprites:
+		Image: web-atesla
+		PlayerPalette: r2bldspectrumplayer
+nalasr:
+	RenderSprites:
+		Image: web-nalasr
+		PlayerPalette: r2bldhzbunkerplayer
+	WithVoxelTurret:
+		RequiresCondition: false
+	BodyOrientation:
+		QuantizedFacings: 32
+	WithSpriteTurret:
+gtgcan:
+	RenderSprites:
+		Image: web-gtgcan
+		PlayerPalette: r2bldbastionplayer
+	WithVoxelTurret:
+		RequiresCondition: false
+	WithVoxelBarrel:
+		RequiresCondition: false
+	BodyOrientation:
+		QuantizedFacings: 32
+	WithSpriteTurret:

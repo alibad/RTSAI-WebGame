@@ -1,0 +1,230 @@
+MapFormat: 12
+RequiresMod: rtsai
+Title: Red Sea 2026: Bab al-Mandab Passage
+Author: RTS AI — browser adaptation
+Tileset: TEMPERATE
+MapSize: 96,96
+Bounds: 1,1,94,94
+Visibility: MissionSelector
+Categories: Campaign
+LockPreview: True
+Players:
+	PlayerReference@Saudi:
+		Name: Saudi Arabia
+		AllowBots: False
+		Playable: True
+		Required: True
+		LockFaction: True
+		Faction: saudi
+		LockColor: True
+		Color: D6B566
+		LockSpawn: True
+		LockTeam: True
+		Allies: Civilian Shipping
+		Enemies: Yemen
+	PlayerReference@Yemen:
+		Name: Yemen
+		Faction: yemen
+		Color: 8F7A45
+		Enemies: Saudi Arabia, Civilian Shipping
+	PlayerReference@Civilians:
+		Name: Civilian Shipping
+		Faction: china
+		Color: 76AFC4
+		Allies: Saudi Arabia
+		Enemies: Yemen
+	PlayerReference@Neutral:
+		Name: Neutral
+		OwnsWorld: True
+		NonCombatant: True
+		Faction: china
+Actors:
+	SaudiConyard: gacnst
+		Location: 113,-31
+		Owner: Saudi Arabia
+	SaudiRefinery: garefn
+		Location: 127,-45
+		Owner: Saudi Arabia
+	SaudiPower: gapowr
+		Location: 120,-36
+		Owner: Saudi Arabia
+	SaudiPowerTwo: gapowr
+		Location: 132,-44
+		Owner: Saudi Arabia
+	SaudiBarracks: gapile
+		Location: 126,-38
+		Owner: Saudi Arabia
+	SaudiWarFactory: gaweap
+		Location: 116,-27
+		Owner: Saudi Arabia
+	SaudiRepair: gadept
+		Location: 121,-42
+		Owner: Saudi Arabia
+	PassageControl: caoutp
+		Location: 104,-35
+		Owner: Saudi Arabia
+	NavigationBeaconNorth: cahosp
+		Location: 83,-56
+		Owner: Civilian Shipping
+	NavigationBeaconSouth: cahosp
+		Location: 98,-41
+		Owner: Civilian Shipping
+	SaudiTank: r2m1a2s
+		Location: 112,-36
+		Owner: Saudi Arabia
+		Facing: 0
+	SaudiAirDefense: r2sads
+		Location: 116,-40
+		Owner: Saudi Arabia
+		Facing: 0
+	SaudiScoutOne: r2sang
+		Location: 109,-35
+		Owner: Saudi Arabia
+	SaudiScoutTwo: r2sang
+		Location: 109,-35
+		Owner: Saudi Arabia
+	SaudiEngineer: engineer
+		Location: 112,-38
+		Owner: Saudi Arabia
+	ThreatNorth: r2ymlr
+		Location: 85,-68
+		Owner: Yemen
+		Facing: 512
+	ThreatCenter: r2ymlr
+		Location: 94,-52
+		Owner: Yemen
+		Facing: 512
+	ThreatSouth: r2ymlr
+		Location: 107,-46
+		Owner: Yemen
+		Facing: 512
+	ThreatGuardNorth: r2technical
+		Location: 88,-70
+		Owner: Yemen
+		Facing: 512
+	ThreatGuardCenter: r2technical
+		Location: 99,-56
+		Owner: Yemen
+		Facing: 512
+	ThreatGuardSouth: r2technical
+		Location: 111,-49
+		Owner: Yemen
+		Facing: 512
+	ReconNorth: waypoint
+		Location: 80,-60
+		Owner: Neutral
+	ReconCenter: waypoint
+		Location: 92,-49
+		Owner: Neutral
+	ReconSouth: waypoint
+		Location: 102,-39
+		Owner: Neutral
+	ThreatNorthPatrol: waypoint
+		Location: 93,-80
+		Owner: Neutral
+	ThreatCenterPatrol: waypoint
+		Location: 106,-67
+		Owner: Neutral
+	ThreatSouthPatrol: waypoint
+		Location: 118,-59
+		Owner: Neutral
+	NorthGroundEntry: waypoint
+		Location: 92,-90
+		Owner: Neutral
+	SouthGroundEntry: waypoint
+		Location: 138,-45
+		Owner: Neutral
+	BaseRally: waypoint
+		Location: 116,-44
+		Owner: Neutral
+	DroneEntryWest: waypoint
+		Location: 54,-7
+		Owner: Neutral
+	FleetCamera: waypoint
+		Location: 76,-28
+		Owner: Neutral
+	BaseCamera: waypoint
+		Location: 118,-39
+		Owner: Neutral
+	ShipEntryWest: waypoint
+		Location: 85,8
+		Owner: Neutral
+	ShipEntryInnerWest: waypoint
+		Location: 89,4
+		Owner: Neutral
+	ShipEntryInnerEast: waypoint
+		Location: 101,-8
+		Owner: Neutral
+	ShipEntryEast: waypoint
+		Location: 106,-13
+		Owner: Neutral
+	ShipWestOne: waypoint
+		Location: 76,0
+		Owner: Neutral
+	ShipWestTwo: waypoint
+		Location: 67,-7
+		Owner: Neutral
+	ShipWestThree: waypoint
+		Location: 55,-18
+		Owner: Neutral
+	ShipWestFour: waypoint
+		Location: 48,-28
+		Owner: Neutral
+	ShipWestExit: waypoint
+		Location: 41,-38
+		Owner: Neutral
+	ShipInnerWestOne: waypoint
+		Location: 80,-4
+		Owner: Neutral
+	ShipInnerWestTwo: waypoint
+		Location: 70,-10
+		Owner: Neutral
+	ShipInnerWestThree: waypoint
+		Location: 58,-22
+		Owner: Neutral
+	ShipInnerWestFour: waypoint
+		Location: 52,-32
+		Owner: Neutral
+	ShipInnerWestExit: waypoint
+		Location: 45,-42
+		Owner: Neutral
+	ShipInnerEastOne: waypoint
+		Location: 92,-16
+		Owner: Neutral
+	ShipInnerEastTwo: waypoint
+		Location: 85,-25
+		Owner: Neutral
+	ShipInnerEastThree: waypoint
+		Location: 73,-37
+		Owner: Neutral
+	ShipInnerEastFour: waypoint
+		Location: 64,-44
+		Owner: Neutral
+	ShipInnerEastExit: waypoint
+		Location: 55,-52
+		Owner: Neutral
+	ShipEastOne: waypoint
+		Location: 97,-21
+		Owner: Neutral
+	ShipEastTwo: waypoint
+		Location: 89,-29
+		Owner: Neutral
+	ShipEastThree: waypoint
+		Location: 77,-41
+		Owner: Neutral
+	ShipEastFour: waypoint
+		Location: 69,-49
+		Owner: Neutral
+	ShipEastExit: waypoint
+		Location: 60,-57
+		Owner: Neutral
+	MissionSpawn: mpspawn
+		Owner: Neutral
+		Location: 113,-31
+Rules:
+	World:
+		-SpawnStartingUnits:
+		-CrateSpawner:
+		-StartGameNotification:
+	Player:
+		-ConquestVictoryConditions:

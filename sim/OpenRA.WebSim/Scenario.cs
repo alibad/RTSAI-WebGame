@@ -50,6 +50,8 @@ namespace OpenRA.WebSim
 	public sealed class ScenarioSpec
 	{
 		public string Map;
+		public string Mission;
+		public bool Multiplayer;
 		public int Seed = 1;
 		public List<PlayerSpec> Players = [];
 		public Dictionary<string, string> Options = [];
@@ -72,6 +74,7 @@ namespace OpenRA.WebSim
 			var s = new ScenarioSpec
 			{
 				Map = Str(root, "map", null),
+				Mission = Str(root, "mission", null),
 				Seed = Int(root, "seed", 1),
 				Script = Str(root, "script", null),
 				DefaultLevel = Int(root, "level", 0),

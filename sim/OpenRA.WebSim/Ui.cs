@@ -74,6 +74,7 @@ namespace OpenRA.WebSim
 			var radar = world.ActorsHavingTrait<ProvidesRadar>(r => !r.IsTraitDisabled).Any(a => a.Owner == p);
 			sb.Append(",\"radar\":").Append(radar ? "true" : "false");
 			sb.Append(",\"win\":").Append(J(p.WinState.ToString()));
+			sb.Append(",\"mission\":").Append(Missions.StateJson());
 			sb.Append(",\"mode\":").Append(J(ModeName(world.OrderGenerator)));
 
 			// The AI co-commander's HUD line and threat meter (what the desktop's AI strip shows).

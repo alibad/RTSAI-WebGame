@@ -109,7 +109,7 @@ static class Bake
 
 		// "all": every map a player can pick (any MapFolder), the sandbox arena included.
 		var maps = opts["maps"] == "all"
-			? SimHost.ModData.MapCache.Where(p => p.Visibility.HasFlag(OpenRA.MapVisibility.Lobby)).Select(p => Path.GetFileName(p.Path)).ToArray()
+			? SimHost.ModData.MapCache.Where(p => p.Visibility.HasFlag(OpenRA.MapVisibility.Lobby) || p.Visibility.HasFlag(OpenRA.MapVisibility.MissionSelector)).Select(p => Path.GetFileName(p.Path)).ToArray()
 			: opts["maps"].Split(',', StringSplitOptions.RemoveEmptyEntries);
 		foreach (var map in maps)
 		{
