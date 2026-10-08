@@ -9,7 +9,7 @@ apply:
 ## What gets published
 
 `node tools/build-public.mjs` writes `build/public-web/`. This is the standalone game: project art and audio only,
-no EA content, no server APIs. It is pinned by `tools/pin-standalone.ps1`; today that is rtsai/standalone 246897b (the latest, re-checked 8 October).
+no EA content, no server APIs. It is pinned by `tools/pin-standalone.ps1`; today that is rtsai/standalone 624ad2c (8 October: vehicles drawn in front of the ground they cover).
 
 | Path | Contents | Raw | Stored and sent | Downloaded |
 |---|---|---|---|---|
@@ -19,6 +19,11 @@ no EA content, no server APIs. It is pinned by `tools/pin-standalone.ps1`; today
 | `data-<hash>/public/sprites/` | prebaked sprite sheets, one set per faction + shared + effects | 467 MB | 16.7 MB (brotli 11) | shared 2.7 + own faction 1.6 before the game; the other factions and effects (2 MB) right after; factions not in the match only if they appear |
 | `data-<hash>/public/audio/` | sounds and music, one file each | 84 MB | 70 MB (WAVs brotli) | as played; the announcer and the music fetched in the background |
 | `data-<hash>/public/web-art.pack` + .json | large sprite files, read by byte range only if sheets were not prebaked | 108 MB | as stored | normally never |
+
+`web-art.pack` can be left out (e.g. over a host's file-size limit): every map's sprites are prebaked, and since
+8 October the cursor art is in the core bundle (it used to be read from the art pack at the start of every game: on a
+host without the file that read failed and crashed the runtime, "memory access out of bounds"). A sprite the sheets lack
+would still be read from the art pack; without it that read is now an I/O error the engine reports, not a crash.
 
 The build also writes `vercel.json` and `_headers` (Netlify / Cloudflare Pages), plus `BUILD.json` (sizes,
 standalone SHA, bundle id). To check the output exactly as a CDN would serve it:

@@ -122,7 +122,16 @@ export class LazyMount {
       while (done < n) {
         const pos = position + done;
         const index = Math.floor(pos / CHUNK);
-        const c = cached ? this.chunk(path, index, size, read) : read(index * CHUNK, Math.min(size, (index + 1) * CHUNK));
+        let c: Uint8Array;
+        try {
+          c = cached ? this.chunk(path, index, size, read) : read(index * CHUNK, Math.min(size, (index + 1) * CHUNK));
+        } catch (err) {
+          // A failed download (HTTP error, network) is an I/O error the runtime can handle (an IOException in .NET).
+          // Any other exception would unwind through the WebAssembly frames of the read and leave the runtime
+          // corrupted ("memory access out of bounds" a few seconds later).
+          console.warn(`lazy read failed: ${path} @${pos}: ${err instanceof Error ? err.message : err}`);
+          throw new FS.ErrnoError(29); // EIO
+        }
         const off = pos - index * CHUNK;
         const take = Math.min(n - done, c.length - off);
         dst.set(c.subarray(off, off + take), done);

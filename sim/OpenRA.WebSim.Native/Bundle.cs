@@ -50,6 +50,9 @@ static class Bundle
 		Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(output)));
 		var lazyArt = !opts.ContainsKey("no-lazy-art");
 		var art = new List<string>();
+		// The cursor art stays in the core bundle: the page draws the mod's cursors from the start of every game, and a
+		// host may serve web-art.pack late or not at all (it is a fallback for sprites the prebaked sheets lack).
+		var keepInCore = CursorSources(modDir);
 		long total = 0;
 		var count = 0;
 		using var contentHash = System.Security.Cryptography.IncrementalHash.CreateHash(System.Security.Cryptography.HashAlgorithmName.SHA256);
@@ -91,7 +94,8 @@ static class Bundle
 					continue;
 
 				var bytes = File.ReadAllBytes(f);
-				if (lazyArt && !rel.Contains("maps/", StringComparison.Ordinal) && ArtExtensions.Contains(Path.GetExtension(f)) && bytes.Length >= LazyArtMinBytes)
+				if (lazyArt && !rel.Contains("maps/", StringComparison.Ordinal) && ArtExtensions.Contains(Path.GetExtension(f)) && bytes.Length >= LazyArtMinBytes
+					&& !keepInCore.Contains(rel))
 				{
 					// Part of the bundle's identity (sprites baked from it depend on it), stored in web-art.pack.
 					contentHash.AppendData(Encoding.UTF8.GetBytes($"mods/rtsai/{rel}|{bytes.Length}|"));
@@ -130,6 +134,46 @@ static class Bundle
 		WriteLazyPack(Path.Combine(outDir, "web-audio.pack"), modDir, audio);
 		WriteLazyPack(Path.Combine(outDir, "web-art.pack"), modDir, art);
 		return 0;
+	}
+
+	/// <summary>
+	/// The mod's own cursor images (relative to the mod folder): the sources named in the cursor yaml files that mod.yaml
+	/// lists under Cursors ("ra2|standalone/art/cursors.png: mouse"); "ra2|" is this mod's folder.
+	/// </summary>
+	static HashSet<string> CursorSources(string modDir)
+	{
+		var result = new HashSet<string>(StringComparer.Ordinal);
+		var lines = File.ReadAllLines(Path.Combine(modDir, "mod.yaml"));
+		var inCursors = false;
+		foreach (var line in lines)
+		{
+			if (line.Length > 0 && !char.IsWhiteSpace(line[0]))
+			{
+				inCursors = line.TrimEnd() == "Cursors:";
+				continue;
+			}
+
+			var yaml = line.Trim();
+			if (!inCursors || yaml.Length == 0 || yaml.StartsWith('#') || !yaml.StartsWith("ra2|", StringComparison.Ordinal))
+				continue;
+
+			var file = Path.Combine(modDir, yaml["ra2|".Length..]);
+			if (!File.Exists(file))
+				continue;
+
+			foreach (var c in File.ReadAllLines(file))
+			{
+				// One tab in: "<package>|<path>: <palette>" (a cursor image and its palette).
+				if (!c.StartsWith('\t') || c.StartsWith("\t\t", StringComparison.Ordinal))
+					continue;
+
+				var src = c.Trim().Split(':')[0].Trim();
+				if (src.StartsWith("ra2|", StringComparison.Ordinal))
+					result.Add(src["ra2|".Length..]);
+			}
+		}
+
+		return result;
 	}
 
 	/// <summary>A pack read by byte range (never downloaded whole), with a JSON index of each file's offset.</summary>
