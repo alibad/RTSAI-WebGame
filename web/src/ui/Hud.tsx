@@ -12,6 +12,10 @@ import { AttackMoveIcon, DeployIcon, GuardIcon, ScatterIcon, StopIcon } from "./
 import { Button } from "../components/ui/button";
 import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "../components/ui/dropdown-menu";
 import { cn } from "../lib/utils";
+import { UnitPortrait } from "./UnitPortrait";
+import { MatchLibrary } from "./MatchLibrary";
+import { GameSettings } from "./GameSettings";
+import { preferences } from "../preferences";
 
 function HealthBar({ hp, max, className }: { hp: number; max: number; className?: string }) {
   const f = max > 0 ? Math.max(0, Math.min(1, hp / max)) : 0;
@@ -46,7 +50,7 @@ export function SelectionPanel({ game }: { game: Game }) {
     const a = selection[0];
     return (
       <div className="hud-panel flex w-[220px] gap-2 p-2">
-        <div className="cameo hud-inset w-[90px] shrink-0">{icons[a.type] ? <img src={icons[a.type]!} alt="" /> : null}</div>
+        <div className="cameo hud-inset w-[90px] shrink-0"><UnitPortrait type={a.type} label={labels.get(a.type) ?? a.type} icon={icons[a.type]} /></div>
         <div className="flex min-w-0 flex-1 flex-col justify-between py-[2px]">
           <div className="flex items-start justify-between gap-1">
             <span className="truncate text-[12px] font-medium text-[var(--hud-gold)]">{labels.get(a.type) ?? a.type}</span>
@@ -72,7 +76,7 @@ export function SelectionPanel({ game }: { game: Game }) {
       {[...groups].map(([type, g]) => (
         <button key={type} type="button" className="flex flex-col gap-[2px]" title={labels.get(type) ?? type} onClick={() => game.selectType(type)}>
           <div className="cameo hud-inset relative w-[64px]">
-            {icons[type] ? <img src={icons[type]!} alt="" /> : <div className="h-full w-full bg-[#111]" />}
+            <UnitPortrait type={type} label={labels.get(type) ?? type} icon={icons[type]} />
             {g.count > 1 && <span className="digits absolute left-[3px] top-[1px] text-[12px] font-bold text-white drop-shadow-[0_1px_1px_#000]">{g.count}</span>}
             <span className="absolute bottom-[1px] right-[1px]"><Rank rank={g.rank} /></span>
           </div>
@@ -84,24 +88,35 @@ export function SelectionPanel({ game }: { game: Game }) {
 }
 
 export function CommandBar({ game }: { game: Game }) {
+  const commands = useStore((s) => s.ui?.commands);
+  const stances = useStore((s) => s.ui?.stances) ?? [];
   const selection = useStore((s) => s.ui?.selection);
   const mode = useStore((s) => s.ui?.mode ?? "");
   if (!selection?.some((a) => a.own)) return null;
   const btn = (title: string, key: string, active: boolean, onClick: () => void, Icon: (p: React.SVGProps<SVGSVGElement>) => React.JSX.Element) => (
-    <button type="button" title={`${title} (${key})`} onClick={onClick}
+    <button type="button" title={`${title} (${preferences.bindings[key.toLowerCase()]?.toUpperCase() ?? key})`} onClick={onClick}
       className={cn("hud-inset relative grid size-[34px] place-items-center text-[var(--muted-foreground)] hover:text-[var(--foreground)]",
         active && "text-[var(--hud-gold)] shadow-[inset_0_0_0_1px_var(--hud-gold)]")}>
       <Icon width={18} height={18} />
-      <span className="digits absolute bottom-0 right-[2px] text-[9px] text-[var(--hud-gold-dim)]">{key}</span>
+      <span className="digits absolute bottom-0 right-[2px] text-[9px] text-[var(--hud-gold-dim)]">{preferences.bindings[key.toLowerCase()]?.toUpperCase() ?? key}</span>
     </button>
   );
   return (
-    <div className="hud-panel flex gap-[3px] p-[4px]">
-      {btn("Attack move", "A", mode === "attackmove", () => game.setMode("attackmove"), AttackMoveIcon)}
-      {btn("Guard", "D", mode === "guard", () => game.setMode("guard"), GuardIcon)}
-      {btn("Deploy", "F", false, () => game.command({ cmd: "deploy" }), DeployIcon)}
-      {btn("Scatter", "Ctrl+X", false, () => game.command({ cmd: "scatter" }), ScatterIcon)}
-      {btn("Stop", "S", false, () => game.command({ cmd: "stop" }), StopIcon)}
+    <div className="hud-panel flex max-w-[min(520px,calc(100vw-var(--sidebar-w)-24px))] flex-wrap gap-[3px] p-[4px]">
+      {commands?.attackmove && btn("Attack move", "A", mode === "attackmove", () => game.setMode("attackmove"), AttackMoveIcon)}
+      {commands?.guard && btn("Guard", "D", mode === "guard", () => game.setMode("guard"), GuardIcon)}
+      {commands?.deploy && btn("Deploy", "F", false, () => game.command({ cmd: "deploy" }), DeployIcon)}
+      {commands?.scatter && btn("Scatter", "Ctrl+X", false, () => game.command({ cmd: "scatter" }), ScatterIcon)}
+      {commands?.stop && btn("Stop", "S", false, () => game.command({ cmd: "stop" }), StopIcon)}
+      {stances.length > 0 && <div className="flex flex-wrap gap-1" aria-label="Unit stance">
+        {([["attackanything", "Aggressive"], ["defend", "Defend"], ["returnfire", "Return fire"], ["holdfire", "Hold fire"]] as const).map(([stance, label]) =>
+          <button key={stance} type="button" aria-pressed={stances.length === 1 && stances[0] === stance}
+            onClick={() => game.command({ cmd: "stance", stance })}
+            className={cn("hud-inset px-2 text-[10px]", stances.length === 1 && stances[0] === stance && "text-[var(--hud-gold)]")}>{label}</button>)}
+      </div>}
+      {selection.length === 1 && selection[0].canPrimary && <button type="button" aria-pressed={!!selection[0].primary}
+        onClick={() => game.command({ cmd: "primary" })} className="hud-inset px-2 text-[11px]">{selection[0].primary ? "Primary factory" : "Make primary"}</button>}
+      {selection.length === 1 && selection[0].rally && <span className="self-center px-1 text-[10px] text-muted-foreground">Right-click ground to set rally point</span>}
     </div>
   );
 }
@@ -138,7 +153,7 @@ export function GameMenu({ game }: { game: Game }) {
         <svg viewBox="0 0 24 24" width={16} height={16} fill="currentColor"><path d="M4 6h16v2H4Zm0 5h16v2H4Zm0 5h16v2H4Z" /></svg>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="min-w-[180px]">
-        <DropdownMenuItem onClick={() => game.setPaused(!paused)}>{paused ? "Resume" : "Pause"} <span className="ml-auto text-xs text-muted-foreground">P</span></DropdownMenuItem>
+        <DropdownMenuItem disabled={game.multiplayer} onClick={() => game.setPaused(!paused)}>{paused ? "Resume" : "Pause"} <span className="ml-auto text-xs text-muted-foreground">P</span></DropdownMenuItem>
         <DropdownMenuItem onClick={() => set({ statsOpen: !statsOpen })}>Engine stats</DropdownMenuItem>
         <DropdownMenuCheckboxItem checked={sound} onCheckedChange={(v) => { game.audio.setSoundOn(!!v); setSound(!!v); }}>Sound</DropdownMenuCheckboxItem>
         <DropdownMenuCheckboxItem checked={music} onCheckedChange={(v) => { game.audio.setMusicOn(!!v); setMusic(!!v); }}>Music</DropdownMenuCheckboxItem>
@@ -192,9 +207,9 @@ function Stats({ game }: { game: Game }) {
 
 /** Phones held upright: the battlefield needs landscape. */
 function RotateHint() {
-  const [portrait, setPortrait] = useState(() => window.innerWidth < window.innerHeight && window.innerWidth < 700);
+  const [portrait, setPortrait] = useState(() => matchMedia("(pointer: coarse)").matches && window.innerWidth < window.innerHeight && window.innerWidth < 700);
   useEffect(() => {
-    const r = () => setPortrait(window.innerWidth < window.innerHeight && window.innerWidth < 700);
+    const r = () => setPortrait(matchMedia("(pointer: coarse)").matches && window.innerWidth < window.innerHeight && window.innerWidth < 700);
     window.addEventListener("resize", r);
     return () => window.removeEventListener("resize", r);
   }, []);
@@ -218,17 +233,17 @@ export function Hud({ game }: { game: Game }) {
   const paused = useStore((s) => s.paused);
   return (
     <>
-      <div className="absolute left-3 top-3 flex items-center gap-2"><GameMenu game={game} /><HotkeyButton /></div>
+      <div className="absolute left-3 top-3 flex max-w-[calc(100%-var(--sidebar-w)-24px)] flex-wrap items-center gap-2"><GameMenu game={game} /><HotkeyButton /><MatchLibrary game={game} /><GameSettings game={game} /></div>
       {statsOpen && <Stats game={game} />}
       <div className="pointer-events-none absolute bottom-3 left-3 flex flex-col items-start gap-2 [&>*]:pointer-events-auto">
         <GroupBar game={game} />
-        <div className="flex items-end gap-2">
+        <div className="flex max-w-[calc(100vw-var(--sidebar-w)-24px)] flex-wrap items-end gap-2">
           <SelectionPanel game={game} />
           <CommandBar game={game} />
         </div>
       </div>
       {paused && (
-        <div className="pointer-events-none absolute left-1/2 top-6 -translate-x-1/2 text-[13px] font-semibold uppercase tracking-[0.3em] text-[var(--hud-gold)] drop-shadow-[0_1px_2px_#000]">Paused</div>
+        <div className="pause-label pointer-events-none absolute left-1/2 top-6 -translate-x-1/2 text-[13px] font-semibold uppercase tracking-[0.3em] text-[var(--hud-gold)] drop-shadow-[0_1px_2px_#000]">Paused</div>
       )}
       <Sidebar game={game} />
       <CoCommander game={game} />

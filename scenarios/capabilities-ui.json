@@ -1,0 +1,74 @@
+{
+  "map": "twin-fords",
+  "seed": 4242,
+  "players": [
+    {
+      "slot": "Multi0",
+      "faction": "saudi",
+      "color": "2A6FDB"
+    },
+    {
+      "slot": "Multi1",
+      "faction": "iran",
+      "bot": "webidle",
+      "color": "D83A2E"
+    }
+  ],
+  "options": {
+    "startingunits": "none",
+    "explored": "True",
+    "fog": "False",
+    "crates": "False",
+    "shortgame": "False"
+  },
+  "spawns": [
+    {
+      "type": "gacnst",
+      "player": 0,
+      "x": 11,
+      "y": 92
+    },
+    {
+      "type": "gapowr",
+      "player": 0,
+      "x": 16,
+      "y": 92
+    },
+    {
+      "type": "gapile",
+      "player": 0,
+      "x": 11,
+      "y": 98
+    },
+    {
+      "type": "gaweap",
+      "player": 0,
+      "x": 17,
+      "y": 98
+    },
+    {
+      "type": "r2m1a2s",
+      "player": 0,
+      "x": 11,
+      "y": 103
+    },
+    {
+      "type": "dog",
+      "player": 0,
+      "x": 15,
+      "y": 103
+    },
+    {
+      "type": "gapile",
+      "player": 1,
+      "x": 23,
+      "y": 98
+    },
+    {
+      "type": "r2falcon",
+      "player": 0,
+      "x": 19,
+      "y": 103
+    }
+  ]
+}

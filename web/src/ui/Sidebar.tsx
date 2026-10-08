@@ -11,6 +11,25 @@ import { PowerIcon, QUEUE_ICONS, RepairIcon, SellIcon } from "./icons";
 import { cn } from "../lib/utils";
 import { CameoTip } from "./CameoTip";
 import { PowerMeter } from "./PowerMeter";
+import { UnitPortrait } from "./UnitPortrait";
+
+function SupportPowers({ game }: { game: Game }) {
+  const powers = useStore((s) => s.ui?.supportPowers) ?? [];
+  const icons = useStore((s) => s.icons);
+  useEffect(() => { game.client.send({ type: "icons", names: powers.map((p) => `$power:${p.key}`) }); }, [game, powers.map((p) => p.key).join("|")]);
+  if (!powers.length) return null;
+  return <div className="flex max-h-[140px] shrink-0 flex-wrap gap-1 overflow-y-auto" aria-label="Support powers">
+    {powers.map((p) => <button type="button" key={p.key} disabled={!p.ready}
+      title={`${p.name}\n${p.description}`}
+      onClick={() => game.command({ cmd: "supportpower", key: p.key })}
+      className="hud-inset flex w-[70px] flex-col items-center overflow-hidden text-[9px] disabled:opacity-60">
+      {icons[`$power:${p.key}`] && <img src={icons[`$power:${p.key}`]!} alt="" className="h-[42px] w-full object-contain" />}
+      <span className="w-full truncate px-1">{p.name}</span>
+      <span className="digits text-[var(--hud-gold)]">{p.ready ? "READY" : p.active ? formatTime(p.remaining) : "ON HOLD"}</span>
+      <progress aria-label={`${p.name} charge`} value={Math.max(0, p.total - p.remaining)} max={Math.max(1, p.total)} className="h-1 w-full" />
+    </button>)}
+  </div>;
+}
 
 function Credits() {
   const cash = useStore((s) => s.ui?.cash ?? 0);
@@ -116,7 +135,7 @@ const Cameo = memo(function Cameo({ item, queue, icon, progress, count, paused, 
       data-queue={queue}
       data-item={item.name}
     >
-      {icon ? <img src={icon} alt="" draggable={false} /> : <div className="grid h-full w-full place-items-center bg-[#111] px-1 text-center text-[10px] leading-tight text-[var(--muted-foreground)]">{item.label}</div>}
+      <UnitPortrait type={item.name} label={item.label} icon={icon} />
       {count > 0 && <div className="wipe clock" style={{ "--clock": `${clockAngle(progress)}deg` } as React.CSSProperties} />}
       {label && <span className={cn("cameo-text cameo-label", done && readyAlt && "alt")}>{label}</span>}
       {count > 0 && <span className="cameo-text cameo-count">{count}</span>}
@@ -143,6 +162,7 @@ function Tabs() {
             type="button"
             title={q.type}
             disabled={!enabled}
+            aria-pressed={tab === q.type && enabled}
             onClick={() => set({ tab: q.type })}
             className={cn(
               "hud-inset relative grid h-[30px] place-items-center text-[var(--muted-foreground)] transition-colors disabled:opacity-30",
@@ -230,6 +250,13 @@ function ModeButton({ active, title, hotkey, onClick, children }: { active: bool
 
 export function Sidebar({ game }: { game: Game }) {
   const mode = useStore((s) => s.ui?.mode ?? "");
+  const paletteSpace = useRef<HTMLDivElement>(null);
+  const [availableHeight, setAvailableHeight] = useState(0);
+  useEffect(() => {
+    const observer = new ResizeObserver(([entry]) => setAvailableHeight(Math.floor(entry.contentRect.height)));
+    if (paletteSpace.current) observer.observe(paletteSpace.current);
+    return () => observer.disconnect();
+  }, []);
   const [[w, h], setSize] = useState([window.innerWidth, window.innerHeight]);
   useEffect(() => {
     const r = () => setSize([window.innerWidth, window.innerHeight]);
@@ -239,7 +266,7 @@ export function Sidebar({ game }: { game: Game }) {
   // Compact sidebar on phones and small tablets (styles.css narrows --sidebar-w to match).
   const compact = h < 600 || w < 900;
   const radarSize = compact ? Math.max(96, Math.min(168, Math.floor(h * 0.3))) : 232;
-  const paletteH = Math.max(150, h - radarSize - 8 - 44 - 36 - 28);
+  const paletteH = Math.max(80, availableHeight || h - radarSize - 8 - 44 - 36 - 28);
   return (
     <aside className="hud-panel absolute right-0 top-0 flex h-full flex-col gap-[6px] p-[8px]" style={{ width: "var(--sidebar-w)" }} onContextMenu={(e) => e.preventDefault()}>
       <Minimap game={game} size={radarSize} />
@@ -251,7 +278,8 @@ export function Sidebar({ game }: { game: Game }) {
         </div>
       </div>
       <Tabs />
-      <div className="flex min-h-0 flex-1 gap-[5px]">
+      <SupportPowers game={game} />
+      <div ref={paletteSpace} className="flex min-h-0 flex-1 gap-[5px]">
         <div className="flex flex-col items-center gap-1">
           <PowerIcon width={12} height={12} className="text-[var(--hud-power)]" />
           <PowerMeter height={paletteH - 16} pitch={compact ? 3 : 5} />

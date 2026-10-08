@@ -1,5 +1,7 @@
 # RTS AI in the browser: status (7 October 2026)
 
+**9 October addition:** contextual skirmish strategies and persistent confirmed-action goals are implemented and verified locally. See [AI-ROADMAP.md](AI-ROADMAP.md) for all five approved AI directions and [CO-COMMANDER.md](CO-COMMANDER.md#contextual-strategies-9-october-2026-local-development) for implementation and verification evidence. This addition does not change the public hosted-AI availability described below.
+
 The real OpenRA engine and the RTS AI mod run in the browser, unchanged, at full speed. The browser game is
 deterministic: every test game replays identically in the desktop engine, tick for tick.
 

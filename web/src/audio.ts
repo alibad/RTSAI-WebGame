@@ -2,6 +2,7 @@
 // PCM sources arrive once, then play/stop/volume events; music arrives as PCM chunks queued back to back.
 // Positional sounds are attenuated and panned against the camera (the listener), like the desktop OpenAL path.
 
+import { preferences } from "./preferences";
 const NEAR = 450; // world px: full volume within this distance of the camera centre
 const FAR = 1900; // silent beyond this
 
@@ -47,6 +48,7 @@ export class AudioEngine {
     this.buses.voice = ctx.createGain();
     this.buses.voice.connect(this.master);
     this.ctx = ctx;
+    this.applyVolumes();
     // Browsers start audio suspended until the player interacts with the page.
     const resume = () => { if (ctx.state === "suspended") ctx.resume(); };
     for (const ev of ["pointerdown", "keydown"]) window.addEventListener(ev, resume, { capture: true });
@@ -165,7 +167,8 @@ export class AudioEngine {
 
   setMuted(m: boolean) {
     this.muted = m;
-    if (this.master) this.master.gain.value = m ? 0 : 1;
+    this.muted = m;
+    this.applyVolumes();
   }
 
   setSoundOn(on: boolean) {
@@ -179,6 +182,13 @@ export class AudioEngine {
   }
 
   private voiceNode: AudioBufferSourceNode | null = null;
+  applyVolumes() {
+    if (!this.ctx) return;
+    this.master.gain.value = this.muted ? 0 : preferences.master;
+    this.buses.sfx!.gain.value = preferences.effects;
+    this.buses.voice!.gain.value = preferences.voice;
+    this.music.gain.value = preferences.music * (this.voiceNode ? 0.35 : 1);
+  }
 
   /** The co-commander's spoken reply (a WAV); music ducks while it plays. Resolves when it ends. */
   async voice(wav: ArrayBuffer) {
@@ -189,20 +199,20 @@ export class AudioEngine {
     const node = ctx.createBufferSource();
     node.buffer = buf;
     node.connect(this.buses.voice!);
-    this.music.gain.setTargetAtTime(0.35, ctx.currentTime, 0.08);
+    this.music.gain.setTargetAtTime(preferences.music * 0.35, ctx.currentTime, 0.08);
     this.voiceNode = node;
     node.start();
     if (copy) this.onVoice?.(copy, performance.now(), buf.duration);
     await new Promise<void>((resolve) => { node.onended = () => resolve(); });
     if (this.voiceNode === node) {
       this.voiceNode = null;
-      this.music.gain.setTargetAtTime(1, ctx.currentTime, 0.3);
+      this.music.gain.setTargetAtTime(preferences.music, ctx.currentTime, 0.3);
     }
   }
 
   stopVoice() {
     try { this.voiceNode?.stop(); } catch { /* not started */ }
     this.voiceNode = null;
-    if (this.ctx) this.music.gain.setTargetAtTime(1, this.ctx.currentTime, 0.2);
+    if (this.ctx) this.music.gain.setTargetAtTime(preferences.music, this.ctx.currentTime, 0.2);
   }
 }

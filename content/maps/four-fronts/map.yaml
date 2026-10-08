@@ -1,0 +1,77 @@
+MapFormat: 12
+RequiresMod: rtsai
+Title: Four Fronts
+Author: RTS AI
+Tileset: TEMPERATE
+MapSize: 64,128
+Bounds: 1,1,62,126
+Visibility: Lobby
+Categories: Conquest
+Players:
+	PlayerReference@Neutral:
+		Name: Neutral
+		OwnsWorld: True
+		NonCombatant: True
+		Faction: china
+	PlayerReference@Creeps:
+		Name: Creeps
+		NonCombatant: True
+		Faction: china
+		Enemies: Multi0, Multi1, Multi2, Multi3
+	PlayerReference@Multi0:
+		Name: Multi0
+		Playable: True
+		Faction: Random
+		Enemies: Creeps
+	PlayerReference@Multi1:
+		Name: Multi1
+		Playable: True
+		Faction: Random
+		Enemies: Creeps
+	PlayerReference@Multi2:
+		Name: Multi2
+		Playable: True
+		Faction: Random
+		Enemies: Creeps
+	PlayerReference@Multi3:
+		Name: Multi3
+		Playable: True
+		Faction: Random
+		Enemies: Creeps
+Actors:
+	Spawn0: mpspawn
+		Owner: Neutral
+		Location: 28,0
+	Spawn1: mpspawn
+		Owner: Neutral
+		Location: 99,1
+	Spawn2: mpspawn
+		Owner: Neutral
+		Location: 63,-35
+	Spawn3: mpspawn
+		Owner: Neutral
+		Location: 64,36
+	Mine0: oremine
+		Owner: Neutral
+		Location: 30,-12
+	Mine1: oremine
+		Owner: Neutral
+		Location: 40,-2
+	Mine2: oremine
+		Owner: Neutral
+		Location: 87,3
+	Mine3: oremine
+		Owner: Neutral
+		Location: 97,13
+	Mine4: oremine
+		Owner: Neutral
+		Location: 51,-33
+	Mine5: oremine
+		Owner: Neutral
+		Location: 61,-23
+	Mine6: oremine
+		Owner: Neutral
+		Location: 66,24
+	Mine7: oremine
+		Owner: Neutral
+		Location: 76,34

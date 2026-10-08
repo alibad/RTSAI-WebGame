@@ -40,9 +40,11 @@ static class Program
 				"bake" => Bake.Run(opts),
 				"run" => Run(opts),
 				"uitest" => UiTest(opts),
+				"restoretest" => MatchRestoreTest.Run(opts),
 				"capturetest" => CaptureTest(opts),
 				"contenttest" => ContentTest.Run(opts),
 				"missiontest" => MissionTest.Run(opts),
+				"ailabtest" => AiLabTest.Run(opts),
 				_ => throw new ArgumentException("Unknown command " + args[0]),
 			};
 		}

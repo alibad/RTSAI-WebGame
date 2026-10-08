@@ -17,7 +17,8 @@ const TICK_MS = 40;
 const RADAR_EVERY = 5; // ticks between radar blip updates
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-let S: any = null; // [JSExport] surface of OpenRA.WebSim.Browser.Interop
+let S: any = null;
+let network: { room: string; token: string; frame: number; busy: boolean; stopped: boolean; pending: unknown[]; failedAt: number; observer?: boolean; peer?: boolean } | null = null; // [JSExport] surface of OpenRA.WebSim.Browser.Interop
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let runtimeApi: any = null;
 let base = "/";
@@ -27,6 +28,8 @@ let ringBytes: Uint8Array | null = null;
 let seq = 0;
 let running = false;
 let paused = false;
+let replayEnd: number | null = null;
+let runtimeErrors: string[] = [];
 let nextTick = 0;
 let tickTimes: number[] = [];
 let lateTicks = 0;
@@ -127,11 +130,15 @@ async function init(msg: Extract<ToWorker, { type: "init" }>) {
   // dotnet.js treats a worker that already has an onmessage handler as one of its own pthread workers and
   // waits for a thread handshake that never comes. Declare this worker a "sidecar" (a single-threaded host).
   (globalThis as unknown as { dotnetSidecar: boolean }).dotnetSidecar = true;
+  for (const level of ["log", "warn", "error"] as const) {
+    const original = console[level].bind(console);
+    console[level] = (...values: unknown[]) => { runtimeErrors.push(values.map(String).join(" ")); runtimeErrors = runtimeErrors.slice(-12); original(...values); };
+  }
   const { dotnet } = await import(/* @vite-ignore */ runtimeUrl);
   // A soft heap limit makes the GC collect before growing the heap (WebAssembly memory never shrinks, so the
   // high-water mark during loading is what the tab keeps).
   // English UI: pins the small EFIGS culture data (otherwise the browser locale picks a 1 MB shard).
-  runtimeApi = await dotnet.withDiagnosticTracing(false).withApplicationCulture("en-US").withEnvironmentVariable("MONO_GC_PARAMS", msg.gcParams ?? "soft-heap-limit=200m").create();
+  runtimeApi = await dotnet.withModuleConfig({ printErr: (line: string) => { runtimeErrors.push(line); runtimeErrors = runtimeErrors.slice(-12); } }).withDiagnosticTracing(false).withApplicationCulture("en-US").withEnvironmentVariable("MONO_GC_PARAMS", msg.gcParams ?? "soft-heap-limit=200m").create();
   runtimeApi.setModuleImports("websim", {
     publish,
     // Sounds the engine plays (WebSoundEngine): PCM once per source, then events; music as PCM chunks.
@@ -242,7 +249,7 @@ async function init(msg: Extract<ToWorker, { type: "init" }>) {
   }
   timings["worker.total"] = performance.now() - t0;
   timings["heap.ready"] = (runtimeApi.Module.HEAPU8.length / 1048576) | 0;
-  post({ type: "ready", timings, runtimeMs, downloadBytes: resourceBytes(), setup: JSON.parse(S.Setup()), privateContent });
+  post({ type: "ready", timings, runtimeMs, downloadBytes: resourceBytes(), setup: { ...JSON.parse(S.Setup()), multiplayer: typeof S.NetworkPoll === "function" && typeof S.NetworkInject === "function" }, privateContent });
 }
 
 function stopLoop() {
@@ -253,7 +260,11 @@ function stopLoop() {
 
 function start(scenario: string, startPaused = false, companion = false) {
   stopLoop();
+  const spec = JSON.parse(scenario);
+  replayEnd = spec.webReplay?.readonly ? spec.webReplay.end : null;
+  network = spec.network ? { ...spec.network, frame: 0, busy: false, stopped: false, pending: [], failedAt: 0 } : null;
   // The co-commander's CompanionBridge is created with the world: enable it first, connect the relay after.
+  companion = companion && !network;
   S.CompanionEnable(companion);
   if (!companion) relay?.close();
   paused = startPaused;
@@ -261,6 +272,12 @@ function start(scenario: string, startPaused = false, companion = false) {
   post({ type: "progress", stage: "Building the world" });
   bake?.beginCapture();
   const info = JSON.parse(S.Start(scenario));
+  if (spec.webReplay && !spec.webReplay.readonly) {
+    for (const [index, ids] of (spec.webReplay.groups ?? []).entries()) {
+      S.Select(JSON.stringify(ids), false); S.Command(JSON.stringify({ cmd: "group", action: "create", index }));
+    }
+    S.Select(JSON.stringify(spec.webReplay.selection ?? []), false);
+  }
   bake?.endCapture();
   info.timings["heap.started"] = (runtimeApi.Module.HEAPU8.length / 1048576) | 0;
   const terrain: Uint8Array = S.Terrain();
@@ -273,7 +290,7 @@ function start(scenario: string, startPaused = false, companion = false) {
   // The local player's announcer and the interface sounds, fetched in the background (a sound that is not here yet
   // is skipped, never waited for).
   try {
-    const local = (JSON.parse(scenario).players as { faction?: string; bot?: string }[]).find((p) => !p.bot)?.faction;
+    const local = (spec.players as { client?: number; faction?: string; bot?: string }[]).find((p) => !p.bot && (!spec.multiplayer || p.client === spec.localClient))?.faction;
     if (lazy && local) lazy.prefetch(lazy.backgroundPaths().filter((p) => p.includes(`/eva/${local}/`) || p.includes("/audio/ui/")));
   } catch { /* a scenario without players */ }
   if (companion) {
@@ -309,6 +326,7 @@ function sendUi() {
 }
 
 function tickOnce() {
+  if (replayEnd !== null && S.WorldTick() >= replayEnd) { paused = true; return; }
   const t = performance.now();
   S.Tick();
   tickTimes.push(performance.now() - t);
@@ -323,11 +341,46 @@ function tickOnce() {
   }
 }
 
+async function networkTick() {
+  const n = network!;
+  if (n.peer) {
+    const events = JSON.parse(S.NetworkPoll());
+    if (events.length) post({ type: "peerOut", events });
+    return;
+  }
+  n.busy = true;
+  try {
+    const t = performance.now();
+    if (!n.pending.length) n.pending = JSON.parse(S.NetworkPoll());
+    const response = await fetch(new URL("api/multiplayer", base), {signal:AbortSignal.timeout(12000),method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({op:n.observer ? "watch" : "exchange",after:n.frame,room:n.room,token:n.token,events:n.observer ? [] : n.pending})});
+    const result = await response.json();
+    if (network !== n || n.stopped || !running) return;
+    if (!response.ok || result.state === "ended" && (!n.observer || n.frame >= result.frame - 1)) { n.stopped = true; stopLoop(); throw new Error(result.error || "Match disconnected"); }
+    n.pending = []; n.failedAt = 0;
+    const frames = n.observer ? (result.frames ?? []) : result.completed ? [result.completed] : [];
+    for (const frame of frames) if (frame.frame > n.frame) {
+      if (frame.frame !== n.frame + 1) { n.stopped = true; stopLoop(); throw new Error("Missing synchronized frame"); }
+      for (const packet of frame.packets) S.NetworkInject(packet.client, frame.frame, packet.data);
+      tickOnce();
+      n.frame = frame.frame;
+    }
+    post({type:"networkStatus", frame:n.frame, latency:performance.now()-t});
+  } catch (e) {
+    if (network !== n) return;
+    n.failedAt ||= performance.now();
+    if (performance.now() - n.failedAt > 60000) { n.stopped = true; stopLoop(); }
+    post({type:"networkStatus",frame:n.frame,latency:0,error:n.stopped ? String(e instanceof Error ? e.message : e) : "Connection interrupted. Retrying…"});
+  } finally { n.busy = false; }
+}
+
 function loop() {
   timer = null;
   if (!running) return;
   const now = performance.now();
-  if (!paused) {
+  if (network) {
+    if (!network.busy && !network.stopped) void networkTick();
+    nextTick = now + tickMs;
+  } else if (!paused) {
     let n = 0;
     while (now >= nextTick && n < 2) {
       tickOnce();
@@ -382,25 +435,40 @@ self.onmessage = async (e: MessageEvent<ToWorker>) => {
         start(m.scenario, m.paused ?? false, m.companion ?? false);
         if (lazy?.trace) { if (lazy.trace.length) console.info("lazy reads during start: " + lazy.trace.join(" ")); lazy.trace = null; }
         break;
+      case "peerFrame":
+        if (!network?.peer || network.stopped || !running) break;
+        if (m.frame !== network.frame + 1) throw Error("Missing direct peer frame");
+        for (const packet of m.packets) S.NetworkInject(packet.client, m.frame, packet.data);
+        tickOnce(); network.frame = m.frame;
+        post({ type: "networkStatus", frame: m.frame, latency: 0 });
+        break;
+      case "peerStop":
+        if (network?.peer) { network.stopped = true; stopLoop(); post({ type: "networkStatus", frame: network.frame, latency: 0, error: m.error }); }
+        break;
       case "refresh": refresh(); break;
-      case "step": if (running && paused) tickOnce(); break;
-      case "speed": tickMs = TICK_MS / Math.max(0.25, Math.min(8, m.speed)); break;
-      case "end": stopLoop(); relay?.close(); S.EndGame(); break;
-      case "pause": paused = m.paused; if (paused) refresh(); break;
+      case "step": if (network) break; if (running && paused) tickOnce(); break;
+      case "speed": if (network) break; tickMs = TICK_MS / Math.max(0.25, Math.min(8, m.speed)); break;
+      case "end":
+        if (network) {
+          network.stopped = true;
+          if (!network.peer) void fetch(new URL("api/multiplayer", base), {method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({op:"leave",room:network.room,token:network.token})}).catch(()=>{});
+        }
+        stopLoop(); relay?.close(); S.EndGame(); break;
+      case "pause": if (network) break; paused = m.paused; if (paused) refresh(); break;
       case "view":
         S?.View(m.x0 | 0, m.y0 | 0, m.x1 | 0, m.y1 | 0);
         if (running && paused) refresh();
         break;
-      case "select": post({ type: "reply", req: m.req, json: S.Select(JSON.stringify(m.ids), m.additive) }); break;
+      case "select": post({ type: "reply", req: m.req, json: S.Select(JSON.stringify(m.ids), m.additive) }); sendUi(); break;
       case "command": {
         let json: string;
-        try { json = S.Command(m.json); } catch (err) { json = JSON.stringify({ error: String(err instanceof Error ? err.message : err) }); }
+        try { json = replayEnd !== null || network?.observer ? JSON.stringify({ error: "Replay and spectators are read-only" }) : S.Command(m.json); } catch (err) { json = JSON.stringify({ error: String(err instanceof Error ? err.message : err) }); }
         post({ type: "reply", req: m.req, json });
         sendUi(); // mode changes show without waiting for the next tick
         break;
       }
       case "click": {
-        const count = S.Click(m.x | 0, m.y | 0, m.button, m.mods);
+        const count = replayEnd !== null || network?.observer ? 0 : S.Click(m.x | 0, m.y | 0, m.button, m.mods);
         post({ type: "ordered", count, t: m.t, tick: S.WorldTick() });
         sendUi();
         break;
@@ -416,6 +484,7 @@ self.onmessage = async (e: MessageEvent<ToWorker>) => {
         break;
       }
       case "bench": {
+        if (network) break;
         const wasRunning = running;
         stopLoop();
         const ms = S.TickMany(m.ticks);
@@ -424,9 +493,21 @@ self.onmessage = async (e: MessageEvent<ToWorker>) => {
         break;
       }
       case "log": post({ type: "log", json: S.SessionLog() }); break;
+      case "record": {
+        const selection = (JSON.parse(S.UiState()).selection ?? []).map((a: { id: number }) => a.id);
+        const groups = Array.from({ length: 10 }, (_, index) => JSON.parse(S.Command(JSON.stringify({ cmd: "group", action: "select", index }))).selection);
+        S.Select(JSON.stringify(selection), false);
+        post({ type: "reply", req: m.req, json: JSON.stringify({ log: JSON.parse(S.SessionLog()), tick: S.WorldTick(), selection, groups }) }); break;
+      }
       case "resync": S.Resync(); S.UiResync(); lastUi = ""; sendShroud(true); break;
     }
   } catch (err) {
-    post({ type: "error", message: err instanceof Error ? `${err.message}\n${err.stack ?? ""}` : String(err) });
+    if (network) {
+      network.stopped = true;
+      if (!network.peer) void fetch(new URL("api/multiplayer", base), {method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({op:"leave",room:network.room,token:network.token})}).catch(()=>{});
+      stopLoop();
+    }
+    const detail = err instanceof Error ? `${err.message}\n${err.stack ?? ""}` : err && typeof err === "object" ? JSON.stringify(err, Object.getOwnPropertyNames(err)) : String(err);
+    post({ type: "error", message: [detail, ...runtimeErrors].join("\n") });
   }
 };

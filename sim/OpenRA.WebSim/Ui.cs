@@ -61,6 +61,7 @@ namespace OpenRA.WebSim
 
 			var sb = new StringBuilder(1024);
 			sb.Append("{\"tick\":").Append(world.WorldTick);
+			sb.Append(",\"coach\":").Append(AiLab.CoachJson(world, p));
 
 			var res = p.PlayerActor.TraitOrDefault<PlayerResources>();
 			if (res != null)
@@ -76,6 +77,28 @@ namespace OpenRA.WebSim
 			sb.Append(",\"win\":").Append(J(p.WinState.ToString()));
 			sb.Append(",\"mission\":").Append(Missions.StateJson());
 			sb.Append(",\"mode\":").Append(J(ModeName(world.OrderGenerator)));
+
+			var selected = OwnSelection(world);
+			var capabilities = new Dictionary<string, bool>
+			{
+				["attackmove"] = selected.Any(a => a.Info.HasTraitInfo<AttackMoveInfo>() && a.Info.HasTraitInfo<AutoTargetInfo>()),
+				["guard"] = selected.Any(a => a.Info.HasTraitInfo<GuardInfo>() && a.Info.HasTraitInfo<AutoTargetInfo>()),
+				["scatter"] = selected.Any(a => a.Info.HasTraitInfo<IMoveInfo>()),
+				["deploy"] = selected.Any(a => a.TraitsImplementing<IIssueDeployOrder>().Any(d => d.CanIssueDeployOrder(a, false))),
+				["stop"] = selected.Any(a => a.Info.TraitInfoOrDefault<CommandBarBlacklistInfo>()?.DisableStop != true),
+			};
+			sb.Append(",\"commands\":{").Append(string.Join(",", capabilities.Select(k => J(k.Key) + ":" + (k.Value ? "true" : "false")))).Append('}');
+			sb.Append(",\"stances\":[").Append(string.Join(",", selected.SelectMany(a => a.TraitsImplementing<AutoTarget>())
+				.Select(t => t.PredictedStance.ToString().ToLowerInvariant()).Distinct().Select(J))).Append(']');
+			sb.Append(",\"supportPowers\":[");
+			var powers = p.PlayerActor.TraitOrDefault<SupportPowerManager>()?.Powers.Values
+				.Where(power => !power.Disabled && power.Info != null).OrderBy(power => power.Key);
+			if (powers != null)
+				sb.Append(string.Join(",", powers.Select(power => "{\"key\":" + J(power.Key) + ",\"name\":" + J(power.Name)
+					+ ",\"description\":" + J(power.Description) + ",\"ready\":" + (power.Ready ? "true" : "false")
+					+ ",\"active\":" + (power.Active ? "true" : "false") + ",\"remaining\":" + power.RemainingTicks
+					+ ",\"total\":" + power.TotalTicks + "}")));
+			sb.Append(']');
 
 			// The AI co-commander's HUD line and threat meter (what the desktop's AI strip shows).
 			if (CompanionRpc.Enabled && CompanionBridge.TryGetStatus(out var cState, out var cMessage, out var cEnabled, out var cMuted))
@@ -133,6 +156,11 @@ namespace OpenRA.WebSim
 					.Append(",\"own\":").Append(a.Owner == p ? "true" : "false")
 					.Append(",\"hp\":").Append(health?.HP ?? 0).Append(",\"maxHp\":").Append(health?.MaxHP ?? 0)
 					.Append(",\"rank\":").Append(xp?.Level ?? 0).Append(",\"maxRank\":").Append(xp?.MaxLevel ?? 0)
+					.Append(",\"primary\":").Append(a.TraitOrDefault<PrimaryBuilding>()?.IsPrimary == true ? "true" : "false")
+					.Append(",\"canPrimary\":").Append(a.TraitOrDefault<PrimaryBuilding>() is { IsTraitDisabled: false } ? "true" : "false")
+					.Append(",\"rally\":").Append(a.TraitOrDefault<RallyPoint>() != null ? "true" : "false")
+					.Append(",\"produces\":[").Append(string.Join(",", a.TraitsImplementing<Production>()
+						.Where(t => !t.IsTraitDisabled).SelectMany(t => t.Info.Produces).Distinct().Select(J))).Append(']')
 					.Append('}');
 			}
 
@@ -350,8 +378,23 @@ namespace OpenRA.WebSim
 					break;
 				}
 
+				case "primary":
+					Issue(world, OwnSelection(world).Where(a => a.TraitOrDefault<PrimaryBuilding>() is { IsTraitDisabled: false })
+						.Select(a => new Order("PrimaryProducer", a, false)));
+					break;
+
+				case "supportpower":
+					var manager = Local.PlayerActor.TraitOrDefault<SupportPowerManager>();
+					if (manager != null && manager.Powers.TryGetValue(Str("key") ?? "", out var power) && power.Ready && !power.Disabled)
+						power.Target();
+					break;
+
 				case "stats":
 					return GameStats(world);
+				case "ai-lab":
+					return AiLab.StateJson();
+				case "validate-practice":
+					return AiLab.Validate(world);
 
 				// ---- battle sandbox (an editing world that does not tick; runs are rebuilt from the placements)
 				case "units":
@@ -758,6 +801,13 @@ namespace OpenRA.WebSim
 		public static string Icon(string actorName)
 		{
 			var world = SimHost.World;
+			if (world != null && actorName.StartsWith("$power:", StringComparison.Ordinal))
+			{
+				var manager = Local?.PlayerActor.TraitOrDefault<SupportPowerManager>();
+				if (manager == null || !manager.Powers.TryGetValue(actorName[7..], out var power) || power.Info == null)
+					return "";
+				return SpriteIcon(power.Info.IconImage, power.Info.Icon, power.Info.IconPalette);
+			}
 			if (world == null || !world.Map.Rules.Actors.TryGetValue(actorName, out var info))
 				return "";
 
@@ -772,8 +822,16 @@ namespace OpenRA.WebSim
 			if (!world.Map.Sequences.HasSequence(image, sequence))
 				return "";
 
-			var sprite = world.Map.Sequences.GetSequence(image, sequence).GetSprite(0);
 			var paletteName = bi == null ? "chrome" : bi.IconPaletteIsPlayerPalette ? bi.IconPalette + Local.InternalName : bi.IconPalette;
+			return SpriteIcon(image, sequence, paletteName);
+		}
+
+		static string SpriteIcon(string image, string sequence, string paletteName)
+		{
+			var world = SimHost.World;
+			if (!world.Map.Sequences.HasSequence(image, sequence))
+				return "";
+			var sprite = world.Map.Sequences.GetSequence(image, sequence).GetSprite(0);
 			var palette = SimHost.WorldRenderer.Palette(paletteName);
 			var tex = Snapshot.TextureId(sprite.Sheet);
 			Snapshot.MarkTexture(tex);

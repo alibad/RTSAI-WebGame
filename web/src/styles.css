@@ -69,6 +69,12 @@ html, body, #root {
 /* Queued count: QueuedOffset 4,2 from the icon cell, whose art is drawn at IconSpriteOffset -1,-1 (so 5,3 on the art). */
 .cameo-count { left: calc(500cqw / 60); top: calc(300cqw / 60); }
 
+/* Original portraits include the lower body and tracks. A separate name row never paints over them. */
+.cameo:has(.portrait-label) { aspect-ratio: auto; }
+.portrait-label { display: block; height: 20px; padding: 2px 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; background: #050605; color: var(--hud-gold); font-size: 10px; line-height: 16px; text-align: center; }
+.portrait-fallback { display: grid; aspect-ratio: 60 / 48; place-items: center; padding: 4px; font-size: 10px; text-align: center; color: var(--muted-foreground); }
+.cameo:has(.portrait-label) .wipe, .cameo:has(.portrait-label) .cameo-label { bottom: 20px; }
+
 .power-meter > div { position: absolute; left: 2px; right: 2px; }
 
 .digits { font-family: "Consolas", ui-monospace, monospace; font-variant-numeric: tabular-nums; letter-spacing: 0.04em; }
@@ -82,4 +88,9 @@ html, body, #root {
 /* Phones and small tablets: a narrower sidebar (Sidebar.tsx shrinks the radar to match). */
 @media (max-height: 599px), (max-width: 899px) {
   :root { --sidebar-w: 184px; }
+}
+
+@media (max-width: 650px) {
+  .battlefield-review { bottom: auto; top: 60px; max-width: calc(100% - var(--sidebar-w) - 24px); }
+  .pause-label { top: 104px; left: calc((100% - var(--sidebar-w)) / 2); }
 }

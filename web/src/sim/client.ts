@@ -65,7 +65,7 @@ export class SimClient {
   }
 
   /** A command that answers with JSON (selection, control groups, production...). */
-  request<T = Record<string, unknown>>(m: { type: "command"; json: string } | { type: "select"; ids: number[]; additive: boolean }): Promise<T> {
+  request<T = Record<string, unknown>>(m: { type: "command"; json: string } | { type: "record" } | { type: "select"; ids: number[]; additive: boolean }): Promise<T> {
     const req = this.nextReq++;
     return new Promise((resolve) => {
       this.replies.set(req, (json) => resolve(JSON.parse(json) as T));

@@ -16,9 +16,11 @@ namespace OpenRA.WebSim
 {
 	public sealed class PlayerSpec
 	{
+		public int Client;
 		public string Slot;
 		public string Faction = "Random";
 		public string Bot;
+		public string Doctrine;
 		public string Color = "E04444";
 		public int Team;
 		public int SpawnPoint;
@@ -49,9 +51,10 @@ namespace OpenRA.WebSim
 	/// </summary>
 	public sealed class ScenarioSpec
 	{
+		public int LocalClient = 1;
+		public bool Multiplayer;
 		public string Map;
 		public string Mission;
-		public bool Multiplayer;
 		public int Seed = 1;
 		public List<PlayerSpec> Players = [];
 		public Dictionary<string, string> Options = [];
@@ -66,6 +69,8 @@ namespace OpenRA.WebSim
 
 		/// <summary>A battle-sandbox run: track the results readout (shots, damage, kills, survivors).</summary>
 		public bool Sandbox;
+		public string Objective;
+		public int Duration = 120;
 
 		public static ScenarioSpec Parse(string json)
 		{
@@ -75,6 +80,10 @@ namespace OpenRA.WebSim
 			{
 				Map = Str(root, "map", null),
 				Mission = Str(root, "mission", null),
+				Objective = Str(root, "objective", null),
+				Duration = System.Math.Clamp(Int(root, "duration", 120), 30, 600),
+				LocalClient = Int(root, "localClient", 1),
+				Multiplayer = root.TryGetProperty("multiplayer", out var mp) && mp.ValueKind == JsonValueKind.True,
 				Seed = Int(root, "seed", 1),
 				Script = Str(root, "script", null),
 				DefaultLevel = Int(root, "level", 0),
@@ -90,8 +99,10 @@ namespace OpenRA.WebSim
 					s.Players.Add(new PlayerSpec
 					{
 						Slot = Str(p, "slot", null),
+						Client = Int(p, "client", 1),
 						Faction = Str(p, "faction", "Random"),
 						Bot = Str(p, "bot", null),
+						Doctrine = Str(p, "doctrine", null),
 						Color = Str(p, "color", "E04444"),
 						Team = Int(p, "team", 0),
 						SpawnPoint = Int(p, "spawn", 0),

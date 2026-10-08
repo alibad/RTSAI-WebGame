@@ -4,6 +4,7 @@
 // listed.
 
 import { useStore } from "../store";
+import { preferences } from "../preferences";
 import { Kbd } from "./CameoTip";
 import { AttackMoveIcon, DeployIcon, GuardIcon, RepairIcon, ScatterIcon, SellIcon, StopIcon } from "./icons";
 
@@ -76,7 +77,7 @@ export function HotkeySheet() {
             <div className="grid gap-[5px]">
               {rows.map(([keys, label, Icon]) => (
                 <div key={label} className="flex items-center gap-2">
-                  <span className="flex w-[96px] shrink-0 flex-wrap gap-[3px]">{keys.map((k) => <Kbd key={k}>{k}</Kbd>)}</span>
+                  <span className="flex w-[96px] shrink-0 flex-wrap gap-[3px]">{keys.map((k) => <Kbd key={k}>{keys.length === 1 ? (preferences.bindings[k.toLowerCase()] ?? k).toUpperCase() : k}</Kbd>)}</span>
                   <span className="grid w-[16px] place-items-center text-[var(--hud-gold)]">{Icon && <Icon width={14} height={14} />}</span>
                   <span className="text-[var(--foreground)]">{label}</span>
                 </div>

@@ -195,7 +195,7 @@ namespace OpenRA.WebSim.Browser
 		{
 			Snapshot.Reset();
 			Ui.Resync();
-			SimHost.Start(ScenarioSpec.Parse(scenarioJson));
+			MatchRestore.Start(scenarioJson);
 			return Snapshot.StartInfoJson(out terrain);
 		}
 
@@ -263,7 +263,14 @@ namespace OpenRA.WebSim.Browser
 		[JSExport]
 		public static byte[] Terrain() => terrain;
 
-		/// <summary>One simulation tick, then the snapshot is handed to JS (copied into the shared ring there).</summary>
+		/// <summary>Serialize local orders and drain synchronization reports for the room relay.</summary>
+		[JSExport]
+		public static string NetworkPoll() => SimHost.Connection.Poll();
+
+		[JSExport]
+		public static void NetworkInject(int client, int frame, string bytes) => SimHost.Connection.Inject(client, frame, bytes);
+
+		/// <summary>One simulation tick, then publish the snapshot into the shared ring.</summary>
 		[JSExport]
 		public static double Tick()
 		{

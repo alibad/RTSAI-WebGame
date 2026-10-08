@@ -136,7 +136,7 @@ namespace OpenRA.WebSim
 			session.GlobalSettings.RandomSeed = s.Seed;
 			session.GlobalSettings.NetFrameInterval = 1;
 			session.GlobalSettings.GameTimestep = 40;
-			session.GlobalSettings.EnableSingleplayer = true;
+			session.GlobalSettings.EnableSingleplayer = !s.Multiplayer;
 			session.GlobalSettings.GameUid = "web-" + s.Seed;
 
 			foreach (var kv in s.Options)
@@ -156,15 +156,15 @@ namespace OpenRA.WebSim
 				};
 			}
 
-			// Client 1 is the local human (the connection's LocalClientId); bots get 2, 3, ... and are driven by client 1.
-			var nextBot = WebConnection.ClientId + 1;
+			// Human IDs are 1 locally or 1 and 2 in multiplayer; client 1 controls all bots.
+			var nextBot = s.Multiplayer ? Math.Max(2, s.Players.Where(p => p.Bot == null).Select(p => p.Client).DefaultIfEmpty(1).Max()) + 1 : WebConnection.ClientId + 1;
 			foreach (var p in s.Players)
 			{
 				if (!session.Slots.ContainsKey(p.Slot))
 					throw new InvalidDataException($"Map has no playable slot '{p.Slot}'.");
 
 				var color = Color.TryParse(p.Color, out var c) ? c : Color.Red;
-				var index = p.Bot == null ? WebConnection.ClientId : nextBot++;
+				var index = p.Bot == null ? (s.Multiplayer ? p.Client : WebConnection.ClientId) : nextBot++;
 				session.Clients.Add(new Session.Client
 				{
 					Index = index,
@@ -280,7 +280,7 @@ namespace OpenRA.WebSim
 			preparedMap = null;
 			preparedMapName = null;
 
-			Connection = new WebConnection { ReplayPackets = replayPackets };
+			Connection = new WebConnection { ReplayPackets = replayPackets, Multiplayer = s.Multiplayer, NetworkClientId = s.LocalClient };
 			OrderManager = new OrderManager(Connection);
 			Connection.Attach(OrderManager);
 			Game.OrderManager = OrderManager;
@@ -318,6 +318,7 @@ namespace OpenRA.WebSim
 
 			Sandbox.Start(s.Sandbox ? PlayablePlayers() : null);
 			Missions.Start(s.Mission);
+			AiLab.Start();
 
 			GC.Collect();
 		}
@@ -446,6 +447,7 @@ namespace OpenRA.WebSim
 				world.Tick();
 				Missions.Tick(world);
 				Sandbox.Tick(world);
+				AiLab.Tick(world);
 			}
 
 			// TickRender updates the screen map (mouse/selection lookups) and render-only state.

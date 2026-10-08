@@ -17,9 +17,11 @@ export interface FeedItem {
   proposalId?: string;
   /** Proposals: pending until the player accepts or cancels them. */
   /** expired: the companion no longer holds it (a newer question or order replaced it); it can't be accepted. */
-  state?: "pending" | "accepted" | "cancelled" | "expired";
+  state?: "pending" | "accepted" | "cancelled" | "expired" | "failed";
   importance?: string;
+  commands?: PreviewCommand[];
 }
+export interface PreviewCommand { action: string; actor_id: number; target_actor_id?: number; target_x?: number; target_y?: number; item_type?: string }
 
 export interface CoCommanderState {
   /** The player's choice (setup screen), kept between visits. */
@@ -34,6 +36,24 @@ export interface CoCommanderState {
   open: boolean;
   feed: FeedItem[];
   error: string;
+  strategies: StrategyState | null;
+  strategyOpen: boolean;
+  strategyBusy: boolean;
+  strategyError: string;
+  offerSteps: boolean;
+}
+
+export interface StrategyChoice { id: string; name: string; intent: string; tradeoff: string }
+export interface StrategyState {
+  active: (StrategyChoice & { selected_tick: number; next: string; status: string; progress: string }) | null;
+  choices: StrategyChoice[];
+  all?: StrategyChoice[];
+  context: string;
+  reason: string;
+  reserve: number;
+  available?: boolean;
+  tick?: number;
+  execution?: string;
 }
 
 // Read while store.ts is still being evaluated (an import cycle): no module-level constants may be used here.
@@ -43,6 +63,7 @@ export function initialCoCommander(): CoCommanderState {
   return {
     enabled: saved.enabled ?? false, mode: saved.mode === "local" ? "local" : "mock", muted: saved.muted ?? false,
     running: false, linked: false, listening: false, thinking: false, open: false, feed: [], error: "",
+    strategies: null, strategyOpen: false, strategyBusy: false, strategyError: "", offerSteps: true,
   };
 }
 
@@ -50,7 +71,7 @@ interface CompanionReply {
   text: string;
   source: string;
   interrupted?: boolean;
-  metadata?: { action?: { state?: string; proposal_id?: string; summary?: string; detail?: string }; degraded?: boolean };
+  metadata?: { action?: { state?: string; proposal_id?: string; summary?: string; detail?: string }; degraded?: boolean; contextual_strategy?: StrategyState };
 }
 
 const API = "companion/api/";
@@ -65,8 +86,11 @@ export class CoCommander {
    */
   focus: RegExp | null = null;
   private lastAlert = "";
+  private polling = false;
+  private strategyRevision = 0;
+  private matchRevision = 0;
 
-  constructor(private audio: AudioEngine) {}
+  constructor(private audio: AudioEngine, private canIssue: () => boolean = () => true) {}
 
   private get s() { return store.get().cc; }
 
@@ -88,7 +112,7 @@ export class CoCommander {
 
   setEnabled(enabled: boolean) { this.set({ enabled }); }
   setMode(mode: "mock" | "local") { this.set({ mode }); }
-  setOpen(open: boolean) { this.set({ open }); }
+  setOpen(open: boolean) { this.set({ open, ...(open ? { strategyOpen: false } : {}) }); }
   toggleMute() { this.set({ muted: !this.s.muted }); if (this.s.muted) this.audio.stopVoice(); }
 
   /** Starts the local companion (before a match with the co-commander). */
@@ -101,7 +125,9 @@ export class CoCommander {
 
   /** A new match: clear the feed, greet, and watch for orders the co-commander offers on its own. */
   matchStarted() {
-    this.set({ feed: [], linked: false, thinking: false });
+    this.matchRevision++;
+    this.strategyRevision++;
+    this.set({ feed: [], linked: false, thinking: false, strategies: null, strategyError: "", strategyBusy: false, strategyOpen: false });
     this.push("system", this.s.mode === "mock" ? "Co-commander online (scripted brain)" : "Co-commander online");
     if (!this.poll) this.poll = setInterval(() => { void this.offers(); }, 1500);
   }
@@ -111,13 +137,19 @@ export class CoCommander {
    * accepts them with a hotkey; here they become cards like any proposal.
    */
   private async offers() {
-    if (!this.s.enabled || !this.s.running || !this.s.linked) return;
+    if (!this.s.enabled || !this.s.running || !this.s.linked || store.get().phase !== "playing" || this.polling) return;
+    this.polling = true;
+    const revision = this.strategyRevision;
+    const match = this.matchRevision;
     try {
       const asked = Date.now();
       const res = await fetch(new URL(`${API}v1/state`, base()));
       if (!res.ok) return;
-      type Offer = { proposal_id: string; summary: string };
-      const state = await res.json() as { pending_action?: Offer | null; pending_actions?: Offer[] };
+      type Offer = { proposal_id: string; summary: string; commands?: PreviewCommand[] };
+      const state = await res.json() as { pending_action?: Offer | null; pending_actions?: Offer[]; contextual_strategy?: StrategyState };
+      if (match !== this.matchRevision || store.get().phase !== "playing") return;
+      if (state.contextual_strategy && revision === this.strategyRevision && !this.s.strategyBusy)
+        this.set({ strategies: state.contextual_strategy });
       // Every offer the companion still holds, newest first (pending_actions; older companions send only the newest).
       const held = state.pending_actions ?? (state.pending_action ? [state.pending_action] : []);
       const ids = new Set(held.map((p) => p.proposal_id));
@@ -127,8 +159,53 @@ export class CoCommander {
       // New offers as cards, oldest first so the feed keeps their order.
       for (const p of [...held].reverse())
         if (!this.s.feed.some((f) => f.proposalId === p.proposal_id) && (!this.focus || this.focus.test(p.summary)))
-          this.push("proposal", p.summary, { proposalId: p.proposal_id, state: "pending" });
+          this.push("proposal", p.summary, { proposalId: p.proposal_id, state: "pending", commands: p.commands });
+      for (const p of held) {
+        const item = this.s.feed.find(f => f.proposalId === p.proposal_id);
+        if (item && !item.commands && p.commands) this.update(item.id, { commands: p.commands });
+      }
+      if (revision === this.strategyRevision && this.s.strategies?.active && this.s.strategies.available && this.s.offerSteps
+          && !this.s.strategyBusy && !this.s.thinking && !store.get().paused && !held.length)
+        await this.strategyStep(true);
     } catch { /* the companion is restarting */ }
+    finally { this.polling = false; }
+  }
+
+  setStrategyOpen(strategyOpen: boolean) { this.set({ strategyOpen, ...(strategyOpen ? { open: false } : {}) }); }
+  setOfferSteps(offerSteps: boolean) { this.set({ offerSteps }); }
+
+  async selectStrategy(strategy: string | null, reserve = this.s.strategies?.reserve ?? 0) {
+    if (this.s.strategyBusy) return;
+    const revision = ++this.strategyRevision;
+    const match = this.matchRevision;
+    this.set({ strategyBusy: true, strategyError: "" });
+    try {
+      const strategies = await this.post<StrategyState>("v1/strategies", { strategy, reserve });
+      if (match !== this.matchRevision) return;
+      this.set({ strategies });
+      this.push("system", strategies.active ? `Strategy selected: ${strategies.active.name}. Steps need your acceptance.` : "Strategy released. You have direct control.");
+    } catch (e) {
+      if (match === this.matchRevision) this.set({ strategyError: e instanceof Error ? e.message : String(e) });
+    } finally {
+      if (revision === this.strategyRevision) this.set({ strategyBusy: false });
+    }
+  }
+
+  async strategyStep(automatic = false) {
+    if (this.s.strategyBusy || !this.s.strategies?.active) return;
+    const revision = this.strategyRevision;
+    const match = this.matchRevision;
+    if (!automatic) this.set({ strategyBusy: true, strategyError: "" });
+    try {
+      const r = await this.post<CompanionReply>("v1/strategies/step", { automatic });
+      if (revision !== this.strategyRevision || match !== this.matchRevision || store.get().phase !== "playing") return;
+      // Automatic steps are quiet; polling adds their cards without repeating speech every 1.5 seconds.
+      if (!automatic) this.reply(r);
+    } catch (e) {
+      if (match === this.matchRevision && !automatic) this.set({ strategyError: e instanceof Error ? e.message : String(e) });
+    } finally {
+      if (!automatic && revision === this.strategyRevision) this.set({ strategyBusy: false });
+    }
   }
 
   /** Engine events (worker): status lines become feed entries; links and executed actions update the panel. */
@@ -151,6 +228,7 @@ export class CoCommander {
 
   /** A typed or spoken question or order. */
   async ask(text: string) {
+    if (!this.canIssue()) { this.push("system", "Return live before talking to the co-commander."); return; }
     text = text.trim();
     if (!text) return;
     this.push("you", text);
@@ -167,10 +245,12 @@ export class CoCommander {
 
   private reply(r: CompanionReply) {
     if (r.interrupted) return;
+    if (r.metadata?.contextual_strategy) this.set({ strategies: r.metadata.contextual_strategy });
     const action = r.metadata?.action;
     if (action?.state === "pending" && action.proposal_id) {
       const summary = action.summary || r.text;
-      this.push("proposal", summary, { proposalId: action.proposal_id, state: "pending" });
+      if (!this.s.feed.some((item) => item.proposalId === action.proposal_id))
+        this.push("proposal", summary, { proposalId: action.proposal_id, state: "pending" });
       // The card carries the order and its buttons; keep only what the reply adds (e.g. a note), not the boilerplate.
       const note = r.text.replace(action.summary ?? "", "").replace(/I prepared \d+ validated orders?\.?/i, "").replace(/Say confirm to execute, or cancel\.?/i, "")
         .replace(/^[\s.]*(Note:\s*)?/i, "").trim();
@@ -185,6 +265,7 @@ export class CoCommander {
   }
 
   async decide(item: FeedItem, accept: boolean) {
+    if (accept && !this.canIssue()) { this.push("system", "Return live before accepting orders."); return; }
     if (!item.proposalId || item.state !== "pending") return;
     this.update(item.id, { state: accept ? "accepted" : "cancelled" });
     try {
@@ -192,8 +273,12 @@ export class CoCommander {
       if (!accept) return;
       // A queued order shows as the engine's receipt (✓); only a refusal needs the companion's words.
       const state = r.metadata?.action?.state;
-      if (r.text && (state === "rejected" || state === "failed" || state === "unavailable")) this.push("rejected", r.text);
+      if (state && !["executed", "queued", "accepted"].includes(state)) {
+        this.update(item.id, { state: "failed" });
+        if (r.text) this.push("rejected", r.text);
+      }
     } catch (e) {
+      this.update(item.id, { state: "failed" });
       this.push("system", `Not sent: ${e instanceof Error ? e.message : e}`);
     }
   }
@@ -204,6 +289,7 @@ export class CoCommander {
   // ---------------------------------------------------------------- voice
 
   async startListening() {
+    if (!this.canIssue()) return;
     if (this.recorder || this.s.listening) return;
     this.audio.stopVoice();
     try {

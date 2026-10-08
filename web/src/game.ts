@@ -12,7 +12,9 @@ import { store, type Perf } from "./store";
 import { cursorFor, loadModCursors } from "./ui/cursors";
 import { MouseLock } from "./pointer";
 import { AudioEngine } from "./audio";
+import { preferences } from "./preferences";
 import { Sandbox, worldToCell } from "./sandbox";
+import { Coach } from "./ai-lab";
 
 // OpenRA enums
 const MOD_SHIFT = 1, MOD_ALT = 2, MOD_CTRL = 4, MOD_META = 8;
@@ -41,11 +43,13 @@ export class RadarModel {
 }
 
 export class Game {
+  multiplayer = false;
   readonly renderer: Renderer;
   readonly client: SimClient;
   readonly radar = new RadarModel();
   readonly audio = new AudioEngine();
-  readonly cc = new CoCommander(this.audio);
+  readonly cc = new CoCommander(this.audio, () => !this.coach.review);
+  readonly coach = new Coach(this);
   private lastListener = 0;
   cam: Camera = { x: 0, y: 0, zoom: 1 };
   overlay: Overlay = { selected: new Set(), hover: null, dragBox: null, orderFlash: null, ownPlayer: -1 };
@@ -199,11 +203,13 @@ export class Game {
   }
 
   start(scenarioJson: string, paused = false) {
+    this.coach.reset();
+    this.multiplayer = JSON.parse(scenarioJson).multiplayer === true;
     this.scenarioJson = scenarioJson;
     this.overlay.selected.clear();
     this.ui = null;
     this.latency = [];
-    store.set({ phase: "loading", stage: "Building the world", ui: null, catalog: [], verify: "", menuOpen: false, paused: false });
+    store.set({ phase: "loading", stage: "Building the world", ui: null, catalog: [], verify: "", menuOpen: false, paused });
     const sides = scenarioFactions(scenarioJson);
     this.wantFactions(sides?.all ?? null, sides?.local);
     // Prebaked sprite sheets still streaming in: the world starts once they are on the GPU (nothing drawn invisible).
@@ -254,6 +260,7 @@ export class Game {
   }
 
   setPaused(paused: boolean) {
+    if (this.multiplayer) return;
     this.client.send({ type: "pause", paused });
     this.audio.pause(-1, paused);
     store.set({ paused });
@@ -261,11 +268,29 @@ export class Game {
 
   private cursorsRequested = false;
 
+  captureUi() {
+    return { cam: { ...this.cam }, bookmarks: this.bookmarks.map((b) => b ? [...b] : null), tab: store.get().tab };
+  }
   private started(info: StartInfo, radarTerrain: ArrayBuffer, startMs: number) {
     if (!this.cursorsRequested) { this.cursorsRequested = true; this.client.send({ type: "cursorset" }); }
     // The sandbox keeps its camera between editing and running (it frames the placements itself).
     if (!this.sandbox || !this.info) this.cam = { x: info.start[0], y: info.start[1], zoom: 1 };
     this.info = info;
+    const practice = JSON.parse(this.scenarioJson || "{}");
+    if (!this.sandbox && practice.sandbox && practice.placements?.length) {
+      const p = practice.placements as {u: number; v: number}[];
+      const xs = p.map(a => a.u * info.tileSize[0]); const ys = p.map(a => a.v * info.tileSize[1] / 2);
+      this.cam.zoom = Math.max(.35, Math.min(1.5, this.canvas.width / (Math.max(...xs) - Math.min(...xs) + 500), this.canvas.height / (Math.max(...ys) - Math.min(...ys) + 400)));
+      this.cam.x = info.cellOrigin[0] + p.reduce((n, a) => n + 2 * a.u + (a.v & 1), 0) / p.length * info.tileSize[0] / 2;
+      this.cam.y = info.cellOrigin[1] + p.reduce((n, a) => n + a.v, 0) / p.length * info.tileSize[1] / 2;
+    }
+    const savedView = practice.webReplay?.readonly ? null : practice.webReplay?.view;
+    if (savedView?.cam && [savedView.cam.x, savedView.cam.y, savedView.cam.zoom].every(Number.isFinite)) {
+      this.cam = { x: savedView.cam.x, y: savedView.cam.y, zoom: Math.max(0.35, Math.min(3, savedView.cam.zoom)) };
+      if (Array.isArray(savedView.bookmarks) && savedView.bookmarks.length === 4)
+        this.bookmarks = savedView.bookmarks.map((b: number[] | null) => b && b.length === 3 && b.every(Number.isFinite) ? [b[0], b[1], b[2]] : null);
+      if (typeof savedView.tab === "string") store.set({ tab: savedView.tab });
+    }
     const w = info.mapSize[0] * 2 + 1;
     const h = info.mapSize[1];
     this.radar.terrain = new ImageData(new Uint8ClampedArray(radarTerrain), w, h);
@@ -279,9 +304,13 @@ export class Game {
   }
 
   private onUi(u: UiState) {
+    u = { ...u, selection: u.selection ?? [], queues: u.queues ?? [] };
     const s = store.get();
     const catalog = u.catalog ?? s.catalog;
+    u.selection ??= [];
+    const previousSelection = this.ui?.selection ?? [];
     this.ui = u;
+    this.overlay.selected = new Set(u.selection.map((a) => a.id));
     const patch: Partial<typeof s> = { ui: u };
     if (u.catalog) {
       patch.catalog = catalog;
@@ -293,6 +322,15 @@ export class Game {
     if (!catalog.some((q) => q.type === s.tab && q.items.length)) {
       const first = catalog.find((q) => q.items.length);
       if (first) patch.tab = first.type;
+    }
+    // Switch once on a new selection; leave manual tab choices alone on later UI ticks.
+    const selectionChanged = u.selection.length !== previousSelection.length
+      || u.selection.some((a, i) => a.id !== previousSelection[i]?.id || a.own !== previousSelection[i]?.own);
+    if (selectionChanged && u.selection.length === 1 && u.selection[0].own) {
+      const produces = u.selection[0].produces ?? [];
+      const queue = catalog.find((q) => produces.includes(q.type) && q.items.length
+        && u.queues.some((state) => state.type === q.type && state.enabled));
+      if (queue) patch.tab = queue.type;
     }
     store.set(patch);
   }
@@ -328,6 +366,7 @@ export class Game {
     const pl = this.pendingLatency;
     if (pl && pl.tick > 0 && s.header.tick >= pl.tick && !pl.snapAt) pl.snapAt = now;
     this.sandbox?.record(s);
+    this.coach.record(s, this.ui);
   }
 
   // ---------------------------------------------------------------- frame loop
@@ -341,7 +380,7 @@ export class Game {
     const cur = this.client.cur;
     this.updateHover(cur);
     this.overlay.markers = this.sandboxMarkers();
-    const replay = this.sandbox?.replayFrame();
+    const replay = this.coach.review ? [this.coach.review.snapshot, null] as const : this.sandbox?.replayFrame();
     if (replay) this.renderer.render(replay[0], replay[1], this.cam, this.overlay, replay[0].receivedAt + 40);
     else this.renderer.render(cur, this.client.prev, this.cam, this.overlay, performance.now());
     if (this.iconQueue.size) this.rasterIcons();
@@ -443,7 +482,7 @@ export class Game {
     if (ux || uy) {
       // Rate for a 25 ms step, diagonals no faster (UpdateCameraTick); view px to world px.
       const dpr = window.devicePixelRatio || 1;
-      const step = (Math.min(dt, 25) * SCROLL_PX_PER_MS * dpr) / (this.cam.zoom * Math.max(1, Math.hypot(ux, uy)));
+      const step = (Math.min(dt, 25) * SCROLL_PX_PER_MS * preferences.scroll * dpr) / (this.cam.zoom * Math.max(1, Math.hypot(ux, uy)));
       this.cam.x += ux * step;
       this.cam.y += uy * step;
       this.clampCam();
@@ -588,6 +627,7 @@ export class Game {
   // ---------------------------------------------------------------- orders and commands
 
   private click(wx: number, wy: number, button: number, mods: number) {
+    if (this.coach.review) return;
     const t0 = performance.now();
     if (button === BTN_RIGHT && this.overlay.selected.size > 0) {
       this.pendingLatency = { t0, tick: 0 };
@@ -603,6 +643,7 @@ export class Game {
   }
 
   command<T = Record<string, unknown>>(cmd: Record<string, unknown>) {
+    if (this.coach.review && !["stats", "ai-lab", "placements", "units"].includes(String(cmd.cmd))) return Promise.resolve({ error: "Return live before issuing orders." } as T);
     return this.client.command<T>(cmd);
   }
 
@@ -641,11 +682,13 @@ export class Game {
   }
 
   bench(ticks: number) {
+    if (this.multiplayer) { store.set({ verify: "Benchmarks are unavailable during multiplayer." }); return; }
     store.set({ verify: "Benchmarking..." });
     this.client.send({ type: "bench", ticks });
   }
 
   requestVerify() {
+    if (this.multiplayer) { store.set({ verify: "The room server compares both players’ OpenRA hashes every frame." }); return; }
     store.set({ verify: "Replaying this game natively..." });
     this.client.send({ type: "log" });
   }
@@ -783,6 +826,7 @@ export class Game {
     c.addEventListener("mouseenter", () => (this.mouse.inside = true));
     c.addEventListener("mouseleave", () => (this.mouse.inside = false));
     c.addEventListener("mousedown", (e) => {
+      if (this.coach.review) return;
       this.lock.maybeLock(e);
       c.focus();
       store.set({ menuOpen: false });
@@ -827,6 +871,7 @@ export class Game {
    * its ingame chrome), each doing what its widget logic does. ui/Hotkeys.tsx lists them.
    */
   private keyDown(e: KeyboardEvent) {
+    if (this.coach.review && e.key !== "Escape" && !(e.target instanceof HTMLInputElement) && !(e.target instanceof HTMLTextAreaElement)) return;
     const tag = (e.target as HTMLElement)?.tagName;
     this.modState = this.mods(e);
     if (tag === "INPUT" || tag === "TEXTAREA" || store.get().phase !== "playing") return;
@@ -837,6 +882,7 @@ export class Game {
     const done = () => e.preventDefault();
 
     if (e.key === "Escape") {
+      if (this.coach.review) { this.coach.live(); return done(); }
       // The Esc that released the mouse lock is the browser's, not the game's.
       if (this.lock.locked || performance.now() - this.lock.releasedAt < 400) return;
       const st = store.get();
@@ -978,17 +1024,17 @@ export class Game {
 }
 
 /**
- * The factions of a scenario's players and the local player's (the first one without a bot), or null when one is
+ * The factions of a scenario's players and the local human's faction, or null when one is
  * random (resolved only when the world is created).
  */
 function scenarioFactions(scenarioJson: string): { all: string[]; local?: string } | null {
   try {
-    const s = JSON.parse(scenarioJson) as { players?: { faction?: string; bot?: string }[]; sandbox?: boolean; placements?: unknown[] };
+    const s = JSON.parse(scenarioJson) as { localClient?: number; multiplayer?: boolean; players?: { client?: number; faction?: string; bot?: string }[]; sandbox?: boolean; placements?: unknown[] };
     const players = s.players ?? [];
     const factions = players.map((p) => p.faction ?? "random");
     if (factions.some((f) => !f || f.startsWith("random"))) return null;
     // A sandbox shows both sides from the start: wait for both.
-    return { all: factions, local: s.sandbox || s.placements?.length ? undefined : players.find((p) => !p.bot)?.faction };
+    return { all: factions, local: s.sandbox || s.placements?.length ? undefined : players.find((p) => !p.bot && (!s.multiplayer || p.client === s.localClient))?.faction };
   } catch {
     return null;
   }

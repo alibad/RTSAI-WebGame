@@ -216,6 +216,7 @@ export interface StartInfo {
 export interface LazyStats { files: number; bytes: number; fetchedBytes: number; cachedBytes: number; fetches: number }
 
 export interface SetupData {
+  multiplayer?: boolean;
   missions?: MissionDefinition[];
   factions: { id: string; name: string; side: string; description: string; random: boolean }[];
   bots: { type: string; name: string }[];
@@ -225,6 +226,7 @@ export interface SetupData {
 
 /** Per-tick game-UI state (sim/OpenRA.WebSim/Ui.cs). `catalog` is present only when it changed. */
 export interface UiState {
+  coach?: { earned: number; losses: number; actors: { id: number; building: boolean; x: number; y: number }[] };
   mission?: MissionState | null;
   tick: number;
   cash?: number;
@@ -234,7 +236,10 @@ export interface UiState {
   win: string;
   mode: string; // "", place, sell, repair, attackmove, guard
   queues: { type: string; enabled: boolean; items: QueuedItem[] }[];
-  selection: { id: number; type: string; own: boolean; hp: number; maxHp: number; rank: number; maxRank: number }[];
+  selection: { id: number; type: string; own: boolean; hp: number; maxHp: number; rank: number; maxRank: number; produces?: string[]; primary?: boolean; canPrimary?: boolean; rally?: boolean }[];
+  commands?: Record<string, boolean>;
+  stances?: string[];
+  supportPowers?: { key: string; name: string; description: string; ready: boolean; active: boolean; remaining: number; total: number }[];
   groups?: number[];
   catalog?: CatalogQueue[];
   sandbox?: SandboxStats | null;
@@ -298,6 +303,8 @@ export interface CatalogQueue { type: string; items: CatalogItem[] }
 
 // Messages between page and worker.
 export type ToWorker =
+  | { type: "peerFrame"; frame: number; packets: { client: number; data: string }[] }
+  | { type: "peerStop"; error: string }
   | { type: "init"; runtime: string; base: string; sab: SharedArrayBuffer | null; privateContent: boolean; gcParams?: string; profile?: string; rtBase?: string; dataBase?: string }
   | { type: "prepare"; map: string }
   | { type: "preview"; map: string }
@@ -320,9 +327,12 @@ export type ToWorker =
   | { type: "cursorset" }
   | { type: "bench"; ticks: number }
   | { type: "log" }
+  | { type: "record"; req: number }
   | { type: "resync" };
 
 export type FromWorker =
+  | { type: "peerOut"; events: import('../peer').PeerEvent[] }
+  | { type: "networkStatus"; frame: number; latency: number; error?: string }
   | { type: "progress"; stage: string; detail?: string }
   | { type: "ready"; timings: Record<string, number>; runtimeMs: number; downloadBytes: Record<string, number>; setup: SetupData; privateContent: boolean }
   | { type: "prepared"; map: string; ms: number; timings: Record<string, number>; lazy?: LazyStats }

@@ -4,8 +4,15 @@ import { useStore } from "./store";
 import { Hud } from "./ui/Hud";
 import { Setup } from "./ui/Setup";
 import { Missions, MissionHud } from "./ui/Missions";
+import { Multiplayer } from "./ui/Multiplayer";
+import { DirectMultiplayer } from "./ui/DirectMultiplayer";
+import { MatchLibrary } from "./ui/MatchLibrary";
+import { GameSettings } from "./ui/GameSettings";
 import { SandboxHud } from "./ui/SandboxHud";
 import { ARENA, Sandbox, parseSandboxUrl } from "./sandbox";
+import { Practice } from "./ui/Practice";
+import { CoachPanel } from "./ui/Coach";
+import { Annotations } from "./ui/Annotations";
 
 function Loading() {
   const stage = useStore((s) => s.stage);
@@ -45,6 +52,7 @@ let autostarted = false;
 export default function App() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [game, setGame] = useState<Game | null>(null);
+  const [practiceOpen, setPracticeOpen] = useState(new URLSearchParams(location.search).get("mode") === "practice");
   const [mode, setMode] = useState<"home" | "skirmish" | "missions">(() => new URLSearchParams(location.search).get("mode") === "missions" ? "missions" : "home");
   const phase = useStore((s) => s.phase);
   const uiHidden = useStore((s) => s.uiHidden);
@@ -93,8 +101,9 @@ export default function App() {
   return (
     <div className="fixed inset-0" style={sandboxMode ? ({ "--sidebar-w": "300px" } as React.CSSProperties) : undefined}>
       <canvas ref={canvasRef} className="stage" tabIndex={0} style={{ right: playing ? "var(--sidebar-w)" : 0, width: playing ? "calc(100% - var(--sidebar-w))" : "100%", visibility: playing ? "visible" : "hidden" }} />
-      {game && playing && !uiHidden && (sandboxMode ? <SandboxHud game={game} /> : <Hud game={game} />)}
+      {game && playing && !uiHidden && !practiceOpen && (sandboxMode ? <SandboxHud game={game} /> : <Hud game={game} />)}
       {game && phase === "setup" && !sandboxMode && <>
+        <div className="absolute bottom-4 left-4 z-20 flex gap-2"><MatchLibrary game={game} /><GameSettings game={game} /></div>
         {mode === "home" ? <div className="absolute inset-0 grid place-items-center overflow-auto bg-[radial-gradient(ellipse_at_40%_30%,#24301b,#070907_75%)] p-6">
           <div className="w-[min(760px,100%)]">
             <h1 className="mb-3 text-5xl font-black tracking-wide text-[var(--hud-gold)]">RTS AI</h1>
@@ -109,6 +118,7 @@ export default function App() {
                 <p className="text-sm text-[var(--muted-foreground)]">Briefings, objectives, relief convoys, and combined arms operations.</p>
               </button>
             </div>
+            <button type="button" className="hud-panel mt-4 w-full p-5 text-left" onClick={() => setPracticeOpen(true)}><h2 className="text-xl font-bold text-[var(--hud-gold)]">Scenario workshop</h2><p className="text-sm text-[var(--muted-foreground)]">Describe, preview and launch a repeatable practice battle.</p></button>
           </div>
         </div> : <>
           {mode === "missions" ? <Missions game={game} /> : <Setup game={game} />}
@@ -119,6 +129,11 @@ export default function App() {
         </>}
       </>}
       {game && playing && !sandboxMode && !uiHidden && <MissionHud game={game} />}
+      {game && playing && !practiceOpen && !uiHidden && <CoachPanel game={game} />}
+      {game && playing && !practiceOpen && !uiHidden && <Annotations game={game} />}
+      {game && useStore.getState().setup && practiceOpen && <Practice game={game} close={() => setPracticeOpen(false)} />}
+      {game && import.meta.env.VITE_STATIC_BUILD !== "1" && !sandboxMode && (phase === "setup" || phase === "playing" || phase === "loading") && <Multiplayer game={game} />}
+      {game && !sandboxMode && <DirectMultiplayer game={game} />}
       {(phase === "boot" || phase === "loading" || (phase === "setup" && sandboxMode)) && <Loading />}
       {phase === "error" && <ErrorCard game={game} />}
     </div>

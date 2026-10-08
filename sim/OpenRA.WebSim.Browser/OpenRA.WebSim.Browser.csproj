@@ -20,6 +20,8 @@
     <WasmIcuDataFileName>icudt_EFIGS.dat</WasmIcuDataFileName>
     <WasmEnableThreads>false</WasmEnableThreads>
     <WasmEnableSIMD>true</WasmEnableSIMD>
+    <!-- Setup and UI payloads use reflection-based JSON serialization, including in the trimmed AOT build. -->
+    <JsonSerializerIsReflectionEnabledByDefault>true</JsonSerializerIsReflectionEnabledByDefault>
     <WasmFingerprintAssets>false</WasmFingerprintAssets>
     <WasmEmitSymbolMap>false</WasmEmitSymbolMap>
     <!-- Start small and grow: WebAssembly memory never shrinks, so the initial size is a floor on the tab's footprint. -->

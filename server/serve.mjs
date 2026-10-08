@@ -10,6 +10,8 @@
 // Everything also answers under /play/... so the local app's gateway can proxy this server on one origin.
 
 import http from "node:http";
+import { createRooms } from "./rooms.mjs";
+const rooms = createRooms();
 import fs from "node:fs";
 import path from "node:path";
 import zlib from "node:zlib";
@@ -265,6 +267,7 @@ const server = http.createServer(async (req, res) => {
   if (p === "/play") p = "/";
   else if (p.startsWith("/play/")) p = p.slice(5);
   try {
+    if (p === "/api/multiplayer" && req.method === "POST") return await rooms.handle(req, res);
     if (p === "/api/verify" && req.method === "POST") return await verify(req, res);
     if (p === "/api/health") {
       return json(res, {

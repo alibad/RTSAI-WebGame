@@ -22,8 +22,9 @@
          sources: keep their intermediates apart. -->
     <VariantSuffix Condition="'$(WebProfile)' != ''">-$(WebProfile)</VariantSuffix>
     <VariantSuffix Condition="'$(Aot)' == 'true'">$(VariantSuffix)-aot</VariantSuffix>
-    <!-- The public game's AOT runtime is the lean variant (OpenRA.WebSim.Browser.csproj): 12 MB instead of 17 MB. -->
-    <RuntimeVariant Condition="'$(RuntimeVariant)' == '' And '$(WebProfile)' == 'public' And '$(Aot)' == 'true'">lean</RuntimeVariant>
+    <!-- Keep partial trimming and IL for the reflection-heavy public game. The aggressively stripped lean
+         variant remains opt-in: its current runtime aborts during core-library AOT initialization. -->
+    <RuntimeVariant Condition="'$(RuntimeVariant)' == '' And '$(WebProfile)' == 'public' And '$(Aot)' == 'true'">standard</RuntimeVariant>
     <VariantSuffix Condition="'$(RuntimeVariant)' != ''">$(VariantSuffix)-$(RuntimeVariant)</VariantSuffix>
     <BaseOutputPath>$(MSBuildThisFileDirectory)bin\$(MSBuildProjectName)$(VariantSuffix)\</BaseOutputPath>
     <BaseIntermediateOutputPath>$(MSBuildThisFileDirectory)obj\$(MSBuildProjectName)$(VariantSuffix)\</BaseIntermediateOutputPath>

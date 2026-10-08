@@ -58,10 +58,18 @@ const rtRoot = `rt-${hashOf(runtimeFiles)}/`;
 const dataRoot = `data-${hashOf(dataFiles)}/`;
 
 // 1. The page (the standalone game by default, no source maps), pointing at the hashed roots.
-fs.rmSync(out, { recursive: true, force: true });
+// Never remove the checkout, a source directory, or a drive root through --out.
+const root = path.parse(out).root;
+const isAncestor = (parent, child) => { const rel = path.relative(parent, child); return rel === "" || (!rel.startsWith("..") && !path.isAbsolute(rel)); };
+if (out === root || isAncestor(out, repo) || isAncestor(out, data) || isAncestor(path.join(repo, "web"), out))
+  throw new Error(`Unsafe output directory: ${out}`);
+if (fs.existsSync(out)) {
+  if (!fs.existsSync(path.join(out, "BUILD.json"))) throw new Error(`Output exists without a public-build marker: ${out}`);
+  fs.rmSync(out, { recursive: true, force: true });
+}
 execSync(`npx vite build --outDir "${out}" --emptyOutDir`, {
   cwd: path.join(repo, "web"), stdio: "inherit",
-  env: { ...process.env, VITE_DEFAULT_PROFILE: "public", RTSAI_PUBLIC_BUILD: "1", VITE_RT_BASE: rtRoot, VITE_DATA_BASE: dataRoot },
+  env: { ...process.env, VITE_DEFAULT_PROFILE: "public", RTSAI_PUBLIC_BUILD: "1", VITE_STATIC_BUILD: "1", VITE_RT_BASE: rtRoot, VITE_DATA_BASE: dataRoot },
 });
 
 // 2. Runtime and data at the paths the worker requests.

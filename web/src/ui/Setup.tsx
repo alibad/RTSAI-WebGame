@@ -15,7 +15,7 @@ const KEY_OPTIONS = ["startingcash", "startingunits", "fog", "explored", "crates
 
 const COLORS = ["2A6FDB", "D83A2E", "3FAE49", "E7B42F", "E8702A", "25A6A6", "8E4FD1", "E05A9C"];
 
-interface Opponent { faction: string; bot: string; color: string }
+interface Opponent { faction: string; bot: string; color: string; doctrine?: string }
 
 function load<T>(key: string, fallback: T): T {
   try { const v = localStorage.getItem(key); return v ? (JSON.parse(v) as T) : fallback; } catch { return fallback; }
@@ -82,7 +82,7 @@ export function Setup({ game }: { game: Game }) {
     const slots = map.slots;
     const players = [
       { slot: slots[0], faction, color },
-      ...opponents.map((o, i) => ({ slot: slots[i + 1], faction: o.faction, bot: o.bot, color: o.color })),
+      ...opponents.map((o, i) => ({ slot: slots[i + 1], faction: o.faction, bot: o.bot, color: o.color, doctrine: o.doctrine ?? "standard" })),
     ];
     const scenario = { map: map.id, seed: Math.floor(Math.random() * 1e9), players, options };
     game.start(JSON.stringify(scenario));
@@ -184,6 +184,11 @@ export function Setup({ game }: { game: Game }) {
                   onClick={() => setOpponents(opponents.filter((_, j) => j !== i))}>
                   <svg viewBox="0 0 24 24" width={14} height={14} fill="currentColor"><path d="M6.4 5 12 10.6 17.6 5 19 6.4 13.4 12l5.6 5.6-1.4 1.4L12 13.4 6.4 19 5 17.6 10.6 12 5 6.4Z" /></svg>
                 </Button>
+                <label className="col-span-4 flex items-center gap-2 text-[11px] text-[var(--muted-foreground)]">Tactical personality
+                  <select aria-label={`Opponent ${i + 1} personality`} className="bg-black p-1 text-[var(--hud-gold)]" value={o.doctrine ?? "standard"} onChange={(e) => setOpponents(opponents.map((x, j) => j === i ? { ...x, doctrine: e.target.value } : x))}>
+                    <option value="standard">Standard native AI</option><option value="raider">Raider · pressure observed contacts</option><option value="sentinel">Sentinel · intercept near home</option><option value="adaptive">Adaptive · regroup when outnumbered</option>
+                  </select>
+                </label>
               </div>
             ))}
             {opponents.length < maxOpponents && (
@@ -193,6 +198,8 @@ export function Setup({ game }: { game: Game }) {
               </Button>
             )}
           </div>
+
+          <p className="text-[11px] text-[var(--muted-foreground)]">Personalities direct up to eight idle combat units every five seconds using visible contacts. Difficulty and production follow the AI setting above; no bonus resources.</p>
 
           <div className="mt-auto flex items-center justify-end gap-3">
             {!privateContent && !profile && <span className="text-[11px] text-[var(--muted-foreground)]">Original game files not mounted</span>}

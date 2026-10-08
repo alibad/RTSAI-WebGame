@@ -7,6 +7,7 @@ import type { FeedItem } from "../cocommander";
 import { useStore } from "../store";
 import { cn } from "../lib/utils";
 import { Kbd } from "./CameoTip";
+import { Strategies } from "./Strategies";
 
 const THREAT = { calm: "var(--hud-green)", guarded: "var(--hud-yellow)", high: "#ff8a3d", critical: "var(--hud-red)" } as Record<string, string>;
 const IMPORTANCE = { routine: "var(--muted-foreground)", important: "var(--hud-yellow)", critical: "var(--hud-red)" } as Record<string, string>;
@@ -104,7 +105,7 @@ export function CoCommander({ game }: { game: Game }) {
 
   return (
     <div className="pointer-events-none absolute left-0 top-[10px] flex justify-center" style={{ right: "var(--sidebar-w)" }}>
-      <div className="pointer-events-auto flex w-[460px] max-w-[calc(100%-120px)] flex-col gap-1.5" onMouseDown={(e) => e.stopPropagation()}>
+      <div className="pointer-events-auto flex w-[460px] max-w-[calc(100%-16px)] flex-col gap-1.5" onMouseDown={(e) => e.stopPropagation()}>
         <div className="hud-panel flex h-[38px] items-center gap-2.5 rounded-[3px] px-2.5">
           <Orb state={state} />
           <Threat score={hud?.threat.score ?? 0} level={hud?.threat.level ?? "calm"} reason={hud?.threat.reason ?? ""} />
@@ -127,6 +128,7 @@ export function CoCommander({ game }: { game: Game }) {
           </button>
         </div>
 
+        <Strategies game={game} />
         {!cc.open && pending && <ProposalCard game={game} item={pending} compact />}
 
         {cc.open && (

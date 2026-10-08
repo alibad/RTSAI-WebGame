@@ -197,6 +197,16 @@ stream, which a replay cannot reproduce. Re-enabling it needs an order of its ow
 - **Setup.** The setup screen's **Co-commander** switch has two brains: **Local AI** and **Scripted**. The switch
   appears only when the local server is present; a static public build has no co-commander until hosted mode exists.
 
+## Contextual strategies (9 October 2026, local development)
+
+The in-match Strategy strip opens three situation-based choices, with intent and tradeoffs, plus all eight approaches. The chosen goal persists for the match and guides deterministic next-step advice and accepted action cards. Progress, credit reserve, automatic offers, manual next step, and release are exposed in the same HUD. Typed/spoken displayed strategy names also select a goal. Choices use only the companion's fog-respecting observation; they hold for 250 ticks except urgent pressure and match completion.
+
+`GET /v1/strategies` returns choices and current goal. `POST /v1/strategies` selects/releases it and sets a credit reserve. `POST /v1/strategies/step` prepares one validated proposal. No endpoint enables AUTO or issues an unconfirmed order. The reserve is checked again at confirmation; explicit player orders remain independent. Switching withdraws only goal-owned proposals. New matches reset the goal and reserve.
+
+The plan and remaining four opportunities are in [AI-ROADMAP.md](AI-ROADMAP.md).
+
+Local verification, 9 October: frontend typecheck/build passed; 182 companion tests and 986 subtests passed (contextual strategy, companion, brain, and live-fix suites). `node tools/strategy-test.mjs` exercised selection, reserve editing, proposal acceptance, switching, release, and desktop/844×390 layouts with no page errors. The final browser session replayed identically in native CoreCLR: 57/57 net frames. Evidence: `artifacts/strategy-review/result.json`, `strategy-desktop.png`, and `strategy-compact.png`. The scripted brain validates transport and UI without paid model calls; contextual strategy selection/advice itself is deterministic. Real local/hosted model integration beyond the existing companion is not re-benchmarked by this change.
+
 ## Hosted mode (next)
 
 - **Bridge.** A per-session companion service behind rtsai.net accepts the worker's WebSocket and speaks the same

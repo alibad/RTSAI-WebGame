@@ -9,17 +9,20 @@
  */
 #endregion
 
+using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Reflection;
 using OpenRA.Network;
 
 namespace OpenRA.WebSim
 {
 	/// <summary>
-	/// A local, in-process connection (like EchoConnection) that delivers a frame's orders to the same frame,
+	/// In local mode, an in-process connection (like EchoConnection) delivers orders to the same frame,
 	/// so an order issued between two ticks is executed on the very next tick. Orders still go through
 	/// OrderPacket serialization exactly as on the network. Every frame's packet and the engine's per-frame
-	/// SyncHash are recorded: the packets replay the session natively, the hashes prove the two runs match.
+	/// SyncHash are recorded for native replay. In multiplayer, Poll and Inject exchange the same order bytes
+	/// through a room relay, which compares hashes and gates each frame on both human packets.
 	/// </summary>
 	public sealed class WebConnection : IConnection
 	{
@@ -38,7 +41,23 @@ namespace OpenRA.WebSim
 		/// <summary>When set, orders for these frames are injected instead of the locally issued ones (native replay).</summary>
 		public Dictionary<int, byte[]> ReplayPackets;
 
-		public int LocalClientId => ClientId;
+		public int LocalClientId => NetworkClientId;
+		public int NetworkClientId = ClientId;
+		public bool Multiplayer;
+		readonly Queue<string> outgoing = new();
+		static readonly MethodInfo SendOrdersMethod = typeof(OrderManager).GetMethod("SendOrders", BindingFlags.Instance | BindingFlags.NonPublic);
+		public string Poll()
+		{
+			// TryTick normally sends only once remote queues are non-empty. The HTTP frame barrier
+			// needs every peer to submit first, so call its guarded send path before waiting.
+			// Keep the engine untouched; this method is rooted with OrderManager in browser AOT.
+			if (SendOrdersMethod == null) throw new InvalidOperationException("Incompatible OpenRA OrderManager: SendOrders is missing.");
+			SendOrdersMethod.Invoke(orderManager, null);
+			var result = "[" + string.Join(",", outgoing) + "]";
+			outgoing.Clear();
+			return result;
+		}
+		public void Inject(int client, int frame, string bytes) => orderManager.ReceiveOrders(client, (frame, new OrderPacket(new MemoryStream(Convert.FromBase64String(bytes)))));
 
 		public void Attach(OrderManager orderManager)
 		{
@@ -66,16 +85,20 @@ namespace OpenRA.WebSim
 				packet = new OrderPacket(new MemoryStream(data));
 			}
 
-			orderManager.ReceiveOrders(ClientId, (frame, packet));
+			if (Multiplayer)
+				outgoing.Enqueue($"{{\"kind\":\"orders\",\"frame\":{frame},\"data\":\"{Convert.ToBase64String(packet.Serialize(frame).AsSpan(4).ToArray())}\"}}");
+			else
+				orderManager.ReceiveOrders(ClientId, (frame, packet));
 		}
 
 		public void SendImmediate(IEnumerable<Order> orders)
 		{
-			immediateOrders.Enqueue(new OrderPacket(orders));
+			if (!Multiplayer) immediateOrders.Enqueue(new OrderPacket(orders));
 		}
 
 		public void SendSync(int frame, int syncHash, ulong defeatState)
 		{
+			if (Multiplayer) outgoing.Enqueue($"{{\"kind\":\"hash\",\"frame\":{frame},\"hash\":{syncHash},\"defeat\":\"{defeatState}\"}}");
 			while (SyncHashes.Count < frame - 1)
 				SyncHashes.Add(0);
 
