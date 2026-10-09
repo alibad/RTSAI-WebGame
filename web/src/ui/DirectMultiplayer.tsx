@@ -112,11 +112,11 @@ export function DirectMultiplayer({ game }: { game: Game }) {
   }
   if (!setup || (!playing && phase !== 'setup')) return null;
   const matchChat=playing&&<MatchChat inputLabel="Direct chat message" messages={chat.map(({id,text})=>({id,author:text.startsWith('You: ')?'You':'Friend',text:text.slice(text.indexOf(': ')+2)}))} send={async text=>{peer.current!.send({kind:'chat',text});setChat(c=>[...c,{id:crypto.randomUUID(),text:`You: ${text}`} ].slice(-100));}}/>;
-  if (!open) return <>{matchChat}<Button className="fixed left-4 top-4 z-[100]" onClick={() => setOpen(true)}>{playing ? `Direct match · frame ${frame}` : 'Direct peer-to-peer'}</Button></>;
+  if (!open) return <>{matchChat}<Button className={`fixed z-[100] ${import.meta.env.VITE_STATIC_BUILD === "1" ? "right-4 top-4" : "right-4 top-16"}`} style={playing ? { right: "calc(var(--sidebar-w) + 16px)" } : undefined} onClick={() => setOpen(true)}>{playing ? 'Match connection' : 'Multiplayer'}</Button></>;
   return <>{matchChat}<div className={`${playing ? 'fixed left-4 top-14 w-[min(500px,90vw)]' : 'fixed inset-0 grid place-items-center bg-black/90 p-4'} z-[110]`}>
     <div className="hud-panel max-h-[85vh] w-full max-w-[650px] overflow-auto space-y-3 p-5">
-      <h1 className="text-xl">Direct peer-to-peer</h1>
-      {!playing && <p className="text-sm">Two friends, no room server. Send the connection codes through your existing chat. Some networks block direct connections; this mode has no relay fallback.</p>}
+      <h1 className="text-xl">Multiplayer</h1>
+      {!playing && <p className="text-sm">Play a two-player match. Exchange connection codes with your friend through your existing chat. Some networks may prevent a connection.</p>}
       <p aria-live="polite">{state}{playing && ` · frame ${frame}`}</p>
       {!playing && <label className="block">Your faction<select aria-label="Direct faction" className="hud-inset ml-2 p-1" value={faction} onChange={e => { setFaction(e.target.value); if (verified) peer.current?.send({ kind: 'faction', faction: e.target.value }); }}>{setup.factions.filter(f => !f.random).map(f => <option key={f.id} value={f.id}>{f.name}</option>)}</select></label>}
       {!verified && !playing && <>
@@ -126,14 +126,14 @@ export function DirectMultiplayer({ game }: { game: Game }) {
         {output && <label className="block">Your {host ? 'offer' : 'answer'} code<textarea readOnly aria-label="Your connection code" className="hud-inset block w-full p-2" rows={3} value={output} /><Button onClick={() => void navigator.clipboard.writeText(output).catch(fail)}>Copy code</Button></label>}
       </>}
       {verified && <>
-        {!playing && <><p>Friend faction: {setup.factions.find(f => f.id === friend)?.name}</p>{host ? <><label>Map<select aria-label="Direct map" className="hud-inset ml-2 p-1" value={map || setup.maps.find(m => m.slots.length >= 2)?.id} onChange={e => setMap(e.target.value)}>{setup.maps.filter(m => m.slots.length >= 2).map(m => <option key={m.id} value={m.id}>{m.title}</option>)}</select></label><Button onClick={start}>Start direct match</Button></> : <p>Waiting for your friend to start.</p>}</>}
+        {!playing && <><p>Friend faction: {setup.factions.find(f => f.id === friend)?.name}</p>{host ? <><label>Map<select aria-label="Direct map" className="hud-inset ml-2 p-1" value={map || setup.maps.find(m => m.slots.length >= 2)?.id} onChange={e => setMap(e.target.value)}>{setup.maps.filter(m => m.slots.length >= 2).map(m => <option key={m.id} value={m.id}>{m.title}</option>)}</select></label><Button onClick={start}>Start match</Button></> : <p>Waiting for your friend to start.</p>}</>}
         <div className="flex flex-wrap gap-2"><Video stream={peer.current?.remoteMedia ?? null} /><Video stream={call} muted /></div>
         <div className="flex gap-2"><Button onClick={() => void camera()}>Enable camera and microphone</Button>{call && <Button onClick={() => { peer.current?.stopCamera(); setCall(null); }}>Stop camera and microphone</Button>}</div>
         {!playing&&<><div aria-live="polite" className="max-h-32 overflow-auto text-sm">{chat.map(entry => <p key={entry.id}>{entry.text}</p>)}</div>
         <form className="flex gap-2" onSubmit={e => { e.preventDefault(); if (!message.trim()) return; try { peer.current!.send({ kind: 'chat', text: message.trim() }); setChat(c => [...c, {id:crypto.randomUUID(),text:`You: ${message.trim()}`} ].slice(-100)); setMessage(''); } catch (e) { fail(e); } }}><input aria-label="Direct chat message" maxLength={500} className="hud-inset min-w-0 flex-1 p-2" value={message} onChange={e => setMessage(e.target.value)} /><Button type="submit">Send</Button></form></>}
       </>}
       {error && <p role="alert" className="text-red-400">{error}</p>}
-      <div className="flex gap-2"><Button onClick={() => setOpen(false)}>Minimize</Button><Button onClick={leave}>{playing ? 'Leave direct match' : 'Close connection'}</Button></div>
+      <div className="flex gap-2"><Button onClick={() => setOpen(false)}>Minimize</Button><Button onClick={leave}>{playing ? 'Leave match' : 'Close connection'}</Button></div>
     </div>
   </div></>;
 }
