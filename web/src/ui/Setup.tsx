@@ -1,3 +1,4 @@
+import { GameSelect } from "../components/ui/fields";
 // Skirmish setup: pick a nation (flags), a map (its preview is the backdrop), opponents (nation, AI type,
 // colour) and the lobby options the mod offers, then start. The chosen map is prepared in the background while
 // the player decides, so starting only builds the world.
@@ -185,9 +186,9 @@ export function Setup({ game }: { game: Game }) {
                   <svg viewBox="0 0 24 24" width={14} height={14} fill="currentColor"><path d="M6.4 5 12 10.6 17.6 5 19 6.4 13.4 12l5.6 5.6-1.4 1.4L12 13.4 6.4 19 5 17.6 10.6 12 5 6.4Z" /></svg>
                 </Button>
                 <label className="col-span-4 flex items-center gap-2 text-[11px] text-[var(--muted-foreground)]">Tactical personality
-                  <select aria-label={`Opponent ${i + 1} personality`} className="bg-black p-1 text-[var(--hud-gold)]" value={o.doctrine ?? "standard"} onChange={(e) => setOpponents(opponents.map((x, j) => j === i ? { ...x, doctrine: e.target.value } : x))}>
+                  <GameSelect aria-label={`Opponent ${i + 1} personality`} className="bg-black p-1 text-[var(--hud-gold)]" value={o.doctrine ?? "standard"} onChange={(e) => setOpponents(opponents.map((x, j) => j === i ? { ...x, doctrine: e.target.value } : x))}>
                     <option value="standard">Standard native AI</option><option value="raider">Raider · pressure observed contacts</option><option value="sentinel">Sentinel · intercept near home</option><option value="adaptive">Adaptive · regroup when outnumbered</option>
-                  </select>
+                  </GameSelect>
                 </label>
               </div>
             ))}

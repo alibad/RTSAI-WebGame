@@ -111,3 +111,19 @@ export function SearchSelect<V extends string | number>({ value, onValueChange, 
 export function Swatch({ color, className }: { color: string; className?: string }) {
   return <span aria-hidden="true" className={cn("inline-block size-2.5 shrink-0 rounded-[2px] ring-1 ring-black/40", className)} style={{ background: color }} />
 }
+
+/** Select-style markup using the shared accessible pickers. */
+export function GameSelect({ children, value, defaultValue, onChange, id, disabled, className, "aria-label": label }: {
+  children: React.ReactNode; value?: string | number; defaultValue?: string | number;
+  onChange?: (event: { target: { value: string } }) => void;
+  id?: string; disabled?: boolean; className?: string; "aria-label"?: string;
+}) {
+  const options = React.Children.toArray(children).filter(React.isValidElement).map(child => {
+    const props = (child as React.ReactElement<{ value: string | number; children: React.ReactNode; disabled?: boolean }>).props;
+    return { value: String(props.value), label: React.Children.toArray(props.children).join(""), disabled: props.disabled };
+  });
+  const [current, setCurrent] = React.useState(String(defaultValue ?? options[0]?.value ?? ""));
+  const Picker = options.length > 8 ? SearchSelect : OptionSelect;
+  return <Picker id={id} aria-label={label} disabled={disabled} className={cn("game-picker", className)} value={String(value ?? current)} options={options}
+    onValueChange={next => { setCurrent(next); onChange?.({ target: { value: next } }); }} />;
+}

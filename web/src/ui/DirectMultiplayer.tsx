@@ -1,3 +1,4 @@
+import { GameSelect } from "../components/ui/fields";
 import { useEffect, useRef, useState } from 'react';
 import type { Game } from '../game';
 import { useStore } from '../store';
@@ -118,7 +119,7 @@ export function DirectMultiplayer({ game }: { game: Game }) {
       <h1 className="text-xl">Multiplayer</h1>
       {!playing && <p className="text-sm">Play a two-player match. Exchange connection codes with your friend through your existing chat. Some networks may prevent a connection.</p>}
       <p aria-live="polite">{state}{playing && ` · frame ${frame}`}</p>
-      {!playing && <label className="block">Your faction<select aria-label="Direct faction" className="hud-inset ml-2 p-1" value={faction} onChange={e => { setFaction(e.target.value); if (verified) peer.current?.send({ kind: 'faction', faction: e.target.value }); }}>{setup.factions.filter(f => !f.random).map(f => <option key={f.id} value={f.id}>{f.name}</option>)}</select></label>}
+      {!playing && <label className="block">Your faction<GameSelect aria-label="Direct faction" className="hud-inset ml-2 p-1" value={faction} onChange={e => { setFaction(e.target.value); if (verified) peer.current?.send({ kind: 'faction', faction: e.target.value }); }}>{setup.factions.filter(f => !f.random).map(f => <option key={f.id} value={f.id}>{f.name}</option>)}</GameSelect></label>}
       {!verified && !playing && <>
         <div className="flex flex-wrap gap-2"><Button disabled={busy} onClick={() => void connect(true)}>Create offer</Button><Button disabled={busy || !input} onClick={() => void connect(false)}>Answer friend offer</Button></div>
         <label className="block">Friend connection code<textarea aria-label="Friend connection code" className="hud-inset block w-full p-2" rows={3} value={input} onChange={e => setInput(e.target.value)} /></label>
@@ -126,7 +127,7 @@ export function DirectMultiplayer({ game }: { game: Game }) {
         {output && <label className="block">Your {host ? 'offer' : 'answer'} code<textarea readOnly aria-label="Your connection code" className="hud-inset block w-full p-2" rows={3} value={output} /><Button onClick={() => void navigator.clipboard.writeText(output).catch(fail)}>Copy code</Button></label>}
       </>}
       {verified && <>
-        {!playing && <><p>Friend faction: {setup.factions.find(f => f.id === friend)?.name}</p>{host ? <><label>Map<select aria-label="Direct map" className="hud-inset ml-2 p-1" value={map || setup.maps.find(m => m.slots.length >= 2)?.id} onChange={e => setMap(e.target.value)}>{setup.maps.filter(m => m.slots.length >= 2).map(m => <option key={m.id} value={m.id}>{m.title}</option>)}</select></label><Button onClick={start}>Start match</Button></> : <p>Waiting for your friend to start.</p>}</>}
+        {!playing && <><p>Friend faction: {setup.factions.find(f => f.id === friend)?.name}</p>{host ? <><label>Map<GameSelect aria-label="Direct map" className="hud-inset ml-2 p-1" value={map || setup.maps.find(m => m.slots.length >= 2)?.id} onChange={e => setMap(e.target.value)}>{setup.maps.filter(m => m.slots.length >= 2).map(m => <option key={m.id} value={m.id}>{m.title}</option>)}</GameSelect></label><Button onClick={start}>Start match</Button></> : <p>Waiting for your friend to start.</p>}</>}
         <div className="flex flex-wrap gap-2"><Video stream={peer.current?.remoteMedia ?? null} /><Video stream={call} muted /></div>
         <div className="flex gap-2"><Button onClick={() => void camera()}>Enable camera and microphone</Button>{call && <Button onClick={() => { peer.current?.stopCamera(); setCall(null); }}>Stop camera and microphone</Button>}</div>
         {!playing&&<><div aria-live="polite" className="max-h-32 overflow-auto text-sm">{chat.map(entry => <p key={entry.id}>{entry.text}</p>)}</div>

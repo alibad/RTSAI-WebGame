@@ -1,3 +1,4 @@
+import { GameSelect } from "../components/ui/fields";
 import { useState } from "react";
 import type { Game } from "../game";
 import { useStore } from "../store";
@@ -45,9 +46,9 @@ export function MatchLibrary({ game }: { game: Game }) {
       <Button size="sm" onClick={() => tick >= replay.end
         ? game.start(JSON.stringify({ ...JSON.parse(game.scenarioJson), webReplay: { ...replay, tick: 0 } }), false)
         : game.setPaused(!paused)}>{tick >= replay.end ? "Restart" : paused ? "Play" : "Pause"}</Button>
-      <select aria-label="Replay speed" onChange={(e) => game.client.send({ type: "speed", speed: Number(e.target.value) })} defaultValue="1">
+      <GameSelect aria-label="Replay speed" onChange={(e) => game.client.send({ type: "speed", speed: Number(e.target.value) })} defaultValue="1">
         {[0.25, 0.5, 1, 2, 4, 8].map((v) => <option key={v} value={v}>{v}×</option>)}
-      </select>
+      </GameSelect>
       <input type="range" aria-label="Replay position" min="0" max={replay.end} value={seek ?? tick}
         onChange={(e) => setSeek(Number(e.target.value))}
         onPointerUp={(e) => { game.start(JSON.stringify({ ...JSON.parse(game.scenarioJson), webReplay: { ...replay, tick: Number(e.currentTarget.value) } }), true); setSeek(null); }}

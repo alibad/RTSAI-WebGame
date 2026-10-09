@@ -183,3 +183,31 @@ html, body, #root {
 .mp-corner-chat small span { margin-left: 12px; }
 .mp-corner-chat .mp-chat-send-error { flex-basis: 100%; color: #f4b0a1; }
 .mp-corner-chat .mp-chat-empty { color: #a3af98; }
+
+/* Consistent game fields, including simple native menus used in mission setup. */
+[data-slot="select-trigger"], .game-picker, select {
+  min-height: 40px; border: 1px solid #4a5141; border-radius: 6px;
+  background-color: #141b12; color: #f4e9cf; padding: 9px 12px;
+  font-size: 14px; line-height: 20px; text-align: left; color-scheme: dark;
+  transition: border-color 120ms, background-color 120ms, box-shadow 120ms;
+}
+[data-slot="select-trigger"]:hover, .game-picker:hover, select:hover { border-color: #a38e55; background-color: #20291b; }
+[data-slot="select-trigger"]:focus-visible, .game-picker:focus-visible, select:focus-visible {
+  outline: 2px solid #efd28a; outline-offset: 2px; box-shadow: 0 0 0 4px #efd28a18;
+}
+[data-slot="select-trigger"][aria-expanded="true"], .game-picker[aria-expanded="true"] { border-color: #efd28a; background-color: #222b1b; }
+[data-slot="select-trigger"]:disabled, .game-picker:disabled, select:disabled { opacity: .45; cursor: not-allowed; }
+[data-slot="select-content"], [data-slot="combobox-content"] {
+  background: #172014; color: #f4e9cf; border: 1px solid #7f7148;
+  box-shadow: 0 12px 40px #000b; padding: 5px; max-width: calc(100vw - 24px);
+}
+[data-slot="select-item"], [data-slot="combobox-item"] {
+  min-height: 40px; padding: 10px 34px 10px 12px; font-size: 14px; line-height: 20px;
+  border-radius: 4px; cursor: pointer;
+}
+[data-slot="select-item"][data-highlighted], [data-slot="combobox-item"][data-highlighted] { background: #35402a; color: #fff1c4; }
+[data-slot="select-item"][data-selected], [data-slot="combobox-item"][data-selected] { background: #423a20; color: #ffe4a4; }
+[data-slot="select-item"] span, [data-slot="combobox-item"] span { white-space: normal; }
+[data-slot="select-item"] small, [data-slot="combobox-item"] small { color: #b9bdac; }
+select { appearance: none; padding-right: 34px; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16'%3E%3Cpath d='m4 6 4 4 4-4' fill='none' stroke='%23d5be82' stroke-width='1.5'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 10px center; }
+select option { background: #172014; color: #f4e9cf; }

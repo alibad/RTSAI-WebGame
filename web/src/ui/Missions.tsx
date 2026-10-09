@@ -1,3 +1,4 @@
+import { GameSelect } from "../components/ui/fields";
 import { useEffect, useState } from "react";
 import type { Game } from "../game";
 import { useStore } from "../store";
@@ -92,9 +93,9 @@ export function Missions({ game }: { game: Game }) {
           </ul>
           <div className="mb-4 flex flex-wrap items-center gap-3">
             <label htmlFor="mission-difficulty" className="text-sm">Difficulty</label>
-            <select id="mission-difficulty" value={difficulty} onChange={(e) => setDifficulty(e.target.value)} className="hud-inset rounded p-2">
+            <GameSelect id="mission-difficulty" value={difficulty} onChange={(e) => setDifficulty(e.target.value)} className="hud-inset rounded p-2">
               <option value="easy">Easy</option><option value="normal">Normal</option><option value="hard">Hard</option>
-            </select>
+            </GameSelect>
             <Button disabled={!ready} onClick={deploy}>{ready ? "Start mission" : "Preparing mission…"}</Button>
             {chapter && <Button disabled={!ready} onClick={() => { setFilmError(false); setDeployAfterFilm(true); setShowFilm(true); }}>Play briefing & deploy</Button>}
           </div>
