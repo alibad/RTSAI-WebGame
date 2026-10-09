@@ -43,6 +43,7 @@ const MIME = {
   ".json": "application/json", ".wasm": "application/wasm", ".map": "application/json", ".svg": "image/svg+xml",
   ".webmanifest": "application/manifest+json",
   ".png": "image/png", ".webp": "image/webp", ".ogg": "audio/ogg", ".wav": "audio/wav", ".mp3": "audio/mpeg",
+  ".mp4": "video/mp4", ".vtt": "text/vtt; charset=utf-8",
   ".pack": "application/octet-stream", ".dat": "application/octet-stream", ".pdb": "application/octet-stream",
 };
 
@@ -104,6 +105,8 @@ function isolationHeaders(res) {
  * change), brotli for compressible content, byte ranges for uncompressed content.
  */
 function sendFile(req, res, file, { compress = true, immutable = false } = {}) {
+  // Video playback needs byte ranges for seeking; MP4 is already compressed.
+  if (/\.mp4$/i.test(file)) compress = false;
   let stat;
   try {
     stat = fs.statSync(file);

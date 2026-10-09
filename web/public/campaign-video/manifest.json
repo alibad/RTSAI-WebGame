@@ -1,0 +1,56 @@
+{
+  "title": "Lines of Hope",
+  "source": "RTSAI-Mod/resources/campaign-story.json",
+  "provenance": "Original RTS AI narrative. Reuses the six existing standalone campaign scenarios and project map previews; no legacy cinematics, dialogue or game recordings.",
+  "narration": {
+    "engine": "Kokoro-82M",
+    "voice": "am_michael",
+    "device": "cuda",
+    "speed": 0.98,
+    "loudness": "-16 LUFS / -1.5 dBTP"
+  },
+  "videos": [
+    {
+      "id": "jizan-corridor",
+      "seconds": 24.968343,
+      "bytes": 494145,
+      "sha256": "7e61d91f4c78cc20e12f5993c282b198a341f164a9204cc4db030acaed5d877b",
+      "mapSource": "mods\\rtsai\\campaigns\\maps\\jizan-corridor\\map.png"
+    },
+    {
+      "id": "hodeidah-lifeline",
+      "seconds": 22.88501,
+      "bytes": 448385,
+      "sha256": "713b4e537db79c852ad4b44d44a38a7870689240f1040d7b3052f56155f27dcc",
+      "mapSource": "mods\\rtsai\\campaigns\\maps\\hodeidah-lifeline\\map.png"
+    },
+    {
+      "id": "bab-al-mandab-passage",
+      "seconds": 25.718343,
+      "bytes": 509309,
+      "sha256": "2c32e5c91cee37d1d7d5e03490406b371ea4b95624b2d5514ff60ff6d5300a14",
+      "mapSource": "mods\\rtsai\\campaigns\\maps\\bab-al-mandab-passage\\map.png"
+    },
+    {
+      "id": "straits-shield",
+      "seconds": 23.844,
+      "bytes": 488300,
+      "sha256": "d66bfb6485bda4364db15f5c4b66f05efbb79af8fdf7759de4a7eec959932840",
+      "mapSource": "mods\\rtsai\\campaigns\\maps\\straits-shield\\map.png"
+    },
+    {
+      "id": "haitan-network",
+      "seconds": 25.302333,
+      "bytes": 500068,
+      "sha256": "86c3fafde4ba6d99f8507d605b70b2087ea527c5bc0ba0fab1e4a2c8bd4e9a77",
+      "mapSource": "mods\\rtsai\\campaigns\\maps\\haitan-network\\map.png"
+    },
+    {
+      "id": "hezbollah-relay",
+      "seconds": 24.593343,
+      "bytes": 486115,
+      "sha256": "c8e14bb6ba40d9019bb47549f8b1a0115ab2092323ad07c8c63076b98e00659f",
+      "mapSource": "mods\\rtsai\\campaigns\\maps\\hezbollah-relay\\map.png"
+    }
+  ]
+}

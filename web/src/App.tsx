@@ -116,8 +116,8 @@ export default function App() {
                 <p className="text-sm text-[var(--muted-foreground)]">Choose a faction, build your base, and fight AI opponents.</p>
               </button>
               <button type="button" className="hud-panel p-7 text-left hover:bg-white/5" onClick={() => setMode("missions")}>
-                <h2 className="mb-2 text-2xl font-bold text-[var(--hud-gold)]">Missions</h2>
-                <p className="text-sm text-[var(--muted-foreground)]">Briefings, objectives, relief convoys, and combined arms operations.</p>
+                <h2 className="mb-2 text-2xl font-bold text-[var(--hud-gold)]">Campaign</h2>
+                <p className="text-sm text-[var(--muted-foreground)]">Lines of Hope: two story arcs, six operations, and narrated introductions.</p>
               </button>
             </div>
             <button type="button" className="hud-panel mt-4 w-full p-5 text-left" onClick={() => setPracticeOpen(true)}><h2 className="text-xl font-bold text-[var(--hud-gold)]">Scenario workshop</h2><p className="text-sm text-[var(--muted-foreground)]">Describe, preview and launch a repeatable practice battle.</p></button>
@@ -126,7 +126,7 @@ export default function App() {
           {mode === "missions" ? <Missions game={game} /> : <Setup game={game} />}
           <nav className="absolute left-4 top-3 z-20 flex gap-3 rounded bg-black/80 p-2 text-sm" aria-label="Game modes">
             <button type="button" onClick={() => setMode("home")} className="text-[var(--hud-gold)]">← Main menu</button>
-            <button type="button" onClick={() => setMode(mode === "missions" ? "skirmish" : "missions")}>{mode === "missions" ? "Skirmish" : "Missions"}</button>
+            <button type="button" onClick={() => setMode(mode === "missions" ? "skirmish" : "missions")}>{mode === "missions" ? "Skirmish" : "Campaign"}</button>
           </nav>
         </>}
       </>}
