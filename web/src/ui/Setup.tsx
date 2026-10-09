@@ -35,7 +35,7 @@ export function Setup({ game }: { game: Game }) {
   const factions = setup.factions.filter((f) => !f.random);
   const modern = new Set(["saudi", "iran", "china", "turkey", "israel", "yemen", "hezbollah"]);
   const [faction, setFaction] = useState<string>(() => load("rtsai.faction", "saudi"));
-  const [mapId, setMapId] = useState<string>(() => load("rtsai.map", setup.maps.find((m) => m.id === "tournament-2A" || m.id === "twin-fords")?.id ?? setup.maps[0]?.id));
+  const [mapId, setMapId] = useState<string>(() => new URLSearchParams(location.search).get("map") ?? load("rtsai.map", setup.maps.find((m) => m.id === "tournament-2A" || m.id === "twin-fords")?.id ?? setup.maps[0]?.id));
   const map = setup.maps.find((m) => m.id === mapId) ?? setup.maps[0];
   const [color, setColor] = useState<string>(() => load("rtsai.color", COLORS[0]));
   const [moreOptions, setMoreOptions] = useState(false);

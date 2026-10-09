@@ -241,6 +241,24 @@ async function init(msg: Extract<ToWorker, { type: "init" }>) {
   await bake.init();
 
   post({ type: "progress", stage: "Loading rules" });
+  // Local, reviewed ports and generated maps mount before MapCache scans the mod folders.
+  // Static builds have no local workshop API and keep their bundled catalog.
+  if (msg.profile === "public" && import.meta.env.VITE_STATIC_BUILD !== "1") {
+    const response = await fetch(new URL("api/maps/packages", base));
+    if (response.ok && response.headers.get("content-type")?.includes("application/json")) {
+      const catalog = await response.json() as { maps: { id: string; files: { name: string; url: string }[] }[] };
+      for (const map of catalog.maps) {
+        if (!/^(port-classic-(coast|frontier)|earth-[a-f0-9]{16})$/.test(map.id)) continue;
+        for (const file of map.files) {
+          if (!["map.yaml", "map.bin", "map.png"].includes(file.name)) continue;
+          const r = await fetch(new URL(file.url, base));
+          if (!r.ok) throw new Error(`Could not load local map ${map.id}`);
+          const bytes = new Uint8Array(await r.arrayBuffer());
+          lazy.add(`/vfs/mods/rtsai/web/content/maps/${map.id}/${file.name}`, bytes.length, (s, e) => bytes.subarray(s, e));
+        }
+      }
+    }
+  }
   const timings = JSON.parse(S.Boot());
   const shippedSprites = await shipped;
   if (shippedSprites) {

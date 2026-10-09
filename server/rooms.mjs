@@ -5,6 +5,8 @@ export function createRooms() {
   const send = (res, data, status = 200) => { res.writeHead(status, {'Content-Type':'application/json','Cache-Control':'no-store'}); res.end(JSON.stringify(data)); };
   const view = r => ({id:r.id, state:r.state, settings:r.settings, chat:r.chat||[], players:r.players.map(p=>({id:p.id,faction:p.faction,team:p.team,ready:p.ready,connected:p.connected})), frame:r.frame, verifiedFrame:r.verifiedFrame||0, error:r.error});
   const fail = (r, reason) => { if(r.state==='ended') return; r.state='ended'; r.error=reason; };
+  const hasLocalMaps = r => r.catalog.maps.some(map => /^(earth-|port-classic-)/.test(map.id));
+  const localMapsMatch = (r, catalog) => !hasLocalMaps(r) || r.catalog.maps.every(map => catalog?.maps?.some(other => other.id === map.id && other.uid === map.uid));
   const timer = setInterval(()=> { for(const r of rooms.values()) { for(const p of r.players) if(Date.now()-p.seen>12000) {p.connected=false;if(Date.now()-p.seen>60000&&r.state=== 'playing')fail(r,`Player ${p.id} did not reconnect within 60 seconds. Match stopped.`);} r.observers=(r.observers||[]).filter(o=>Date.now()-o.seen<=60000);if(Date.now()-r.touched>3600000) rooms.delete(r.id); } },1000);
   timer.unref();
   return { close:()=>clearInterval(timer), async handle(req,res) {
@@ -18,6 +20,7 @@ export function createRooms() {
       }
       const r=rooms.get(m.room); if(!r) return send(res,{error:'Room not found or expired'},404);r.touched=Date.now();
       if(m.op==='spectate') {
+        if(!localMapsMatch(r,m.catalog))return send(res,{error:'Map libraries differ. Reload both browsers after generating or adding maps.'},409);
         if(m.version!==r.version) return send(res,{error:'Incompatible game version.'},409);
         if(r.state==='ended')throw Error('Match has ended');
         r.observers ||= [];
@@ -26,6 +29,7 @@ export function createRooms() {
         return send(res,{...view(r),token:observer.token,client:1,observer:true,scenario:r.scenario});
       }
       if(m.op==='join') {
+        if(!localMapsMatch(r,m.catalog))return send(res,{error:'Map libraries differ. Reload both browsers after generating or adding maps.'},409);
         if(m.version!==r.version) return send(res,{error:'Incompatible game version. Reload both browsers with the same build and content.'},409);
         if(r.state!=='lobby'||r.players.length>=r.catalog.maps.find(x=>x.id===r.settings.map).slots.length-r.settings.ai.length) throw Error('Room is full or already started');
         const p={id:r.players.length+1,token:crypto.randomBytes(24).toString('hex'),faction:r.catalog.factions.find(f=>!f.random)?.id,team:0,ready:false,connected:true,seen:Date.now()};r.players.push(p);return send(res,{...view(r),token:p.token,client:p.id});

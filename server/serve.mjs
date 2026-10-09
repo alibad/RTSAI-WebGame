@@ -20,10 +20,12 @@ import crypto from "node:crypto";
 import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { createCompanion } from "./companion.mjs";
+import { createMapWorkshop } from "./map-workshop.mjs";
 
 const PORT = Number(process.env.RTSAI_WEBGAME_PORT ?? 3490);
 const HOST = "127.0.0.1";
 const repo = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+const mapWorkshop = createMapWorkshop(repo);
 const dist = path.join(repo, "web", "dist");
 const data = path.join(repo, "data");
 const appData = path.join(process.env.LOCALAPPDATA ?? os.homedir(), "RTSAI-WebGame");
@@ -239,6 +241,7 @@ async function verify(req, res) {
     fs.writeFileSync(stamp, want);
   }
 
+  if (profile === "public") mapWorkshop.syncNative(root);
   gpuYieldLine();
   const t0 = Date.now();
   const r = await run(twin, ["run", "--root", root, "--scenario", scenarioFile, "--replay", logFile, "--ticks", String(browserHashes.length), "--hashes", hashFile],
@@ -270,6 +273,10 @@ const server = http.createServer(async (req, res) => {
   if (p === "/play") p = "/";
   else if (p.startsWith("/play/")) p = p.slice(5);
   try {
+    if (p.startsWith("/api/maps/")) {
+      if (!isLocal(req)) return res.writeHead(403).end("local only");
+      return await mapWorkshop(req, res, url);
+    }
     if (p === "/api/multiplayer" && req.method === "POST") return await rooms.handle(req, res);
     if (p === "/api/verify" && req.method === "POST") return await verify(req, res);
     if (p === "/api/health") {

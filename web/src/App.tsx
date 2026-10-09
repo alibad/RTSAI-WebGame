@@ -8,6 +8,7 @@ import { Multiplayer } from "./ui/Multiplayer";
 import { DirectMultiplayer } from "./ui/DirectMultiplayer";
 import { MatchLibrary } from "./ui/MatchLibrary";
 import { GameSettings } from "./ui/GameSettings";
+import { MapWorkshop } from "./ui/MapWorkshop";
 import { SandboxHud } from "./ui/SandboxHud";
 import { ARENA, Sandbox, parseSandboxUrl } from "./sandbox";
 import { Practice } from "./ui/Practice";
@@ -53,7 +54,11 @@ export default function App() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [game, setGame] = useState<Game | null>(null);
   const [practiceOpen, setPracticeOpen] = useState(new URLSearchParams(location.search).get("mode") === "practice");
-  const [mode, setMode] = useState<"home" | "skirmish" | "missions">(() => new URLSearchParams(location.search).get("mode") === "missions" ? "missions" : "home");
+  const [mapStudioOpen, setMapStudioOpen] = useState(new URLSearchParams(location.search).get("mode") === "map-studio");
+  const [mode, setMode] = useState<"home" | "skirmish" | "missions">(() => {
+    const mode = new URLSearchParams(location.search).get("mode");
+    return mode === "missions" ? "missions" : mode === "skirmish" ? "skirmish" : "home";
+  });
   const phase = useStore((s) => s.phase);
   const uiHidden = useStore((s) => s.uiHidden);
 
@@ -104,7 +109,7 @@ export default function App() {
     <div className="fixed inset-0" style={sandboxMode ? ({ "--sidebar-w": "300px" } as React.CSSProperties) : undefined}>
       <canvas ref={canvasRef} className="stage" tabIndex={0} style={{ right: playing ? "var(--sidebar-w)" : 0, width: playing ? "calc(100% - var(--sidebar-w))" : "100%", visibility: playing ? "visible" : "hidden" }} />
       {game && playing && !uiHidden && !practiceOpen && (sandboxMode ? <SandboxHud game={game} /> : <Hud game={game} />)}
-      {game && phase === "setup" && !sandboxMode && <>
+      {game && phase === "setup" && !sandboxMode && !mapStudioOpen && <>
         <div className="absolute bottom-4 left-4 z-20 flex gap-2"><MatchLibrary game={game} /><GameSettings game={game} /></div>
         {mode === "home" ? <div className="absolute inset-0 grid place-items-center overflow-auto bg-[radial-gradient(ellipse_at_40%_30%,#24301b,#070907_75%)] p-6">
           <div className="w-[min(760px,100%)]">
@@ -121,12 +126,14 @@ export default function App() {
               </button>
             </div>
             <button type="button" className="hud-panel mt-4 w-full p-5 text-left" onClick={() => setPracticeOpen(true)}><h2 className="text-xl font-bold text-[var(--hud-gold)]">Scenario workshop</h2><p className="text-sm text-[var(--muted-foreground)]">Describe, preview and launch a repeatable practice battle.</p></button>
+            {import.meta.env.VITE_STATIC_BUILD !== "1" && <button type="button" className="hud-panel mt-4 w-full p-5 text-left" onClick={() => setMapStudioOpen(true)}><h2 className="text-xl font-bold text-[var(--hud-gold)]">Map studio</h2><p className="text-sm text-[var(--muted-foreground)]">Explore the preserved map library, or turn a real place into a new battlefield.</p></button>}
           </div>
         </div> : <>
           {mode === "missions" ? <Missions game={game} /> : <Setup game={game} />}
           <nav className="absolute left-4 top-3 z-20 flex gap-3 rounded bg-black/80 p-2 text-sm" aria-label="Game modes">
             <button type="button" onClick={() => setMode("home")} className="text-[var(--hud-gold)]">← Main menu</button>
             <button type="button" onClick={() => setMode(mode === "missions" ? "skirmish" : "missions")}>{mode === "missions" ? "Skirmish" : "Campaign"}</button>
+            {import.meta.env.VITE_STATIC_BUILD !== "1" && <button type="button" onClick={() => setMapStudioOpen(true)}>Map studio</button>}
           </nav>
         </>}
       </>}
@@ -134,8 +141,9 @@ export default function App() {
       {game && playing && !practiceOpen && !uiHidden && <CoachPanel game={game} />}
       {game && playing && !practiceOpen && !uiHidden && <Annotations game={game} />}
       {game && useStore.getState().setup && practiceOpen && <Practice game={game} close={() => setPracticeOpen(false)} />}
-      {game && import.meta.env.VITE_STATIC_BUILD !== "1" && !sandboxMode && (phase === "setup" || phase === "playing" || phase === "loading") && <Multiplayer game={game} />}
-      {game && !sandboxMode && <DirectMultiplayer game={game} />}
+      {game && phase === "setup" && mapStudioOpen && <MapWorkshop game={game} close={() => setMapStudioOpen(false)} />}
+      {game && !mapStudioOpen && import.meta.env.VITE_STATIC_BUILD !== "1" && !sandboxMode && (phase === "setup" || phase === "playing" || phase === "loading") && <Multiplayer game={game} />}
+      {game && !mapStudioOpen && !sandboxMode && <DirectMultiplayer game={game} />}
       {(phase === "boot" || phase === "loading" || (phase === "setup" && sandboxMode)) && <Loading />}
       {phase === "error" && <ErrorCard game={game} />}
     </div>
