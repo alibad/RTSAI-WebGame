@@ -1,3 +1,4 @@
+import {chooseLobbyOption} from './lobby-picker.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import assert from 'node:assert/strict';
@@ -19,8 +20,8 @@ try{
  await pages[1].getByLabel('Player 2 faction').waitFor({timeout:60000});
  const map=await pages[0].evaluate(()=>window.store.getState().setup.maps.find(m=>m.slots.length>=3)?.id);
  assert.ok(map,'No map supports optional AI');
- if(map){await pages[0].getByLabel('Multiplayer map').selectOption(map);await pages[0].getByRole('button',{name:'Add AI',exact:true}).click();await pages[0].getByLabel('AI 1 team').selectOption('2');}
- await pages[1].getByLabel('Player 2 faction').selectOption('iran');await pages[1].getByLabel('Player 2 team').selectOption('2');
+ if(map){await chooseLobbyOption(pages[0],'Multiplayer map',map);await pages[0].getByRole('button',{name:'Add AI',exact:true}).click();await chooseLobbyOption(pages[0],'AI 1 team','2');}
+ await chooseLobbyOption(pages[1],'Player 2 faction','iran');await chooseLobbyOption(pages[1],'Player 2 team','2');
  fs.mkdirSync('artifacts/multiplayer',{recursive:true});await pages[0].screenshot({path:'artifacts/multiplayer/lobby.png'});
  await pages[0].getByRole('button',{name:'Ready',exact:true}).click();await pages[1].getByRole('button',{name:'Ready',exact:true}).click();await pages[0].getByRole('button',{name:'Start synchronized match'}).click();
  await Promise.all(pages.map(p=>p.waitForFunction(()=>['playing','error'].includes(window.store.getState().phase),null,{timeout:240000})));

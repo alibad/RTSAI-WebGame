@@ -21,7 +21,10 @@
 .mp-network-details p { color: #85917c; font-size: 11px; margin: 12px 0 6px; line-height: 1.6; }
 .mp-match-error { border-color: #8c5f32; color: #f0d5a9; line-height: 1.6; }
 .mp-match-error > p { margin: 6px 0 10px; }
-.mp-overlay { position: fixed; inset: 0; z-index: 500; display: grid; place-items: center; padding: 24px; background: rgba(3,6,3,.88); backdrop-filter: blur(8px); }
+.mp-overlay { position: fixed; inset: 0; z-index: 120; display: grid; place-items: center; padding: 24px; background: rgba(3,6,3,.88); backdrop-filter: blur(8px); }
+.mp-picker[data-slot] { min-height: 40px; height: auto; background: #0b1109; border-color: #3a4434; padding: 9px 10px; font-size: 13px; }
+.mp-picker[data-slot]:hover:not(:disabled) { border-color: #718060; background: #172012; }
+.mp-picker[data-slot]:focus-visible { outline: 2px solid var(--hud-gold); outline-offset: 2px; }
 .mp-dialog { width: min(960px,100%); max-height: calc(100dvh - 48px); overflow-y: auto; border-radius: 16px; padding: 28px; }
 .mp-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; }
 .mp-eyebrow { font-size: 10px; font-weight: 700; letter-spacing: .16em; color: var(--hud-gold); }

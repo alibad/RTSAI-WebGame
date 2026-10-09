@@ -1,3 +1,4 @@
+import {chooseLobbyOption} from './lobby-picker.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import assert from 'node:assert/strict';
@@ -39,10 +40,32 @@ try{
  assert.ok((await page.evaluate(()=>navigator.clipboard.readText())).includes('room='));
  assert.equal(await page.getByRole('button',{name:'Start synchronized match',exact:true}).isEnabled(),false);
  await page.getByText('Share the invite to bring in a second commander.',{exact:true}).waitFor();
+ await page.getByLabel('Player 1 faction',{exact:true}).click();
+ await page.getByPlaceholder(/Search factions/).fill('no-such-faction');
+ await page.getByText('No factions match. Try another name.',{exact:true}).waitFor();
+ await page.getByPlaceholder(/Search factions/).fill('Iran');
+ await page.getByRole('option').filter({hasText:'Iran'}).waitFor();
+ await page.screenshot({path:'artifacts/multiplayer/faction-picker.png'});
+ await page.keyboard.press('Escape');
+ await page.getByPlaceholder(/Search factions/).waitFor({state:'hidden'});
+ assert.equal(await page.getByLabel('Player 1 faction',{exact:true}).evaluate(el=>document.activeElement===el),true);
+ await page.getByLabel('Player 1 faction',{exact:true}).click();
+ await page.getByPlaceholder(/Search factions/).fill('Iran');
+ await page.keyboard.press('ArrowDown');
+ await page.keyboard.press('Enter');
+ await page.getByLabel('Player 1 faction',{exact:true}).filter({hasText:'Iran'}).waitFor();
+ await chooseLobbyOption(page,'Player 1 team','2');
+ await page.getByLabel('Player 1 team',{exact:true}).filter({hasText:'Team 2'}).waitFor();
  await page.screenshot({path:'artifacts/multiplayer/room-lobby.png'});
  await page.setViewportSize({width:390,height:844});
  const layout=await page.locator('.mp-dialog').evaluate(el=>({width:el.clientWidth,scroll:el.scrollWidth}));assert.ok(layout.scroll<=layout.width,JSON.stringify(layout));
  await page.screenshot({path:'artifacts/multiplayer/room-mobile.png'});
+ await page.getByLabel('Player 1 faction',{exact:true}).click();
+ const popup=page.locator('[data-slot=combobox-content]');
+ await popup.waitFor();
+ const bounds=await popup.boundingBox();assert.ok(bounds.x>=0&&bounds.x+bounds.width<=390,JSON.stringify(bounds));
+ await page.screenshot({path:'artifacts/multiplayer/faction-picker-mobile.png'});
+ await page.keyboard.press('Escape');
  assert.deepEqual(errors,[]);
- console.log('Multiplayer UX passed: offline guidance, connection recovery, empty-invite prevention, fetch failure recovery, busy state/single create, clipboard confirmation, start guidance, mobile width.');
+ console.log('Multiplayer UX passed: offline guidance, connection recovery, empty-invite prevention, fetch failure recovery, busy state/single create, clipboard confirmation, start guidance, searchable factions, empty search, keyboard selection, Escape focus return, team selection, mobile menu width.');
 }finally{await browser.close();}

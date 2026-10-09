@@ -1,3 +1,4 @@
+import {chooseLobbyOption} from './lobby-picker.mjs';
 // Real two-client footage. Raw recordings and an editable shot list stay local.
 import fs from 'node:fs';
 import path from 'node:path';
@@ -23,9 +24,9 @@ try{
  await pages[1].getByRole('button',{name:'Private multiplayer',exact:true}).click();
  await shot(1,'03-join','PLAYER 2 / JOIN THE ROOM','Open the invite, or paste it here and choose Join room.',async()=>{await pages[1].getByLabel('Invite link or room code').fill(invite);await hold(1700);await pages[1].getByRole('button',{name:'Join room',exact:true}).click();await pages[1].getByLabel('Player 2 faction').waitFor();},3500);
  const map=await pages[0].evaluate(()=>window.store.getState().setup.maps.find(m=>m.slots.length>=3)?.id);assert.ok(map);
- await shot(0,'04-map-ai','PLAYER 1 / SET UP THE BATTLEFIELD','Choose Four Fronts and add an optional AI opponent.',async()=>{await pages[0].getByLabel('Multiplayer map').selectOption(map);await pages[0].getByRole('button',{name:'Add AI',exact:true}).click();await pages[0].getByLabel('Player 1 faction').selectOption('saudi');},3500);
- await shot(1,'05-faction','PLAYER 2 / CHOOSE YOUR SIDE','Each commander picks a faction and team. Matching teams are allies.',async()=>{await pages[1].getByLabel('Player 2 faction').selectOption('iran');await pages[1].getByLabel('Player 2 team').selectOption('2');},3300);
- await pages[0].getByLabel('AI 1 team').selectOption('2');
+ await shot(0,'04-map-ai','PLAYER 1 / SET UP THE BATTLEFIELD','Choose Four Fronts and add an optional AI opponent.',async()=>{await chooseLobbyOption(pages[0],'Multiplayer map',map);await pages[0].getByRole('button',{name:'Add AI',exact:true}).click();await chooseLobbyOption(pages[0],'Player 1 faction','saudi');},3500);
+ await shot(1,'05-faction','PLAYER 2 / CHOOSE YOUR SIDE','Each commander picks a faction and team. Matching teams are allies.',async()=>{await chooseLobbyOption(pages[1],'Player 2 faction','iran');await chooseLobbyOption(pages[1],'Player 2 team','2');},3300);
+ await chooseLobbyOption(pages[0],'AI 1 team','2');
  await shot(1,'06-ready','BOTH PLAYERS / READY UP','When you are happy with your choices, press Ready.',()=>pages[1].getByRole('button',{name:'Ready',exact:true}).click(),2200);
  await pages[0].getByRole('button',{name:'Ready',exact:true}).click();
  await shot(0,'07-start','PLAYER 1 / START THE MATCH','The host can start once both commanders are ready.',async()=>{await pages[0].getByRole('button',{name:'Start synchronized match',exact:true}).click();await Promise.all(pages.map(p=>p.waitForFunction(()=>window.store.getState().phase==='playing',null,{timeout:240000})));},1800);
