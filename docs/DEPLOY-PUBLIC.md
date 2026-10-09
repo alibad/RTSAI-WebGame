@@ -1,6 +1,6 @@
 # Publishing the web game at rtsai.net/play: what it would take
 
-**Status:** prepared, not deployed. Pushing or deploying needs the owner's approval. The workspace rules also
+**Status:** deployed on 9 October 2026 at https://rtsai.net/play/ following the owner's explicit deployment request. See [the release record](RELEASE-20261009.md) for source revisions and live checks. Future pushing or deploying needs the owner's approval. The workspace rules also
 apply:
 - standard build machine;
 - no manual `vercel deploy` unless asked;
