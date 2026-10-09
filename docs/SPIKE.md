@@ -1,6 +1,6 @@
 # RTS AI web engine spike (October 2026)
 
-The real OpenRA simulation (engine `rtsai/web-engine` + RTSAI-Mod `main`, C# unchanged) compiled to .NET
+The real OpenRA simulation (shared engine `rtsai/engine` + RTSAI-Mod `main`, C# unchanged) compiled to .NET
 WebAssembly, ticking at 25 tps in a Web Worker, drawn with WebGL2 from the engine's own sprite sheets and palette.
 
 ## Architecture
@@ -23,7 +23,7 @@ page (main thread)                          worker (.NET 10 browser-wasm, interp
   the player's own RA2 packages (`%LOCALAPPDATA%\RTSAI-WebGame\private\ra2-all.pack`) are served by the dev server to
   loopback clients and mounted at `support/Content/ra2`. Never bundled, committed or deployed.
 
-## Engine changes (`OpenRA-wt-web`, branch `rtsai/web-engine`)
+## Engine changes (shared `OpenRA-wt-rtsai-engine`, branch `rtsai/engine`)
 
 * `Log` writes synchronously in the browser (no threads); `ObjectCreator` resolves mod assemblies by name;
   `MapCache` skips FileSystemWatcher in the browser; `Ruleset` loads synchronously in the browser (the load-screen
@@ -84,7 +84,7 @@ Private RA2 content (256 MB, local only) is not shippable.
 3. Memory: 620-870 MB wasm heap that never shrinks (MEMFS copy of the 256 MB pack, ~250-380 MB managed).
 4. No game UI: sidebar/build queue/minimap/power/money, shroud and fog, voxels/beams/lines, audio.
 5. Single-threaded wasm: any engine Task.Run + Wait path deadlocks (Ruleset fixed); UI/network paths unexercised.
-6. Engine branch rtsai/web-engine is local only; companion AI (gRPC) dropped; only desktop Chromium tested.
+6. Historical spike limitation: the engine was local-only. As of 9 October the shared rtsai/engine revision is published; current delivery status is recorded in OpenRA-AI/docs/engine-branch-resolution-20261009.md.
 
 ## Phased plan
 

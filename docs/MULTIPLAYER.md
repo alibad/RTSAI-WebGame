@@ -23,7 +23,7 @@ To rebuild the public game data and simulation from the existing input checkouts
 python tools/prepare-content.py
 python tools/prepare-multiplayer-map.py
 & "$env:USERPROFILE/.dotnet/dotnet.exe" build sim/OpenRA.WebSim.Native -c Release -p:WebProfile=public
-& ./bin/OpenRA.WebSim.Native-public/Release/net10.0/websim.exe pack --engine ../OpenRA-wt-web --mod ../RTSAI-Mod-wt-web-public --out data/public/web-bundle.pack --no-mix-database
+& ./bin/OpenRA.WebSim.Native-public/Release/net10.0/websim.exe pack --engine ../OpenRA-wt-rtsai-engine --mod ../RTSAI-Mod-wt-web-public --out data/public/web-bundle.pack --no-mix-database
 & "$env:USERPROFILE/.dotnet/dotnet.exe" publish sim/OpenRA.WebSim.Browser -c Release -p:WebProfile=public -o data/public/wasm-interp
 ```
 

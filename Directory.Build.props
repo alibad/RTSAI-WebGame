@@ -1,11 +1,11 @@
 ﻿<Project>
   <!--
     RTSAI-WebGame: the real OpenRA simulation (engine + RTS AI mod) compiled for the browser.
-    EngineRoot is the rtsai/web-engine worktree; ModRoot is the RTSAI-Mod checkout whose C# and data we load.
+    EngineRoot is the shared rtsai/engine worktree; ModRoot is the RTSAI-Mod checkout whose C# and data we load.
     Both are read-only inputs: nothing here writes into them except the engine's own bin/ + obj/ build output.
   -->
   <PropertyGroup>
-    <EngineRoot Condition="'$(EngineRoot)' == ''">$(MSBuildThisFileDirectory)..\OpenRA-wt-web\</EngineRoot>
+    <EngineRoot Condition="'$(EngineRoot)' == ''">$(MSBuildThisFileDirectory)..\OpenRA-wt-rtsai-engine\</EngineRoot>
     <!-- WebProfile "public": the standalone mod (rtsai/standalone, no EA content); default: the RA2 mod (private content). -->
     <ModRoot Condition="'$(ModRoot)' == '' And '$(WebProfile)' == 'public'">$(MSBuildThisFileDirectory)..\RTSAI-Mod-wt-web-public\</ModRoot>
     <ModRoot Condition="'$(ModRoot)' == ''">$(MSBuildThisFileDirectory)..\RTSAI-Mod\</ModRoot>

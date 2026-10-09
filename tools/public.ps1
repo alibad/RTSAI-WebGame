@@ -5,7 +5,7 @@
 # Runtimes: dotnet publish sim\OpenRA.WebSim.Browser -c Release -p:WebProfile=public [-p:Aot=true] -o data\public\wasm-<interp|aot>
 param(
 	[string]$Mod = "..\RTSAI-Mod-wt-web-public",
-	[string]$Engine = "..\OpenRA-wt-web",
+	[string]$Engine = "..\OpenRA-wt-rtsai-engine",
 	[string]$Maps = "all",
 	[switch]$NoBuild
 )

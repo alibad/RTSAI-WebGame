@@ -8,7 +8,7 @@ param(
 	[switch]$NoBuild,
 	[switch]$NoPack,
 	[string]$Mod = "..\RTSAI-Mod",
-	[string]$Engine = "..\OpenRA-wt-web",
+	[string]$Engine = "..\OpenRA-wt-rtsai-engine",
 	[string]$Private = "$env:LOCALAPPDATA\RTSAI-WebGame\private\ra2-all.pack",
 	[string[]]$Extra = @()
 )
