@@ -68,7 +68,7 @@ export function OptionSelect<V extends string | number>({ value, onValueChange, 
       <SelectTrigger id={id} size={size} className={className} {...aria}>
         <SelectValue>{(current: V) => { const o = options.find(x => x.value === current); return o ? <OptionLabel option={o} /> : String(current ?? "") }}</SelectValue>
       </SelectTrigger>
-      <SelectContent className={contentClassName}>
+      <SelectContent onClick={e => e.stopPropagation()} className={contentClassName}>
         {groups ? groups.map((g, i) => <React.Fragment key={g.value}>{i > 0 && <SelectSeparator />}<SelectGroup>{g.value && <SelectLabel>{g.value}</SelectLabel>}{g.items.map(item)}</SelectGroup></React.Fragment>) : options.map(item)}
       </SelectContent>
     </Select>
@@ -77,14 +77,17 @@ export function OptionSelect<V extends string | number>({ value, onValueChange, 
 
 /** A long list with a search field: shadcn Combobox, opened from a select-like trigger. */
 export function SearchSelect<V extends string | number>({ value, onValueChange, options, id, disabled, className, contentClassName, size = "default", placeholder = "Search…", empty = "Nothing matches that search.", ...aria }: Common<V> & { placeholder?: string; empty?: string }) {
+  const [open, setOpen] = React.useState(false)
   const groups = React.useMemo(() => grouped(options), [options])
   const selected = options.find(o => o.value === value) ?? null
   const item = (o: Option<V>) => <ComboboxItem key={String(o.value)} value={o} disabled={o.disabled}><OptionLabel option={o} /></ComboboxItem>
   return (
     <Combobox<Option<V>>
+      open={open}
+      onOpenChange={setOpen}
       items={groups ?? options}
       value={selected}
-      onValueChange={next => { if (next) onValueChange(next.value) }}
+      onValueChange={next => { if (next) { onValueChange(next.value); setOpen(false) } }}
       itemToStringLabel={o => o.description ? `${o.label} ${o.description}` : o.label}
       isItemEqualToValue={(a, b) => a.value === b.value}
       autoHighlight
@@ -94,7 +97,7 @@ export function SearchSelect<V extends string | number>({ value, onValueChange, 
       <ComboboxTrigger id={id} data-size={size} className={cn(selectTriggerClassName, className)} {...aria}>
         <ComboboxValue>{(current: Option<V> | null) => <span data-slot="select-value" className="flex min-w-0 flex-1 items-center gap-1.5 text-left">{current ? <OptionLabel option={current} /> : null}</span>}</ComboboxValue>
       </ComboboxTrigger>
-      <ComboboxContent className={cn("min-w-64 text-[13px]", contentClassName)}>
+      <ComboboxContent onClick={e => e.stopPropagation()} className={cn("min-w-64 text-[13px]", contentClassName)}>
         <ComboboxInput showTrigger={false} placeholder={placeholder} aria-label={placeholder} />
         <ComboboxEmpty>{empty}</ComboboxEmpty>
         <ComboboxList>
@@ -124,6 +127,6 @@ export function GameSelect({ children, value, defaultValue, onChange, id, disabl
   });
   const [current, setCurrent] = React.useState(String(defaultValue ?? options[0]?.value ?? ""));
   const Picker = options.length > 8 ? SearchSelect : OptionSelect;
-  return <Picker id={id} aria-label={label} disabled={disabled} className={cn("game-picker", className)} value={String(value ?? current)} options={options}
+  return <Picker id={id} aria-label={label} disabled={disabled} className={cn("game-picker", className?.split(/\s+/).filter(c => !["block", "bg-black", "hud-inset", "p-1", "p-2", "ml-2"].includes(c)).join(" "))} value={String(value ?? current)} options={options}
     onValueChange={next => { setCurrent(next); onChange?.({ target: { value: next } }); }} />;
 }

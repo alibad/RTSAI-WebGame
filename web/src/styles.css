@@ -211,3 +211,6 @@ html, body, #root {
 [data-slot="select-item"] small, [data-slot="combobox-item"] small { color: #b9bdac; }
 select { appearance: none; padding-right: 34px; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16'%3E%3Cpath d='m4 6 4 4 4-4' fill='none' stroke='%23d5be82' stroke-width='1.5'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 10px center; }
 select option { background: #172014; color: #f4e9cf; }
+
+#mission-difficulty { width: 140px; }
+[aria-label="Replay speed"] { width: 110px; }
