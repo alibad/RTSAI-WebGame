@@ -31,6 +31,8 @@ namespace OpenRA.WebSim
 
 		public static bool Active { get; private set; }
 
+		public static bool GroundPass { get; set; }
+
 		static byte[] vertices = new byte[64 * 1024];
 		static int vertexCount;
 		static byte[] batches = new byte[16 * 1024];
@@ -54,6 +56,7 @@ namespace OpenRA.WebSim
 		public static void Begin()
 		{
 			Active = true;
+			GroundPass = false;
 			vertexCount = 0;
 			batchCount = 0;
 			modelCmdCount = 0;
@@ -77,6 +80,23 @@ namespace OpenRA.WebSim
 			if (source == null || count <= 0 || first + count > source.Length)
 				return;
 
+			if (GroundPass)
+			{
+				// Terrain layers submit complete rows, including thousands of empty cells.
+				// Send only non-degenerate quads through the shared snapshot ring.
+				var visible = new List<Vertex>();
+				for (var q = first; q + 3 < first + count; q += 4)
+				{
+					if (source[q].X == source[q + 2].X && source[q].Y == source[q + 2].Y)
+						continue;
+					for (var k = 0; k < 4; k++) visible.Add(source[q + k]);
+				}
+				if (visible.Count == 0) return;
+				source = visible.ToArray();
+				first = 0;
+				count = source.Length;
+			}
+
 			Ensure(ref vertices, (vertexCount + count) * VertexBytes);
 			var span = MemoryMarshal.AsBytes(source.AsSpan(first, count));
 			span.CopyTo(vertices.AsSpan(vertexCount * VertexBytes));
@@ -99,7 +119,7 @@ namespace OpenRA.WebSim
 			BinaryPrimitives.WriteInt32LittleEndian(b[4..], count);
 			b[8] = (byte)blend;
 			b[9] = (byte)(shader.UiSpace ? 1 : 0);
-			b[10] = 0;
+			b[10] = (byte)(GroundPass ? 1 : 0);
 			b[11] = 0;
 			for (var i = 0; i < 8; i++)
 			{

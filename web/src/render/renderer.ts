@@ -352,7 +352,7 @@ export class Renderer {
     this.models.run(s.captured.modelCmds, s.header.modelCmds, (id) => this.textures.get(id)?.tex ?? null, this.palette.tex, this.paletteRows);
   }
 
-  private drawCaptured(cur: Snapshot, cam: Camera) {
+  private drawCaptured(cur: Snapshot, cam: Camera, ground = false) {
     const cap = cur.captured;
     if (!cap.batches.length || this.actorFilter) return;
     const gl = this.gl;
@@ -374,6 +374,7 @@ export class Renderer {
       this.capUploaded = cur;
     }
     for (const b of cap.batches) {
+      if (b.ground !== ground) continue;
       let ok = true;
       for (let i = 0; i < 8; i++) {
         const id = b.textures[i];
@@ -467,6 +468,7 @@ export class Renderer {
     // Flat project terrain is a background pass. Its per-tile depth must not
     // reject foreground pixels as actors cross tile boundaries. Keep depth
     // testing for actors against other actors (including buildings).
+    if (cur) this.drawCaptured(cur, cam, true);
     if (depthOn) gl.clear(gl.DEPTH_BUFFER_BIT);
     if (cur) this.drawSprites(cur, prev, cam, now, false);
     if (cur) this.drawCaptured(cur, cam);

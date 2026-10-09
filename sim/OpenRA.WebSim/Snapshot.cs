@@ -480,6 +480,13 @@ namespace OpenRA.WebSim
 			try
 			{
 				wr.BeginFrame();
+				// Terrain overlays (ore, gems and smudges) are separate from actor renderables.
+				// Capture the engine layers every frame so harvesting and fog memory stay native.
+				Capture.GroundPass = true;
+				foreach (var overlay in world.WorldActor.TraitsImplementing<IRenderOverlay>())
+					CaptureGroundLayers(overlay, wr);
+				Game.Renderer.Flush();
+				Capture.GroundPass = false;
 				var finalized = new List<IFinalizedRenderable>(Others.Count);
 				foreach (var r in Others)
 				{
@@ -656,6 +663,24 @@ namespace OpenRA.WebSim
 
 			LastBuildMs = Stopwatch.GetElapsedTime(start).TotalMilliseconds;
 			return pos;
+		}
+
+		// The browser camera is independent of the headless viewport. Capture all occupied
+		// cells from the engine layers rather than culling them with that viewport.
+		static void CaptureGroundLayers(IRenderOverlay overlay, WorldRenderer wr)
+		{
+			const System.Reflection.BindingFlags fields = System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance;
+			var shader = (WebShader)typeof(SpriteRenderer).GetField("shader", fields).GetValue(Game.Renderer.WorldSpriteRenderer);
+			for (var type = overlay.GetType(); type != null; type = type.BaseType)
+				foreach (var field in type.GetFields(fields | System.Reflection.BindingFlags.DeclaredOnly))
+				{
+					if (field.GetValue(overlay) is not TerrainSpriteLayer layer) continue;
+					var v = (Vertex[])typeof(TerrainSpriteLayer).GetField("vertices", fields).GetValue(layer);
+					var sheets = (Sheet[])typeof(TerrainSpriteLayer).GetField("sheets", fields).GetValue(layer);
+					for (var n = 0; n < sheets.Length; n++)
+						if (sheets[n] != null) shader.SetTexture("Texture" + n, sheets[n].GetTexture());
+					Capture.AddQuads(v, 0, v.Length, layer.BlendMode, shader);
+				}
 		}
 
 		/// <summary>A JSON string literal (no reflection: the trimmed AOT build has reflection-based serialization off).</summary>

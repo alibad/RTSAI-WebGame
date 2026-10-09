@@ -37,7 +37,7 @@ export interface Header {
 /** Engine renderer output recorded by Capture.cs: beams, lines, contrails, voxel model sprites (+ model passes). */
 export interface Captured {
   vertices: Uint8Array; // capVertices * 48 bytes (copied)
-  batches: { start: number; count: number; blend: number; ui: boolean; textures: number[] }[];
+  batches: { start: number; count: number; blend: number; ui: boolean; ground: boolean; textures: number[] }[];
   modelCmds: DataView; // modelCmds * 136 bytes (copied)
 }
 
@@ -172,7 +172,7 @@ export function parseSnapshot(bytes: Uint8Array, receivedAt: number): Snapshot {
   for (let k = 0; k < header.capBatches; k++, p += CAPTURE_BATCH_BYTES) {
     const tex: number[] = [];
     for (let t = 0; t < 8; t++) tex.push(i(p + 12 + 4 * t));
-    batches.push({ start: i(p), count: i(p + 4), blend: dv.getUint8(p + 8), ui: dv.getUint8(p + 9) === 1, textures: tex });
+    batches.push({ start: i(p), count: i(p + 4), blend: dv.getUint8(p + 8), ui: dv.getUint8(p + 9) === 1, ground: dv.getUint8(p + 10) === 1, textures: tex });
   }
   const mEnd = p + header.modelCmds * MODEL_CMD_BYTES;
   const modelCmds = new DataView(bytes.slice(p, mEnd).buffer);
