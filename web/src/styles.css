@@ -166,3 +166,20 @@ html, body, #root {
   .battlefield-review { bottom: auto; top: 60px; max-width: calc(100% - var(--sidebar-w) - 24px); }
   .pause-label { top: 104px; left: calc((100% - var(--sidebar-w)) / 2); }
 }
+
+/* Keyboard-first match chat overlays the corner without blocking battlefield clicks. */
+.mp-corner-chat { position: fixed; top: 64px; left: 12px; width: min(340px,calc(100vw - 24px)); z-index: 100; color: #edf0e7; font-size: 12px; pointer-events: none; }
+.mp-corner-chat-heading { display: flex; align-items: center; justify-content: space-between; pointer-events: auto; }
+.mp-corner-chat-heading > button { background: #10180cda; border-radius: 7px; color: #c8d0bd; }
+.mp-corner-chat kbd { margin-left: 8px; font-size: 10px; color: #afb8a2; border: 1px solid #526047; border-radius: 3px; padding: 0 4px; }
+.mp-corner-chat-feed { max-height: 180px; overflow: hidden; line-height: 1.5; overflow-wrap: anywhere; }
+.mp-corner-chat-feed p { display: flex; align-items: baseline; gap: 8px; margin: 5px 0; padding: 5px 9px; border-radius: 5px; background: #0a110be6; }
+.mp-corner-chat-feed strong { color: var(--hud-gold); white-space: nowrap; }
+.mp-corner-chat.is-open { padding: 10px; border-radius: 10px; pointer-events: auto; }
+.mp-corner-chat.is-open .mp-corner-chat-feed { overflow: auto; margin: 6px 0; }
+.mp-corner-chat form { display: flex; flex-wrap: wrap; gap: 6px; }
+.mp-corner-chat input { width: 0; min-width: 0; flex: 1; background: #080e07; border: 1px solid #7e8c69; border-radius: 5px; padding: 8px; color: #edf0e7; outline-color: var(--hud-gold); }
+.mp-corner-chat small { flex-basis: 100%; color: #a3af98; font-size: 10px; }
+.mp-corner-chat small span { margin-left: 12px; }
+.mp-corner-chat .mp-chat-send-error { flex-basis: 100%; color: #f4b0a1; }
+.mp-corner-chat .mp-chat-empty { color: #a3af98; }

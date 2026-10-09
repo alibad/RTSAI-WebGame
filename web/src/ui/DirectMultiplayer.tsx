@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { Game } from '../game';
 import { useStore } from '../store';
+import { MatchChat } from './MatchChat';
 import { Button } from '../components/ui/button';
 import { DirectPeer, PeerLockstep, type PeerEvent } from '../peer';
 
@@ -18,7 +19,7 @@ export function DirectMultiplayer({ game }: { game: Game }) {
   const [state, setState] = useState(''), [error, setError] = useState(''), [busy, setBusy] = useState(false);
   const [host, setHost] = useState(false), [verified, setVerified] = useState(false), [playing, setPlaying] = useState(false);
   const [faction, setFaction] = useState('china'), [friend, setFriend] = useState('iran'), [map, setMap] = useState('');
-  const [chat, setChat] = useState<string[]>([]), [message, setMessage] = useState(''), [call, setCall] = useState<MediaStream | null>(null);
+  const [chat, setChat] = useState<{id:string;text:string}[]>([]), [message, setMessage] = useState(''), [call, setCall] = useState<MediaStream | null>(null);
   const [frame, setFrame] = useState(0);
   const peer = useRef<DirectPeer | null>(null), local = useRef(1), lock = useRef<PeerLockstep | null>(null), version = useRef(''), active = useRef(false), started = useRef(false);
   const choice = useRef(faction); choice.current = faction;
@@ -86,7 +87,7 @@ export function DirectMultiplayer({ game }: { game: Game }) {
             lock.current.receive(create ? 2 : 1, m.events as PeerEvent[]);
           } else if (m.kind === 'chat') {
             if (typeof m.text !== 'string' || m.text.length > 500) throw Error('Invalid chat message');
-            setChat(c => [...c, `Friend: ${m.text}`].slice(-100));
+            setChat(c => [...c, {id:crypto.randomUUID(),text:`Friend: ${m.text}`}].slice(-100));
           } else if (m.kind === 'leave') fail('Your friend left the match');
         } catch (e) { fail(e); }
       };
@@ -110,8 +111,9 @@ export function DirectMultiplayer({ game }: { game: Game }) {
     if (started.current) { game.quit(); started.current = false; setPlaying(false); }
   }
   if (!setup || (!playing && phase !== 'setup')) return null;
-  if (!open) return <Button className="fixed left-4 top-4 z-[100]" onClick={() => setOpen(true)}>{playing ? `Direct match · frame ${frame}` : 'Direct peer-to-peer'}</Button>;
-  return <div className={`${playing ? 'fixed left-4 top-14 w-[min(500px,90vw)]' : 'fixed inset-0 grid place-items-center bg-black/90 p-4'} z-[110]`}>
+  const matchChat=playing&&<MatchChat inputLabel="Direct chat message" messages={chat.map(({id,text})=>({id,author:text.startsWith('You: ')?'You':'Friend',text:text.slice(text.indexOf(': ')+2)}))} send={async text=>{peer.current!.send({kind:'chat',text});setChat(c=>[...c,{id:crypto.randomUUID(),text:`You: ${text}`} ].slice(-100));}}/>;
+  if (!open) return <>{matchChat}<Button className="fixed left-4 top-4 z-[100]" onClick={() => setOpen(true)}>{playing ? `Direct match · frame ${frame}` : 'Direct peer-to-peer'}</Button></>;
+  return <>{matchChat}<div className={`${playing ? 'fixed left-4 top-14 w-[min(500px,90vw)]' : 'fixed inset-0 grid place-items-center bg-black/90 p-4'} z-[110]`}>
     <div className="hud-panel max-h-[85vh] w-full max-w-[650px] overflow-auto space-y-3 p-5">
       <h1 className="text-xl">Direct peer-to-peer</h1>
       {!playing && <p className="text-sm">Two friends, no room server. Send the connection codes through your existing chat. Some networks block direct connections; this mode has no relay fallback.</p>}
@@ -127,11 +129,11 @@ export function DirectMultiplayer({ game }: { game: Game }) {
         {!playing && <><p>Friend faction: {setup.factions.find(f => f.id === friend)?.name}</p>{host ? <><label>Map<select aria-label="Direct map" className="hud-inset ml-2 p-1" value={map || setup.maps.find(m => m.slots.length >= 2)?.id} onChange={e => setMap(e.target.value)}>{setup.maps.filter(m => m.slots.length >= 2).map(m => <option key={m.id} value={m.id}>{m.title}</option>)}</select></label><Button onClick={start}>Start direct match</Button></> : <p>Waiting for your friend to start.</p>}</>}
         <div className="flex flex-wrap gap-2"><Video stream={peer.current?.remoteMedia ?? null} /><Video stream={call} muted /></div>
         <div className="flex gap-2"><Button onClick={() => void camera()}>Enable camera and microphone</Button>{call && <Button onClick={() => { peer.current?.stopCamera(); setCall(null); }}>Stop camera and microphone</Button>}</div>
-        <div aria-live="polite" className="max-h-32 overflow-auto text-sm">{chat.map((text, i) => <p key={i}>{text}</p>)}</div>
-        <form className="flex gap-2" onSubmit={e => { e.preventDefault(); if (!message.trim()) return; try { peer.current!.send({ kind: 'chat', text: message.trim() }); setChat(c => [...c, `You: ${message.trim()}`].slice(-100)); setMessage(''); } catch (e) { fail(e); } }}><input aria-label="Direct chat message" maxLength={500} className="hud-inset min-w-0 flex-1 p-2" value={message} onChange={e => setMessage(e.target.value)} /><Button type="submit">Send</Button></form>
+        {!playing&&<><div aria-live="polite" className="max-h-32 overflow-auto text-sm">{chat.map(entry => <p key={entry.id}>{entry.text}</p>)}</div>
+        <form className="flex gap-2" onSubmit={e => { e.preventDefault(); if (!message.trim()) return; try { peer.current!.send({ kind: 'chat', text: message.trim() }); setChat(c => [...c, {id:crypto.randomUUID(),text:`You: ${message.trim()}`} ].slice(-100)); setMessage(''); } catch (e) { fail(e); } }}><input aria-label="Direct chat message" maxLength={500} className="hud-inset min-w-0 flex-1 p-2" value={message} onChange={e => setMessage(e.target.value)} /><Button type="submit">Send</Button></form></>}
       </>}
       {error && <p role="alert" className="text-red-400">{error}</p>}
       <div className="flex gap-2"><Button onClick={() => setOpen(false)}>Minimize</Button><Button onClick={leave}>{playing ? 'Leave direct match' : 'Close connection'}</Button></div>
     </div>
-  </div>;
+  </div></>;
 }

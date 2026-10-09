@@ -59,3 +59,11 @@ During play, the compact toolbar shows a stable connection state and a Chat togg
 Verified locally on 9 October 2026: two visible Chromium windows with independent browser contexts, two humans plus AI on Four Fronts, matching hashes through frame 241, nonempty AI order packets before human input, both human MCV deploy orders, and continued synchronization with 120 ms added client latency. The separate two-human-only match also passed. Closing the guest context marked it disconnected after 12 seconds, then stopped the host after the 60-second grace with an explicit reason; changing the runtime fingerprint was rejected in the lobby. API tests also verified mismatching hashes stop the room. Frontend build, native build and public interpreter publish succeeded.
 
 
+
+## In-game chat
+
+In both private-room and direct-peer matches, press **Enter** from the battlefield to open and focus chat. Type a message and press **Enter** to send; focus returns to the game. **Escape** closes the composer without sending and keeps your draft. Tab keeps normal keyboard focus navigation. Other game controls do not receive chat keystrokes.
+
+The upper-left corner shows up to four recent messages for 15 seconds without opening a panel. Press Enter or choose Chat to see retained history. A failed send preserves the draft and shows an error so you can retry. Messages are shared with the whole room; this is not team-only chat.
+
+Camera and microphone support currently belongs to the separate **Direct peer-to-peer** flow. After exchanging connection codes, choose **Enable camera and microphone** and grant browser permission. Joining a private room does not initiate a voice or video call. Local synthetic-device tests validate WebRTC media; separate physical-device/network testing is still needed.

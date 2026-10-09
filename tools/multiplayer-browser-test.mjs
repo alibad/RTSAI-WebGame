@@ -40,9 +40,34 @@ try{
  await pages[0].screenshot({path:'artifacts/multiplayer/connection-bar.png'});
  await pages[0].getByRole('button',{name:'Connection details',exact:true}).click();await pages[0].getByText('Average request time',{exact:true}).waitFor();
  await pages[0].screenshot({path:'artifacts/multiplayer/connection-details.png'});await pages[0].getByRole('button',{name:'Close details',exact:true}).click();
- await strip.getByRole('button',{name:'Chat',exact:true}).click();await pages[0].getByLabel('Room chat message').fill('Holding the north flank.');await strip.getByRole('button',{name:'Send',exact:true}).click();
- await pages[0].getByText('Holding the north flank.',{exact:false}).waitFor();await pages[0].screenshot({path:'artifacts/multiplayer/connection-chat.png'});await strip.getByRole('button',{name:'Close room chat',exact:true}).click();
- console.log('Stable connection bar, optional timing details and room chat passed');
+ // Enter opens chat from the battlefield; letters must not issue unit commands.
+ await pages[0].locator('canvas.stage').focus();
+ await pages[0].keyboard.press('Enter');
+ const composer=pages[0].getByLabel('Room chat message');await composer.waitFor();
+ const beforeMode=await pages[0].evaluate(()=>window.store.getState().menuOpen);
+ await composer.pressSequentially('Holding the north flank.');
+ await pages[0].keyboard.press('Escape');
+ await composer.waitFor({state:'hidden'});
+ assert.equal(await pages[0].evaluate(()=>window.store.getState().menuOpen),beforeMode,'Chat Escape opened game menu');
+ await pages[0].keyboard.press('Enter');assert.equal(await composer.inputValue(),'Holding the north flank.');
+ await pages[0].keyboard.press('Enter');await composer.waitFor({state:'hidden'});
+ const guestFeed=pages[1].getByRole('log',{name:'Chat messages'});
+ await guestFeed.getByText('Holding the north flank.',{exact:true}).waitFor();
+ assert.equal(await pages[1].getByLabel('Room chat message').count(),0,'Incoming chat opened the guest composer');
+ await pages[0].screenshot({path:'artifacts/multiplayer/connection-chat.png'});
+ await pages[1].locator('canvas.stage').focus();await pages[1].keyboard.press('Enter');
+ await pages[1].getByLabel('Room chat message').fill('Copy that. Moving east.');
+ await pages[1].keyboard.press('Enter');
+ await pages[0].getByRole('log',{name:'Chat messages'}).getByText('Copy that. Moving east.',{exact:true}).waitFor();
+ // A failed send keeps the draft and shows a retryable error.
+ await pages[0].locator('canvas.stage').focus();await pages[0].keyboard.press('Enter');
+ await composer.fill('Retry this message');
+ await pages[0].route('**/api/multiplayer',async route=>{if(route.request().postDataJSON().op==='chat')await route.abort();else await route.continue();});
+ await pages[0].keyboard.press('Enter');
+ await pages[0].getByRole('region',{name:'Match chat'}).getByRole('alert').waitFor();
+ assert.equal(await composer.inputValue(),'Retry this message');
+ await pages[0].unroute('**/api/multiplayer');await pages[0].keyboard.press('Enter');await composer.waitFor({state:'hidden'});
+ console.log('Stable connection bar, optional timing details, keyboard chat, passive feed and failed-send retry passed');
  assert.ok(hostOrderPackets>0,'AI never submitted any engine orders before human input');console.log(`AI submitted ${hostOrderPackets} nonempty host packets before human input`);
  for(const p of pages){await p.evaluate(async()=>{const g=window.game,s=g.client.cur;const mcv=s.actors.find(a=>a.owner===s.header.localPlayer&&g.client.str(a.type).includes('mcv'));if(!mcv)throw Error('No local MCV');await g.select([mcv.id]);});await p.waitForTimeout(200);await p.evaluate(()=>window.game.command({cmd:'deploy'}));}
  console.log('Both players issued serialized deploy orders');

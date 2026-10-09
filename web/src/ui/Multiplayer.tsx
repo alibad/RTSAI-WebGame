@@ -4,6 +4,7 @@ import { useStore } from '../store';
 import { Button } from '../components/ui/button';
 import { Flag } from './Flag';
 import { OptionSelect, SearchSelect, Swatch, type Option } from '../components/ui/fields';
+import { MatchChat } from './MatchChat';
 import { MessageSquare, ChevronDown } from 'lucide-react';
 type AI={faction:string;bot:string;team:number};
 type Room={id:string;state:string;players:{id:number;faction:string;team:number;ready:boolean;connected:boolean}[];chat?:{id:string;player:number;text:string}[];settings:{map:string;ai:AI[]};scenario?:object;error?:string;token?:string;client?:number;observer?:boolean};
@@ -38,11 +39,11 @@ function MatchConnection({game,room,observer,error,send}:{game:Game;room:Room|nu
  const stopped=room?.state==='ended',problem=room?.error||networkError||error;
  const waiting=room?.players.some(p=>!p.connected);
  const label=stopped?'Match stopped':problem?'Reconnecting':waiting?'Waiting for player':'Connected';
- return <section aria-label="Multiplayer controls" className="mp-match">
-  <div className="hud-panel mp-match-bar"><span className="mp-match-name">{observer?'Spectating':'Multiplayer'}</span><Button variant="ghost" size="sm" className="mp-match-connection" aria-label="Connection details" aria-expanded={details} onClick={()=>{setStats({frame:sample.current.frame,latency:sample.current.latency});setDetails(!details);}}><span className={`mp-dot ${problem||waiting?'offline':'online'}`}/><span>{label}</span><ChevronDown size={12}/></Button>{room&&!observer&&<RoomChat compact room={room} send={send}/>}</div>
+ return <><section aria-label="Multiplayer controls" className="mp-match">
+  <div className="hud-panel mp-match-bar"><span className="mp-match-name">{observer?'Spectating':'Multiplayer'}</span><Button variant="ghost" size="sm" className="mp-match-connection" aria-label="Connection details" aria-expanded={details} onClick={()=>{setStats({frame:sample.current.frame,latency:sample.current.latency});setDetails(!details);}}><span className={`mp-dot ${problem||waiting?'offline':'online'}`}/><span>{label}</span><ChevronDown size={12}/></Button></div>
   {details&&<div className="hud-panel mp-network-details"><h2>Connection details</h2><dl><div><dt>Average request time</dt><dd>{stats.latency<5?'< 5':stats.latency} ms</dd></div><div><dt>Simulation frame</dt><dd>{stats.frame}</dd></div></dl><p>Timing is averaged and refreshed every two seconds.</p><Button variant="ghost" size="sm" onClick={()=>setDetails(false)}>Close details</Button></div>}
   {problem&&<div role="alert" className="hud-panel mp-match-error"><strong>{stopped?'Match stopped':'Connection interrupted'}</strong><p>{problem}</p>{stopped?<Button variant="outline" size="sm" onClick={()=>location.reload()}>Return to setup</Button>:<p className="mp-note">Waiting for the connection to recover. Your match will continue automatically.</p>}</div>}
- </section>;
+ </section>{room&&!observer&&<MatchChat messages={(room.chat||[]).map(m=>({id:m.id,author:`Player ${m.player}`,text:m.text}))} send={send}/>}</>;
 }
 export function Multiplayer({game}:{game:Game}){
  const setup=useStore(s=>s.setup),phase=useStore(s=>s.phase);
@@ -69,7 +70,7 @@ export function Multiplayer({game}:{game:Game}){
  useEffect(()=>{if(!credentials)return;let active=true;const t=setInterval(()=>rpc({op:'poll',...credentials}).then(r=>{if(active){setRoom(r);setError(previous=>previous===connectionMessage?'':previous);}}).catch(e=>{if(active)setError(e.message);}),500);return()=>{active=false;clearInterval(t);};},[credentials]);
  useEffect(()=>{if(room?.state==='playing'&&room.scenario&&credentials&&!launched.current){launched.current=true;setOpen(false);useStore.getState().set({cc:{...useStore.getState().cc,enabled:false}});game.start(JSON.stringify({...room.scenario,localClient:credentials.client,network:credentials}));}},[room,credentials,game]);
  if(!setup)return null;
- if(launched.current)return <MatchConnection game={game} room={room} observer={credentials?.observer} error={error} send={text=>act('chat',{text})}/>;
+ if(launched.current)return <MatchConnection game={game} room={room} observer={credentials?.observer} error={error} send={async text=>{const r=await rpc({op:'chat',...credentials,text});setRoom(r);}}/>;
  if(phase!=='setup')return null;
  if(credentials?.observer&&room)return <div className="fixed inset-0 z-[100] grid place-items-center bg-black/90"><div className="hud-panel p-6"><h1>Watching the private room</h1><p className="my-3 text-sm">Waiting for the host to start. This view follows Commander 1 and cannot issue orders.</p><Button onClick={()=>void act('leave').then(()=>location.reload())}>Leave spectator view</Button>{error&&<p role="alert">{error}</p>}</div></div>;
  if(!open)return <Button className="fixed right-4 top-4 z-[100]" onClick={()=>setOpen(true)}>Private multiplayer</Button>;

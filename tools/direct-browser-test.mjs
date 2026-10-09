@@ -41,6 +41,14 @@ try {
   for (const p of pages) assert.equal(await p.evaluate(() => window.store.getState().phase), 'playing', await p.evaluate(() => window.store.getState().error));
   await Promise.all(pages.map(p => p.waitForFunction(() => window.peerFrames.at(-1) >= 120 || window.peerErrors.length > 0, null, { timeout: 120000 })));
   for (const p of pages) assert.deepEqual(await p.evaluate(() => window.peerErrors), []);
+  for (const [i,p] of pages.entries()) {
+    await p.locator('canvas.stage').focus();await p.keyboard.press('Enter');
+    const composer=p.getByLabel('Direct chat message');await composer.waitFor();
+    await composer.fill(`Commander ${i+1} ready on the direct channel`);await p.keyboard.press('Enter');
+    await composer.waitFor({state:'hidden'});
+    await pages[1-i].getByRole('log',{name:'Chat messages'}).getByText(`Commander ${i+1} ready on the direct channel`,{exact:true}).waitFor();
+  }
+  console.log('Keyboard-first direct chat and passive corner feed passed in both browsers');
   for (const p of pages) await p.evaluate(async () => { const g = window.game, s = g.client.cur; const mcv = s.actors.find(a => a.owner === s.header.localPlayer && g.client.str(a.type).includes('mcv')); if (!mcv) throw Error('No local MCV'); await g.select([mcv.id]); await g.command({ cmd: 'deploy' }); });
   const before = await pages[0].evaluate(() => window.peerFrames.at(-1));
   await pages[0].waitForFunction(x => window.peerFrames.at(-1) >= x + 80 || window.peerErrors.length > 0, before, { timeout: 90000 });
