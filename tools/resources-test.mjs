@@ -12,7 +12,8 @@ const errors = [];
 page.on('pageerror', e => errors.push(String(e)));
 try {
   await page.goto(process.env.RTSAI_TEST_URL || 'http://127.0.0.1:3526/?profile=public&runtime=interp');
-  await page.waitForFunction(() => window.store?.getState().phase === 'setup', null, { timeout: 180000 });
+  await page.waitForFunction(() => ['setup','error'].includes(window.store?.getState().phase), null, { timeout: 180000 });
+  assert.equal(await page.evaluate(() => window.store.getState().phase), 'setup', await page.evaluate(() => window.store.getState().error));
   const scenario = JSON.parse(fs.readFileSync('scenarios/production-ui.json', 'utf8'));
   scenario.spawns.push({ type: 'crate', player: 0, x: 14, y: 105 });
   await page.evaluate(s => window.game.start(JSON.stringify(s), true), scenario);
