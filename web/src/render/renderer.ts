@@ -464,6 +464,10 @@ export class Renderer {
       gl.drawElements(gl.TRIANGLES, this.terrainIndexCount, gl.UNSIGNED_INT, 0);
     }
 
+    // Flat project terrain is a background pass. Its per-tile depth must not
+    // reject foreground pixels as actors cross tile boundaries. Keep depth
+    // testing for actors against other actors (including buildings).
+    if (depthOn) gl.clear(gl.DEPTH_BUFFER_BIT);
     if (cur) this.drawSprites(cur, prev, cam, now, false);
     if (cur) this.drawCaptured(cur, cam);
     if (depthOn) gl.disable(gl.DEPTH_TEST);
