@@ -12,13 +12,13 @@ try {
  if(await page.evaluate(()=>window.store.getState().phase)==='error')throw Error('Game failed to boot');
  await shot('home');
  await page.getByRole('button',{name:/^Skirmish/}).first().click(); await shot('setup');
- await page.getByRole('button',{name:/Main menu/}).click();
+ await page.getByRole('button',{name:/Main menu/}).evaluate(b=>b.click());
  await page.getByRole('button',{name:/^Missions/}).first().click(); await shot('missions');
- await page.getByRole('button',{name:/Main menu/}).click();
+ await page.getByRole('button',{name:/Main menu/}).evaluate(b=>b.click());
  await page.getByRole('button',{name:'Private multiplayer',exact:true}).click(); await shot('multiplayer');
  await page.getByRole('button',{name:'Back',exact:true}).click();
  console.log('Menu buttons',await page.getByRole('button').allTextContents());
- for(const [pattern,name] of [[/Settings/i,'settings'],[/Match library/i,'library']]){
+ for(const [pattern,name] of [[/^Settings$/i,'settings'],[/Saves & replays/i,'library']]){
   const button=page.getByRole('button',{name:pattern}).first();
   if(await button.count()){await button.click();await shot(name);await page.keyboard.press('Escape'); const close=page.getByRole('button',{name:/Close/i}).first();if(await close.isVisible().catch(()=>false))await close.click();}
  }
