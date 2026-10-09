@@ -2,14 +2,16 @@
 
 ## First delivery: multiplayer, 9 October 2026
 
-Two local review cuts are in `artifacts/videos/multiplayer/`:
+Two narrated local review cuts are in `artifacts/videos/multiplayer/`. The original silent cuts are preserved with a `-silent` suffix; use the narrated cuts for introduction and review.
 
 | Cut | Length | Purpose |
 | --- | --- | --- |
-| `multiplayer-walkthrough.mp4` | 55 seconds | Explain the complete two-player room flow, with alternating host/guest views and a final simultaneous view. |
-| `multiplayer-quick-intro.mp4` | 28 seconds | A short introduction to creating, inviting, joining, readying and playing. |
+| `multiplayer-walkthrough-narrated.mp4` | 75 seconds | Spoken introduction and complete two-player room flow, with alternating host/guest views and a final simultaneous view. |
+| `multiplayer-quick-intro-narrated.mp4` | 33 seconds | A spoken introduction to creating, inviting, joining, readying and playing. |
 
-Both are 1920×1080 H.264 MP4 at 30 fps, with fast-start metadata. They have burned-in explanatory captions, no soundtrack or voice-over, and matching `.vtt` and `.srt` files. They can be understood without audio. `poster.jpg` is a thumbnail. These are local review assets; nothing has been uploaded or published.
+Both are 1920×1080 H.264 MP4 at 30 fps, with fast-start metadata, spoken narration and AAC stereo audio. The narration introduces why someone would play, explains each visible step, and carries into deploying bases and coordinating in chat. The voice is synthesized locally using the cached Kokoro-82M model and the selected am_michael voice. Audio is normalized to a -16 LUFS target and pictures are held when a line needs more time; speech is not sped up. Burned-in instructions remain, with separate narration `.vtt` captions and full transcripts. `poster.jpg` is a thumbnail. These are local review assets; nothing has been uploaded or published.
+
+Narration provenance: [Kokoro-82M model and voice files](https://huggingface.co/hexgrad/Kokoro-82M). The chosen am_michael voice is retained across revisions. Windows system voices are excluded. The synthesis environment and model are kept locally under the generated artifacts folder; they are not shipped in the game. `narration/takes.json` records the voice, script and measured duration of every take.
 
 The footage is actual browser capture, using two independent clients, the public content profile and no owned RA2 installation. Both clients deployed their bases and used room chat. The server verified matching OpenRA hashes through frame 300 during the recording. `shots.json` preserves source timestamps, client identity and the synchronization evidence; `raw/` preserves both original recordings. Check any chosen footage against the product's canonical asset provenance index before approving website publication, including UI portraits and terrain. Public-profile capture alone is not a provenance audit.
 
@@ -49,6 +51,10 @@ With the local server already running on 3491:
 node tools/record-multiplayer-video.mjs
 $env:RTSAI_FFMPEG = (Get-Command ffmpeg).Source
 node tools/render-multiplayer-video.mjs
+$env:HF_HOME = 'D:/AI Models/huggingface'
+& C:/Users/Admin/Code/AI/chatterbox/.venv/Scripts/python.exe tools/narrate-multiplayer.py
 ```
 
 Capture uses the existing Playwright Chromium installation. Rendering uses local FFmpeg and installed Windows Segoe UI fonts. Recording overwrites these generated review outputs; save an approved revision separately before regenerating. The raw recordings include engine startup and waiting time. The edited cuts remove most waiting and retain the real flow and normal-speed gameplay. The shot list is editable, so the cuts can be revised without recording everything again.
+
+
