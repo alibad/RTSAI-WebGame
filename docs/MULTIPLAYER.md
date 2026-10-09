@@ -1,6 +1,8 @@
 # Local browser multiplayer
 
-From `C:\Users\Admin\Code\hq\games\RTSAI-WebGame`, build the frontend and start the local server:
+Double-click `launch-multiplayer.cmd` in `C:\Users\Admin\Code\hq\games\RTSAI-WebGame` and keep that window open while playing. Open `http://127.0.0.1:3491/?profile=public&runtime=interp&private=0` in the in-app browser or Chrome. The room screen shows **Local server connected** when it is ready. If it shows **Local server unavailable**, start the launcher and press **Check connection**. Changing browsers does not fix a stopped server.
+
+To build the frontend and start the server manually from the same folder:
 
 ```powershell
 npm --prefix web run build
@@ -41,12 +43,17 @@ Every engine frame reports its `SyncHash` and defeat bitset. The room server com
 
 ```powershell
 node tools/multiplayer-test.mjs
+node tools/multiplayer-ux-test.mjs
 $env:RTSAI_TEST_URL = 'http://127.0.0.1:3491/'
 $env:RTSAI_TEST_HEADED = '1' # Show two separate Chromium windows; omit for headless checks.
 node tools/multiplayer-browser-test.mjs
 ```
 
 The API checks cover room credentials, version rejection, seats, host permissions, readiness, AI/team settings, delayed packets, mismatching hashes and explicit disconnects. The browser check uses separate Chromium contexts, joins via the invite, rejects an altered runtime fingerprint, requires an AI-capable map and an actual AI seat, verifies AI order packets before human input, compares at least 240 actual OpenRA hashes, sends human deploy orders, introduces 120 ms request latency, and closes the guest browser to verify timeout handling. Screenshots are written to `artifacts/multiplayer/`. It uses the existing local Playwright Chromium installation.
+
+The UX check also verifies an offline server produces launcher guidance, connection checks recover, an empty invite cannot be submitted, failed requests can be retried, creating a room shows a busy state and issues one request, copying confirms success, starting stays disabled until everyone is ready, and the lobby fits a 390-pixel screen.
+
+During play, the compact toolbar shows a stable connection state and a Chat toggle. Frame counters and per-request timing stay inside Connection details; timing is averaged and refreshed every two seconds. Chat shows a badge only for unread messages. The two-client check verifies the healthy toolbar keeps its text and dimensions while frames advance, and opens details and sends a room message.
 
 
 Verified locally on 9 October 2026: two visible Chromium windows with independent browser contexts, two humans plus AI on Four Fronts, matching hashes through frame 241, nonempty AI order packets before human input, both human MCV deploy orders, and continued synchronization with 120 ms added client latency. The separate two-human-only match also passed. Closing the guest context marked it disconnected after 12 seconds, then stopped the host after the 60-second grace with an explicit reason; changing the runtime fingerprint was rejected in the lobby. API tests also verified mismatching hashes stop the room. Frontend build, native build and public interpreter publish succeeded.

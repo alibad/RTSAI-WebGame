@@ -32,6 +32,16 @@ try{
  const deadline=Date.now()+120000;let r;
  while(Date.now()<deadline){r=await poll();if(r.error)throw Error(r.error+' pageErrors='+JSON.stringify(errors)+' '+JSON.stringify(await Promise.all(pages.map(p=>p.evaluate(()=>({network:window.networkErrors,last:window.networkLast,visibility:document.visibilityState,phase:window.store.getState().phase,perf:window.store.getState().perf,error:window.store.getState().error}))))));if(r.verifiedFrame>=240)break;await new Promise(r=>setTimeout(r,500));}
  assert.ok(r.verifiedFrame>=240,JSON.stringify(r));console.log(`Verified matching OpenRA hashes through frame ${r.verifiedFrame}`);
+ const strip=pages[0].getByRole('region',{name:'Multiplayer controls'});
+ const bar=strip.locator('.mp-match-bar');const quietText=await bar.innerText();const quietBox=await bar.boundingBox();await pages[0].waitForTimeout(1200);
+ assert.equal(await bar.innerText(),quietText,'Connection bar text flickers during healthy play');assert.deepEqual(await bar.boundingBox(),quietBox,'Connection bar changes size');
+ assert.ok(!quietText.includes('ms')&&!quietText.includes('frame'),'Timing should stay behind details');
+ await pages[0].screenshot({path:'artifacts/multiplayer/connection-bar.png'});
+ await pages[0].getByRole('button',{name:'Connection details',exact:true}).click();await pages[0].getByText('Average request time',{exact:true}).waitFor();
+ await pages[0].screenshot({path:'artifacts/multiplayer/connection-details.png'});await pages[0].getByRole('button',{name:'Close details',exact:true}).click();
+ await strip.getByRole('button',{name:'Chat',exact:true}).click();await pages[0].getByLabel('Room chat message').fill('Holding the north flank.');await strip.getByRole('button',{name:'Send',exact:true}).click();
+ await pages[0].getByText('Holding the north flank.',{exact:false}).waitFor();await pages[0].screenshot({path:'artifacts/multiplayer/connection-chat.png'});await strip.getByRole('button',{name:'Close room chat',exact:true}).click();
+ console.log('Stable connection bar, optional timing details and room chat passed');
  assert.ok(hostOrderPackets>0,'AI never submitted any engine orders before human input');console.log(`AI submitted ${hostOrderPackets} nonempty host packets before human input`);
  for(const p of pages){await p.evaluate(async()=>{const g=window.game,s=g.client.cur;const mcv=s.actors.find(a=>a.owner===s.header.localPlayer&&g.client.str(a.type).includes('mcv'));if(!mcv)throw Error('No local MCV');await g.select([mcv.id]);});await p.waitForTimeout(200);await p.evaluate(()=>window.game.command({cmd:'deploy'}));}
  console.log('Both players issued serialized deploy orders');

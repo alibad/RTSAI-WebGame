@@ -1,0 +1,48 @@
+import fs from 'node:fs';
+import path from 'node:path';
+import assert from 'node:assert/strict';
+import {chromium} from '../web/node_modules/playwright-core/index.mjs';
+const base=process.env.RTSAI_TEST_URL||'http://127.0.0.1:3491/';
+const executablePath=path.join(process.env.LOCALAPPDATA,'ms-playwright','chromium-1228','chrome-win64','chrome.exe');
+const browser=await chromium.launch({executablePath,headless:true});
+const page=await browser.newPage({viewport:{width:1280,height:900},permissions:['clipboard-write','clipboard-read']});
+const errors=[];page.on('pageerror',e=>errors.push(String(e)));
+fs.mkdirSync('artifacts/multiplayer',{recursive:true});
+try{
+ await page.goto(`${base}?profile=public&runtime=interp&private=0`);
+ await page.getByRole('button',{name:'Private multiplayer',exact:true}).waitFor({timeout:240000});
+ await page.route('**/api/health',r=>r.abort());
+ await page.getByRole('button',{name:'Private multiplayer',exact:true}).click();
+ await page.getByText('Local server unavailable',{exact:true}).waitFor();
+ assert.equal(await page.getByRole('button',{name:'Create private room',exact:true}).isEnabled(),false);
+ await page.getByRole('alert').filter({hasText:'launch-multiplayer.cmd'}).waitFor();
+ await page.screenshot({path:'artifacts/multiplayer/server-unavailable.png'});
+ await page.unroute('**/api/health');
+ await page.getByRole('button',{name:'Check connection',exact:true}).click();
+ await page.getByText('Local server connected',{exact:true}).waitFor();
+ assert.equal(await page.getByRole('button',{name:'Join room',exact:true}).isEnabled(),false);
+ await page.screenshot({path:'artifacts/multiplayer/create-join.png'});
+ // Simulate a connection failure between the healthy status and pressing Create.
+ await page.route('**/api/multiplayer',r=>r.abort());
+ await page.getByRole('button',{name:'Create private room',exact:true}).click();
+ await page.getByRole('alert').filter({hasText:'Cannot reach the local game server'}).waitFor();
+ assert.equal(await page.getByRole('button',{name:'Create private room',exact:true}).isEnabled(),true);
+ await page.unroute('**/api/multiplayer');
+ let creates=0;
+ await page.route('**/api/multiplayer',async r=>{if(r.request().postDataJSON().op==='create'){creates++;await new Promise(resolve=>setTimeout(resolve,500));}await r.continue();});
+ await page.getByRole('button',{name:'Create private room',exact:true}).click();
+ await page.getByRole('button',{name:'Creating your room…',exact:true}).waitFor();
+ assert.equal(await page.getByRole('button',{name:'Creating your room…',exact:true}).isEnabled(),false);
+ await page.getByLabel('Room invite').waitFor();assert.equal(creates,1);
+ await page.getByRole('button',{name:'Copy invite',exact:true}).click();
+ await page.getByRole('button',{name:'Copied!',exact:true}).waitFor();
+ assert.ok((await page.evaluate(()=>navigator.clipboard.readText())).includes('room='));
+ assert.equal(await page.getByRole('button',{name:'Start synchronized match',exact:true}).isEnabled(),false);
+ await page.getByText('Share the invite to bring in a second commander.',{exact:true}).waitFor();
+ await page.screenshot({path:'artifacts/multiplayer/room-lobby.png'});
+ await page.setViewportSize({width:390,height:844});
+ const layout=await page.locator('.mp-dialog').evaluate(el=>({width:el.clientWidth,scroll:el.scrollWidth}));assert.ok(layout.scroll<=layout.width,JSON.stringify(layout));
+ await page.screenshot({path:'artifacts/multiplayer/room-mobile.png'});
+ assert.deepEqual(errors,[]);
+ console.log('Multiplayer UX passed: offline guidance, connection recovery, empty-invite prevention, fetch failure recovery, busy state/single create, clipboard confirmation, start guidance, mobile width.');
+}finally{await browser.close();}
