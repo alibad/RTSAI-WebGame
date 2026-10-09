@@ -23,7 +23,7 @@ export function GameSettings({ game }: { game: Game }) {
             const next = e.target.value.toLowerCase();
             if (!/^[a-z]$/.test(next)) return;
             const keys = ["a", "d", "f", "s", "c", "z", "p"];
-            if (keys.some((other) => other !== key && (values.bindings[other] ?? other) === next) || "ertyuibhqw".includes(next)) { setError("That key is already assigned. Choose another letter."); return; }
+            if (keys.some((other) => other !== key && (values.bindings[other] ?? other) === next) || "ertyuibhqwg".includes(next)) { setError("That key is already assigned. Choose another letter."); return; }
             setError(""); update({ bindings: { ...values.bindings, [key]: next } });
           }} /></label>)}
         {error && <p role="status" className="my-2 text-xs text-red-400">{error}</p>}

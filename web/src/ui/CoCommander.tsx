@@ -50,14 +50,16 @@ function Threat({ score, level, reason }: { score: number; level: string; reason
 }
 
 function ProposalCard({ game, item, compact }: { game: Game; item: FeedItem; compact?: boolean }) {
+  const shortcut = game.cc.pending()?.id === item.id;
   return (
     <div className={cn("flex items-center gap-3 rounded-[3px] border border-[var(--hud-gold-dim)] bg-[rgba(30,26,14,0.92)] px-3 py-2", compact && "shadow-[0_8px_24px_rgba(0,0,0,0.55)]")}>
       <svg viewBox="0 0 24 24" width={18} height={18} fill="none" stroke="var(--hud-gold)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0"><path d="M4 12h12M12 6l6 6-6 6" /></svg>
       <span className={cn("min-w-0 flex-1 text-[13px] leading-snug", item.state === "expired" ? "text-[var(--muted-foreground)]" : "text-[var(--foreground)]")}>{item.text}</span>
       {item.state === "pending" ? (
         <span className="flex shrink-0 gap-1.5">
-          <button type="button" onClick={() => game.cc.decide(item, true)} title="Accept (Enter)"
-            className="rounded-[2px] bg-[var(--hud-gold)] px-2.5 py-1 text-[12px] font-bold text-[#1a160c] hover:brightness-110">✓</button>
+          <button type="button" onClick={() => game.cc.decide(item, true)} title={shortcut ? "Apply recommendation (G)" : "Apply recommendation"}
+            aria-label={shortcut ? "Apply recommendation (G)" : "Apply recommendation"} aria-keyshortcuts={shortcut ? "g" : undefined}
+            className="flex items-center gap-2 rounded-[2px] bg-[var(--hud-gold)] px-2.5 py-1 text-[12px] font-bold text-[#1a160c] hover:brightness-110"><span>✓ Apply</span>{shortcut && <kbd className="rounded border border-black/25 px-1 text-[10px] font-medium">G</kbd>}</button>
           <button type="button" onClick={() => game.cc.decide(item, false)} title="Cancel"
             className="rounded-[2px] border border-white/15 px-2.5 py-1 text-[12px] text-[var(--muted-foreground)] hover:text-[var(--foreground)]">✕</button>
         </span>

@@ -283,7 +283,7 @@ export class CoCommander {
     }
   }
 
-  /** The newest proposal still waiting for the player (Enter accepts, Backspace cancels while the panel has focus). */
+  /** The newest proposal still waiting for the player (G applies it outside text entry). */
   pending() { return [...this.s.feed].reverse().find((f) => f.kind === "proposal" && f.state === "pending"); }
 
   // ---------------------------------------------------------------- voice

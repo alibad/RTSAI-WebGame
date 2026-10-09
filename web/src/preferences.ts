@@ -4,6 +4,7 @@ function read(): Preferences {
   try {
     const saved = JSON.parse(localStorage.getItem("rtsai.preferences.v1") ?? "{}");
     const value = { ...defaults, ...saved };
+    value.bindings = Object.fromEntries(Object.entries(value.bindings ?? {}).filter(([, key]) => key !== "g"));
     for (const key of ["master", "effects", "music", "voice", "scroll"] as const)
       value[key] = Number.isFinite(value[key]) ? Math.max(0, Math.min(key === "scroll" ? 3 : 1, value[key])) : defaults[key];
     return value;
@@ -13,7 +14,7 @@ export const preferences = read();
 export function savePreferences(next: Partial<Preferences>) { Object.assign(preferences, next); localStorage.setItem("rtsai.preferences.v1", JSON.stringify(preferences)); }
 const translated = new WeakSet<KeyboardEvent>();
 for (const type of ["keydown", "keyup"] as const) window.addEventListener(type, (event) => {
-  if (translated.has(event) || event.ctrlKey || event.altKey || event.metaKey || (event.target as HTMLElement)?.closest("input,textarea,select,[contenteditable]")) return;
+  if (translated.has(event) || event.ctrlKey || event.altKey || event.metaKey || (event.target as HTMLElement)?.closest?.("input,textarea,select,[contenteditable]")) return;
   const canonical = Object.entries(preferences.bindings).find(([, key]) => key === event.key.toLowerCase())?.[0];
   if (!canonical) {
     const current = event.key.toLowerCase();

@@ -874,7 +874,7 @@ export class Game {
     if (this.coach.review && e.key !== "Escape" && !(e.target instanceof HTMLInputElement) && !(e.target instanceof HTMLTextAreaElement)) return;
     const tag = (e.target as HTMLElement)?.tagName;
     this.modState = this.mods(e);
-    if (tag === "INPUT" || tag === "TEXTAREA" || store.get().phase !== "playing") return;
+    if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || (e.target as HTMLElement)?.isContentEditable || store.get().phase !== "playing") return;
     const k = e.key.toLowerCase();
     const code = e.code;
     this.keys.add(k);
@@ -953,9 +953,15 @@ export class Game {
     // DisableUserInterface (Shift+=) / DisableAllUserInterface (Alt+Shift+=): hide the HUD.
     if (code === "Equal" && shift) { store.set({ uiHidden: !store.get().uiHidden }); return done(); }
 
-    // Co-commander (the mod's hotkeys-ai.yaml): Ctrl+Space ask, Ctrl+Enter accept, Ctrl+Backspace reject.
+    // Co-commander: G applies the newest recommendation; modified shortcuts remain available.
+    if (code === "KeyG" && !ctrl && !alt && !shift) {
+      const p = this.cc.pending();
+      if (p && !e.repeat) void this.cc.decide(p, true);
+      return done();
+    }
     if (ctrl && code === "Space") { (document.querySelector("[data-cc-input]") as HTMLInputElement | null)?.focus(); return done(); }
     if (ctrl && (code === "Enter" || code === "Backspace")) {
+      if (e.repeat) return done();
       const p = this.cc.pending();
       if (p) this.cc.decide(p, code === "Enter");
       return done();

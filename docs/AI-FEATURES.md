@@ -6,7 +6,7 @@ Open `http://127.0.0.1:3490/?profile=public` with the local server running (`nod
 
 | Area | Entry point | Behavior |
 | --- | --- | --- |
-| Contextual strategy | Skirmish → Co-commander → Strategy | Choose a persistent goal, reserve and confirmed next steps. |
+| Contextual strategy | Skirmish → Co-commander → Strategy | Choose a persistent goal, reserve and confirmed next steps. Press G to apply the newest pending recommendation; C remains repair. |
 | Battlefield communication | A pending co-commander proposal | Owned-unit rings, intent arrows, focus and dismiss; remembered visible contacts are uncertain. |
 | Coaching & practice | Battlefield review | Timestamped native evidence; pause/seek/return live, drill links, exported scenario/evidence. |
 | Opponent personalities | Skirmish → Tactical personality | Standard, Raider, Sentinel, Adaptive; separate from difficulty and native economy/production. |
