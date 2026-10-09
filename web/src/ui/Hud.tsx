@@ -196,7 +196,7 @@ function Stats({ game }: { game: Game }) {
         {row("Late / missed", `${p.lateTicks} / ${p.missed}`)}
       </dl>
       <div className="mt-2 grid grid-cols-3 gap-1">
-        <Button size="xs" variant="outline" onClick={() => game.requestVerify()}>Verify</Button>
+        {import.meta.env.VITE_STATIC_BUILD !== "1" && <Button size="xs" variant="outline" onClick={() => game.requestVerify()}>Verify</Button>}
         <Button size="xs" variant="outline" onClick={() => game.latencyProbe(20)}>Latency</Button>
         <Button size="xs" variant="outline" onClick={() => game.bench(250)}>Bench</Button>
       </div>

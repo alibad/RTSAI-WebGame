@@ -13,7 +13,7 @@ export function GameSettings({ game }: { game: Game }) {
     {open && <div className="fixed inset-0 z-50 grid place-items-center bg-black/70" role="dialog" aria-modal="true" aria-label="Game settings">
       <div className="hud-panel max-h-[85vh] w-[min(460px,95vw)] overflow-auto p-4">
         <div className="mb-4 flex justify-between"><strong>Game settings</strong><Button size="sm" onClick={() => setOpen(false)}>Close</Button></div>
-        {([["master", "Master volume"], ["effects", "Effects volume"], ["music", "Music volume"], ["voice", "Companion voice"], ["scroll", "Camera scroll speed"]] as const).map(([key, label]) =>
+        {([["master", "Master volume"], ["effects", "Effects volume"], ["music", "Music volume"], ["voice", "Companion voice"], ["scroll", "Camera scroll speed"]] as const).filter(([key]) => key !== "voice" || import.meta.env.VITE_STATIC_BUILD !== "1").map(([key, label]) =>
           <label key={key} className="mb-3 block text-xs">{label} · {Math.round(values[key] * 100)}%
             <input aria-label={label} type="range" min={key === "scroll" ? 0.25 : 0} max={key === "scroll" ? 3 : 1} step="0.05" value={values[key]} className="mt-1 block w-full" onChange={(e) => update({ [key]: Number(e.target.value) })} />
           </label>)}

@@ -71,7 +71,9 @@ export default function App() {
     const installed = matchMedia("(display-mode: standalone)").matches || matchMedia("(display-mode: window-controls-overlay)").matches;
     const profile = (params.get("profile") ?? import.meta.env.VITE_DEFAULT_PROFILE ?? (installed ? "public" : "")) === "public" ? "public" : "";
     // The co-commander needs the local server (it starts the companion and relays its RPCs); a static host has none.
-    fetch(new URL("api/companion/status", new URL("./", location.href)))
+    if (import.meta.env.VITE_STATIC_BUILD === "1") {
+      useStore.getState().set({ ccAvailable: false });
+    } else fetch(new URL("api/companion/status", new URL("./", location.href)))
       .then((r) => (r.ok ? r.json() : null)).then((s) => useStore.getState().set({ ccAvailable: !!s && typeof s.running === "boolean" }))
       .catch(() => useStore.getState().set({ ccAvailable: false }));
     g.boot(params.get("runtime") ?? "aot", params.get("private") !== "0", profile);
