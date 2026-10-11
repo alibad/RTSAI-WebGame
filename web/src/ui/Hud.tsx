@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { Game } from "../game";
 import { percentile, useStore } from "../store";
 import { Sidebar } from "./Sidebar";
+import { RepairIndicators } from "./RepairIndicators";
 import { Outcome } from "./Outcome";
 import { HotkeyButton, HotkeySheet } from "./Hotkeys";
 import { CoCommander } from "./CoCommander";
@@ -233,6 +234,7 @@ export function Hud({ game }: { game: Game }) {
   const paused = useStore((s) => s.paused);
   return (
     <>
+      <RepairIndicators game={game} />
       <div className="absolute left-3 top-3 flex max-w-[calc(100%-var(--sidebar-w)-24px)] flex-wrap items-center gap-2"><GameMenu game={game} /><HotkeyButton /><MatchLibrary game={game} /><GameSettings game={game} /></div>
       {statsOpen && <Stats game={game} />}
       <div className="pointer-events-none absolute bottom-3 left-3 flex flex-col items-start gap-2 [&>*]:pointer-events-auto">

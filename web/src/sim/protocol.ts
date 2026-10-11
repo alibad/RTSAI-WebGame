@@ -41,11 +41,14 @@ export interface Captured {
   modelCmds: DataView; // modelCmds * 136 bytes (copied)
 }
 
+export const ACTOR_REPAIR_REQUESTED = 64;
+export const ACTOR_REPAIR_ACTIVE = 128;
+
 export interface Actor {
   id: number;
   type: number; // string id
   owner: number; // index into players
-  flags: number; // 1 selectable, 2 selected, 4 idle, 8 building, 16 dead, 32 mouse bounds
+  flags: number; // 1 selectable, 2 selected, 4 idle, 8 building, 16 dead, 32 mouse bounds, 64 repair requested, 128 repair active
   facing: number;
   sx: number; // Screen3DPosition of CenterPosition (world px)
   sy: number;

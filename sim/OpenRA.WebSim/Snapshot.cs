@@ -387,6 +387,16 @@ namespace OpenRA.WebSim
 				if (mouse != null)
 					flags |= 32;
 
+				// Repair state comes from the engine, including requests waiting for credits.
+				// The page keeps its indicator visible independently of selection and cursor mode.
+				var repair = a.TraitOrDefault<RepairableBuilding>();
+				if (repair != null && !repair.IsTraitDisabled && repair.Repairers.Count > 0)
+				{
+					flags |= 64;
+					if (repair.RepairActive)
+						flags |= 128;
+				}
+
 				var bounds = Rectangle.Empty;
 				if (interactable != null)
 					bounds = interactable.DecorationBounds(a, wr);
