@@ -136,7 +136,7 @@ const Cameo = memo(function Cameo({ item, queue, icon, progress, count, paused, 
       data-item={item.name}
     >
       <UnitPortrait type={item.name} label={item.label} icon={icon} />
-      {count > 0 && <div className="wipe clock" style={{ "--clock": `${clockAngle(progress)}deg` } as React.CSSProperties} />}
+      {count > 0 && !done && <div className="wipe clock" style={{ "--clock": `${clockAngle(progress)}deg` } as React.CSSProperties} />}
       {label && <span className={cn("cameo-text cameo-label", done && readyAlt && "alt")}>{label}</span>}
       {count > 0 && <span className="cameo-text cameo-count">{count}</span>}
     </button>
