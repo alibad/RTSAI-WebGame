@@ -1,4 +1,4 @@
-﻿#region Copyright & License Information
+#region Copyright & License Information
 /*
  * Copyright (c) The OpenRA Developers and Contributors
  * This file is part of OpenRA, which is free software. It is made
@@ -42,10 +42,14 @@ static class Bundle
 		var modRoot = opts["mod"];
 		var output = opts["out"];
 		var modDir = Path.Combine(modRoot, "mods", "rtsai");
+		var classic = opts.TryGetValue("game-mode", out var gameMode) && gameMode == "classic";
+		if (gameMode != null && gameMode is not ("classic" or "isometric")) throw new ArgumentException("Unsupported game mode");
+		var modId = classic ? "rtsai-topdown" : "rtsai";
+		var primaryDir = Path.Combine(modRoot, "mods", modId);
 
 		// Every map the mod ships (5 MB in all) unless --maps lists some.
 		var maps = (opts.TryGetValue("maps", out var m) ? m.Split(',', StringSplitOptions.RemoveEmptyEntries)
-			: Directory.GetDirectories(Path.Combine(modDir, "maps")).Select(Path.GetFileName)).ToHashSet();
+			: Directory.GetDirectories(Path.Combine(primaryDir, "maps")).Select(Path.GetFileName)).ToHashSet();
 
 		Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(output)));
 		var lazyArt = !opts.ContainsKey("no-lazy-art");
@@ -74,6 +78,7 @@ static class Bundle
 				count++;
 			}
 
+			Add("ora/MOD_ID", Encoding.UTF8.GetBytes(modId));
 			Add("ora/VERSION", File.ReadAllBytes(Path.Combine(engine, "VERSION")));
 
 			// XCC filename database shipped with OpenRA: lets MixFile resolve names inside the player's .mix packages.
@@ -112,13 +117,25 @@ static class Bundle
 			if (publicProfile && Directory.Exists(content))
 				foreach (var f in Files(content))
 					Add("mods/rtsai/web/content/" + Rel(content, f), File.ReadAllBytes(f));
-			Add("mods/rtsai/mod.yaml", Encoding.UTF8.GetBytes(WebModYaml(File.ReadAllText(Path.Combine(modDir, "mod.yaml")), publicProfile && Directory.Exists(content))));
+			Add("mods/rtsai/mod.yaml", Encoding.UTF8.GetBytes(WebModYaml(File.ReadAllText(Path.Combine(modDir, "mod.yaml")), !classic && publicProfile && Directory.Exists(content))));
+			if (classic)
+			{
+				foreach (var file in Files(primaryDir))
+				{
+					var rel = Rel(primaryDir, file);
+					if (rel == "mod.yaml" || rel.StartsWith("maps/", StringComparison.Ordinal) && !maps.Contains(rel.Split('/')[1])) continue;
+					Add("mods/rtsai-topdown/" + rel, File.ReadAllBytes(file));
+				}
+				Add("mods/rtsai-topdown/mod.yaml", Encoding.UTF8.GetBytes(WebModYaml(File.ReadAllText(Path.Combine(primaryDir, "mod.yaml")), Directory.Exists(content), true)));
+			}
 			Add("mods/rtsai/web/web-rules.yaml", Encoding.UTF8.GetBytes(WebRules));
 			Add("mods/rtsai/web/web-names.ftl", Encoding.UTF8.GetBytes(WebNames));
 
-			var blank = Path.Combine(modDir, "maps", "blank-shellmap");
-			Add("mods/rtsai/maps/web-arena/map.bin", File.ReadAllBytes(Path.Combine(blank, "map.bin")));
-			Add("mods/rtsai/maps/web-arena/map.yaml", Encoding.UTF8.GetBytes(ArenaYaml()));
+			var blank = Path.Combine(primaryDir, "maps", classic ? "blank" : "blank-shellmap");
+			Add($"mods/{modId}/maps/web-arena/map.bin", File.ReadAllBytes(Path.Combine(blank, "map.bin")));
+			Add($"mods/{modId}/maps/web-arena/map.yaml", Encoding.UTF8.GetBytes(ArenaYaml(classic)));
+			Add($"mods/{modId}/maps/web-arena-four/map.bin", File.ReadAllBytes(Path.Combine(blank, "map.bin")));
+			Add($"mods/{modId}/maps/web-arena-four/map.yaml", Encoding.UTF8.GetBytes(FourSeatArenaYaml(classic)));
 
 			// The bundle's identity (a hash of every file above): caches and prebaked sprites built from this content
 			// are keyed by it, so repacking identical content keeps them and any change invalidates them.
@@ -134,7 +151,7 @@ static class Bundle
 
 		// The mod's own (licensed) audio: a separate pack plus a JSON index of byte offsets for lazy range reads.
 		var audio = Directory.EnumerateFiles(modDir, "*", SearchOption.AllDirectories)
-			.Where(f => AudioExtensions.Contains(Path.GetExtension(f)) && !f.Contains(Path.DirectorySeparatorChar + ".", StringComparison.Ordinal))
+			.Where(f => AudioExtensions.Contains(Path.GetExtension(f)) && !HiddenWithin(modDir, f))
 			.OrderBy(f => f, StringComparer.Ordinal);
 		WriteLazyPack(Path.Combine(outDir, "web-audio.pack"), modDir, audio);
 		WriteLazyPack(Path.Combine(outDir, "web-art.pack"), modDir, art);
@@ -216,17 +233,19 @@ static class Bundle
 		return Directory.EnumerateFiles(dir, "*", SearchOption.AllDirectories)
 			.Where(f => !SkippedExtensions.Contains(Path.GetExtension(f)))
 			.Where(f => !Path.GetFileName(f).EndsWith("PROVENANCE.json", StringComparison.OrdinalIgnoreCase)) // asset records, not game data
-			.Where(f => !f.Contains(Path.DirectorySeparatorChar + ".", StringComparison.Ordinal))
+			.Where(f => !HiddenWithin(dir, f))
 			.OrderBy(f => f, StringComparer.Ordinal);
 	}
 
 	static string Rel(string root, string f) => Path.GetRelativePath(root, f).Replace('\\', '/');
 
+	static bool HiddenWithin(string root, string file) => Rel(root, file).Split('/').Any(part => part.StartsWith(".", StringComparison.Ordinal));
+
 	/// <summary>
 	/// The web mod.yaml: identical to the mod's (the AI co-commander's CompanionBridge included; the page's host relays
 	/// its RPCs) plus a small overlay for what the embedded host needs. Everything that affects the simulation is unchanged.
 	/// </summary>
-	static string WebModYaml(string yaml, bool expansion)
+	static string WebModYaml(string yaml, bool expansion, bool classic = false)
 	{
 		yaml = yaml.Replace("\r\n", "\n");
 
@@ -240,7 +259,12 @@ static class Bundle
 		var rules = yaml.IndexOf("\nRules:\n", StringComparison.Ordinal);
 		var end = yaml.IndexOf("\n\n", rules + 1, StringComparison.Ordinal);
 		yaml = yaml.Insert(end + 1, "\tra2|web/web-rules.yaml\n");
-		if (expansion)
+		if (expansion && classic)
+		{
+			var folders = yaml.IndexOf("\nMapFolders:\n", StringComparison.Ordinal);
+			yaml = yaml.Insert(folders + "\nMapFolders:\n".Length, "\tra2|web/content/maps: System\n");
+		}
+		if (expansion && !classic)
 		{
 			yaml = yaml.Insert(end + 1, "\tra2|web/content/countries.yaml\n");
 			var sequences = yaml.IndexOf("\nSequences:\n", StringComparison.Ordinal);
@@ -287,14 +311,25 @@ static class Bundle
 		"\t\tType: webidle\n";
 
 	/// <summary>Two-seat arena on the flat blank map: no starting units or crates, units come from the scenario.</summary>
-	static string ArenaYaml()
+	static string FourSeatArenaYaml(bool classic)
 	{
-		var west = new MPos(30, 72).ToCPos(MapGridType.RectangularIsometric);
-		var east = new MPos(98, 72).ToCPos(MapGridType.RectangularIsometric);
+		var grid = classic ? MapGridType.Rectangular : MapGridType.RectangularIsometric;
+		var north = new MPos(classic ? 40 : 64, classic ? 20 : 30).ToCPos(grid);
+		var south = new MPos(classic ? 40 : 64, classic ? 60 : 114).ToCPos(grid);
+		var players = "\tPlayerReference@Multi2:\n\t\tName: Multi2\n\t\tPlayable: True\n\t\tFaction: Random\n\t\tEnemies: Creeps\n\tPlayerReference@Multi3:\n\t\tName: Multi3\n\t\tPlayable: True\n\t\tFaction: Random\n\t\tEnemies: Creeps\n";
+		var actors = $"\tActor2: mpspawn\n\t\tLocation: {north.X},{north.Y}\n\t\tOwner: Neutral\n\tActor3: mpspawn\n\t\tLocation: {south.X},{south.Y}\n\t\tOwner: Neutral\n";
+		return ArenaYaml(classic).Replace("Title: Web Arena", "Title: Web Arena Four").Replace("Actors:\n", players + "\nActors:\n").Replace("Rules:\n", actors + "\nRules:\n").Replace("\t\t-SpawnStartingUnits:\n", "");
+	}
+
+	static string ArenaYaml(bool classic)
+	{
+		var grid = classic ? MapGridType.Rectangular : MapGridType.RectangularIsometric;
+		var west = new MPos(classic ? 20 : 30, classic ? 40 : 72).ToCPos(grid);
+		var east = new MPos(classic ? 60 : 98, classic ? 40 : 72).ToCPos(grid);
 		return string.Join("\n",
 			"MapFormat: 11",
 			"",
-			"RequiresMod: ra2",
+			classic ? "RequiresMod: rtsai-topdown" : "RequiresMod: ra2",
 			"",
 			"Title: Web Arena",
 			"",
@@ -302,9 +337,9 @@ static class Bundle
 			"",
 			"Tileset: TEMPERATE",
 			"",
-			"MapSize: 130,146",
+			classic ? "MapSize: 80,80" : "MapSize: 130,146",
 			"",
-			"Bounds: 1,1,128,144",
+			classic ? "Bounds: 1,1,78,78" : "Bounds: 1,1,128,144",
 			"",
 			"Visibility: Lobby",
 			"",

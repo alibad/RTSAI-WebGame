@@ -219,7 +219,8 @@ export class Renderer {
    */
   setShroud(cells: Uint8Array, cols: number, rows: number) {
     const gl = this.gl;
-    const W = cols * 2 + 1;
+    const iso = this.info?.gridType !== "Rectangular";
+    const W = iso ? cols * 2 + 1 : cols;
     const H = rows;
     const tex = new Uint8Array(W * H);
     let all = true;
@@ -228,10 +229,10 @@ export class Renderer {
       for (let u = 0; u < cols; u++) {
         const s = cells[v * cols + u];
         if (s !== 2) all = false;
-        tex[v * W + 2 * u + odd] = s * 127.5;
+        tex[v * W + (iso ? 2 * u + odd : u)] = s * 127.5;
       }
     }
-    for (let v = 0; v < rows; v++) {
+    for (let v = 0; iso && v < rows; v++) {
       const odd = v & 1;
       for (let x = 1 - odd; x < W; x += 2) {
         let sum = 0, n = 0;
@@ -260,7 +261,8 @@ export class Renderer {
     const gl = this.gl;
     gl.useProgram(this.shroudProg);
     this.viewUniforms(this.shroudProg, cam);
-    const [hw, hh] = [info.tileSize[0] / 2, info.tileSize[1] / 2];
+    const divisor = info.gridType === "Rectangular" ? 1 : 2;
+    const [hw, hh] = [info.tileSize[0] / divisor, info.tileSize[1] / divisor];
     const [ox, oy] = info.cellOrigin;
     const loc = (n: string) => gl.getUniformLocation(this.shroudProg, n);
     // Cover the map plus a margin of shroud around it.

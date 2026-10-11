@@ -1,4 +1,4 @@
-﻿// Snapshot wire format written by sim/OpenRA.WebSim/Snapshot.cs. Little-endian, 4-byte aligned.
+// Snapshot wire format written by sim/OpenRA.WebSim/Snapshot.cs. Little-endian, 4-byte aligned.
 // Section order: header, actors, draws, players, new sprites, texture updates, new strings.
 
 export const MAGIC = 0x314e5357; // "WSN1"
@@ -302,13 +302,13 @@ export interface GameStats {
 export interface CatalogQueue { type: string; items: CatalogItem[] }
 
 // Messages between page and worker.
-export type ToWorker =
+export type ToWorker = (
   | { type: "peerFrame"; frame: number; packets: { client: number; data: string }[] }
   | { type: "peerStop"; error: string }
-  | { type: "init"; runtime: string; base: string; sab: SharedArrayBuffer | null; privateContent: boolean; gcParams?: string; profile?: string; rtBase?: string; dataBase?: string }
+  | { type: "init"; runtime: string; base: string; sab: SharedArrayBuffer | null; privateContent: boolean; voiceLanguage: string; gcParams?: string; profile?: string; rtBase?: string; dataBase?: string }
   | { type: "prepare"; map: string }
   | { type: "preview"; map: string }
-  | { type: "start"; scenario: string; paused?: boolean; companion?: boolean }
+  | { type: "start"; scenario: string; voiceLanguage: string; paused?: boolean; companion?: boolean }
   /** The factions a game will show (null: unknown, all): their sprite sheets are fetched now. */
   | { type: "sheetGroups"; groups: string[] | null; first?: string[] }
   /** Sheets the page drew from but does not have. */
@@ -328,9 +328,11 @@ export type ToWorker =
   | { type: "bench"; ticks: number }
   | { type: "log" }
   | { type: "record"; req: number }
-  | { type: "resync" };
+  | { type: "voiceLanguage"; value?: string; req: number }
+  | { type: "voicePreview"; req: number }
+  | { type: "resync" }) & { generation?: number };
 
-export type FromWorker =
+export type FromWorker = (
   | { type: "peerOut"; events: import('../peer').PeerEvent[] }
   | { type: "networkStatus"; frame: number; latency: number; error?: string }
   | { type: "progress"; stage: string; detail?: string }
@@ -368,7 +370,7 @@ export type FromWorker =
   | { type: "bench"; ticks: number; ms: number }
   | { type: "log"; json: string }
   | { type: "stats"; json: string; heapBytes: number; tickMs: number; lateTicks: number; ticksPerSecond: number; lazy?: LazyStats }
-  | { type: "error"; message: string };
+  | { type: "error"; message: string }) & { generation?: number };
 // Shared ring layout (Int32 slots at the start of the SharedArrayBuffer).
 // 32 slots of 1 MB: about 1.3 s of ticks, so a main-thread stall (sheet uploads, GC, a busy frame) does not
 // overrun the ring. Snapshots are ~50-150 KB; a larger one falls back to postMessage with its seq.
@@ -377,5 +379,6 @@ export const RING_SLOT_BYTES = 1024 * 1024;
 /** Int32 header: [0] latest seq, [RING_LEN_AT + slot] length, [RING_SEQ_AT + slot] seq (0 = sent by postMessage). */
 export const RING_LEN_AT = 1;
 export const RING_SEQ_AT = 1 + RING_SLOTS;
-export const RING_HEADER_BYTES = 4 * (1 + 2 * RING_SLOTS);
+export const RING_GENERATION_AT = 1 + 2 * RING_SLOTS;
+export const RING_HEADER_BYTES = 4 * (1 + 3 * RING_SLOTS);
 export const RING_BYTES = RING_HEADER_BYTES + RING_SLOTS * RING_SLOT_BYTES;

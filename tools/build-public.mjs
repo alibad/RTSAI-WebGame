@@ -41,7 +41,15 @@ const argv = process.argv.slice(2);
 const opt = (k, d) => { const i = argv.indexOf(`--${k}`); return i >= 0 ? argv[i + 1] : d; };
 const out = path.resolve(repo, opt("out", "build/public-web"));
 const quality = Number(opt("quality", 11));
-const data = path.join(repo, "data", "public");
+const data = path.resolve(repo, opt("data", "data/public"));
+const inputsFile = path.resolve(repo, opt("inputs", path.join(data, "build-inputs.json")));
+if (!fs.existsSync(inputsFile)) throw new Error(`Missing verified input identities: ${inputsFile}`);
+const inputs = JSON.parse(fs.readFileSync(inputsFile, "utf8"));
+if (inputs.standalone?.profile !== "standalone-main" || !inputs.inputs?.mod || !inputs.inputs?.engine)
+  throw new Error("Public static build requires verified main standalone and engine identities");
+
+const classicData = path.resolve(repo, opt("classic-data", path.join(path.dirname(data), "public-classic")));
+const profiles = [{ id: "public", dir: data }, ...(fs.existsSync(path.join(classicData,"web-bundle.pack")) ? [{ id: "public-classic", dir: classicData }] : [])];
 const framework = path.join(data, "wasm-aot", "wwwroot", "_framework");
 for (const f of ["web-bundle.pack", "web-audio.pack", "web-audio.json", "web-art.pack", "web-art.json", "sprites/index.json", "wasm-aot/wwwroot/_framework/dotnet.js"])
   if (!fs.existsSync(path.join(data, f))) throw new Error(`missing ${path.join(data, f)}: run tools/public.ps1 and the public AOT publish first`);
@@ -53,7 +61,8 @@ const hashOf = (files) => {
   return h.digest("hex").slice(0, 12);
 };
 const runtimeFiles = list(framework);
-const dataFiles = [...["web-bundle.pack", "web-audio.pack", "web-audio.json", "web-art.pack", "web-art.json"].map((f) => path.join(data, f)), ...list(path.join(data, "sprites"))];
+const profileFiles = (data) => [...["web-bundle.pack", "web-audio.pack", "web-audio.json", "web-art.pack", "web-art.json"].map((f) => path.join(data, f)), ...list(path.join(data, "sprites"))];
+const dataFiles = profiles.flatMap(p => profileFiles(p.dir));
 const rtRoot = `rt-${hashOf(runtimeFiles)}/`;
 const dataRoot = `data-${hashOf(dataFiles)}/`;
 
@@ -61,7 +70,7 @@ const dataRoot = `data-${hashOf(dataFiles)}/`;
 // Never remove the checkout, a source directory, or a drive root through --out.
 const root = path.parse(out).root;
 const isAncestor = (parent, child) => { const rel = path.relative(parent, child); return rel === "" || (!rel.startsWith("..") && !path.isAbsolute(rel)); };
-if (out === root || isAncestor(out, repo) || isAncestor(out, data) || isAncestor(path.join(repo, "web"), out))
+if (out === root || isAncestor(out, repo) || profiles.some(p => isAncestor(out, p.dir)) || isAncestor(path.join(repo, "web"), out))
   throw new Error(`Unsafe output directory: ${out}`);
 if (fs.existsSync(out)) {
   if (!fs.existsSync(path.join(out, "BUILD.json"))) throw new Error(`Output exists without a public-build marker: ${out}`);
@@ -69,37 +78,32 @@ if (fs.existsSync(out)) {
 }
 execSync(`npx vite build --outDir "${out}" --emptyOutDir`, {
   cwd: path.join(repo, "web"), stdio: "inherit",
-  env: { ...process.env, VITE_DEFAULT_PROFILE: "public", RTSAI_PUBLIC_BUILD: "1", VITE_STATIC_BUILD: "1", VITE_RT_BASE: rtRoot, VITE_DATA_BASE: dataRoot },
+  env: { ...process.env, VITE_DEFAULT_PROFILE: "public", VITE_GAME_MODES: profiles.map(p => p.id).join(","), RTSAI_PUBLIC_BUILD: "1", VITE_STATIC_BUILD: "1", VITE_RT_BASE: rtRoot, VITE_DATA_BASE: dataRoot },
 });
 
 // 2. Runtime and data at the paths the worker requests.
 const copy = (from, to) => { fs.mkdirSync(path.dirname(to), { recursive: true }); fs.copyFileSync(from, to); return to; };
 const precompress = [];
-for (const f of runtimeFiles) precompress.push(copy(f, path.join(out, rtRoot, "public", "aot", "_framework", path.basename(f))));
-for (const f of dataFiles) {
-  const rel = path.relative(data, f);
-  if (/web-audio\.(pack|json)$/.test(f)) continue; // written as single files below
-  const to = copy(f, path.join(out, dataRoot, "public", rel));
-  if (!/web-art\.pack$/.test(f)) precompress.push(to);
-}
-
-// Audio as single files (instead of byte ranges of web-audio.pack): plain immutable GETs, so the browser caches them
-// and a returning player downloads no sound again; WAVs are stored brotli-compressed. The index tells the worker.
-{
-  const index = JSON.parse(fs.readFileSync(path.join(data, "web-audio.json"), "utf8"));
-  const pack = fs.readFileSync(path.join(data, "web-audio.pack"));
+for (const profile of profiles) {
+  for (const f of runtimeFiles) precompress.push(copy(f, path.join(out, rtRoot, profile.id, "aot", "_framework", path.basename(f))));
+  for (const f of profileFiles(profile.dir)) {
+    const rel = path.relative(profile.dir, f);
+    if (/web-audio\.(pack|json)$/.test(f)) continue;
+    const to = copy(f, path.join(out, dataRoot, profile.id, rel));
+    if (!/web-art\.pack$/.test(f)) precompress.push(to);
+  }
+  const index = JSON.parse(fs.readFileSync(path.join(profile.dir, "web-audio.json"), "utf8"));
+  const pack = fs.readFileSync(path.join(profile.dir, "web-audio.pack"));
   for (const f of index.files) {
     const rel = "audio/" + f.path.replace(/^mods\/rtsai\//, "");
-    const to = path.join(out, dataRoot, "public", rel);
+    const to = path.join(out, dataRoot, profile.id, rel);
     fs.mkdirSync(path.dirname(to), { recursive: true });
     fs.writeFileSync(to, pack.subarray(f.offset, f.offset + f.size));
     if (/\.(wav|aud)$/i.test(rel)) precompress.push(to);
-    f.file = rel;
-    delete f.offset;
+    f.file = rel; delete f.offset;
   }
-  const to = path.join(out, dataRoot, "public", "web-audio.json");
-  fs.writeFileSync(to, JSON.stringify(index));
-  precompress.push(to);
+  const to = path.join(out, dataRoot, profile.id, "web-audio.json");
+  fs.writeFileSync(to, JSON.stringify(index)); precompress.push(to);
 }
 
 // 3. Brotli (in parallel workers; quality 11 on ~600 MB of raw sheets and runtime takes a while).
@@ -126,7 +130,7 @@ const isolation = [
 ];
 const immutable = { key: "Cache-Control", value: "public, max-age=31536000, immutable" };
 const br = { key: "Content-Encoding", value: "br" };
-const rtGlob = `/${rtRoot}`, dataGlob = `/${dataRoot}public`;
+const rtGlob = `/${rtRoot}`, dataGlob = `/${dataRoot}(public|public-classic)`;
 const vercel = {
   $schema: "https://openapi.vercel.sh/vercel.json",
   headers: [
@@ -160,6 +164,10 @@ fs.writeFileSync(path.join(out, "_headers"), [
   "",
 ].join("\n"));
 
+const headerFile = path.join(out, "_headers");
+const blocks = fs.readFileSync(headerFile,"utf8").split(/\n(?=\/)/);
+fs.writeFileSync(headerFile, blocks.flatMap(block => block.includes("(public|public-classic)") ? profiles.map(p => block.replaceAll("(public|public-classic)", p.id)) : [block]).join("\n"));
+
 // 5. What was built: sizes on disk (raw) and over the wire (as stored: brotli, or raw for the range-read packs).
 const files = [];
 const walk = (d) => { for (const e of fs.readdirSync(d, { withFileTypes: true })) e.isDirectory() ? walk(path.join(d, e.name)) : files.push(path.join(d, e.name)); };
@@ -175,10 +183,8 @@ for (const f of files) {
   g.files++; g.raw += raw; g.wire += wire;
 }
 const mb = (n) => (n / 1048576).toFixed(1);
-let sha = "";
-try { sha = execSync("git -C ../RTSAI-Mod-wt-web-public rev-parse HEAD", { cwd: repo }).toString().trim(); } catch { /* not a checkout */ }
 const index = JSON.parse(fs.readFileSync(path.join(data, "sprites", "index.json"), "utf8"));
-const build = { builtAt: new Date().toISOString(), standalone: sha, bundleId: index.bundle, rtRoot, dataRoot, brotliQuality: quality, groups };
+const build = { builtAt: new Date().toISOString(), standalone: inputs.inputs.mod, inputs, bundleId: index.bundle, modes: profiles.map(p => ({ profile: p.id, bundle: JSON.parse(fs.readFileSync(path.join(p.dir,"sprites/index.json"),"utf8")).bundle })), rtRoot, dataRoot, brotliQuality: quality, groups };
 fs.writeFileSync(path.join(out, "BUILD.json"), JSON.stringify(build, null, 2) + "\n");
 console.log(`\n${out}  (${rtRoot}, ${dataRoot})`);
 for (const [k, g] of Object.entries(groups)) console.log(`  ${k.padEnd(16)} ${String(g.files).padStart(4)} files  ${mb(g.raw).padStart(7)} MB raw  ${mb(g.wire).padStart(7)} MB stored / over the wire`);

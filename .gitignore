@@ -15,3 +15,10 @@ artifacts/
 *.bag
 *.idx
 private/
+
+# Verified no-Git dependency snapshots, never commit local inputs.
+.inputs/
+.build-deps/
+
+# Local Python adapter bytecode.
+/tools/__pycache__/

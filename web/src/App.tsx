@@ -1,4 +1,4 @@
-﻿import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Game } from "./game";
 import { useStore } from "./store";
 import { Hud } from "./ui/Hud";
@@ -70,11 +70,10 @@ export default function App() {
     if (only) g.renderer.actorFilter = (t) => g.client.str(t).startsWith(only);
     setGame(g);
     // AOT by default; ?runtime=interp is the developer fallback. ?private=0 runs without the player's own files.
-    // ?profile=public: the standalone game (project art and audio only, never the player's files).
     // A static public build (tools/build-public.mjs) defaults to the standalone game, and so does the installed app
-    // (its window opens without a query; ?profile=classic there still opens the RA2 game with the player's files).
-    const installed = matchMedia("(display-mode: standalone)").matches || matchMedia("(display-mode: window-controls-overlay)").matches;
-    const profile = (params.get("profile") ?? import.meta.env.VITE_DEFAULT_PROFILE ?? (installed ? "public" : "")) === "public" ? "public" : "";
+
+    const requested = params.get("profile") ?? import.meta.env.VITE_DEFAULT_PROFILE ?? "public";
+    const profile = params.get("game") === "classic" || requested === "public-classic" ? "public-classic" : "public";
     // The co-commander needs the local server (it starts the companion and relays its RPCs); a static host has none.
     if (import.meta.env.VITE_STATIC_BUILD === "1") {
       useStore.getState().set({ ccAvailable: false });
@@ -115,6 +114,10 @@ export default function App() {
           <div className="w-[min(760px,100%)]">
             <h1 className="mb-3 text-5xl font-black tracking-wide text-[var(--hud-gold)]">RTS AI</h1>
             <p className="mb-8 text-[var(--muted-foreground)]">Choose your command.</p>
+            <div className="mb-6 flex flex-wrap items-center gap-3" aria-label="Gameplay mode">
+              <span className="text-sm">Gameplay mode</span>
+              {[{ id: "isometric", name: "Isometric" }, { id: "classic", name: "Classic / top-down" }].filter(item => import.meta.env.VITE_STATIC_BUILD !== "1" || (import.meta.env.VITE_GAME_MODES ?? "public").split(",").includes(item.id === "classic" ? "public-classic" : "public")).map(item => <button key={item.id} type="button" aria-pressed={(useStore.getState().profile === "public-classic" ? "classic" : "isometric") === item.id} className="rounded border border-white/20 px-4 py-2" onClick={() => { const url = new URL(location.href); url.searchParams.set("game", item.id); url.searchParams.set("profile", item.id === "classic" ? "public-classic" : "public"); location.assign(url); }}>{item.name}</button>)}
+            </div>
             <div className="grid gap-4 sm:grid-cols-2">
               <button type="button" className="hud-panel p-7 text-left hover:bg-white/5" onClick={() => setMode("skirmish")}>
                 <h2 className="mb-2 text-2xl font-bold text-[var(--hud-gold)]">Skirmish</h2>

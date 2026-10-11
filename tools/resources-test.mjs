@@ -1,10 +1,11 @@
+import {browserExecutable, browserArgs} from './browser-launch.mjs';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { chromium } from '../web/node_modules/playwright-core/index.mjs';
 
 const browser = await chromium.launch({
-  executablePath: path.join(process.env.LOCALAPPDATA, 'ms-playwright/chromium-1228/chrome-win64/chrome.exe'),
+  executablePath: browserExecutable(),
   headless: true,
 });
 const page = await browser.newPage({ viewport: { width: 1400, height: 1000 } });

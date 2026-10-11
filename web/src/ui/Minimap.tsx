@@ -17,7 +17,8 @@ export function Minimap({ game, size }: { game: Game; size: number }) {
     if (!canvas || !info) return;
     const radar = game.radar;
     const [L, T, R, B] = info.mapBounds;
-    const sx = 2 * L, sw = 2 * (R - L) + 1, sy = T, sh = B - T;
+    const iso = info.gridType !== "Rectangular";
+    const sx = iso ? 2 * L : L, sw = iso ? 2 * (R - L) + 1 : R - L, sy = T, sh = B - T;
     const scale = Math.min(size / sw, size / sh);
     const cw = Math.round(sw * scale), ch = Math.round(sh * scale);
     const offX = Math.round((size - cw) / 2), offY = Math.round((size - ch) / 2);
@@ -30,13 +31,13 @@ export function Minimap({ game, size }: { game: Game; size: number }) {
     let drawnVersion = -1;
     let lastView = "";
     const [ox, oy] = info.cellOrigin;
-    const hw = info.tileSize[0] / 2, hh = info.tileSize[1] / 2;
+    const hw = info.tileSize[0] / (iso ? 2 : 1), hh = info.tileSize[1] / (iso ? 2 : 1);
     const toCanvas = (wx: number, wy: number): [number, number] => [
-      offX + ((wx - ox) / hw + 1 - sx) * scale,
+      offX + ((wx - ox) / hw + (iso ? 1 : 0.5) - sx) * scale,
       offY + ((wy - oy) / hh + 0.5 - sy) * scale,
     ];
     const toWorld = (cx: number, cy: number): [number, number] => [
-      ox + ((cx - offX) / scale + sx - 1) * hw,
+      ox + ((cx - offX) / scale + sx - (iso ? 1 : 0.5)) * hw,
       oy + ((cy - offY) / scale + sy - 0.5) * hh,
     ];
 
@@ -51,8 +52,8 @@ export function Minimap({ game, size }: { game: Game; size: number }) {
       const b = radar.blips;
       for (let i = 0; i + 2 < b.length; i += 3) {
         const u = b[i], v = b[i + 1], argb = b[i + 2] >>> 0;
-        const x = 2 * u + (v & 1);
-        for (const xx of [x, x + 1]) {
+        const x = iso ? 2 * u + (v & 1) : u;
+        for (const xx of (iso ? [x, x + 1] : [x])) {
           const o = (v * W + xx) * 4;
           if (o < 0 || o + 3 >= px.length) continue;
           px[o] = (argb >> 16) & 255; px[o + 1] = (argb >> 8) & 255; px[o + 2] = argb & 255; px[o + 3] = 255;
@@ -66,8 +67,8 @@ export function Minimap({ game, size }: { game: Game; size: number }) {
           for (let u = 0; u < cols; u++) {
             const s = sh[v * cols + u];
             if (s === 2) continue;
-            const x = 2 * u + (v & 1);
-            for (const xx of [x, x + 1]) {
+            const x = iso ? 2 * u + (v & 1) : u;
+            for (const xx of (iso ? [x, x + 1] : [x])) {
               const o = (v * W + xx) * 4;
               if (s === 0) { px[o] = px[o + 1] = px[o + 2] = 0; }
               else { px[o] >>= 1; px[o + 1] >>= 1; px[o + 2] >>= 1; }

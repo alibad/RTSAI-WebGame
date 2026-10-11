@@ -17,7 +17,7 @@ export interface FeedItem {
   proposalId?: string;
   /** Proposals: pending until the player accepts or cancels them. */
   /** expired: the companion no longer holds it (a newer question or order replaced it); it can't be accepted. */
-  state?: "pending" | "accepted" | "cancelled" | "expired" | "failed";
+  state?: "pending" | "accepted" | "cancelled" | "expired" | "failed" | "unknown";
   importance?: string;
   commands?: PreviewCommand[];
 }
@@ -41,6 +41,7 @@ export interface CoCommanderState {
   strategyBusy: boolean;
   strategyError: string;
   offerSteps: boolean;
+  uncertainProposalId: string;
 }
 
 export interface StrategyChoice { id: string; name: string; intent: string; tradeoff: string }
@@ -61,9 +62,9 @@ export function initialCoCommander(): CoCommanderState {
   let saved: Partial<CoCommanderState> = {};
   try { saved = JSON.parse(localStorage.getItem("rtsai.cocommander") ?? "{}"); } catch { /* private mode */ }
   return {
-    enabled: saved.enabled ?? false, mode: saved.mode === "local" ? "local" : "mock", muted: saved.muted ?? false,
+    enabled: saved.enabled ?? false, mode: saved.mode === "mock" ? "mock" : "local", muted: saved.muted ?? false,
     running: false, linked: false, listening: false, thinking: false, open: false, feed: [], error: "",
-    strategies: null, strategyOpen: false, strategyBusy: false, strategyError: "", offerSteps: true,
+    strategies: null, strategyOpen: false, strategyBusy: false, strategyError: "", offerSteps: true, uncertainProposalId: "",
   };
 }
 
@@ -89,6 +90,45 @@ export class CoCommander {
   private polling = false;
   private strategyRevision = 0;
   private matchRevision = 0;
+  private requests = new Set<AbortController>();
+  private requestRevision = 0;
+  private timeoutMs = 25000;
+  private interruption: Promise<void> = Promise.resolve();
+  private receipts = new Map<string, { accepted: boolean; detail: string }>();
+
+  private interrupt() {
+    if (!this.s.running) return;
+    this.interruption = this.interruption.then(async () => { try { await fetch(new URL(`${API}v1/interrupt`, base()), { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ contract_version: 1 }), signal: AbortSignal.timeout(4000) }); } catch {} });
+  }
+
+  acknowledgeOutcome() {
+    const id = this.s.uncertainProposalId;
+    if (!id) return;
+    this.set({ uncertainProposalId: "", feed: this.s.feed.map(f => f.proposalId === id && f.state === "unknown" ? { ...f, state: "expired" } : f) });
+  }
+
+  endMatch() {
+    this.matchRevision++; this.strategyRevision++; this.requestRevision++;
+    this.interrupt(); this.receipts.clear();
+    for (const request of this.requests) request.abort();
+    this.requests.clear();
+    if (this.poll) clearInterval(this.poll);
+    this.poll = null; this.polling = false; this.lastAlert = "";
+    const recorder = this.recorder; this.recorder = null;
+    if (recorder) { recorder.node.disconnect(); recorder.stream.getTracks().forEach(t => t.stop()); void recorder.ctx.close(); }
+    this.audio.stopVoice();
+    this.set({ listening: false, linked: false, thinking: false, strategyBusy: false, uncertainProposalId: "", feed: this.s.feed.map(f => f.state === "pending" ? { ...f, state: "expired" } : f) });
+  }
+
+  private async request(url: URL, init: RequestInit = {}) {
+    const match = this.matchRevision;
+    await this.interruption;
+    if (match !== this.matchRevision) throw new Error("Cancelled companion request");
+    const controller = new AbortController(); this.requests.add(controller);
+    const timer = setTimeout(() => { controller.abort(); if (/\/v1\/(advice|proposals)$/.test(url.pathname)) this.interrupt(); }, this.timeoutMs);
+    try { const response = await fetch(url, { ...init, signal: controller.signal }); const body = await response.arrayBuffer(); return new Response(body, { status: response.status, statusText: response.statusText, headers: response.headers }); }
+    finally { clearTimeout(timer); this.requests.delete(controller); }
+  }
 
   constructor(private audio: AudioEngine, private canIssue: () => boolean = () => true) {}
 
@@ -117,17 +157,27 @@ export class CoCommander {
 
   /** Starts the local companion (before a match with the co-commander). */
   async ensureRunning() {
-    const res = await fetch(new URL("api/companion/start", base()), { method: "POST", body: JSON.stringify({ mode: this.s.mode }) });
+    const match = this.matchRevision;
+    await this.interruption;
+    if (match !== this.matchRevision) throw new Error("Cancelled companion launch");
+    const res = await this.request(new URL("api/companion/start", base()), { method: "POST", body: JSON.stringify({ mode: this.s.mode }) });
     const status = await res.json();
+    if (match !== this.matchRevision) throw new Error("Cancelled companion launch");
     this.set({ running: !!status.running, error: status.error ?? "", feed: [] });
     if (!status.running) throw new Error(status.error || "The co-commander could not start.");
+    const contractResponse = await this.request(new URL(`${API}v1/contract`, base()));
+    const contract = await contractResponse.json();
+    if (match !== this.matchRevision) throw new Error("Cancelled companion launch");
+    if (!contractResponse.ok || contract.contract_version !== 1 || contract.application?.requires_explicit_proposal_id !== true) throw new Error("The local companion contract is incompatible. Manual controls remain available.");
+    if (!Number.isFinite(contract.client_timeout_seconds) || contract.client_timeout_seconds < 1 || contract.client_timeout_seconds > 300) throw new Error("The local companion deadline is invalid.");
+    this.timeoutMs = contract.client_timeout_seconds * 1000;
   }
 
   /** A new match: clear the feed, greet, and watch for orders the co-commander offers on its own. */
   matchStarted() {
     this.matchRevision++;
     this.strategyRevision++;
-    this.set({ feed: [], linked: false, thinking: false, strategies: null, strategyError: "", strategyBusy: false, strategyOpen: false });
+    this.set({ feed: [], linked: false, thinking: false, strategies: null, strategyError: "", strategyBusy: false, strategyOpen: false, uncertainProposalId: "" });
     this.push("system", this.s.mode === "mock" ? "Co-commander online (scripted brain)" : "Co-commander online");
     if (!this.poll) this.poll = setInterval(() => { void this.offers(); }, 1500);
   }
@@ -143,7 +193,7 @@ export class CoCommander {
     const match = this.matchRevision;
     try {
       const asked = Date.now();
-      const res = await fetch(new URL(`${API}v1/state`, base()));
+      const res = await this.request(new URL(`${API}v1/state`, base()));
       if (!res.ok) return;
       type Offer = { proposal_id: string; summary: string; commands?: PreviewCommand[] };
       const state = await res.json() as { pending_action?: Offer | null; pending_actions?: Offer[]; contextual_strategy?: StrategyState };
@@ -168,7 +218,7 @@ export class CoCommander {
           && !this.s.strategyBusy && !this.s.thinking && !store.get().paused && !held.length)
         await this.strategyStep(true);
     } catch { /* the companion is restarting */ }
-    finally { this.polling = false; }
+    finally { if (match === this.matchRevision) this.polling = false; }
   }
 
   setStrategyOpen(strategyOpen: boolean) { this.set({ strategyOpen, ...(strategyOpen ? { open: false } : {}) }); }
@@ -192,7 +242,7 @@ export class CoCommander {
   }
 
   async strategyStep(automatic = false) {
-    if (this.s.strategyBusy || !this.s.strategies?.active) return;
+    if (this.s.strategyBusy || this.s.uncertainProposalId || !this.s.strategies?.active) return;
     const revision = this.strategyRevision;
     const match = this.matchRevision;
     if (!automatic) this.set({ strategyBusy: true, strategyError: "" });
@@ -212,6 +262,8 @@ export class CoCommander {
   onEngine(e: CompanionEngineEvent) {
     if (e.kind === "link") { this.set({ linked: e.connected }); return; }
     if (e.kind === "executed") {
+      this.receipts.set(e.id, { accepted: e.accepted, detail: e.detail });
+      this.set({ uncertainProposalId: this.s.uncertainProposalId === e.id ? "" : this.s.uncertainProposalId, feed: this.s.feed.map(f => f.proposalId === e.id ? { ...f, state: e.accepted ? "accepted" : "failed" } : f) });
       this.push(e.accepted ? "done" : "rejected", e.detail || (e.accepted ? "Orders issued" : "Orders refused"));
       return;
     }
@@ -230,17 +282,31 @@ export class CoCommander {
   async ask(text: string) {
     if (!this.canIssue()) { this.push("system", "Return live before talking to the co-commander."); return; }
     text = text.trim();
-    if (!text) return;
+    if (!text || this.s.thinking) return;
+    const request = ++this.requestRevision;
+    const match = this.matchRevision;
     this.push("you", text);
     this.set({ thinking: true });
     try {
-      const r = await this.post<CompanionReply>("v1/ask", { question: text });
-      this.reply(r);
+      const r = await this.post<CompanionReply>("v1/advice", { contract_version: 1, question: text });
+      if (match === this.matchRevision && request === this.requestRevision) this.reply(r);
     } catch (e) {
+      if (match !== this.matchRevision || request !== this.requestRevision) return;
       this.push("system", `No answer: ${e instanceof Error ? e.message : e}`);
     } finally {
-      this.set({ thinking: false });
+      if (match === this.matchRevision && request === this.requestRevision) this.set({ thinking: false });
     }
+  }
+
+  async propose(text: string) {
+    text = text.trim();
+    if (!text || this.s.thinking || this.s.uncertainProposalId || !this.canIssue()) return;
+    const request = ++this.requestRevision;
+    const match = this.matchRevision;
+    this.push("you", text); this.set({ thinking: true });
+    try { const reply = await this.post<CompanionReply>("v1/proposals", { contract_version: 1, instruction: text }); if (match === this.matchRevision && request === this.requestRevision) this.reply(reply); }
+    catch (error) { if (match === this.matchRevision) this.push("system", `No proposal: ${String(error)}. Manual controls remain available.`); }
+    finally { if (match === this.matchRevision) this.set({ thinking: false }); }
   }
 
   private reply(r: CompanionReply) {
@@ -265,12 +331,15 @@ export class CoCommander {
   }
 
   async decide(item: FeedItem, accept: boolean) {
+    if (this.s.uncertainProposalId) return;
     if (accept && !this.canIssue()) { this.push("system", "Return live before accepting orders."); return; }
-    if (!item.proposalId || item.state !== "pending") return;
+    if (!item.proposalId || item.state !== "pending" || !this.s.feed.some(f => f.id === item.id && f.proposalId === item.proposalId && f.state === "pending")) return;
+    const match = this.matchRevision;
     this.update(item.id, { state: accept ? "accepted" : "cancelled" });
     try {
-      const r = await this.post<CompanionReply>(accept ? "v1/actions/confirm" : "v1/actions/cancel", { proposal_id: item.proposalId });
-      if (!accept) return;
+      const r = await this.post<CompanionReply>(accept ? "v1/proposals/confirm" : "v1/proposals/cancel", { contract_version: 1, proposal_id: item.proposalId });
+      if (match !== this.matchRevision) return;
+      if (!accept) { if (r.metadata?.action?.state !== "cancelled") { this.update(item.id, { state: "failed" }); if (r.text) this.push("rejected", r.text); } return; }
       // A queued order shows as the engine's receipt (✓); only a refusal needs the companion's words.
       const state = r.metadata?.action?.state;
       if (state && !["executed", "queued", "accepted"].includes(state)) {
@@ -278,13 +347,18 @@ export class CoCommander {
         if (r.text) this.push("rejected", r.text);
       }
     } catch (e) {
-      this.update(item.id, { state: "failed" });
-      this.push("system", `Not sent: ${e instanceof Error ? e.message : e}`);
+      if (match !== this.matchRevision) return;
+      const receipt = this.receipts.get(item.proposalId);
+      if (receipt) { this.update(item.id, { state: receipt.accepted ? "accepted" : "failed" }); return; }
+      this.update(item.id, { state: "unknown" });
+      this.set({ uncertainProposalId: item.proposalId });
+      this.push("system", `Confirmation outcome unknown: ${e instanceof Error ? e.message : e}. Check the companion state before requesting a fresh proposal; manual controls remain available.`);
+      await this.offers();
     }
   }
 
   /** The newest proposal still waiting for the player (G applies it outside text entry). */
-  pending() { return [...this.s.feed].reverse().find((f) => f.kind === "proposal" && f.state === "pending"); }
+  pending() { if (this.s.uncertainProposalId) return; return [...this.s.feed].reverse().find((f) => f.kind === "proposal" && f.state === "pending"); }
 
   // ---------------------------------------------------------------- voice
 
@@ -292,8 +366,10 @@ export class CoCommander {
     if (!this.canIssue()) return;
     if (this.recorder || this.s.listening) return;
     this.audio.stopVoice();
+    const match = this.matchRevision;
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true } });
+      if (match !== this.matchRevision) { stream.getTracks().forEach(t => t.stop()); return; }
       const ctx = new AudioContext();
       const source = ctx.createMediaStreamSource(stream);
       const node = ctx.createScriptProcessor(4096, 1, 1);
@@ -304,11 +380,13 @@ export class CoCommander {
       this.recorder = { ctx, stream, node, chunks, rate: ctx.sampleRate };
       this.set({ listening: true });
     } catch (e) {
+      if (match !== this.matchRevision) return;
       this.push("system", `Microphone unavailable: ${e instanceof Error ? e.message : e}`);
     }
   }
 
   async stopListening() {
+    const match = this.matchRevision;
     const r = this.recorder;
     this.recorder = null;
     this.set({ listening: false });
@@ -317,33 +395,37 @@ export class CoCommander {
     r.stream.getTracks().forEach((t) => t.stop());
     await r.ctx.close();
     const seconds = r.chunks.reduce((n, c) => n + c.length, 0) / r.rate;
-    if (seconds < 0.3) return;
+    if (match !== this.matchRevision || seconds < 0.3) return;
     this.set({ thinking: true });
     try {
       const wav = encodeWav(r.chunks, r.rate, 16000);
-      const res = await fetch(new URL(`${API}v1/transcribe?filename=question.wav`, base()), { method: "POST", headers: { "content-type": "audio/wav" }, body: wav });
+      const res = await this.request(new URL(`${API}v1/transcribe?filename=question.wav`, base()), { method: "POST", headers: { "content-type": "audio/wav" }, body: wav });
       const t = await res.json() as { text?: string; error?: string };
+      if (match !== this.matchRevision) return;
       if (!res.ok || !t.text) throw new Error(t.error ?? `HTTP ${res.status}`);
       this.set({ thinking: false });
       await this.ask(t.text);
     } catch (e) {
+      if (match !== this.matchRevision) return;
       this.push("system", `Not heard: ${e instanceof Error ? e.message : e}`);
     } finally {
-      this.set({ thinking: false });
+      if (match === this.matchRevision) this.set({ thinking: false });
     }
   }
 
   async speak(text: string) {
+    const match = this.matchRevision;
     if (this.s.muted) return;
     try {
-      const res = await fetch(new URL(`${API}v1/speak`, base()), { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ text }) });
+      const res = await this.request(new URL(`${API}v1/speak`, base()), { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ text }) });
       if (!res.ok || !(res.headers.get("content-type") ?? "").startsWith("audio/")) return;
-      await this.audio.voice(await res.arrayBuffer());
+      const audio = await res.arrayBuffer();
+      if (match === this.matchRevision) await this.audio.voice(audio);
     } catch { /* speech is optional */ }
   }
 
   private async post<T>(path: string, body: unknown): Promise<T> {
-    const res = await fetch(new URL(API + path, base()), { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
+    const res = await this.request(new URL(API + path, base()), { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
     const json = await res.json();
     if (!res.ok) throw new Error(json.detail ?? json.error ?? `HTTP ${res.status}`);
     return json as T;

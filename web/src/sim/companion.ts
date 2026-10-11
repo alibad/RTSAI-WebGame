@@ -71,6 +71,7 @@ export interface CompanionEngine {
 export class CompanionRelay {
   private ws: WebSocket | null = null;
   private wanted = false;
+  private epoch = 0;
   private retry: ReturnType<typeof setTimeout> | null = null;
   private calls = new Map<number, number>(); // engine call id -> relay request id
   private observer: ReturnType<typeof setInterval> | null = null;
@@ -89,13 +90,16 @@ export class CompanionRelay {
     if (this.ws) return;
     const ws = new WebSocket(this.url);
     ws.binaryType = "arraybuffer";
-    ws.onopen = () => { this.stats.connected = true; this.onState(true); };
-    ws.onmessage = (e) => this.message(new Uint8Array(e.data as ArrayBuffer));
+    const epoch = this.epoch;
+    ws.onopen = () => { if (epoch !== this.epoch || this.ws !== ws) return; this.stats.connected = true; this.onState(true); };
+    ws.onmessage = (e) => { if (epoch !== this.epoch || this.ws !== ws) return; try { this.message(new Uint8Array(e.data as ArrayBuffer)); } catch { ws.close(); } };
     ws.onclose = () => {
+      if (epoch !== this.epoch || this.ws !== ws) return;
+      this.calls.clear(); this.lastSpatial = null; this.lastTick = -1;
       this.ws = null;
       if (this.stats.connected) this.onState(false);
       this.stats.connected = false;
-      if (this.wanted) this.retry = setTimeout(() => { this.retry = null; this.connect(); }, 1000);
+      if (this.wanted) this.retry = setTimeout(() => { this.retry = null; if (epoch === this.epoch) this.connect(); }, 1000);
     };
     ws.onerror = () => ws.close();
     this.ws = ws;
@@ -114,6 +118,7 @@ export class CompanionRelay {
 
   private async pushObservation(read: () => Uint8Array) {
     if (this.sending || this.ws?.readyState !== WebSocket.OPEN) return;
+    const epoch = this.epoch, ws = this.ws;
     const full = read();
     if (!full.length) return;
     const { rest, value } = splitField(full, SPATIAL_FIELD);
@@ -136,19 +141,23 @@ export class CompanionRelay {
       payload.set(lite, 4);
       payload[4 + lite.length] = kind;
       payload.set(sp, 5 + lite.length);
-      if (this.ws?.readyState !== WebSocket.OPEN) return;
-      this.ws.send(frame({ t: "obs" }, payload));
+      if (epoch !== this.epoch || this.ws !== ws || ws.readyState !== WebSocket.OPEN) return;
+      ws.send(frame({ t: "obs" }, payload));
       this.lastSpatial = spatial.slice();
       this.lastTick = tick;
       this.obsStats.sent += payload.length;
       this.obsStats.full += full.length;
       this.obsStats.frames++;
     } finally {
-      this.sending = false;
+      if (epoch === this.epoch) this.sending = false;
     }
   }
 
   close() {
+    this.epoch++;
+    this.lastTick = -1; this.sending = false;
+    if (this.stats.connected) this.onState(false);
+    this.stats.connected = false;
     if (this.observer) clearInterval(this.observer);
     this.observer = null;
     this.lastSpatial = null;
@@ -161,7 +170,9 @@ export class CompanionRelay {
   }
 
   private message(buf: Uint8Array) {
+    if (buf.length < 4) throw new Error("Invalid relay frame");
     const n = new DataView(buf.buffer, buf.byteOffset, buf.byteLength).getUint32(0, true);
+    if (n > 65536 || n > buf.length - 4) throw new Error("Invalid relay header");
     const header = JSON.parse(dec.decode(buf.subarray(4, 4 + n))) as { t: string; id: number; method: string };
     if (header.t !== "call") return;
     this.stats.calls++;

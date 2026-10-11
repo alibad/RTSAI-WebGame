@@ -1,10 +1,11 @@
+import { buildIdentity } from "../sim/build-identity";
 import { GameSelect } from "../components/ui/fields";
 import { useState } from "react";
 import type { Game } from "../game";
 import { useStore } from "../store";
 import { Button } from "../components/ui/button";
 
-interface MatchRecord { id: string; date: string; scenario: Record<string, unknown>; tick: number; log: unknown; profile: string; selection?: number[]; groups?: number[][]; view?: ReturnType<Game["captureUi"]> }
+interface MatchRecord { id: string; date: string; scenario: Record<string, unknown>; tick: number; log: unknown; profile: string; identity?: string; selection?: number[]; groups?: number[][]; view?: ReturnType<Game["captureUi"]> }
 const KEY = "rtsai.local-matches.v1";
 function read(): MatchRecord[] { try { return JSON.parse(localStorage.getItem(KEY) ?? "[]"); } catch { return []; } }
 
@@ -24,14 +25,15 @@ export function MatchLibrary({ game }: { game: Game }) {
     try {
       const recording = await game.client.request<{ log: unknown; tick: number; selection: number[]; groups: number[][] }>({ type: "record" });
       const scenario = JSON.parse(game.scenarioJson); delete scenario.webReplay;
-      const record: MatchRecord = { id: crypto.randomUUID(), date: new Date().toISOString(), scenario, ...recording, profile, view: game.captureUi() };
+      const record: MatchRecord = { id: crypto.randomUUID(), date: new Date().toISOString(), scenario, ...recording, profile, identity: await buildIdentity(profile, new URLSearchParams(location.search).get("runtime") || "aot"), view: game.captureUi() };
       const next = [record, ...records].slice(0, 10);
       localStorage.setItem(KEY, JSON.stringify(next)); setRecords(next); setMessage("Match saved on this device.");
     } catch (error) { setMessage(`Save failed: ${String(error)}`); }
     finally { setBusy(false); }
   }
-  function load(record: MatchRecord, readonly: boolean, position = readonly ? 0 : record.tick) {
+  async function load(record: MatchRecord, readonly: boolean, position = readonly ? 0 : record.tick) {
     if (record.profile !== profile) { setMessage("Switch to this save's content profile before loading it."); return; }
+    if (!record.identity || record.identity !== await buildIdentity(profile, new URLSearchParams(location.search).get("runtime") || "aot")) { setMessage("This save requires its original simulator and content build."); return; }
     game.start(JSON.stringify({ ...record.scenario, webReplay: { log: record.log, tick: position, readonly, end: record.tick, groups: record.groups, selection: record.selection, view: record.view } }), readonly);
     setOpen(false);
   }

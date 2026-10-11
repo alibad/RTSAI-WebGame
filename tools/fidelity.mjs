@@ -18,7 +18,9 @@ const args = Object.fromEntries(process.argv.slice(2).reduce((acc, a, i, all) =>
 const scenario = args.scenario ?? "scenarios/battle-50.json";
 const ticks = args.ticks ?? "1000";
 const runtime = args.runtime ?? "interp";
-const scratch = path.join(process.env.LOCALAPPDATA ?? os.tmpdir(), "RTSAI-WebGame", "scratch");
+const scratch = path.resolve(process.env.RTSAI_WEB_SCRATCH ?? path.join(process.env.LOCALAPPDATA ?? os.tmpdir(), "RTSAI-WebGame", "scratch"));
+const data = path.resolve(process.env.RTSAI_WEB_DATA ?? path.join(repo, "data"));
+const build = path.resolve(process.env.RTSAI_WEB_BUILD ?? repo);
 fs.mkdirSync(scratch, { recursive: true });
 const profile = args.profile && args.profile !== "true" ? args.profile : "";
 const tag = `${profile ? profile + "-" : ""}${path.basename(scenario, ".json")}-${runtime}-${ticks}`;
@@ -28,7 +30,7 @@ const nativeHashes = path.join(scratch, `${tag}.native.hashes`);
 const env = { ...process.env, OPENRA_AI_HOST: "0" };
 
 function run(cmd, cmdArgs) {
-  const r = spawnSync(cmd, cmdArgs, { cwd: repo, env, encoding: "utf8", maxBuffer: 64 << 20 });
+  const r = spawnSync(cmd.endsWith(".dll") ? "dotnet" : cmd, cmd.endsWith(".dll") ? [cmd, ...cmdArgs] : cmdArgs, { cwd: repo, env, encoding: "utf8", maxBuffer: 64 << 20 });
   if (r.status !== 0) throw new Error(`${cmd} failed:\n${r.stdout}\n${r.stderr}`);
   return r.stdout;
 }
@@ -38,12 +40,12 @@ console.log(run(process.execPath, ["tools/wasm-node.mjs", "--runtime", runtime, 
   ...(profile ? ["--profile", profile] : [])]).trim());
 
 console.log("Native (CoreCLR) run...");
-const websim = path.join(repo, "bin", `OpenRA.WebSim.Native${profile ? "-" + profile : ""}`, "Release", "net10.0", "websim.exe");
+const websim = path.join(build, "bin", `OpenRA.WebSim.Native${profile ? "-public" : ""}`, "Release", "net10.0", "websim.dll");
 const root = path.join(scratch, `vfs-native${profile ? "-" + profile : ""}`);
 {
   // The native VFS root mirrors the browser's: the bundle and its art (plus the private RA2 files, except for a
   // profile), rebuilt whenever the bundle changes.
-  const pack = path.join(repo, "data", profile, "web-bundle.pack");
+  const pack = path.join(data, profile, "web-bundle.pack");
   const stamp = path.join(scratch, `vfs-native${profile ? "-" + profile : ""}.stamp`);
   const want = String(fs.statSync(pack).mtimeMs);
   if (!fs.existsSync(root) || !fs.existsSync(stamp) || fs.readFileSync(stamp, "utf8") !== want) {
@@ -62,7 +64,9 @@ const a = read(wasmHashes), b = read(nativeHashes);
 const n = Math.min(a.length, b.length);
 let first = -1;
 for (let i = 0; i < n; i++) if (a[i] !== b[i]) { first = i + 1; break; }
-const result = { scenario, ...(profile ? { profile } : {}), runtime, ticks: Number(ticks), compared: n, identical: first < 0, firstMismatch: first, lastHash: a[n - 1] };
+const result = { scenario, ...(profile ? { profile } : {}), runtime, ticks: Number(ticks), wasmHashes: a.length, nativeHashes: b.length,
+  compared: n, replayedOrders: Boolean(args.replay), replaySession: args.replay ? wasmLog : null,
+  identical: first < 0 && n > 0 && a.length === b.length, firstMismatch: first, lastHash: a[n - 1] };
 console.log(JSON.stringify(result));
-fs.appendFileSync(path.join(repo, "data", "fidelity.jsonl"), JSON.stringify({ at: new Date().toISOString(), ...result }) + "\n");
-process.exit(first < 0 ? 0 : 3);
+fs.appendFileSync(path.join(scratch, "fidelity.jsonl"), JSON.stringify({ at: new Date().toISOString(), ...result }) + "\n");
+process.exit(result.identical ? 0 : 3);

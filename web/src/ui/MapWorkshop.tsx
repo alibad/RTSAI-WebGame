@@ -18,7 +18,7 @@ const places = [
 const color:Record<string,string>={water:'#4babc0',river:'#4babc0',coastline:'#68d5e4',road:'#edc47e','local-road':'#a78b63',building:'#b49c89',urban:'#a78b63',forest:'#668d55',rough:'#8c8675',sand:'#ccb276'};
 const endpoint=(name:string)=>new URL(`api/maps/${name}`,new URL('./',location.href)).href;
 async function request<T>(name:string,body?:Selection):Promise<T>{
-  const r=await fetch(endpoint(name),body?{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}:undefined);
+  const r=await fetch(endpoint(name),body?{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...body,gameMode:useStore.getState().profile==='public-classic'?'classic':'isometric'})}:undefined);
   if(!r.headers.get('content-type')?.includes('application/json'))throw new Error('Map studio needs the updated local game server. Restart the local game launcher.');
   const data=await r.json();if(!r.ok)throw new Error(data.error??`Map service returned HTTP ${r.status}`);return data;
 }
@@ -49,9 +49,9 @@ export function MapWorkshop({game,close}:{game:Game;close:()=>void}) {
   const inspect=async()=>{setBusy('Reading roads, water and land cover…');setError('');setResult(null);try{setEvidence(await request<Evidence>('evidence',selection))}catch(e){setError(String((e as Error).message))}finally{setBusy('')}};
   const generate=async()=>{setBusy('Compiling terrain, base zones and connected routes…');setError('');try{setResult(await request<Result>('generate',selection));const data=await request<{maps:Entry[];sourceCopies:number}>('library');setLibrary(data.maps);setSourceCopies(data.sourceCopies)}catch(e){setError(String((e as Error).message))}finally{setBusy('')}};
   const openMap=(id:string)=>{
-    const url=new URL(location.href);url.searchParams.delete('scenario');url.searchParams.set('mode','skirmish');url.searchParams.set('map',id);url.searchParams.set('profile','public');location.assign(url.href);
+    const url=new URL(location.href);url.searchParams.delete('scenario');url.searchParams.set('mode','skirmish');url.searchParams.set('map',id);location.assign(url.href);
   };
-  const runtimeId=(entry:Entry)=>entry.status==='compatible'?setup.maps.find(m=>m.id===entry.folder)?.id??(/^earth-[a-f0-9]{16}$/.test(entry.folder)?entry.folder:null):entry.status==='ported'?setup.maps.find(m=>m.id===`port-${entry.folder}`)?.id??null:null;
+  const runtimeId=(entry:Entry)=>entry.status==='compatible'?setup.maps.find(m=>m.id===entry.folder)?.id??(/^earth-[a-f0-9]{16}$/.test(entry.folder) && entry.mod===(useStore.getState().profile==='public-classic'?'rtsai-topdown':'rtsai')?entry.folder:null):entry.status==='ported'?setup.maps.find(m=>m.id===`port-${entry.folder}`)?.id??null:null;
   const shown=library.filter(e=>(filter==='all'||(filter==='playable'?!!runtimeId(e):!runtimeId(e)))&&`${e.title} ${e.mod} ${e.author} ${e.source}`.toLowerCase().includes(query.toLowerCase()));
   return <div role="dialog" aria-modal="true" aria-label="Map studio" className="map-workshop absolute inset-0 z-[100] overflow-auto bg-[#080d0b] text-[#e4e8dc]" onKeyDown={e=>{e.stopPropagation();if(e.key==='Escape'&&!busy)close()}}>
     <header className="sticky top-0 z-10 flex flex-wrap items-center justify-between gap-4 border-b border-white/10 bg-[#080d0b]/95 px-6 py-5">

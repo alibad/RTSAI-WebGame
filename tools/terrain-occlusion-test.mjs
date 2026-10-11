@@ -1,8 +1,9 @@
+import {browserExecutable, browserArgs} from './browser-launch.mjs';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { chromium } from '../web/node_modules/playwright-core/index.mjs';
-const browser=await chromium.launch({executablePath:path.join(process.env.LOCALAPPDATA,'ms-playwright/chromium-1228/chrome-win64/chrome.exe'),headless:true,args:['--use-angle=d3d11','--enable-gpu','--ignore-gpu-blocklist']});
+const browser=await chromium.launch({executablePath:browserExecutable(),headless:true,args:browserArgs()});
 const page=await browser.newPage({viewport:{width:1400,height:900}});
 const errors=[];page.on('pageerror',e=>errors.push(String(e)));
 const unit=process.env.RTSAI_TEST_UNIT||'dog';

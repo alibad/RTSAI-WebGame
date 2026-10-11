@@ -1,14 +1,14 @@
-﻿<Project>
+<Project>
   <!--
     RTSAI-WebGame: the real OpenRA simulation (engine + RTS AI mod) compiled for the browser.
-    EngineRoot is the shared rtsai/engine worktree; ModRoot is the RTSAI-Mod checkout whose C# and data we load.
-    Both are read-only inputs: nothing here writes into them except the engine's own bin/ + obj/ build output.
+    EngineRoot is a session-private no-Git copy of the verified pinned engine archive.
+    ModRoot is a verified standalone main source snapshot. Never compile against a live sibling or shared input.
   -->
   <PropertyGroup>
-    <EngineRoot Condition="'$(EngineRoot)' == ''">$(MSBuildThisFileDirectory)..\OpenRA-wt-rtsai-engine\</EngineRoot>
-    <!-- WebProfile "public": the standalone mod (rtsai/standalone, no EA content); default: the RA2 mod (private content). -->
-    <ModRoot Condition="'$(ModRoot)' == '' And '$(WebProfile)' == 'public'">$(MSBuildThisFileDirectory)..\RTSAI-Mod-wt-web-public\</ModRoot>
-    <ModRoot Condition="'$(ModRoot)' == ''">$(MSBuildThisFileDirectory)..\RTSAI-Mod\</ModRoot>
+    <EngineRoot Condition="'$(EngineRoot)' == ''">$(MSBuildThisFileDirectory).build-deps/engine/</EngineRoot>
+    <!-- Main source snapshots already contain the standalone product; public requires its provenance checks. -->
+    <ModRoot Condition="'$(ModRoot)' == ''">$(MSBuildThisFileDirectory).inputs/mod/</ModRoot>
+    <WebBuildRoot Condition="'$(WebBuildRoot)' == ''">$(MSBuildThisFileDirectory)</WebBuildRoot>
     <TargetFramework>net10.0</TargetFramework>
     <LangVersion>13</LangVersion>
     <Nullable>disable</Nullable>
@@ -26,7 +26,7 @@
          variant remains opt-in: its current runtime aborts during core-library AOT initialization. -->
     <RuntimeVariant Condition="'$(RuntimeVariant)' == '' And '$(WebProfile)' == 'public' And '$(Aot)' == 'true'">standard</RuntimeVariant>
     <VariantSuffix Condition="'$(RuntimeVariant)' != ''">$(VariantSuffix)-$(RuntimeVariant)</VariantSuffix>
-    <BaseOutputPath>$(MSBuildThisFileDirectory)bin\$(MSBuildProjectName)$(VariantSuffix)\</BaseOutputPath>
-    <BaseIntermediateOutputPath>$(MSBuildThisFileDirectory)obj\$(MSBuildProjectName)$(VariantSuffix)\</BaseIntermediateOutputPath>
+    <BaseOutputPath>$(WebBuildRoot)bin/$(MSBuildProjectName)$(VariantSuffix)\</BaseOutputPath>
+    <BaseIntermediateOutputPath>$(WebBuildRoot)obj/$(MSBuildProjectName)$(VariantSuffix)\</BaseIntermediateOutputPath>
   </PropertyGroup>
 </Project>

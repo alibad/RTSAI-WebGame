@@ -1,4 +1,5 @@
-﻿// Scripted playtest in headless Chromium through the same page API the HUD uses: deploy the MCV, build and place
+import {browserExecutable, browserArgs} from './browser-launch.mjs';
+// Scripted playtest in headless Chromium through the same page API the HUD uses: deploy the MCV, build and place
 // a power plant and a barracks, train infantry, use a control group, sell/repair modes, and report what the engine
 // says after each step. No screenshots (the scene contains the player's own RA2 files).
 //   node tools/playtest.mjs [--runtime aot] [--shots <dir>]   (shots: project-art-only views)
@@ -9,15 +10,15 @@ import { chromium } from "../web/node_modules/playwright-core/index.mjs";
 const argv = process.argv.slice(2);
 const opt = (k, d) => { const i = argv.indexOf(`--${k}`); return i >= 0 ? argv[i + 1] : d; };
 const runtime = opt("runtime", "aot");
-const exe = path.join(process.env.LOCALAPPDATA, "ms-playwright", "chromium-1228", "chrome-win64", "chrome.exe");
+const exe = browserExecutable();
 const browser = await chromium.launch({ executablePath: fs.existsSync(exe) ? exe : undefined, headless: true,
-  args: ["--use-angle=d3d11", "--enable-gpu", "--ignore-gpu-blocklist"] });
+  args: browserArgs() });
 const page = await browser.newPage({ viewport: { width: 1600, height: 900 } });
 const errors = [];
 page.on("pageerror", (e) => errors.push(String(e)));
 page.on("console", (m) => { if (m.type() === "error") errors.push(m.text().slice(0, 300)); });
 const t0 = Date.now();
-await page.goto(`http://127.0.0.1:3490/?runtime=${runtime}&scenario=skirmish`);
+await page.goto(`${process.env.RTSAI_TEST_URL || "http://127.0.0.1:3490/"}?runtime=${runtime}&profile=public&scenario=skirmish`);
 await page.waitForFunction(() => ["playing", "error"].includes(window.store?.getState().phase), null, { timeout: 600000, polling: 250 });
 const log = (step, v) => console.log(`[${((Date.now() - t0) / 1000).toFixed(1)}s] ${step}:`, typeof v === "string" ? v : JSON.stringify(v));
 log("phase", await page.evaluate(() => window.store.getState().phase + " " + window.store.getState().error.slice(0, 400)));

@@ -54,10 +54,10 @@ function ProposalCard({ game, item, compact }: { game: Game; item: FeedItem; com
   return (
     <div className={cn("flex items-center gap-3 rounded-[3px] border border-[var(--hud-gold-dim)] bg-[rgba(30,26,14,0.92)] px-3 py-2", compact && "shadow-[0_8px_24px_rgba(0,0,0,0.55)]")}>
       <svg viewBox="0 0 24 24" width={18} height={18} fill="none" stroke="var(--hud-gold)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0"><path d="M4 12h12M12 6l6 6-6 6" /></svg>
-      <span className={cn("min-w-0 flex-1 text-[13px] leading-snug", item.state === "expired" ? "text-[var(--muted-foreground)]" : "text-[var(--foreground)]")}>{item.text}</span>
+      <span className={cn("min-w-0 flex-1 text-[13px] leading-snug", item.state === "expired" ? "text-[var(--muted-foreground)]" : "text-[var(--foreground)]")}>{item.text}<small className="block text-[10px] opacity-60">Proposal {item.proposalId}</small></span>
       {item.state === "pending" ? (
         <span className="flex shrink-0 gap-1.5">
-          <button type="button" onClick={() => game.cc.decide(item, true)} title={shortcut ? "Apply recommendation (G)" : "Apply recommendation"}
+          <button type="button" disabled={!!useStore.getState().cc.uncertainProposalId} onClick={() => game.cc.decide(item, true)} title={shortcut ? "Apply recommendation (G)" : "Apply recommendation"}
             aria-label={shortcut ? "Apply recommendation (G)" : "Apply recommendation"} aria-keyshortcuts={shortcut ? "g" : undefined}
             className="flex items-center gap-2 rounded-[2px] bg-[var(--hud-gold)] px-2.5 py-1 text-[12px] font-bold text-[#1a160c] hover:brightness-110"><span>✓ Apply</span>{shortcut && <kbd className="rounded border border-black/25 px-1 text-[10px] font-medium">G</kbd>}</button>
           <button type="button" onClick={() => game.cc.decide(item, false)} title="Cancel"
@@ -65,7 +65,7 @@ function ProposalCard({ game, item, compact }: { game: Game; item: FeedItem; com
         </span>
       ) : (
         <span className={cn("text-[12px]", item.state === "accepted" ? "text-[var(--hud-green)]" : "text-[var(--muted-foreground)]")}
-          title={item.state === "expired" ? "No longer offered" : undefined}>{item.state === "accepted" ? "✓" : item.state === "expired" ? "–" : "✕"}</span>
+          title={item.state === "expired" ? "No longer offered" : undefined}>{item.state === "accepted" ? "✓" : item.state === "unknown" ? "Check outcome" : item.state === "expired" ? "–" : "✕"}</span>
       )}
     </div>
   );
@@ -131,6 +131,7 @@ export function CoCommander({ game }: { game: Game }) {
         </div>
 
         <Strategies game={game} />
+        {cc.uncertainProposalId && <div className="hud-panel p-3 text-xs">Confirmation outcome unknown. Inspect the battlefield and companion state before requesting more orders. <button type="button" onClick={() => game.cc.acknowledgeOutcome()} className="underline">I checked this outcome</button></div>}
         {!cc.open && pending && <ProposalCard game={game} item={pending} compact />}
 
         {cc.open && (
@@ -140,9 +141,10 @@ export function CoCommander({ game }: { game: Game }) {
               {cc.feed.map((item) => <Line key={item.id} game={game} item={item} />)}
             </div>
             <form className="flex items-center gap-2 border-t border-white/10 px-2.5 py-2" onSubmit={(e) => { e.preventDefault(); send(); }}>
-              <input value={text} onChange={(e) => setText(e.target.value)} placeholder="Ask or order…" aria-label="Ask the co-commander" data-cc-input
+              <input value={text} onChange={(e) => setText(e.target.value)} placeholder="Ask for advice or prepare orders…" aria-label="Ask the co-commander" data-cc-input
                 className="min-w-0 flex-1 rounded-[2px] bg-black/50 px-2 py-1.5 text-[13px] text-[var(--foreground)] outline-none placeholder:text-[var(--muted-foreground)] focus:ring-1 focus:ring-[var(--hud-gold-dim)]" />
-              <button type="submit" disabled={!text.trim()} className="rounded-[2px] bg-[var(--hud-gold)] px-3 py-1.5 text-[12px] font-bold text-[#1a160c] disabled:opacity-40">Send</button>
+              <button type="submit" disabled={!text.trim() || cc.thinking} className="rounded-[2px] bg-[var(--hud-gold)] px-3 py-1.5 text-[12px] font-bold text-[#1a160c] disabled:opacity-40">Ask</button>
+              <button type="button" disabled={!text.trim() || cc.thinking || !!cc.uncertainProposalId} onClick={() => { const instruction = text; setText(""); void game.cc.propose(instruction); }} className="rounded-[2px] border border-white/20 px-2 py-1.5 text-[12px] disabled:opacity-40">Prepare orders</button>
               <span className="text-[10px] text-[var(--hud-gold-dim)]"><Kbd>V</Kbd> talk</span>
             </form>
           </div>

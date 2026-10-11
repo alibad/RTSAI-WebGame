@@ -4,10 +4,11 @@
 // state (credits, power, queues, selection), shroud and radar for the page's HUD.
 
 import {
-  RING_BYTES, RING_HEADER_BYTES, RING_LEN_AT, RING_SEQ_AT, RING_SLOTS, RING_SLOT_BYTES,
+  RING_BYTES, RING_HEADER_BYTES, RING_GENERATION_AT, RING_LEN_AT, RING_SEQ_AT, RING_SLOTS, RING_SLOT_BYTES,
   textureUpdates, type FromWorker, type ToWorker,
 } from "./protocol";
 import { LazyMount, httpRangeReader, httpRangeReaderAsync, mountPack, wholeFileReader, wholeFileReaderAsync } from "./lazyfs";
+import { normalizeVoiceLanguage } from "../voice-language";
 import { CompanionRelay } from "./companion";
 import { fetchShippedSprites, SpriteBake, hashString } from "./spritecache";
 
@@ -18,7 +19,10 @@ const RADAR_EVERY = 5; // ticks between radar blip updates
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let S: any = null;
-let network: { room: string; token: string; frame: number; busy: boolean; stopped: boolean; pending: unknown[]; failedAt: number; observer?: boolean; peer?: boolean } | null = null; // [JSExport] surface of OpenRA.WebSim.Browser.Interop
+let generation = 0;
+let voiceLanguage = "faction";
+let booted = false;
+let network: { generation: number; room: string; token: string; frame: number; busy: boolean; stopped: boolean; pending: unknown[]; failedAt: number; observer?: boolean; peer?: boolean } | null = null; // [JSExport] surface of OpenRA.WebSim.Browser.Interop
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let runtimeApi: any = null;
 let base = "/";
@@ -52,7 +56,7 @@ function refresh() {
 }
 
 function post(msg: FromWorker, transfer: Transferable[] = []) {
-  self.postMessage(msg, transfer);
+  self.postMessage({ ...msg, generation: msg.generation ?? generation }, transfer);
 }
 
 function publish(view: { slice(): Uint8Array; length: number }) {
@@ -61,6 +65,7 @@ function publish(view: { slice(): Uint8Array; length: number }) {
   if (ringHeader && ringBytes && bytes.length <= RING_SLOT_BYTES) {
     const slot = seq % RING_SLOTS;
     ringBytes.set(bytes, RING_HEADER_BYTES + slot * RING_SLOT_BYTES);
+    Atomics.store(ringHeader, RING_GENERATION_AT + slot, generation);
     Atomics.store(ringHeader, RING_LEN_AT + slot, bytes.length);
     Atomics.store(ringHeader, RING_SEQ_AT + slot, seq);
     Atomics.store(ringHeader, 0, seq);
@@ -71,6 +76,7 @@ function publish(view: { slice(): Uint8Array; length: number }) {
     post({ type: "snapshot", bytes: copy.buffer, seq }, [copy.buffer]);
     if (ringHeader) {
       const slot = seq % RING_SLOTS;
+      Atomics.store(ringHeader, RING_GENERATION_AT + slot, generation);
       Atomics.store(ringHeader, RING_SEQ_AT + slot, 0);
       Atomics.store(ringHeader, 0, seq);
     }
@@ -243,8 +249,8 @@ async function init(msg: Extract<ToWorker, { type: "init" }>) {
   post({ type: "progress", stage: "Loading rules" });
   // Local, reviewed ports and generated maps mount before MapCache scans the mod folders.
   // Static builds have no local workshop API and keep their bundled catalog.
-  if (msg.profile === "public" && import.meta.env.VITE_STATIC_BUILD !== "1") {
-    const response = await fetch(new URL("api/maps/packages", base));
+  if (["public", "public-classic"].includes(msg.profile ?? "") && import.meta.env.VITE_STATIC_BUILD !== "1") {
+    const response = await fetch(new URL(`api/maps/packages?profile=${msg.profile}`, base));
     if (response.ok && response.headers.get("content-type")?.includes("application/json")) {
       const catalog = await response.json() as { maps: { id: string; files: { name: string; url: string }[] }[] };
       for (const map of catalog.maps) {
@@ -260,6 +266,8 @@ async function init(msg: Extract<ToWorker, { type: "init" }>) {
     }
   }
   const timings = JSON.parse(S.Boot());
+  booted = true;
+  S.SetVoiceLanguage(voiceLanguage);
   const shippedSprites = await shipped;
   if (shippedSprites) {
     for (const s of shippedSprites) bake.addShipped(s);
@@ -280,11 +288,11 @@ function start(scenario: string, startPaused = false, companion = false) {
   stopLoop();
   const spec = JSON.parse(scenario);
   replayEnd = spec.webReplay?.readonly ? spec.webReplay.end : null;
-  network = spec.network ? { ...spec.network, frame: 0, busy: false, stopped: false, pending: [], failedAt: 0 } : null;
+  network = spec.network ? { ...spec.network, generation, frame: 0, busy: false, stopped: false, pending: [], failedAt: 0 } : null;
   // The co-commander's CompanionBridge is created with the world: enable it first, connect the relay after.
   companion = companion && !network;
   S.CompanionEnable(companion);
-  if (!companion) relay?.close();
+  relay?.close();
   paused = startPaused;
   const t0 = performance.now();
   post({ type: "progress", stage: "Building the world" });
@@ -382,12 +390,12 @@ async function networkTick() {
       tickOnce();
       n.frame = frame.frame;
     }
-    post({type:"networkStatus", frame:n.frame, latency:performance.now()-t});
+    post({type:"networkStatus", generation:n.generation, frame:n.frame, latency:performance.now()-t});
   } catch (e) {
-    if (network !== n) return;
+    if (network !== n || n.stopped || !running) return;
     n.failedAt ||= performance.now();
     if (performance.now() - n.failedAt > 60000) { n.stopped = true; stopLoop(); }
-    post({type:"networkStatus",frame:n.frame,latency:0,error:n.stopped ? String(e instanceof Error ? e.message : e) : "Connection interrupted. Retrying…"});
+    post({type:"networkStatus",generation:n.generation,frame:n.frame,latency:0,error:n.stopped ? String(e instanceof Error ? e.message : e) : "Connection interrupted. Retrying…"});
   } finally { n.busy = false; }
 }
 
@@ -427,9 +435,15 @@ function loop() {
 
 self.onmessage = async (e: MessageEvent<ToWorker>) => {
   const m = e.data;
+  if (m.generation !== undefined) {
+    if (m.type === "start" || m.type === "end") {
+      if (m.generation < generation) return;
+      generation = m.generation;
+    } else if (m.generation !== generation) return;
+  }
   try {
     switch (m.type) {
-      case "init": await init(m); break;
+      case "init": voiceLanguage = normalizeVoiceLanguage(m.voiceLanguage); await init(m); break;
       case "prepare": {
         const t0 = performance.now();
         bake?.beginCapture();
@@ -449,6 +463,8 @@ self.onmessage = async (e: MessageEvent<ToWorker>) => {
       case "sheetGroups": bake?.setWanted(m.groups, m.first); break;
       case "needSheets": bake?.need(m.ids); break;
       case "start":
+        voiceLanguage = normalizeVoiceLanguage(m.voiceLanguage);
+        S.SetVoiceLanguage(voiceLanguage);
         if (lazy) lazy.trace = [];
         start(m.scenario, m.paused ?? false, m.companion ?? false);
         if (lazy?.trace) { if (lazy.trace.length) console.info("lazy reads during start: " + lazy.trace.join(" ")); lazy.trace = null; }
@@ -511,6 +527,10 @@ self.onmessage = async (e: MessageEvent<ToWorker>) => {
         break;
       }
       case "log": post({ type: "log", json: S.SessionLog() }); break;
+      case "voiceLanguage":
+        if (m.value !== undefined) voiceLanguage = normalizeVoiceLanguage(m.value);
+        post({ type: "reply", req: m.req, json: booted ? (m.value === undefined ? S.VoiceSettings() : S.SetVoiceLanguage(voiceLanguage)) : JSON.stringify({ language: voiceLanguage }) }); break;
+      case "voicePreview": post({ type: "reply", req: m.req, json: booted ? S.PreviewVoice() : JSON.stringify({ error: "The runtime is still loading." }) }); break;
       case "record": {
         const selection = (JSON.parse(S.UiState()).selection ?? []).map((a: { id: number }) => a.id);
         const groups = Array.from({ length: 10 }, (_, index) => JSON.parse(S.Command(JSON.stringify({ cmd: "group", action: "select", index }))).selection);

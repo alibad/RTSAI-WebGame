@@ -51,6 +51,8 @@ export class Game {
   readonly cc = new CoCommander(this.audio, () => !this.coach.review);
   readonly coach = new Coach(this);
   private lastListener = 0;
+  private launchGeneration = 0;
+  private artWait: ReturnType<typeof setInterval> | null = null;
   cam: Camera = { x: 0, y: 0, zoom: 1 };
   overlay: Overlay = { selected: new Set(), hover: null, dragBox: null, orderFlash: null, ownPlayer: -1 };
   info: StartInfo | null = null;
@@ -203,6 +205,8 @@ export class Game {
   }
 
   start(scenarioJson: string, paused = false) {
+    this.cancelPendingStart();
+    const generation = this.launchGeneration;
     this.coach.reset();
     this.multiplayer = JSON.parse(scenarioJson).multiplayer === true;
     this.scenarioJson = scenarioJson;
@@ -216,16 +220,17 @@ export class Game {
     const { uploaded, total } = store.get().sheets;
     if (uploaded < total) {
       store.set({ stage: "Loading art", detail: `${uploaded} / ${total}` });
-      const wait = setInterval(() => {
+      this.artWait = setInterval(() => {
+        if (generation !== this.launchGeneration) return;
         const s = store.get().sheets;
         if (s.uploaded < s.total) { store.set({ detail: `${s.uploaded} / ${s.total}` }); return; }
-        clearInterval(wait);
+        clearInterval(this.artWait!); this.artWait = null;
         store.set({ stage: "Building the world", detail: "" });
-        this.launch(scenarioJson, paused);
+        this.launch(scenarioJson, paused, generation);
       }, 100);
       return;
     }
-    this.launch(scenarioJson, paused);
+    this.launch(scenarioJson, paused, generation);
   }
 
   /**
@@ -236,7 +241,15 @@ export class Game {
     this.client.wantGroups(factions, factions && local ? [local] : factions);
   }
 
-  private launch(scenarioJson: string, paused: boolean) {
+  cancelPendingStart() {
+    this.cc.endMatch();
+    this.launchGeneration++;
+    if (this.artWait) clearInterval(this.artWait);
+    this.artWait = null;
+  }
+
+  private launch(scenarioJson: string, paused: boolean, generation: number) {
+    if (generation !== this.launchGeneration) return;
     // The co-commander (skirmish only): the local companion is started first, then the match with its bridge on.
     if (!store.get().cc.enabled || !store.get().ccAvailable || this.sandbox) {
       this.client.start(scenarioJson, paused);
@@ -244,14 +257,16 @@ export class Game {
     }
     store.set({ stage: "Starting the co-commander" });
     this.cc.ensureRunning()
-      .then(() => { this.cc.matchStarted(); this.client.start(scenarioJson, paused, true); })
+      .then(() => { if (generation !== this.launchGeneration) return; this.cc.matchStarted(); this.client.start(scenarioJson, paused, true); })
       .catch((e) => {
+        if (generation !== this.launchGeneration) return;
         store.set({ cc: { ...store.get().cc, error: String(e instanceof Error ? e.message : e) } });
         this.client.start(scenarioJson, paused);
       });
   }
 
   quit() {
+    this.cancelPendingStart();
     this.client.send({ type: "end" });
     this.audio.stop(-1);
     this.info = null;
@@ -291,7 +306,7 @@ export class Game {
         this.bookmarks = savedView.bookmarks.map((b: number[] | null) => b && b.length === 3 && b.every(Number.isFinite) ? [b[0], b[1], b[2]] : null);
       if (typeof savedView.tab === "string") store.set({ tab: savedView.tab });
     }
-    const w = info.mapSize[0] * 2 + 1;
+    const w = info.gridType === "Rectangular" ? info.mapSize[0] : info.mapSize[0] * 2 + 1;
     const h = info.mapSize[1];
     this.radar.terrain = new ImageData(new Uint8ClampedArray(radarTerrain), w, h);
     this.radar.width = w;
@@ -301,6 +316,9 @@ export class Game {
     this.radar.bump();
     store.set({ phase: "playing", info, startMs, timings: { ...store.get().timings, ...info.timings } });
     this.sendView(true);
+    const detail = { version: 1, event: "world-started", mode: store.get().profile === "public-classic" ? "classic" : "isometric", transport: practice.network?.peer ? "direct" : practice.multiplayer ? "room" : "singleplayer" };
+    window.dispatchEvent(new CustomEvent("rtsai:world-started", { detail }));
+    if (window.parent !== window) window.parent.postMessage({ type: "rtsai:world-started", ...detail }, location.origin);
   }
 
   private onUi(u: UiState) {
@@ -1018,6 +1036,7 @@ export class Game {
   }
 
   dispose() {
+    this.cancelPendingStart();
     cancelAnimationFrame(this.raf);
     window.removeEventListener("mousemove", this.onMove);
     window.removeEventListener("mouseup", this.onUp);

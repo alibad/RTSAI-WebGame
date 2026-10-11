@@ -1,10 +1,11 @@
-﻿// Runs the browser (WebAssembly) build of the simulation headless under Node (same V8 engine as Chrome):
+// Runs the browser (WebAssembly) build of the simulation headless under Node (same V8 engine as Chrome):
 //   node tools/wasm-node.mjs --runtime interp|aot --scenario scenarios/battle-50.json --ticks 600 [--hashes out.txt]
 //        [--snapshot] [--replay session.json]
 // Used for repeatable WASM benchmarks and SyncHash comparisons against the native runner.
 
 import fs from "node:fs";
 import path from "node:path";
+import os from "node:os";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 const repo = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -14,10 +15,10 @@ const args = Object.fromEntries(process.argv.slice(2).reduce((acc, a, i, all) =>
 }, []));
 const runtime = args.runtime ?? "interp";
 const ticks = Number(args.ticks ?? 300);
-const privatePack = path.join(process.env.LOCALAPPDATA, "RTSAI-WebGame", "private", "ra2-all.pack");
+const privatePack = path.join(process.env.LOCALAPPDATA ?? os.homedir(), "RTSAI-WebGame", "private", "ra2-all.pack");
 // --profile public: the standalone game's runtime and bundle (data/public), with no private content.
 const profile = args.profile && args.profile !== "true" ? args.profile : "";
-const dataDir = path.join(repo, "data", profile);
+const dataDir = path.join(path.resolve(process.env.RTSAI_WEB_DATA ?? path.join(repo, "data")), profile);
 
 const t0 = performance.now();
 const fw = path.join(dataDir, `wasm-${runtime}`, "wwwroot", "_framework");
@@ -39,7 +40,7 @@ const tMount = performance.now() - t0;
 const boot = JSON.parse(S.Boot());
 const tBoot = performance.now() - t0;
 
-const scenario = fs.readFileSync(path.join(repo, args.scenario ?? "scenarios/battle-50.json"), "utf8");
+const scenario = fs.readFileSync(path.resolve(repo, args.scenario ?? "scenarios/battle-50.json"), "utf8");
 if (args.replay) throw new Error("replay is done natively; wasm-node records sessions");
 const info = JSON.parse(S.Start(scenario));
 const tStart = performance.now() - t0;

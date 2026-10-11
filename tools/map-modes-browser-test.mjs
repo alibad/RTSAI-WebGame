@@ -1,0 +1,61 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
+import { chromium } from '../web/node_modules/playwright-core/index.mjs';
+import { browserExecutable, browserArgs } from './browser-launch.mjs';
+const base = process.env.RTSAI_TEST_URL || 'http://127.0.0.1:3507/';
+const out = path.resolve(process.env.RTSAI_TEST_OUT || 'artifacts/map-modes');
+fs.mkdirSync(out, { recursive: true });
+const browser = await chromium.launch({ executablePath: browserExecutable(), headless: true, args: browserArgs() });
+const receipt = { source: 'Synthetic geographic fixture from a session-owned loopback endpoint; no external geographic service', modes: [] };
+try {
+  for (const [mode, profile] of [['classic', 'public-classic'], ['isometric', 'public']]) {
+    const generatedResponse = await fetch(new URL('api/maps/generate', base), { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ latitude: 25, longitude: 51, radius: 2500, size: 48, seed: 606, players: 2, gameMode: mode, title: `Local ${mode} QA fixture` }) });
+    const generated = await generatedResponse.json();
+    assert.equal(generatedResponse.status, 200, JSON.stringify(generated));
+    assert.equal(generated.validation.connectedBases, true);
+    const packages = await (await fetch(new URL(`api/maps/packages?profile=${profile}`, base))).json();
+    assert.ok(packages.maps.some(m => m.id === generated.id));
+    const other = await (await fetch(new URL(`api/maps/packages?profile=${profile === 'public' ? 'public-classic' : 'public'}`, base))).json();
+    assert.ok(!other.maps.some(m => m.id === generated.id));
+    const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+    const page = await context.newPage();
+    const errors = []; page.on('pageerror', e => errors.push(String(e)));
+    await page.goto(`${base}?profile=${profile}&runtime=aot&private=0`);
+    await page.waitForFunction(() => ['setup', 'error'].includes(window.store?.getState().phase), null, { timeout: 240000 });
+    assert.equal(await page.evaluate(() => window.store.getState().phase), 'setup');
+    const scenario = await page.evaluate(id => {
+      const map = window.store.getState().setup.maps.find(m => m.id === id);
+      if (!map) throw Error(`Generated map not mounted: ${id}`);
+      return { map: id, seed: 606, players: [{ slot: map.slots[0], faction: 'china', color: '2A6FDB' }], options: { startingcash: '10000', fog: 'True', explored: 'False' } };
+    }, generated.id);
+    await page.evaluate(s => window.game.start(JSON.stringify(s)), scenario);
+    await page.waitForFunction(() => window.store.getState().phase === 'playing' && window.store.getState().ui?.tick > 30, null, { timeout: 180000 });
+    await page.evaluate(()=>{const g=window.game,c=g.client.cur,m=c.actors.find(a=>a.owner===c.header.localPlayer&&g.client.str(a.type).includes('mcv'));if(!m)throw Error('Generated map has no local MCV');g.select([m.id]);});await page.waitForTimeout(200);await page.evaluate(()=>window.game.command({cmd:'deploy'}));await page.waitForFunction(()=>window.game.client.cur.actors.some(a=>window.game.client.str(a.type)==='gacnst'),null,{timeout:30000});
+    await page.getByRole('button', { name: 'Saves & replays', exact: true }).click();
+    await page.getByRole('button', { name: 'Save current match', exact: true }).click();
+    await page.getByText('Match saved on this device.', { exact: true }).waitFor();
+    const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('rtsai.local-matches.v1'))[0]);
+    assert.equal(saved.profile, profile); assert.ok(saved.tick > 0 && saved.identity && saved.log);assert.ok(Object.keys(saved.log.packets).length>0);assert.ok(saved.log.hashes.some(h=>h!==0));
+    await page.getByRole('button', { name: 'Resume', exact: true }).click();
+    await page.waitForFunction(tick => window.store.getState().phase === 'playing' && window.store.getState().ui?.tick >= tick, saved.tick, { timeout: 180000 });
+    await page.getByRole('button', { name: 'Saves & replays', exact: true }).click();
+    await page.getByRole('button', { name: 'Replay', exact: true }).click();
+    await page.waitForFunction(() => window.store.getState().phase === 'playing' && JSON.parse(window.game.scenarioJson).webReplay?.readonly, null, { timeout: 180000 });
+    await page.getByRole('button',{name:'Play',exact:true}).click();await page.waitForFunction(tick=>window.store.getState().ui?.tick>=Math.min(tick,20),saved.tick,{timeout:30000});
+    const replayTick = await page.evaluate(() => window.store.getState().ui?.tick);
+    await page.screenshot({ path: path.join(out, `${mode}-generated-replay.png`) });
+    await page.evaluate(() => window.game.quit());
+    await page.waitForFunction(() => window.store.getState().phase === 'setup');
+    await page.goto(`${base}?profile=${profile === 'public' ? 'public-classic' : 'public'}&runtime=aot&private=0`);
+    await page.waitForFunction(() => window.store.getState().phase === 'setup', null, { timeout: 240000 });
+    await page.getByRole('button', { name: 'Saves & replays', exact: true }).click();
+    await page.getByRole('button', { name: 'Resume', exact: true }).click();
+    await page.getByText("Switch to this save's content profile before loading it.", { exact: true }).waitFor();
+    assert.equal(await page.evaluate(() => window.store.getState().phase), 'setup');
+    assert.deepEqual(errors, []);
+    receipt.modes.push({ mode, profile, generated, savedTick: saved.tick, recordedOrderFrames:Object.keys(saved.log.packets).length, recordedHashes:saved.log.hashes.length, saveIdentity: saved.identity, replayTick, crossModeSaveRejected: true, errors });
+    await context.close();
+  }
+  receipt.passed = true; console.log('PASS both generated map mounts, local saves/resumes/replays, cross-mode save rejection');
+} catch(error) { receipt.error=String(error); throw error; } finally { fs.writeFileSync(path.join(out, 'receipt.json'), JSON.stringify(receipt, null, 2) + '\n'); await browser.close(); }

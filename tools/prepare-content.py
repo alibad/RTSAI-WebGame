@@ -5,16 +5,31 @@ converted from their source terrain and actor layouts; their objectives run in t
 shared deterministic host, avoiding a native Lua dependency in WebAssembly.
 """
 from pathlib import Path
+import argparse
+import os
 import copy
 import json
 import re
 import struct
+import hashlib
 import zipfile
 from PIL import Image
 
 ROOT = Path(__file__).resolve().parents[1]
-MOD = ROOT.parent / 'RTSAI-Mod-wt-web-public' / 'mods' / 'rtsai'
-OUT = ROOT / 'content'
+ap = argparse.ArgumentParser(description=__doc__)
+ap.add_argument('--game-mode', choices=['isometric','classic'], default='isometric')
+ap.add_argument('--mod', type=Path, default=Path(os.environ.get('RTSAI_MOD_ROOT', ROOT / '.inputs/mod')))
+ap.add_argument('--missions', type=Path, default=ROOT / '.inputs/missions/missions')
+ap.add_argument('--classic-source', type=Path, default=ROOT / '.inputs/classic-map-source')
+ap.add_argument('--out', type=Path, default=ROOT / 'content')
+ap.add_argument('--scenarios-out', type=Path, default=ROOT / 'scenarios')
+args = ap.parse_args()
+MOD = args.mod.resolve() / 'mods/rtsai'
+OUT = args.out.resolve()
+SCENARIOS = args.scenarios_out.resolve()
+MISSIONS = args.missions.resolve()
+CLASSIC = args.classic_source.resolve()
+CLASSIC_MODE = args.game_mode == "classic"
 
 def parse(text):
     root = {}; stack = [(-1, root)]
@@ -180,18 +195,18 @@ CAMPAIGNS = [
 def missions():
     catalog=[]
     for mission in CAMPAIGNS:
-        src=ROOT.parent/'OpenRA-AI/missions'/mission['source']
+        src=MISSIONS/mission['source']
         original=parse((src/'map.yaml').read_text())
         w,h=map(int,original['MapSize']['value'].split(','))
         tilefile='temperat.yaml' if original['Tileset']['value']=='TEMPERAT' else 'desert.yaml'
-        templates=section(ROOT.parent/'OpenRA/mods/ra/tilesets'/tilefile,'Templates')
+        templates=section(CLASSIC/'mods/ra/tilesets'/tilefile,'Templates')
         terrain={}
         for n in templates.values():
             ch=n['children']; tid=int(ch['Id']['value'])
             for idx,t in ch.get('Tiles',node())['children'].items(): terrain[(tid,int(idx))]=t['value']
         if (src/'map.bin').exists(): raw=(src/'map.bin').read_bytes()
         else:
-            with zipfile.ZipFile(ROOT.parent/'OpenRA/mods/ra/maps'/(mission['id']+'-2026.oramap')) as archive:
+            with zipfile.ZipFile(CLASSIC/'mods/ra/maps'/(mission['id']+'-2026.oramap')) as archive:
                 raw=archive.read('map.bin')
         version,sw,sh,tilesOffset,heightOffset,resOffset=struct.unpack_from('<BHHIII',raw)
         if (sw,sh)!=(w,h): raise ValueError('map dimensions differ')
@@ -202,7 +217,7 @@ def missions():
             for v in range(h):
                 i=u*h+v; t,idx=struct.unpack_from('<HB',raw,tilesOffset+i*3)
                 cls=terrain.get((t,idx),'Clear')
-                tile=1015 if cls=='Water' else 1047 if cls in ('Rock','Rough','Tree') else 1031 if cls=='Road' else 1063 if cls=='Beach' else 0
+                tile=(1 if cls=='Water' else 2 if cls in ('Rock','Rough','Tree') else 3 if cls=='Road' else 0) if CLASSIC_MODE else (1015 if cls=='Water' else 1047 if cls in ('Rock','Rough','Tree') else 1031 if cls=='Road' else 1063 if cls=='Beach' else 0)
                 struct.pack_into('<HB',out,17+i*3,tile,0)
                 if resOffset:
                     r,amount=struct.unpack_from('<BB',raw,resOffset+i*2)
@@ -235,27 +250,27 @@ def missions():
             if kind=='e2': kind={'yemen':'r2ymr','iran':'r2basij'}.get(faction,'e2')
             if kind not in rules: raise ValueError(f"{mission['id']}: unmapped actor {name}: {kind}")
             a['value']=kind
-            if 'Location' in a['children']:
+            if not CLASSIC_MODE and 'Location' in a['children']:
                 u,v=map(int,a['children']['Location']['value'].split(',')); off=v&1
                 a['children']['Location']=node(f'{(v+off)//2+u},{(v-off)//2-u}')
             a['children'].pop('SubCell',None)
         # The source map's topology and resource fields are retained. Art comes from our temperate tileset.
         home=next(a for a in actors.values() if a['children'].get('Owner',node())['value']==mission['slot'] and a['value'] in ('gacnst','nacnst'))
         actors['MissionSpawn']=node('mpspawn',values(Owner='Neutral',Location=home['children']['Location']['value']))
-        original['RequiresMod']=node('rtsai'); original['Tileset']=node('TEMPERATE')
+        original['RequiresMod']=node('rtsai-topdown' if CLASSIC_MODE else 'rtsai'); original['Tileset']=node('TEMPERATE')
         original['Author']=node('RTS AI — browser adaptation')
-        original.pop('FluentMessages',None); original.pop('Sequences',None)
+        original.pop('FluentMessages',None); original.pop('Sequences',None); original.pop('Weapons',None)
         original['Rules']=node(children=parse('World:\n\t-SpawnStartingUnits:\n\t-CrateSpawner:\n\t-StartGameNotification:\nPlayer:\n\t-ConquestVictoryConditions:\n'))
         d=OUT/'maps'/mission['id']; d.mkdir(parents=True,exist_ok=True)
         (d/'map.yaml').write_text(dump(original),encoding='utf-8',newline='\n'); (d/'map.bin').write_bytes(out)
         # A native-style isometric map preview, generated from the actual converted terrain.
-        img=Image.new('RGB',(2*w,h))
+        img=Image.new('RGB',(w if CLASSIC_MODE else 2*w,h))
         for u in range(w):
             for v in range(h):
                 tid=struct.unpack_from('<H',out,17+(u*h+v)*3)[0]
-                color={1015:(55,94,135),1047:(111,116,62),1031:(133,111,74),1063:(183,163,105)}.get(tid,(93,125,59))
-                for x in (2*u+(v&1),2*u+1+(v&1)):
-                    if x<2*w: img.putpixel((x,v),color)
+                color={1:(55,94,135),2:(111,116,62),3:(133,111,74),1015:(55,94,135),1047:(111,116,62),1031:(133,111,74),1063:(183,163,105)}.get(tid,(93,125,59))
+                for x in ([u] if CLASSIC_MODE else [2*u+(v&1),2*u+1+(v&1)]):
+                    if x<img.width: img.putpixel((x,v),color)
         img.save(d/'map.png')
         mission['briefing']='\n\n'.join(p for p in (src/'briefing.md').read_text().split('\n\n') if not p.startswith('#') and not p.startswith('Sources:') and not p.startswith('- ') and not p.startswith('http'))
         mission['adaptation']='Adapted from the original Red Alert mission for RTS AI units and project terrain.'
@@ -269,7 +284,7 @@ def missions():
         mission['protect']=[name for name in mission['protect'] if name in named]
         catalog.append(mission)
         scenario=dict(map=mission['id'],mission=mission['id'],seed=2026,players=[dict(slot=mission['slot'],faction=mission['faction'],color='2A6FDB')],options={'startingcash':'10000','difficulty':'normal','fog':'True','explored':'False'})
-        (ROOT/'scenarios'/('mission-'+mission['id']+'.json')).write_text(json.dumps(scenario,indent=2)+'\n')
+        (SCENARIOS/('mission-'+mission['id']+'.json')).write_text(json.dumps(scenario,indent=2)+'\n')
     # No legacy Hezbollah mission exists. This new fictional exercise uses the modern roster.
     hz=dict(id='hezbollah-relay',title='Relay Under Siege',faction='hezbollah',campaign='Combined Arms',slot='Hezbollah',enemy='Opposition',
             protect=['HezbollahConyard'],briefing='A fictional training exercise: establish a relay and field workshop, defend your supply base through repeated attacks, then destroy the opposing command post. Use rifle teams, anti-tank specialists, mobile launchers and reconnaissance drones together. Expand the economy before the main assault. No real operation or force disposition is represented.',
@@ -282,8 +297,14 @@ def missions():
     game_map['Title']=node(hz['title']); game_map['Visibility']=node('MissionSelector');game_map['Categories']=node('Campaign')
     game_map['Players']=node(children=parse('PlayerReference@Neutral:\n\tName: Neutral\n\tOwnsWorld: True\n\tNonCombatant: True\n\tFaction: china\nPlayerReference@Hezbollah:\n\tName: Hezbollah\n\tPlayable: True\n\tRequired: True\n\tLockFaction: True\n\tFaction: hezbollah\n\tEnemies: Opposition\nPlayerReference@Opposition:\n\tName: Opposition\n\tFaction: israel\n\tColor: D83A2E\n\tEnemies: Hezbollah\n'))
     actors={k:n for k,n in game_map['Actors']['children'].items() if n['value']=='oremine'}
+    if CLASSIC_MODE:
+        game_map['RequiresMod']=node('rtsai-topdown')
+        for actor in actors.values():
+            x,y=map(int,actor['children']['Location']['value'].split(',')); v=x+y; u=(x-y-(v&1))//2
+            actor['children']['Location']=node(f'{u},{v}')
     def add(name,kind,owner,u,v):
-        off=v&1; actors[name]=node(kind,values(Owner=owner,Location=f'{(v+off)//2+u},{(v-off)//2-u}'))
+        off=v&1; location=f'{u},{v}' if CLASSIC_MODE else f'{(v+off)//2+u},{(v-off)//2-u}'
+        actors[name]=node(kind,values(Owner=owner,Location=location))
     add('MissionSpawn','mpspawn','Neutral',13,94)
     for name,kind,u,v in [('HezbollahConyard','nacnst',12,92),('HezbollahPower','napowr',8,98),
                           ('HezbollahRefinery','narefn',15,98),('HezbollahBarracks','nahand',10,104),
@@ -304,13 +325,27 @@ def missions():
         if n['value'] not in rules: raise ValueError('Hezbollah mission unknown actor '+n['value'])
     d=OUT/'maps'/hz['id'];d.mkdir(parents=True,exist_ok=True)
     (d/'map.yaml').write_text(dump(game_map),encoding='utf-8',newline='\n')
-    (d/'map.bin').write_bytes((base/'map.bin').read_bytes());(d/'map.png').write_bytes((base/'map.png').read_bytes())
+    raw=bytearray((base/'map.bin').read_bytes())
+    if CLASSIC_MODE:
+        _,w,h,at,_,_=struct.unpack_from('<BHHIII',raw); image=Image.new('RGB',(w,h))
+        for u in range(w):
+            for v in range(h):
+                tid=struct.unpack_from('<H',raw,at+(u*h+v)*3)[0]; tid={1015:1,1047:2,1031:3}.get(tid,0)
+                struct.pack_into('<HB',raw,at+(u*h+v)*3,tid,0); image.putpixel((u,v),{1:(55,94,135),2:(111,116,62),3:(133,111,74)}.get(tid,(93,125,59)))
+        image.save(d/'map.png')
+    else: (d/'map.png').write_bytes((base/'map.png').read_bytes())
+    (d/'map.bin').write_bytes(raw)
     catalog.append(hz)
-    (ROOT/'scenarios'/('mission-'+hz['id']+'.json')).write_text(json.dumps(dict(map=hz['id'],mission=hz['id'],seed=2026,players=[dict(slot=hz['slot'],faction=hz['faction'],color='2A6FDB')],options={'startingcash':'10000','difficulty':'normal','fog':'True','explored':'False'}),indent=2)+'\n')
+    (SCENARIOS/('mission-'+hz['id']+'.json')).write_text(json.dumps(dict(map=hz['id'],mission=hz['id'],seed=2026,players=[dict(slot=hz['slot'],faction=hz['faction'],color='2A6FDB')],options={'startingcash':'10000','difficulty':'normal','fog':'True','explored':'False'}),indent=2)+'\n')
     (OUT/'missions.json').write_text(json.dumps(catalog,indent=2)+'\n',encoding='utf-8')
 
 if __name__ == '__main__':
-    OUT.mkdir(exist_ok=True)
-    countries()
+    OUT.mkdir(parents=True, exist_ok=True)
+    SCENARIOS.mkdir(parents=True, exist_ok=True)
+    if not CLASSIC_MODE: countries()
     missions()
+    sources=[p for p in MISSIONS.rglob('*') if p.is_file() and p.suffix in {'.yaml','.bin','.md'}]
+    sources += [CLASSIC/'mods/ra/tilesets/temperat.yaml',CLASSIC/'mods/ra/tilesets/desert.yaml',MOD/'standalone/maps/twin-fords/map.yaml',MOD/'standalone/maps/twin-fords/map.bin',MOD.parent/'rtsai-topdown/tileset.yaml']
+    receipt={'gameMode':args.game_mode,'modId':'rtsai-topdown' if CLASSIC_MODE else 'rtsai','gridType':'Rectangular' if CLASSIC_MODE else 'RectangularIsometric','compilerSha256':hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),'sources':[{'path':str(p),'sha256':hashlib.sha256(p.read_bytes()).hexdigest()} for p in sorted(set(sources))],'outputs':[{'path':str(p.relative_to(OUT)),'sha256':hashlib.sha256(p.read_bytes()).hexdigest()} for p in sorted(OUT.rglob('*')) if p.is_file()]}
+    (OUT/'mode-provenance.json').write_text(json.dumps(receipt,indent=2)+'\n')
     print('prepared nine additional countries, five adapted missions and one original Hezbollah exercise')

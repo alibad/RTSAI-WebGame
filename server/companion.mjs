@@ -10,6 +10,7 @@
 // mock AI gateway (mock-ai.mjs) when no local models are running. Loopback only.
 
 import crypto from "node:crypto";
+import { trustedLocalRequest } from "./local-boundary.mjs";
 import fs from "node:fs";
 import http from "node:http";
 import http2 from "node:http2";
@@ -54,6 +55,7 @@ class Socket {
       let len = this.buf[1] & 0x7f, p = 2;
       if (len === 126) { if (this.buf.length < 4) return; len = this.buf.readUInt16BE(2); p = 4; }
       else if (len === 127) { if (this.buf.length < 10) return; len = Number(this.buf.readBigUInt64BE(2)); p = 10; }
+      if (!masked || !Number.isSafeInteger(len) || len > 8 * 1024 * 1024 || this.fragments.reduce((n, f) => n + f.length, 0) + len > 8 * 1024 * 1024) return this.raw.destroy();
       const need = p + (masked ? 4 : 0) + len;
       if (this.buf.length < need) return;
       let payload = this.buf.subarray(p + (masked ? 4 : 0), need);
@@ -70,7 +72,7 @@ class Socket {
       if (fin) {
         const message = this.fragments.length === 1 ? this.fragments[0] : Buffer.concat(this.fragments);
         this.fragments = [];
-        this.onMessage(message);
+        try { this.onMessage(message); } catch { this.raw.destroy(); return; }
       }
     }
   }
@@ -96,7 +98,9 @@ function pack(header, payload = Buffer.alloc(0)) {
 }
 
 function unpack(buf) {
+  if (buf.length < 4) throw new Error("Invalid relay frame");
   const n = buf.readUInt32LE(0);
+  if (n > 65536 || n > buf.length - 4) throw new Error("Invalid relay header");
   return { header: JSON.parse(buf.subarray(4, 4 + n).toString("utf8")), payload: buf.subarray(4 + n) };
 }
 
@@ -161,13 +165,17 @@ export function createCompanion({ repo, appData, log = console.log }) {
 
   /** Upgrade handler for /companion/bridge (the worker's side of the relay). */
   function upgrade(req, raw) {
+    if (!trustedLocalRequest(req, req.socket.localPort, { requireOrigin: true })) return raw.destroy();
     const key = req.headers["sec-websocket-key"];
     if (!key) return raw.destroy();
     const accept = crypto.createHash("sha1").update(key + "258EAFA5-E914-47DA-95CA-C5AB0DC85B11").digest("base64");
     raw.write(`HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Accept: ${accept}\r\n\r\n`);
     raw.setNoDelay(true);
-    const sock = new Socket(raw, onWorkerMessage, () => {
-      if (worker === sock) worker = null;
+    worker?.raw?.destroy();
+    for (const [id, p] of pending) { clearTimeout(p.timer); p.reject(Object.assign(new Error("The game was replaced."), { code: GRPC_CODES.UNAVAILABLE })); pending.delete(id); }
+    const sock = new Socket(raw, buf => { if (worker === sock) onWorkerMessage(buf); }, () => {
+      if (worker !== sock) return;
+      worker = null;
       for (const [id, p] of pending) { clearTimeout(p.timer); p.reject(Object.assign(new Error("The game disconnected."), { code: GRPC_CODES.UNAVAILABLE })); pending.delete(id); }
     });
     worker = sock;
@@ -229,19 +237,29 @@ export function createCompanion({ repo, appData, log = console.log }) {
   // ---------------------------------------------------------------- the companion process
 
   const openraAi = process.env.RTSAI_OPENRA_AI ?? path.resolve(repo, "..", "OpenRA-AI");
-  const exe = path.join(openraAi, ".venv", "Scripts", "openra-ai-companion.exe");
+  const python = process.env.RTSAI_COMPANION_PYTHON ?? path.join(openraAi, ".venv", process.platform === "win32" ? "Scripts/python.exe" : "bin/python");
   let proc = null, mode = "", mock = null, runtime = null;
+  let startGeneration = 0, starting = null, startingMode = "";
   const output = [];
 
-  async function start(requested) {
-    const want = requested === "local" ? "local" : "mock";
-    if (proc && mode === want) return status();
+  function start(requested) {
+    const want = requested === "mock" ? "mock" : "local";
+    if (proc && mode === want) return Promise.resolve(status());
+    if (starting && startingMode === want) return starting;
     stop();
-    if (!fs.existsSync(exe)) throw new Error(`companion not installed (${exe})`);
-    const env = { ...process.env, PYTHONUNBUFFERED: "1", PYTHONIOENCODING: "utf-8" };
+    const generation = startGeneration; startingMode = want;
+    starting = startSession(want, generation).finally(() => { if (generation === startGeneration) { starting = null; startingMode = ""; } });
+    return starting;
+  }
+
+  async function startSession(want, generation) {
+    const current = () => { if (generation !== startGeneration) throw new Error("Cancelled companion start"); };
+    if (!fs.existsSync(python)) throw new Error(`companion not installed (${python})`);
+    const env = { ...process.env, PYTHONUNBUFFERED: "1", PYTHONIOENCODING: "utf-8", OPENRA_AI_HOSTED_ENABLED: "0", OPENRA_AI_MODEL_PROVIDER: "local", OPENRA_AI_ROOT: openraAi, OPENRA_AI_CATALOG: path.join(openraAi, "catalog", "factions.json"), OPENAI_AGENTS_DISABLE_TRACING: "1" };
     if (want === "mock") {
       // A scripted stand-in for the local AI gateway (no GPU, no model downloads), isolated settings.
       mock ??= await startMockGateway(MOCK_PORT);
+      current();
       env.OPENRA_AI_ROUTER_URL = `http://127.0.0.1:${MOCK_PORT}`;
       env.OPENRA_AI_LOCAL_ROUTER_URL = env.OPENRA_AI_ROUTER_URL;
       env.OPENRA_AI_DATA_DIR = path.join(appData, "companion-mock");
@@ -259,7 +277,6 @@ export function createCompanion({ repo, appData, log = console.log }) {
         OPENRA_AI_ROUTER_TIMEOUT_SECONDS: process.env.OPENRA_AI_ROUTER_TIMEOUT_SECONDS ?? "60",
       });
       if (!EXTERNAL_GATEWAY && (!runtime || runtime.exitCode !== null)) {
-        const python = path.join(openraAi, ".venv", "Scripts", "python.exe");
         runtime = spawn(python, ["-m", "openra_ai_companion.local_runtime", "serve", "--root", openraAi, "--mode", "local",
           "--port", String(LOCAL_GATEWAY_PORT), "--parent-pid", String(process.pid)], { cwd: openraAi, env, windowsHide: true });
         const keepRt = (d) => { for (const line of String(d).split(/\r?\n/)) if (line.trim()) { output.push("[runtime] " + line); if (output.length > 200) output.shift(); } };
@@ -268,16 +285,19 @@ export function createCompanion({ repo, appData, log = console.log }) {
         log(`co-commander: local AI runtime started on :${LOCAL_GATEWAY_PORT}, pid ${runtime.pid}`);
         // llama.cpp and whisper.cpp load their models first (up to a few minutes on a cold disk).
         for (let i = 0; i < 360; i++) {
+          current();
           if (runtime.exitCode !== null) throw new Error("the local AI runtime exited: " + output.slice(-5).join(" | "));
           if (await healthy(LOCAL_GATEWAY_PORT)) break;
           await new Promise((r) => setTimeout(r, 500));
         }
       }
     }
+    current();
     fs.mkdirSync(env.OPENRA_AI_DATA_DIR, { recursive: true });
     const args = ["watch", "--no-speak", "--bridge", `127.0.0.1:${GRPC_PORT}`, "--control-port", String(CONTROL_PORT),
       "--worldgen-port", String(CONTROL_PORT + 1), "--parent-pid", String(process.pid), "--interval", "0.5"];
-    proc = spawn(exe, args, { cwd: openraAi, env, windowsHide: true });
+    const child = spawn(python, ["-m", "openra_ai_companion.cli", ...args], { cwd: openraAi, env, windowsHide: true });
+    proc = child;
     mode = want;
     output.length = 0;
     const keep = (d) => {
@@ -290,7 +310,7 @@ export function createCompanion({ repo, appData, log = console.log }) {
     };
     proc.stdout.on("data", keep);
     proc.stderr.on("data", keep);
-    proc.on("exit", (code) => { keep(`(companion exited with ${code})`); if (proc?.exitCode !== null) proc = null; });
+    proc.on("exit", (code) => { keep(`(companion exited with ${code})`); if (proc === child) proc = null; });
     log(`co-commander: companion started (${want}), pid ${proc.pid}`);
     // The control API answers once the companion has loaded (a few seconds).
     for (let i = 0; i < 60 && proc; i++) {
@@ -302,6 +322,7 @@ export function createCompanion({ repo, appData, log = console.log }) {
 
   /** Stops the companion; `all` also stops the local AI runtime (its models stay loaded between games otherwise). */
   function stop(all = false) {
+    startGeneration++; starting = null; startingMode = "";
     // With their children: the runtime's llama-server and whisper-server, the companion's tool server (on Windows
     // killing the parent alone leaves them running, with the models in memory).
     if (all && runtime) { killTree(runtime); runtime = null; }
@@ -340,7 +361,8 @@ export function createCompanion({ repo, appData, log = console.log }) {
   async function proxy(req, res, rest) {
     // Python's http.server reads Content-Length bodies only (no chunked encoding): buffer the request.
     const chunks = [];
-    for await (const c of req) chunks.push(c);
+    let length = 0;
+    for await (const c of req) { length += c.length; if (length > 8 * 1024 * 1024) { res.writeHead(413); res.end(JSON.stringify({ error: "Request too large" })); return; } chunks.push(c); }
     const body = Buffer.concat(chunks);
     const upstream = http.request({
       host: "127.0.0.1", port: CONTROL_PORT, path: "/" + rest, method: req.method,

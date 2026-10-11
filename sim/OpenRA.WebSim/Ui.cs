@@ -944,7 +944,8 @@ namespace OpenRA.WebSim
 			var map = SimHost.World.Map;
 			var w = map.MapSize.Width;
 			var h = map.MapSize.Height;
-			var iw = 2 * w + 1;
+			var iso = map.Grid.Type == MapGridType.RectangularIsometric;
+			var iw = iso ? 2 * w + 1 : w;
 			var px = new byte[iw * h * 4];
 			for (var v = 0; v < h; v++)
 			{
@@ -955,9 +956,9 @@ namespace OpenRA.WebSim
 						continue;
 
 					var (left, right) = map.GetTerrainColorPair(uv);
-					var x = 2 * u + (v & 1);
+					var x = iso ? 2 * u + (v & 1) : u;
 					Put(px, (v * iw + x) * 4, left);
-					Put(px, (v * iw + x + 1) * 4, right);
+					if (iso) Put(px, (v * iw + x + 1) * 4, right);
 				}
 			}
 

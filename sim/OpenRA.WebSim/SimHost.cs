@@ -1,4 +1,4 @@
-﻿#region Copyright & License Information
+#region Copyright & License Information
 /*
  * Copyright (c) The OpenRA Developers and Contributors
  * This file is part of OpenRA, which is free software. It is made
@@ -19,6 +19,7 @@ using System.Reflection;
 using OpenRA.Graphics;
 using OpenRA.Mods.Common;
 using OpenRA.Mods.Common.Traits;
+using OpenRA.Mods.RTSAI.Traits;
 using OpenRA.Network;
 using OpenRA.Primitives;
 using OpenRA.Traits;
@@ -31,7 +32,7 @@ namespace OpenRA.WebSim
 	/// </summary>
 	public static class SimHost
 	{
-		public const string ModId = "rtsai";
+		public static string ModId { get; private set; } = "rtsai";
 
 		public static string Root { get; private set; }
 		public static ModData ModData => Game.ModData;
@@ -43,6 +44,35 @@ namespace OpenRA.WebSim
 		public static readonly Dictionary<string, double> Timings = [];
 
 		static readonly List<Order> ScriptedOrders = [];
+
+		public static string SetVoiceLanguage(string value)
+		{
+			Game.Settings.GetOrCreate<RTSAISettings>(null).VoiceLanguage = RTSAISettings.Normalize(value);
+			return VoiceSettings();
+		}
+
+		public static string VoiceSettings() => "{\"language\":"
+			+ Snapshot.Json(RTSAISettings.Normalize(Game.Settings.GetOrCreate<RTSAISettings>(null).VoiceLanguage))
+			+ ",\"syncHash\":" + (World == null ? "null" : World.SyncHash().ToString())
+			+ ",\"tick\":" + (World?.WorldTick ?? 0) + "}";
+
+		public static string PreviewVoice()
+		{
+			var actor = World?.Selection.Actors.FirstOrDefault(a => a.IsInWorld && !a.IsDead && a.Owner == World.LocalPlayer
+				&& a.TraitsImplementing<IVoiced>().Any(v => v.HasVoice(a, "Select")));
+			if (actor == null) return "{\"error\":\"Select a local unit with a voice first.\"}";
+			var voiced = actor.TraitsImplementing<IVoiced>().First(v => v.HasVoice(actor, "Select"));
+			var family = voiced.VoiceSet;
+			var rules = World.Map.Rules.Voices[family];
+			var suffix = rules.Variants.TryGetValue(actor.Owner.Faction.InternalName, out var variants) && !rules.DisableVariants.Contains("Select")
+				? variants[(int)(actor.ActorID % variants.Length)] : rules.DefaultVariant;
+			var prefix = rules.Prefixes.TryGetValue(actor.Owner.Faction.InternalName, out var prefixes) && !rules.DisablePrefixes.Contains("Select")
+				? prefixes[(int)(actor.ActorID % prefixes.Length)] : rules.DefaultPrefix;
+			var files = string.Join(",", rules.Voices["Select"].Select(clip => Snapshot.Json(prefix + clip + suffix)));
+			var played = voiced.PlayVoice(actor, "Select", actor.Owner.Faction.InternalName);
+			return VoiceSettings().TrimEnd('}') + ",\"actor\":" + actor.ActorID + ",\"family\":" + Snapshot.Json(family)
+				+ ",\"files\":[" + files + "],\"played\":" + (played ? "true" : "false") + "}";
+		}
 
 		/// <summary>Called before each load step (the browser forwards it to the page's loading screen).</summary>
 		public static Action<string> OnProgress = _ => { };
@@ -61,6 +91,9 @@ namespace OpenRA.WebSim
 		public static void Boot(string root, string supportDir = null, bool logFiles = true)
 		{
 			Root = root;
+			var marker = Path.Combine(root, "ora", "MOD_ID");
+			ModId = File.Exists(marker) ? File.ReadAllText(marker).Trim() : "rtsai";
+			if (ModId is not ("rtsai" or "rtsai-topdown")) throw new InvalidDataException("Unsupported standalone mode: " + ModId);
 			AppContext.SetSwitch("OpenRA.EmbeddedModAssemblies", true);
 
 			var engineDir = Path.Combine(root, "ora");
@@ -102,6 +135,8 @@ namespace OpenRA.WebSim
 		/// <summary>A map's package path by its folder name, in any of the mod's MapFolders (e.g. ra2|standalone/maps).</summary>
 		public static string MapPath(string mapName)
 		{
+			var generated = Path.Combine(Root, "mods", "rtsai", "web", "content", "maps", mapName);
+			if (File.Exists(Path.Combine(generated, "map.yaml"))) return generated;
 			return ModData.MapCache.FirstOrDefault(p => Path.GetFileName(p.Path) == mapName)?.Path
 				?? Path.Combine(Root, "mods", ModId, "maps", mapName);
 		}

@@ -1,4 +1,4 @@
-﻿# Native (CoreCLR) runner for RTSAI-WebGame: rebuild, repack the bundle, rebuild the native VFS root, run a scenario.
+# Native (CoreCLR) runner for RTSAI-WebGame: rebuild, repack the bundle, rebuild the native VFS root, run a scenario.
 #   tools\native.ps1 -Scenario scenarios\battle-50.json -Ticks 300 [-NoBuild] [-NoPack] [-Extra '--snapshot']
 # The native VFS root lives in $env:RTSAI_WEB_SCRATCH (default: %LOCALAPPDATA%\RTSAI-WebGame\scratch) and holds private EA content:
 # it is a plain directory (no links), safe to delete.
@@ -7,8 +7,8 @@ param(
 	[int]$Ticks = 300,
 	[switch]$NoBuild,
 	[switch]$NoPack,
-	[string]$Mod = "..\RTSAI-Mod",
-	[string]$Engine = "..\OpenRA-wt-rtsai-engine",
+	[string]$Mod = ".inputs\mod",
+	[string]$Engine = ".build-deps\engine",
 	[string]$Private = "$env:LOCALAPPDATA\RTSAI-WebGame\private\ra2-all.pack",
 	[string[]]$Extra = @()
 )
@@ -20,7 +20,7 @@ New-Item -ItemType Directory -Force $scratch | Out-Null
 $ws = "bin\OpenRA.WebSim.Native\Release\net10.0\websim.exe"
 
 if (-not $NoBuild) {
-	dotnet build sim\OpenRA.WebSim.Native\OpenRA.WebSim.Native.csproj -c Release -nologo -v q | Select-String -Pattern " error |rror\(s\)"
+	dotnet build sim\OpenRA.WebSim.Native\OpenRA.WebSim.Native.csproj -c Release -nologo -v q "-p:EngineRoot=$((Resolve-Path $Engine).Path)\" "-p:ModRoot=$((Resolve-Path $Mod).Path)\" | Select-String -Pattern " error |rror\(s\)"
 }
 if (-not $NoPack) {
 	& $ws pack --engine $Engine --mod $Mod --out data\web-bundle.pack

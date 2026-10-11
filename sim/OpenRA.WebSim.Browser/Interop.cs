@@ -184,6 +184,15 @@ namespace OpenRA.WebSim.Browser
 		}
 
 		[JSExport]
+		public static string SetVoiceLanguage(string value) => SimHost.SetVoiceLanguage(value);
+
+		[JSExport]
+		public static string VoiceSettings() => SimHost.VoiceSettings();
+
+		[JSExport]
+		public static string PreviewVoice() => SimHost.PreviewVoice();
+
+		[JSExport]
 		public static string Boot()
 		{
 			SimHost.Boot(Root);

@@ -1,11 +1,12 @@
-﻿// Page-side handle on the simulation worker: owns the SharedArrayBuffer ring, turns new slots into parsed
+// Page-side handle on the simulation worker: owns the SharedArrayBuffer ring, turns new slots into parsed
 // snapshots (keeping the previous one for interpolation), forwards sprite/texture tables to the renderer, and
 // offers request/reply calls (selection, commands) and typed message subscriptions for the rest.
 
 import {
-  RING_BYTES, RING_HEADER_BYTES, RING_LEN_AT, RING_SEQ_AT, RING_SLOT_BYTES, RING_SLOTS, parseSnapshot,
+  RING_BYTES, RING_HEADER_BYTES, RING_GENERATION_AT, RING_LEN_AT, RING_SEQ_AT, RING_SLOT_BYTES, RING_SLOTS, parseSnapshot,
   type FromWorker, type Snapshot, type ToWorker,
 } from "./protocol";
+import { readVoiceLanguage, saveVoiceLanguage } from "../voice-language";
 import type { Renderer } from "../render/renderer";
 import { gunzipSheet } from "./spritecache";
 
@@ -18,6 +19,8 @@ export class SimClient {
   private header: Int32Array | null = null;
   private bytes: Uint8Array | null = null;
   private lastSeq = 0;
+  private generation = 0;
+  private active = false;
   private pending: { bytes: Uint8Array; seq: number }[] = [];
   /** Longest time a cached sprite sheet took to inflate and upload (ms). */
   sheetMs = 0;
@@ -60,12 +63,18 @@ export class SimClient {
     for (const h of this.handlers.get(m.type) ?? []) h(m);
   }
 
+  private cancelReplies() {
+    for (const reply of this.replies.values()) reply(JSON.stringify({ error: "World request cancelled" }));
+    this.replies.clear();
+  }
+
   send(m: ToWorker) {
-    this.worker.postMessage(m);
+    if (m.type === "end") { this.generation++; this.active = false; this.pending = []; this.cancelReplies(); }
+    this.worker.postMessage({ ...m, generation: this.generation });
   }
 
   /** A command that answers with JSON (selection, control groups, production...). */
-  request<T = Record<string, unknown>>(m: { type: "command"; json: string } | { type: "record" } | { type: "select"; ids: number[]; additive: boolean }): Promise<T> {
+  request<T = Record<string, unknown>>(m: { type: "command"; json: string } | { type: "record" } | { type: "select"; ids: number[]; additive: boolean } | { type: "voiceLanguage"; value?: string } | { type: "voicePreview" }): Promise<T> {
     const req = this.nextReq++;
     return new Promise((resolve) => {
       this.replies.set(req, (json) => resolve(JSON.parse(json) as T));
@@ -77,18 +86,27 @@ export class SimClient {
     return this.request<T>({ type: "command", json: JSON.stringify(cmd) });
   }
 
+  voiceLanguage(value?: string) {
+    return this.request<{ language?: string; syncHash?: number; tick?: number; error?: string }>({ type: "voiceLanguage", value: value === undefined ? undefined : saveVoiceLanguage(value) });
+  }
+
+  previewVoice() { return this.request({ type: "voicePreview" }); }
+
   init(runtime: string, base: string, privateContent: boolean, gcParams?: string, profile?: string) {
-    this.send({ type: "init", runtime, base, sab: this.sab, privateContent, gcParams, profile,
+    this.send({ type: "init", runtime, base, sab: this.sab, privateContent, voiceLanguage: readVoiceLanguage(), gcParams, profile,
       rtBase: import.meta.env.VITE_RT_BASE || undefined, dataBase: import.meta.env.VITE_DATA_BASE || undefined });
   }
 
   start(scenario: string, paused = false, companion = false) {
+    this.generation++;
+    this.active = false;
+    this.cancelReplies();
     this.cur = this.prev = null;
     this.lastSeq = this.header ? Atomics.load(this.header, 0) : 0;
     this.strings = [];
     this.pending = [];
     this.renderer.resetSprites();
-    this.send({ type: "start", scenario, paused, companion });
+    this.send({ type: "start", scenario, paused, companion, voiceLanguage: readVoiceLanguage() });
   }
 
   /** The factions the game will show (null: not known, e.g. a random faction): their sheets are fetched now. */
@@ -118,8 +136,11 @@ export class SimClient {
   }
 
   private handle(m: FromWorker) {
+    const asset = m.type === "sheetList" || m.type === "texturebin" || m.type === "texturegz";
+    if (!asset && m.generation !== undefined && m.generation !== this.generation) return;
     switch (m.type) {
       case "started":
+        this.active = true;
         this.renderer.setStartInfo(m.info, m.terrain);
         break;
       case "texture":
@@ -195,6 +216,7 @@ export class SimClient {
 
   /** Called once per animation frame: picks up every snapshot published since the last frame, in order. */
   poll(now: number) {
+    if (!this.active) return;
     if (this.header && this.bytes) {
       const latest = Atomics.load(this.header, 0);
       if (latest > this.lastSeq + RING_SLOTS - 1) {
@@ -208,6 +230,7 @@ export class SimClient {
       while (this.lastSeq < latest) {
         const seq = this.lastSeq + 1;
         const slot = seq % RING_SLOTS;
+        if (Atomics.load(this.header, RING_GENERATION_AT + slot) !== this.generation) { this.lastSeq = seq; continue; }
         if (Atomics.load(this.header, RING_SEQ_AT + slot) === 0) {
           // Sent by postMessage (too big for a slot): apply it in order once the message has arrived.
           const i = this.pending.findIndex((p) => p.seq === seq);
@@ -220,7 +243,7 @@ export class SimClient {
         const off = RING_HEADER_BYTES + slot * RING_SLOT_BYTES;
         const copy = this.bytes.slice(off, off + len);
         this.lastSeq = seq;
-        if (Atomics.load(this.header, RING_SEQ_AT + slot) !== seq) {
+        if (Atomics.load(this.header, RING_SEQ_AT + slot) !== seq || Atomics.load(this.header, RING_GENERATION_AT + slot) !== this.generation) {
           // Overwritten while copying: resync rather than apply a torn snapshot.
           this.missedSnapshots++;
           this.requestResync();

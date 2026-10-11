@@ -18,7 +18,7 @@ http.createServer((req, res) => {
   if (relative.startsWith('..') || path.isAbsolute(relative) || !fs.existsSync(target) || !fs.statSync(target).isFile()) { res.writeHead(404).end(); return; }
   const actual = fs.realpathSync(target), checked = path.relative(root, actual);
   if (checked.startsWith('..') || path.isAbsolute(checked)) { res.writeHead(403).end(); return; }
-  const compressed = rel.startsWith(build.rtRoot) || rel.startsWith(`${build.dataRoot}public/sprites/`) || /\/web-(bundle\.pack|audio\.json|art\.json)$/.test(rel) || /\/audio\/.*\.(wav|aud)$/.test(rel);
+  const compressed = rel.startsWith(build.rtRoot) || ["public", "public-classic"].some(profile => rel.startsWith(`${build.dataRoot}${profile}/sprites/`)) || /\/web-(bundle\.pack|audio\.json|art\.json)$/.test(rel) || /\/audio\/.*\.(wav|aud)$/.test(rel);
   res.setHeader('Content-Type', mime[path.extname(target)] || 'application/octet-stream');
   res.setHeader('Cache-Control', rel === 'index.html' ? 'no-cache' : 'public, max-age=31536000, immutable');
   if (compressed) res.setHeader('Content-Encoding', 'br');

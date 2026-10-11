@@ -1,3 +1,4 @@
+import {browserExecutable, browserArgs} from './browser-launch.mjs';
 // Prebaked sprite sheets: prepares a map cold (decode + pack, then cached), reloads the page in the same browser
 // profile, prepares again (restored from IndexedDB) and starts the game; reports times, heap and whether every
 // sprite drew.   node tools/bake-test.mjs [--runtime aot] [--map tournament-2A] [--scenario skirmish]
@@ -11,14 +12,14 @@ const runtime = opt("runtime", "aot");
 const map = opt("map", "tournament-2A");
 const scenario = opt("scenario", "skirmish");
 const extra = opt("extra", "");
-const exe = path.join(process.env.LOCALAPPDATA, "ms-playwright", "chromium-1228", "chrome-win64", "chrome.exe");
+const exe = browserExecutable();
 const browser = await chromium.launch({ executablePath: fs.existsSync(exe) ? exe : undefined, headless: true,
-  args: ["--use-angle=d3d11", "--enable-gpu", "--ignore-gpu-blocklist"] });
+  args: browserArgs() });
 const context = await browser.newContext({ viewport: { width: 1600, height: 900 } });
 const page = await context.newPage();
 page.on("pageerror", (e) => console.log("pageerror", String(e)));
 page.on("console", (m) => { if (["error", "warning"].includes(m.type()) || m.text().startsWith("sprite cache")) console.log("console", m.type(), m.text().slice(0, 400)); });
-const url = `http://127.0.0.1:3490/?runtime=${runtime}${extra}`;
+const url = `${process.env.RTSAI_TEST_URL || "http://127.0.0.1:3490/"}?runtime=${runtime}${extra}`;
 
 async function prepare(label) {
   const t0 = Date.now();
@@ -37,7 +38,7 @@ async function prepare(label) {
 await prepare("cold");
 await page.waitForTimeout(8000); // the compressed sheets are written to IndexedDB in the background
 await prepare("warm");
-const sj = fs.readFileSync(path.join(path.dirname(new URL(import.meta.url).pathname.slice(1)), "..", "scenarios", `${scenario}.json`), "utf8");
+const sj = fs.readFileSync(new URL(`../scenarios/${scenario}.json`, import.meta.url), "utf8");
 const ts = Date.now();
 await page.evaluate((s) => window.game.start(s), sj);
 await page.waitForFunction(() => ["playing", "error"].includes(window.store.getState().phase), null, { timeout: 600000, polling: 50 });

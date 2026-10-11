@@ -1,11 +1,12 @@
+import {browserExecutable, browserArgs} from './browser-launch.mjs';
 import {chooseLobbyOption} from './lobby-picker.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import assert from 'node:assert/strict';
 import {chromium} from '../web/node_modules/playwright-core/index.mjs';
 const base=process.env.RTSAI_TEST_URL||'http://127.0.0.1:3491/';
-const executablePath=path.join(process.env.LOCALAPPDATA,'ms-playwright','chromium-1228','chrome-win64','chrome.exe');
-const browser=await chromium.launch({executablePath,headless:true});
+const executablePath=browserExecutable();
+const browser=await chromium.launch({executablePath,headless:true,args:browserArgs()});
 const page=await browser.newPage({viewport:{width:1280,height:900},permissions:['clipboard-write','clipboard-read']});
 const errors=[];page.on('pageerror',e=>errors.push(String(e)));
 fs.mkdirSync('artifacts/multiplayer',{recursive:true});

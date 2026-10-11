@@ -5,9 +5,9 @@ import crypto from "node:crypto";
 import { fileURLToPath } from "node:url";
 
 const repo = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const art = path.resolve(repo, "../RTSAI-Art/units");
-const mod = path.resolve(repo, "../RTSAI-Mod-wt-web-public/mods/rtsai");
-const out = path.join(repo, "web/public/portraits");
+const art = path.resolve(process.env.RTSAI_ART_ROOT ?? path.join(repo, ".inputs/art"), "units");
+const mod = path.resolve(process.env.RTSAI_MOD_ROOT ?? path.join(repo, ".inputs/mod"), "mods/rtsai");
+const out = path.resolve(process.env.RTSAI_PORTRAITS_OUT ?? path.join(repo, "web/public/portraits"));
 fs.mkdirSync(out, { recursive: true });
 const manifest = {};
 function copy(key, source) {
@@ -27,5 +27,5 @@ for (const actor of fs.readdirSync(art).filter((name) => name.startsWith("r2")).
 }
 for (const faction of ["china", "iran", "turkey", "saudi", "israel", "yemen", "hezbollah"])
   copy(`dog-${faction}`, path.join(art, `kit-dog/candidates/kit-v2/dog-${faction}icon-nolabel.png`));
-fs.writeFileSync(path.join(repo, "web/src/portraits.json"), JSON.stringify(manifest, null, 2) + "\n");
+fs.writeFileSync(process.env.RTSAI_PORTRAITS_MANIFEST ?? path.join(repo, "web/src/portraits.json"), JSON.stringify(manifest, null, 2) + "\n");
 console.log(`Copied ${Object.keys(manifest).length} original project portraits.`);

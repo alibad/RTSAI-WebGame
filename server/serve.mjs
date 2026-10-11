@@ -1,4 +1,4 @@
-﻿// Local, private server for the RTS AI web game. Binds 127.0.0.1:3490 only.
+// Local, private server for the RTS AI web game. Binds 127.0.0.1:3490 only.
 //   node server/serve.mjs
 // - Cross-origin isolation (COOP/COEP) so the page and worker can share a SharedArrayBuffer snapshot ring.
 // - /rt/aot|interp/  the .NET WebAssembly runtime + assemblies (sim/OpenRA.WebSim.Browser publish output).
@@ -10,6 +10,7 @@
 // Everything also answers under /play/... so the local app's gateway can proxy this server on one origin.
 
 import http from "node:http";
+import { trustedLocalRequest } from "./local-boundary.mjs";
 import { createRooms } from "./rooms.mjs";
 const rooms = createRooms();
 import fs from "node:fs";
@@ -26,17 +27,17 @@ const PORT = Number(process.env.RTSAI_WEBGAME_PORT ?? 3490);
 const HOST = "127.0.0.1";
 const repo = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const mapWorkshop = createMapWorkshop(repo);
-const dist = path.join(repo, "web", "dist");
-const data = path.join(repo, "data");
+const dist = path.resolve(process.env.RTSAI_WEB_DIST ?? path.join(repo, "web", "dist"));
+const data = path.resolve(process.env.RTSAI_WEB_DATA ?? path.join(repo, "data"));
 const appData = path.join(process.env.LOCALAPPDATA ?? os.homedir(), "RTSAI-WebGame");
 const privateDir = path.join(appData, "private");
 const privateFiles = path.join(privateDir, "files");
 const scratch = process.env.RTSAI_WEB_SCRATCH ?? path.join(appData, "scratch");
-const brDir = path.join(appData, "brotli-cache");
-const websim = path.join(repo, "bin", "OpenRA.WebSim.Native", "Release", "net10.0", "websim.exe");
+const brDir = path.resolve(process.env.RTSAI_WEB_BR_CACHE ?? path.join(scratch, "brotli-cache"));
+const websim = path.join(path.resolve(process.env.RTSAI_WEB_BUILD ?? repo), "bin", "OpenRA.WebSim.Native", "Release", "net10.0", "websim.dll");
 const runtimes = { interp: path.join(data, "wasm-interp", "wwwroot"), aot: path.join(data, "wasm-aot", "wwwroot") };
 // The public profile (standalone mod, project art only) has its own bundle and runtimes under data/public.
-const profiles = { public: path.join(data, "public") };
+const profiles = { public: path.join(data, "public"), "public-classic": path.join(data, "public-classic") };
 // Runtime variants (size experiments, e.g. ?runtime=aot-lean) live next to the default builds as wasm-<variant>.
 const runtimeDir = (profile, runtime) => path.join(profile ? profiles[profile] : data, `wasm-${runtime}`, "wwwroot");
 
@@ -178,7 +179,7 @@ function json(res, obj, status = 200) {
 
 function run(cmd, args, env) {
   return new Promise((resolve) => {
-    const p = spawn(cmd, args, { cwd: repo, env: { ...process.env, ...env } });
+    const p = spawn(cmd.endsWith(".dll") ? "dotnet" : cmd, cmd.endsWith(".dll") ? [cmd, ...args] : args, { cwd: repo, env: { ...process.env, ...env } });
     let out = "";
     p.stdout.on("data", (d) => (out += d));
     p.stderr.on("data", (d) => (out += d));
@@ -228,8 +229,8 @@ async function verify(req, res) {
   fs.writeFileSync(logFile, JSON.stringify(body.log));
 
   // The native twin of the page's profile, on a VFS root rebuilt whenever the bundle changes (as tools/fidelity.mjs).
-  const profile = body.profile === "public" ? "public" : "";
-  const twin = profile ? websim.replace("OpenRA.WebSim.Native", `OpenRA.WebSim.Native-${profile}`) : websim;
+  const profile = Object.hasOwn(profiles, body.profile) ? body.profile : "";
+  const twin = profile ? websim.replace("OpenRA.WebSim.Native", "OpenRA.WebSim.Native-public") : websim;
   const root = path.join(scratch, `vfs-native${profile ? "-" + profile : ""}`);
   const stamp = root + ".stamp";
   const pack = path.join(profile ? profiles[profile] : data, "web-bundle.pack");
@@ -241,7 +242,7 @@ async function verify(req, res) {
     fs.writeFileSync(stamp, want);
   }
 
-  if (profile === "public") mapWorkshop.syncNative(root);
+  if (profile) mapWorkshop.syncNative(root, profile);
   gpuYieldLine();
   const t0 = Date.now();
   const r = await run(twin, ["run", "--root", root, "--scenario", scenarioFile, "--replay", logFile, "--ticks", String(browserHashes.length), "--hashes", hashFile],
@@ -268,11 +269,12 @@ const companion = createCompanion({ repo, appData });
 
 const server = http.createServer(async (req, res) => {
   isolationHeaders(res);
-  const url = new URL(req.url, `http://${req.headers.host}`);
+  const url = new URL(req.url, `http://${HOST}:${PORT}`);
   let p = url.pathname;
   if (p === "/play") p = "/";
   else if (p.startsWith("/play/")) p = p.slice(5);
   try {
+    if ((p.startsWith("/api/") || p.startsWith("/companion/") || p.startsWith("/private/")) && !trustedLocalRequest(req, PORT)) return json(res, { error: "Untrusted local request" }, 403);
     if (p.startsWith("/api/maps/")) {
       if (!isLocal(req)) return res.writeHead(403).end("local only");
       return await mapWorkshop(req, res, url);
@@ -300,7 +302,7 @@ const server = http.createServer(async (req, res) => {
       fs.appendFileSync(path.join(data, "metrics.jsonl"), (await readBody(req)).trim() + "\n");
       return json(res, { ok: true });
     }
-    const rt = p.match(/^\/rt\/(?:(public)\/)?((?:interp|aot)(?:-[a-z]+)?)\/(.*)$/);
+    const rt = p.match(/^\/rt\/(?:(public(?:-classic)?)\/)?((?:interp|aot)(?:-[a-z]+)?)\/(.*)$/);
     if (rt) {
       const f = safeJoin(runtimeDir(rt[1], rt[2]), rt[3]);
       return f ? sendFile(req, res, f) : res.writeHead(400).end();
@@ -339,7 +341,7 @@ const server = http.createServer(async (req, res) => {
 // The game's side of the co-commander relay (the worker), local only.
 server.on("upgrade", (req, socket) => {
   const p = new URL(req.url, "http://x").pathname.replace(/^\/play(?=\/)/, "");
-  if (p === "/companion/bridge" && isLocal(req)) companion.upgrade(req, socket);
+  if (p === "/companion/bridge" && trustedLocalRequest(req, PORT, { requireOrigin: true })) companion.upgrade(req, socket);
   else socket.destroy();
 });
 
