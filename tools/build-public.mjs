@@ -22,6 +22,7 @@ import os from "node:os";
 import { Worker, isMainThread, parentPort, workerData } from "node:worker_threads";
 import { execSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
+import { verifySpriteBundle } from "./public-sprite-inputs.mjs";
 
 const BROTLI = (quality, size) => ({ params: {
   [zlib.constants.BROTLI_PARAM_QUALITY]: quality, [zlib.constants.BROTLI_PARAM_LGWIN]: 24, [zlib.constants.BROTLI_PARAM_SIZE_HINT]: size } });
@@ -49,7 +50,8 @@ if (inputs.standalone?.profile !== "standalone-main" || !inputs.inputs?.mod || !
   throw new Error("Public static build requires verified main standalone and engine identities");
 
 const classicData = path.resolve(repo, opt("classic-data", path.join(path.dirname(data), "public-classic")));
-const profiles = [{ id: "public", dir: data }, ...(fs.existsSync(path.join(classicData,"web-bundle.pack")) ? [{ id: "public-classic", dir: classicData }] : [])];
+const profiles = [{ id: "public", dir: data }, ...(argv.includes("--classic-data") || fs.existsSync(path.join(classicData,"web-bundle.pack")) ? [{ id: "public-classic", dir: classicData }] : [])];
+for (const profile of profiles) profile.bundle = verifySpriteBundle(profile);
 const framework = path.join(data, "wasm-aot", "wwwroot", "_framework");
 for (const f of ["web-bundle.pack", "web-audio.pack", "web-audio.json", "web-art.pack", "web-art.json", "sprites/index.json", "wasm-aot/wwwroot/_framework/dotnet.js"])
   if (!fs.existsSync(path.join(data, f))) throw new Error(`missing ${path.join(data, f)}: run tools/public.ps1 and the public AOT publish first`);
@@ -183,8 +185,7 @@ for (const f of files) {
   g.files++; g.raw += raw; g.wire += wire;
 }
 const mb = (n) => (n / 1048576).toFixed(1);
-const index = JSON.parse(fs.readFileSync(path.join(data, "sprites", "index.json"), "utf8"));
-const build = { builtAt: new Date().toISOString(), standalone: inputs.inputs.mod, inputs, bundleId: index.bundle, modes: profiles.map(p => ({ profile: p.id, bundle: JSON.parse(fs.readFileSync(path.join(p.dir,"sprites/index.json"),"utf8")).bundle })), rtRoot, dataRoot, brotliQuality: quality, groups };
+const build = { builtAt: new Date().toISOString(), standalone: inputs.inputs.mod, inputs, bundleId: profiles[0].bundle, modes: profiles.map(p => ({ profile: p.id, bundle: p.bundle })), rtRoot, dataRoot, brotliQuality: quality, groups };
 fs.writeFileSync(path.join(out, "BUILD.json"), JSON.stringify(build, null, 2) + "\n");
 console.log(`\n${out}  (${rtRoot}, ${dataRoot})`);
 for (const [k, g] of Object.entries(groups)) console.log(`  ${k.padEnd(16)} ${String(g.files).padStart(4)} files  ${mb(g.raw).padStart(7)} MB raw  ${mb(g.wire).padStart(7)} MB stored / over the wire`);

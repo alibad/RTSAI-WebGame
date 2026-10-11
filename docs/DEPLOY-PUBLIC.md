@@ -9,7 +9,9 @@ apply:
 ## What gets published
 
 `node tools/build-public.mjs` writes `build/public-web/`. This is the standalone game: project art and audio only,
-no EA content, no server APIs. It is pinned by `tools/pin-standalone.ps1`; today that is rtsai/standalone 624ad2c (8 October: vehicles drawn in front of the ground they cover).
+no EA content, no server APIs. Its exact standalone and engine inputs are recorded in the verified `build-inputs.json`; use `tools/pin-standalone.ps1` to prepare those inputs.
+
+The static builder validates the actual ORAPACK1 `ora/BUNDLE_ID` against each supplied `sprites/index.json` before deleting output or running Vite. Missing, malformed, duplicate or mismatched IDs stop the build; rebuild the prebakes from the exact current pack. The builder never relabels a cache automatically. Run `node --test tools/public-sprite-inputs.test.mjs` to check this guard and output preservation.
 
 | Path | Contents | Raw | Stored and sent | Downloaded |
 |---|---|---|---|---|
