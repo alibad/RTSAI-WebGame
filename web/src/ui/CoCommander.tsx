@@ -50,22 +50,24 @@ function Threat({ score, level, reason }: { score: number; level: string; reason
 }
 
 function ProposalCard({ game, item, compact }: { game: Game; item: FeedItem; compact?: boolean }) {
+  const paused = useStore(s => s.paused);
+  const uncertain = useStore(s => !!s.cc.uncertainProposalId);
   const shortcut = game.cc.pending()?.id === item.id;
   return (
     <div className={cn("flex items-center gap-3 rounded-[3px] border border-[var(--hud-gold-dim)] bg-[rgba(30,26,14,0.92)] px-3 py-2", compact && "shadow-[0_8px_24px_rgba(0,0,0,0.55)]")}>
       <svg viewBox="0 0 24 24" width={18} height={18} fill="none" stroke="var(--hud-gold)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0"><path d="M4 12h12M12 6l6 6-6 6" /></svg>
-      <span className={cn("min-w-0 flex-1 text-[13px] leading-snug", item.state === "expired" ? "text-[var(--muted-foreground)]" : "text-[var(--foreground)]")}>{item.text}<small className="block text-[10px] opacity-60">Proposal {item.proposalId}</small></span>
+      <span className={cn("min-w-0 flex-1 text-[13px] leading-snug", item.state === "expired" ? "text-[var(--muted-foreground)]" : "text-[var(--foreground)]")}>{item.text}</span>
       {item.state === "pending" ? (
         <span className="flex shrink-0 gap-1.5">
-          <button type="button" disabled={!!useStore.getState().cc.uncertainProposalId} onClick={() => game.cc.decide(item, true)} title={shortcut ? "Apply recommendation (G)" : "Apply recommendation"}
-            aria-label={shortcut ? "Apply recommendation (G)" : "Apply recommendation"} aria-keyshortcuts={shortcut ? "g" : undefined}
-            className="flex items-center gap-2 rounded-[2px] bg-[var(--hud-gold)] px-2.5 py-1 text-[12px] font-bold text-[#1a160c] hover:brightness-110"><span>✓ Apply</span>{shortcut && <kbd className="rounded border border-black/25 px-1 text-[10px] font-medium">G</kbd>}</button>
+          <button type="button" disabled={uncertain || paused} onClick={() => game.cc.decide(item, true)} title={shortcut ? "Apply recommendation (G or J)" : "Apply recommendation"}
+            aria-label={shortcut ? "Apply recommendation (G or J)" : "Apply recommendation"} aria-keyshortcuts={shortcut ? "g j" : undefined}
+            className="flex items-center gap-2 rounded-[2px] bg-[var(--hud-gold)] px-2.5 py-1 text-[12px] font-bold text-[#1a160c] hover:brightness-110"><span>✓ Apply</span>{shortcut && <kbd className="rounded border border-black/25 px-1 text-[10px] font-medium">G / J</kbd>}</button>
           <button type="button" onClick={() => game.cc.decide(item, false)} title="Cancel"
             className="rounded-[2px] border border-white/15 px-2.5 py-1 text-[12px] text-[var(--muted-foreground)] hover:text-[var(--foreground)]">✕</button>
         </span>
       ) : (
         <span className={cn("text-[12px]", item.state === "accepted" ? "text-[var(--hud-green)]" : "text-[var(--muted-foreground)]")}
-          title={item.state === "expired" ? "No longer offered" : undefined}>{item.state === "accepted" ? "✓" : item.state === "unknown" ? "Check outcome" : item.state === "expired" ? "–" : "✕"}</span>
+          title={item.state === "expired" ? "No longer offered" : undefined}>{item.state === "applying" ? "Applying…" : item.state === "accepted" ? "✓" : item.state === "unknown" ? "Check outcome" : item.state === "expired" ? "–" : "✕"}</span>
       )}
     </div>
   );
@@ -93,6 +95,7 @@ export function CoCommander({ game }: { game: Game }) {
   const available = useStore((s) => s.ccAvailable);
   const hud = useStore((s) => s.ui?.companion);
   const [text, setText] = useState("");
+  const paused = useStore(s => s.paused);
   const feedRef = useRef<HTMLDivElement>(null);
   useEffect(() => { feedRef.current?.scrollTo({ top: 1e6 }); }, [cc.feed.length, cc.open]);
   if (!cc.enabled || !available) return null;
@@ -102,51 +105,56 @@ export function CoCommander({ game }: { game: Game }) {
   const last = [...cc.feed].reverse().find((f) => f.kind !== "proposal");
   const line = cc.listening ? "Listening…" : cc.thinking ? "Thinking…" : cc.error ? cc.error
     : last?.text ?? (hud?.message.replace(/^AI\s*•\s*/, "") || "Hold V to talk");
-  const pending = game.cc.pending();
+  const pending = game.cc.pending() ?? cc.feed.find(f => f.state === "applying");
+  const threat = cc.mode === "browser" ? cc.browserThreat : hud?.threat;
   const send = () => { const t = text; setText(""); game.cc.ask(t); };
 
   return (
-    <div className="pointer-events-none absolute left-0 top-[10px] flex justify-center" style={{ right: "var(--sidebar-w)" }}>
-      <div className="pointer-events-auto flex w-[460px] max-w-[calc(100%-16px)] flex-col gap-1.5" onMouseDown={(e) => e.stopPropagation()}>
-        <div className="hud-panel flex h-[38px] items-center gap-2.5 rounded-[3px] px-2.5">
+    <div aria-label="AI co-commander" className="pointer-events-none absolute left-0 top-[54px] flex justify-center xl:top-[10px]" style={{ right: "var(--sidebar-w)" }}>
+      <div className="pointer-events-auto flex max-h-[calc(100dvh-204px)] w-[460px] max-w-[calc(100%-16px)] flex-col gap-1.5 xl:max-h-[calc(100dvh-160px)]" onMouseDown={(e) => e.stopPropagation()}>
+        <div className="hud-panel flex h-[38px] shrink-0 items-center gap-2.5 rounded-[3px] px-2.5">
           <Orb state={state} />
-          <Threat score={hud?.threat.score ?? 0} level={hud?.threat.level ?? "calm"} reason={hud?.threat.reason ?? ""} />
+          <Threat score={threat?.score ?? 0} level={threat?.level ?? "calm"} reason={threat?.reason ?? ""} />
           <button type="button" onClick={() => game.cc.setOpen(!cc.open)} className="min-w-0 flex-1 truncate text-left text-[13px] text-[var(--foreground)]" title={line}>
             {line}
           </button>
-          <button type="button" aria-label="Hold to talk (V)" title="Hold to talk (V)"
+          {cc.mode !== "browser" && <button type="button" aria-label="Hold to talk (V)" title="Hold to talk (V)"
             onPointerDown={(e) => { e.preventDefault(); game.cc.startListening(); }} onPointerUp={() => game.cc.stopListening()} onPointerLeave={() => cc.listening && game.cc.stopListening()}
             className={cn("relative grid size-[28px] place-items-center rounded-[3px] text-[var(--muted-foreground)] hover:text-[var(--foreground)]", cc.listening && "bg-[var(--hud-red)]/25 text-[var(--hud-red)]")}>
             <MicIcon width={16} height={16} />
             <span className="digits absolute bottom-[-1px] right-[1px] text-[8px] text-[var(--hud-gold-dim)]">V</span>
-          </button>
-          <button type="button" aria-label={cc.muted ? "Unmute" : "Mute"} title={cc.muted ? "Unmute voice" : "Mute voice"} onClick={() => game.cc.toggleMute()}
+          </button>}
+          {cc.mode !== "browser" && <button type="button" aria-label={cc.muted ? "Unmute" : "Mute"} title={cc.muted ? "Unmute voice" : "Mute voice"} onClick={() => game.cc.toggleMute()}
             className="grid size-[28px] place-items-center rounded-[3px] text-[var(--muted-foreground)] hover:text-[var(--foreground)]">
             <SpeakerIcon muted={cc.muted} width={16} height={16} />
-          </button>
+          </button>}
           <button type="button" aria-label={cc.open ? "Hide feed" : "Show feed"} onClick={() => game.cc.setOpen(!cc.open)}
             className="grid size-[28px] place-items-center rounded-[3px] text-[var(--muted-foreground)] hover:text-[var(--foreground)]">
             <Chevron up={cc.open} width={16} height={16} />
           </button>
         </div>
 
-        <Strategies game={game} />
+        {cc.mode !== "browser" && <Strategies game={game} />}
         {cc.uncertainProposalId && <div className="hud-panel p-3 text-xs">Confirmation outcome unknown. Inspect the battlefield and companion state before requesting more orders. <button type="button" onClick={() => game.cc.acknowledgeOutcome()} className="underline">I checked this outcome</button></div>}
         {!cc.open && pending && <ProposalCard game={game} item={pending} compact />}
 
         {cc.open && (
-          <div className="hud-panel flex max-h-[46vh] flex-col rounded-[3px]">
-            <div ref={feedRef} className="no-scrollbar flex flex-col gap-2 overflow-y-auto px-3 py-3">
+          <div className="hud-panel flex min-h-0 max-h-[46vh] flex-col rounded-[3px]">
+            <div ref={feedRef} className="no-scrollbar flex min-h-0 flex-col gap-2 overflow-y-auto px-3 py-3">
               {cc.feed.length === 0 && <div className="text-center text-[12px] text-[var(--muted-foreground)]">Ask a question or give an order</div>}
               {cc.feed.map((item) => <Line key={item.id} game={game} item={item} />)}
             </div>
-            <form className="flex items-center gap-2 border-t border-white/10 px-2.5 py-2" onSubmit={(e) => { e.preventDefault(); send(); }}>
+            {cc.mode === "browser" ? <div className="shrink-0 border-t border-white/10 px-3 py-2 text-[12px]">
+              <p className="text-[var(--muted-foreground)]">Strategy adviser · Runs in your browser. Every order needs your confirmation.</p>
+              <button type="button" onClick={() => game.cc.ask("What should I do next?")} disabled={!cc.linked || paused}
+                className="mt-2 rounded-[2px] bg-[var(--hud-gold)] px-3 py-1.5 font-bold text-[#1a160c] disabled:opacity-40">Next suggestion</button>
+            </div> : <form className="flex items-center gap-2 border-t border-white/10 px-2.5 py-2" onSubmit={(e) => { e.preventDefault(); send(); }}>
               <input value={text} onChange={(e) => setText(e.target.value)} placeholder="Ask for advice or prepare orders…" aria-label="Ask the co-commander" data-cc-input
                 className="min-w-0 flex-1 rounded-[2px] bg-black/50 px-2 py-1.5 text-[13px] text-[var(--foreground)] outline-none placeholder:text-[var(--muted-foreground)] focus:ring-1 focus:ring-[var(--hud-gold-dim)]" />
               <button type="submit" disabled={!text.trim() || cc.thinking} className="rounded-[2px] bg-[var(--hud-gold)] px-3 py-1.5 text-[12px] font-bold text-[#1a160c] disabled:opacity-40">Ask</button>
               <button type="button" disabled={!text.trim() || cc.thinking || !!cc.uncertainProposalId} onClick={() => { const instruction = text; setText(""); void game.cc.propose(instruction); }} className="rounded-[2px] border border-white/20 px-2 py-1.5 text-[12px] disabled:opacity-40">Prepare orders</button>
               <span className="text-[10px] text-[var(--hud-gold-dim)]"><Kbd>V</Kbd> talk</span>
-            </form>
+            </form>}
           </div>
         )}
       </div>

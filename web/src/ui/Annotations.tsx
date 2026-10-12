@@ -22,7 +22,7 @@ export function Annotations({ game }: { game: Game }) {
   const scale = game.canvas.width / canvas.width;
   const project = (x: number, y: number) => ({ x: canvas.width / 2 + (x - game.cam.x) * game.cam.zoom / scale, y: canvas.height / 2 + (y - game.cam.y) * game.cam.zoom / scale });
   const paths = (offer.commands ?? []).slice(0, 24).flatMap(c => {
-    const actor = s.actorById.get(c.actor_id);
+    const actor = c.actor_id === undefined ? undefined : s.actorById.get(c.actor_id);
     if (!actor || actor.owner !== s.header.localPlayer) return [];
     const from = { x: actor.sx, y: actor.sy };
     let to = from; let uncertain = false;
@@ -32,10 +32,12 @@ export function Annotations({ game }: { game: Game }) {
       if (!target && !memory) return [{ from, to: from, uncertain: false, action: c.action }];
       to = target ? { x: target.sx, y: target.sy } : memory!; uncertain = !target;
     } else if (["move", "attack_move", "attackmove", "place_building"].includes(c.action) && c.target_x !== undefined && c.target_y !== undefined) {
-      // Rectangular-isometric CPos -> MPos, same transform as OpenRA.CPos.ToMPos.
-      const v = c.target_x + c.target_y, u = (v - (v & 1)) / 2 - c.target_y;
+      // Companion observations and commands already use MPos in both game modes.
+      const u = c.target_x, v = c.target_y;
       const [ox, oy] = game.info!.cellOrigin, [tw, th] = game.info!.tileSize;
-      to = { x: ox + (2 * u + (v & 1)) * tw / 2, y: oy + v * th / 2 };
+      to = game.info!.gridType === "Rectangular"
+        ? { x: ox + u * tw, y: oy + v * th }
+        : { x: ox + (2 * u + (v & 1)) * tw / 2, y: oy + v * th / 2 };
     }
     return [{ from, to, uncertain, action: c.action }];
   });

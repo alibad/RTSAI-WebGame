@@ -217,7 +217,8 @@ export function Setup({ game }: { game: Game }) {
 }
 
 /** The AI co-commander for this match: on/off, and which brain (the local AI stack, or a scripted stand-in). */
-function CoCommanderToggle({ game, enabled, mode, error }: { game: Game; enabled: boolean; mode: "mock" | "local"; error: string }) {
+function CoCommanderToggle({ game, enabled, mode, error }: { game: Game; enabled: boolean; mode: "mock" | "local" | "browser"; error: string }) {
+  const localAvailable = useStore(s => s.ccLocalAvailable);
   return (
     <div className="hud-panel flex h-[46px] items-center gap-2 rounded-[3px] px-3" title={error || "An AI co-commander that advises, answers and proposes orders"}>
       <button type="button" role="switch" aria-checked={enabled} aria-label="AI co-commander" onClick={() => game.cc.setEnabled(!enabled)}
@@ -230,16 +231,17 @@ function CoCommanderToggle({ game, enabled, mode, error }: { game: Game; enabled
         </span>
         <span className="text-[13px] text-[var(--foreground)]">Co-commander</span>
       </button>
-      {enabled && (
+      {enabled && localAvailable && (
         <span className="ml-1 flex overflow-hidden rounded-[2px] border border-white/10 text-[11px]">
-          {(["local", "mock"] as const).map((m) => (
+          {(["browser", "local", "mock"] as const).map((m) => (
             <button key={m} type="button" onClick={() => game.cc.setMode(m)}
               className={cn("px-2 py-[3px]", mode === m ? "bg-[var(--hud-gold)] font-semibold text-[#1a160c]" : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]")}>
-              {m === "local" ? "Local AI" : "Scripted"}
+              {m === "browser" ? "Strategy adviser" : m === "local" ? "Local AI" : "Scripted"}
             </button>
           ))}
         </span>
       )}
+      {enabled && !localAvailable && <span className="text-[11px] text-[var(--hud-gold-dim)]">Strategy adviser</span>}
       {error && <span className="size-[7px] rounded-full bg-[var(--hud-red)]" aria-label={error} />}
     </div>
   );

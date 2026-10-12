@@ -6,6 +6,15 @@
 import type { CompanionEngineEvent } from "./sim/protocol";
 import { store } from "./store";
 import type { AudioEngine } from "./audio";
+import { nextAdvice, assessThreat, type AdviserThreat, type AdviserCommand, type AdviserObservation } from "./adviser";
+import type { AdviserActionReceipt } from "./sim/adviser-rpc";
+import adviserTree from "./adviser-tree.json";
+
+export interface BrowserAdviser {
+  observe(): Promise<AdviserObservation>;
+  execute(id: string, commands: AdviserCommand[], tick: number): Promise<AdviserActionReceipt>;
+  status(enabled: boolean, message?: string): Promise<boolean>;
+}
 
 export type FeedKind = "you" | "ai" | "alert" | "proposal" | "done" | "rejected" | "system";
 
@@ -17,17 +26,17 @@ export interface FeedItem {
   proposalId?: string;
   /** Proposals: pending until the player accepts or cancels them. */
   /** expired: the companion no longer holds it (a newer question or order replaced it); it can't be accepted. */
-  state?: "pending" | "accepted" | "cancelled" | "expired" | "failed" | "unknown";
+  state?: "pending" | "applying" | "accepted" | "cancelled" | "expired" | "failed" | "unknown";
   importance?: string;
   commands?: PreviewCommand[];
 }
-export interface PreviewCommand { action: string; actor_id: number; target_actor_id?: number; target_x?: number; target_y?: number; item_type?: string }
+export interface PreviewCommand { action: string; actor_id?: number; target_actor_id?: number; target_x?: number; target_y?: number; item_type?: string }
 
 export interface CoCommanderState {
   /** The player's choice (setup screen), kept between visits. */
   enabled: boolean;
-  /** "local": the player's local AI stack; "mock": a scripted stand-in (no models needed). */
-  mode: "mock" | "local";
+  /** Browser: the existing state-based strategy adviser; local: models/voice; mock: local test stand-in. */
+  mode: "mock" | "local" | "browser";
   running: boolean;
   linked: boolean;
   listening: boolean;
@@ -42,6 +51,7 @@ export interface CoCommanderState {
   strategyError: string;
   offerSteps: boolean;
   uncertainProposalId: string;
+  browserThreat: AdviserThreat | null;
 }
 
 export interface StrategyChoice { id: string; name: string; intent: string; tradeoff: string }
@@ -59,12 +69,12 @@ export interface StrategyState {
 
 // Read while store.ts is still being evaluated (an import cycle): no module-level constants may be used here.
 export function initialCoCommander(): CoCommanderState {
-  let saved: Partial<CoCommanderState> = {};
+  let saved: Partial<CoCommanderState> & { browserVersion?: number } = {};
   try { saved = JSON.parse(localStorage.getItem("rtsai.cocommander") ?? "{}"); } catch { /* private mode */ }
   return {
-    enabled: saved.enabled ?? false, mode: saved.mode === "mock" ? "mock" : "local", muted: saved.muted ?? false,
+    enabled: import.meta.env.VITE_STATIC_BUILD === "1" && saved.browserVersion !== 1 ? true : saved.enabled ?? true, mode: import.meta.env.VITE_STATIC_BUILD === "1" ? "browser" : saved.mode === "mock" ? "mock" : saved.mode === "local" ? "local" : "browser", muted: saved.muted ?? false,
     running: false, linked: false, listening: false, thinking: false, open: false, feed: [], error: "",
-    strategies: null, strategyOpen: false, strategyBusy: false, strategyError: "", offerSteps: true, uncertainProposalId: "",
+    strategies: null, strategyOpen: false, strategyBusy: false, strategyError: "", offerSteps: true, uncertainProposalId: "", browserThreat: null,
   };
 }
 
@@ -95,9 +105,14 @@ export class CoCommander {
   private timeoutMs = 25000;
   private interruption: Promise<void> = Promise.resolve();
   private receipts = new Map<string, { accepted: boolean; detail: string }>();
+  private browserProposals = new Map<string, string>();
+  private browserSuppressed = "";
+  private browserLastLine = "";
+  private browserDeciding = false;
+  private browserReady = false;
 
   private interrupt() {
-    if (!this.s.running) return;
+    if (!this.s.running || this.s.mode === "browser") return;
     this.interruption = this.interruption.then(async () => { try { await fetch(new URL(`${API}v1/interrupt`, base()), { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ contract_version: 1 }), signal: AbortSignal.timeout(4000) }); } catch {} });
   }
 
@@ -109,6 +124,7 @@ export class CoCommander {
 
   endMatch() {
     this.matchRevision++; this.strategyRevision++; this.requestRevision++;
+    this.browserProposals.clear(); this.browserSuppressed = ""; this.browserLastLine = ""; this.browserDeciding = false; this.browserReady = false;
     this.interrupt(); this.receipts.clear();
     for (const request of this.requests) request.abort();
     this.requests.clear();
@@ -117,7 +133,7 @@ export class CoCommander {
     const recorder = this.recorder; this.recorder = null;
     if (recorder) { recorder.node.disconnect(); recorder.stream.getTracks().forEach(t => t.stop()); void recorder.ctx.close(); }
     this.audio.stopVoice();
-    this.set({ listening: false, linked: false, thinking: false, strategyBusy: false, uncertainProposalId: "", feed: this.s.feed.map(f => f.state === "pending" ? { ...f, state: "expired" } : f) });
+    this.set({ listening: false, linked: false, running: this.s.mode === "browser" ? false : this.s.running, thinking: false, strategyBusy: false, uncertainProposalId: "", feed: this.s.feed.map(f => f.state === "pending" || f.state === "applying" ? { ...f, state: "expired" } : f) });
   }
 
   private async request(url: URL, init: RequestInit = {}) {
@@ -130,14 +146,14 @@ export class CoCommander {
     finally { clearTimeout(timer); this.requests.delete(controller); }
   }
 
-  constructor(private audio: AudioEngine, private canIssue: () => boolean = () => true) {}
+  constructor(private audio: AudioEngine, private canIssue: () => boolean = () => true, private browser?: BrowserAdviser) {}
 
   private get s() { return store.get().cc; }
 
   private set(p: Partial<CoCommanderState>) {
     const cc = { ...this.s, ...p };
     store.set({ cc });
-    try { localStorage.setItem("rtsai.cocommander", JSON.stringify({ enabled: cc.enabled, mode: cc.mode, muted: cc.muted })); } catch { /* private mode */ }
+    try { localStorage.setItem("rtsai.cocommander", JSON.stringify({ enabled: cc.enabled, mode: cc.mode, muted: cc.muted, ...(cc.mode === "browser" ? { browserVersion: 1 } : {}) })); } catch { /* private mode */ }
   }
 
   private push(kind: FeedKind, text: string, extra: Partial<FeedItem> = {}) {
@@ -150,8 +166,8 @@ export class CoCommander {
     this.set({ feed: this.s.feed.map((f) => (f.id === id ? { ...f, ...p } : f)) });
   }
 
-  setEnabled(enabled: boolean) { this.set({ enabled }); }
-  setMode(mode: "mock" | "local") { this.set({ mode }); }
+  setEnabled(enabled: boolean) { if (!enabled) this.endMatch(); this.set({ enabled }); }
+  setMode(mode: "mock" | "local" | "browser") { this.set({ mode }); }
   setOpen(open: boolean) { this.set({ open, ...(open ? { strategyOpen: false } : {}) }); }
   toggleMute() { this.set({ muted: !this.s.muted }); if (this.s.muted) this.audio.stopVoice(); }
 
@@ -177,9 +193,9 @@ export class CoCommander {
   matchStarted() {
     this.matchRevision++;
     this.strategyRevision++;
-    this.set({ feed: [], linked: false, thinking: false, strategies: null, strategyError: "", strategyBusy: false, strategyOpen: false, uncertainProposalId: "" });
-    this.push("system", this.s.mode === "mock" ? "Co-commander online (scripted brain)" : "Co-commander online");
-    if (!this.poll) this.poll = setInterval(() => { void this.offers(); }, 1500);
+    this.set({ feed: [], linked: false, ...(this.s.mode === "browser" ? { running: true, error: "" } : {}), thinking: false, strategies: null, strategyError: "", strategyBusy: false, strategyOpen: false, uncertainProposalId: "", browserThreat: null });
+    this.push("system", this.s.mode === "browser" ? "Co-commander · Browser strategy adviser" : this.s.mode === "mock" ? "Co-commander online (scripted brain)" : "Co-commander online");
+    if (!this.poll) this.poll = setInterval(() => { void this.offers(); }, 1000);
   }
 
   /**
@@ -187,6 +203,7 @@ export class CoCommander {
    * accepts them with a hotkey; here they become cards like any proposal.
    */
   private async offers() {
+    if (this.s.mode === "browser") { await this.browserOffers(); return; }
     if (!this.s.enabled || !this.s.running || !this.s.linked || store.get().phase !== "playing" || this.polling) return;
     this.polling = true;
     const revision = this.strategyRevision;
@@ -219,6 +236,89 @@ export class CoCommander {
         await this.strategyStep(true);
     } catch { /* the companion is restarting */ }
     finally { if (match === this.matchRevision) this.polling = false; }
+  }
+
+  private browserChoice(observation: AdviserObservation) {
+    return nextAdvice({ ...observation, techTree: adviserTree });
+  }
+
+  private choiceKey(advice: ReturnType<CoCommander["browserChoice"]>) {
+    return advice ? `${advice.key}:${JSON.stringify(advice.commands)}` : "";
+  }
+
+  private async browserOffers(requested = false) {
+    if (!this.browser || !this.s.enabled || !this.s.running || this.s.uncertainProposalId
+      || store.get().phase !== "playing" || store.get().paused || !this.canIssue() || this.polling || this.browserDeciding) return;
+    this.polling = true;
+    const match = this.matchRevision;
+    try {
+      const observation = await this.browser.observe();
+      if (match !== this.matchRevision || !this.s.enabled || this.browserDeciding || this.s.uncertainProposalId || store.get().paused || !this.canIssue() || store.get().phase !== "playing") return;
+      this.set({ linked: true, error: "", browserThreat: assessThreat(observation) });
+      if (!this.browserReady) {
+        this.browserReady = true;
+        await this.browser.status(true, "Browser strategy adviser ready");
+        if (match !== this.matchRevision || this.browserDeciding || this.s.uncertainProposalId || store.get().paused || !this.s.enabled || !this.canIssue()) return;
+      }
+      const advice = this.browserChoice(observation), key = this.choiceKey(advice);
+      for (const item of this.s.feed) {
+        if (item.state === "pending" && this.browserProposals.get(item.proposalId ?? "") !== key) this.update(item.id, { state: "expired" });
+      }
+      if (this.browserSuppressed && this.browserSuppressed !== key) this.browserSuppressed = "";
+      if (!advice) return;
+      if (advice.text !== this.browserLastLine || requested) {
+        this.browserLastLine = advice.text;
+        this.push("ai", advice.text);
+      }
+      if (observation.done || !advice.commands.length || !key || this.browserSuppressed === key || this.pending()) return;
+      const id = `browser-${crypto.randomUUID()}`;
+      this.browserProposals.set(id, key);
+      // IDs are immutable for the displayed command set. Only current-state revalidation can dispatch it.
+      this.push("proposal", advice.summary, { proposalId: id, state: "pending", commands: advice.commands });
+    } catch (error) {
+      if (match === this.matchRevision) this.set({ linked: false, error: `Adviser unavailable: ${error instanceof Error ? error.message : error}` });
+    } finally { if (match === this.matchRevision) this.polling = false; }
+  }
+
+  private async browserDecide(item: FeedItem, accept: boolean) {
+    if (!this.browser || !this.s.enabled || !this.s.running || this.s.uncertainProposalId || this.browserDeciding
+      || !item.proposalId || item.state !== "pending" || !this.browserProposals.has(item.proposalId)
+      || !this.s.feed.some(f => f.id === item.id && f.proposalId === item.proposalId && f.state === "pending")) return;
+    const key = this.browserProposals.get(item.proposalId)!;
+    if (!accept) { this.browserSuppressed = key; this.update(item.id, { state: "cancelled" }); return; }
+    if (!this.canIssue() || store.get().phase !== "playing" || store.get().paused) return;
+    const match = this.matchRevision, id = item.proposalId;
+    this.browserDeciding = true;
+    this.update(item.id, { state: "applying" });
+    let dispatched = false;
+    try {
+      const observation = await this.browser.observe();
+      if (match !== this.matchRevision || !this.canIssue() || !this.s.enabled || store.get().phase !== "playing" || store.get().paused) {
+        if (match === this.matchRevision) this.update(item.id, { state: "expired" });
+        return;
+      }
+      const advice = this.browserChoice(observation);
+      if (!advice?.commands.length || this.choiceKey(advice) !== key || JSON.stringify(advice.commands) !== JSON.stringify(item.commands)) {
+        this.update(item.id, { state: "expired" });
+        this.push("system", "The battlefield changed. That recommendation has expired; checking the next step.");
+        return;
+      }
+      dispatched = true;
+      const receipt = await this.browser.execute(id, advice.commands, observation.tick);
+      if (match !== this.matchRevision) return;
+      if (receipt.requestId !== id) throw Error("Mismatched native order receipt");
+      if (!this.receipts.has(id)) this.onEngine({ kind: "executed", id, accepted: receipt.accepted, detail: receipt.detail });
+      this.browserSuppressed = key;
+    } catch (error) {
+      if (match !== this.matchRevision) return;
+      const receipt = this.receipts.get(id);
+      if (receipt) { this.update(item.id, { state: receipt.accepted ? "accepted" : "failed" }); return; }
+      this.update(item.id, { state: dispatched ? "unknown" : "failed" });
+      if (dispatched) this.set({ uncertainProposalId: id });
+      this.push("system", `${dispatched ? "Order outcome unknown; inspect the battlefield before continuing" : "Recommendation could not be checked"}: ${error instanceof Error ? error.message : error}`);
+    } finally {
+      if (match === this.matchRevision) { this.browserDeciding = false; void this.browserOffers(); }
+    }
   }
 
   setStrategyOpen(strategyOpen: boolean) { this.set({ strategyOpen, ...(strategyOpen ? { open: false } : {}) }); }
@@ -262,6 +362,7 @@ export class CoCommander {
   onEngine(e: CompanionEngineEvent) {
     if (e.kind === "link") { this.set({ linked: e.connected }); return; }
     if (e.kind === "executed") {
+      if (this.s.mode === "browser" && (!this.browserProposals.has(e.id) || this.receipts.has(e.id))) return;
       this.receipts.set(e.id, { accepted: e.accepted, detail: e.detail });
       this.set({ uncertainProposalId: this.s.uncertainProposalId === e.id ? "" : this.s.uncertainProposalId, feed: this.s.feed.map(f => f.proposalId === e.id ? { ...f, state: e.accepted ? "accepted" : "failed" } : f) });
       this.push(e.accepted ? "done" : "rejected", e.detail || (e.accepted ? "Orders issued" : "Orders refused"));
@@ -280,6 +381,7 @@ export class CoCommander {
 
   /** A typed or spoken question or order. */
   async ask(text: string) {
+    if (this.s.mode === "browser") { this.browserSuppressed = ""; await this.browserOffers(true); return; }
     if (!this.canIssue()) { this.push("system", "Return live before talking to the co-commander."); return; }
     text = text.trim();
     if (!text || this.s.thinking) return;
@@ -299,6 +401,7 @@ export class CoCommander {
   }
 
   async propose(text: string) {
+    if (this.s.mode === "browser") { await this.ask(text); return; }
     text = text.trim();
     if (!text || this.s.thinking || this.s.uncertainProposalId || !this.canIssue()) return;
     const request = ++this.requestRevision;
@@ -331,6 +434,7 @@ export class CoCommander {
   }
 
   async decide(item: FeedItem, accept: boolean) {
+    if (this.s.mode === "browser") { await this.browserDecide(item, accept); return; }
     if (this.s.uncertainProposalId) return;
     if (accept && !this.canIssue()) { this.push("system", "Return live before accepting orders."); return; }
     if (!item.proposalId || item.state !== "pending" || !this.s.feed.some(f => f.id === item.id && f.proposalId === item.proposalId && f.state === "pending")) return;
@@ -363,6 +467,7 @@ export class CoCommander {
   // ---------------------------------------------------------------- voice
 
   async startListening() {
+    if (this.s.mode === "browser") return;
     if (!this.canIssue()) return;
     if (this.recorder || this.s.listening) return;
     this.audio.stopVoice();
@@ -414,6 +519,7 @@ export class CoCommander {
   }
 
   async speak(text: string) {
+    if (this.s.mode === "browser") return;
     const match = this.matchRevision;
     if (this.s.muted) return;
     try {

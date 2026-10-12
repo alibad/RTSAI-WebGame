@@ -10,6 +10,7 @@ import {
 import { LazyMount, httpRangeReader, httpRangeReaderAsync, mountPack, wholeFileReader, wholeFileReaderAsync } from "./lazyfs";
 import { normalizeVoiceLanguage } from "../voice-language";
 import { CompanionRelay } from "./companion";
+import { encodeAdviserStatus } from "./adviser-rpc";
 import { fetchShippedSprites, SpriteBake, hashString } from "./spritecache";
 
 declare const self: DedicatedWorkerGlobalScope;
@@ -45,6 +46,23 @@ let lastUi = "";
 let timer: ReturnType<typeof setTimeout> | null = null;
 let tickMs = TICK_MS; // 40 ms at 1x; the sandbox can run faster
 let bake: SpriteBake | null = null; // prebaked sprite sheets (IndexedDB)
+let browserAdviser = false;
+let nextAdviserCall = -1; // Negative ids are disjoint from the local relay's positive ids.
+const adviserCalls = new Map<number, { req: number; generation: number; timer: ReturnType<typeof setTimeout> }>();
+function cancelAdviserCalls() {
+  for (const [call, pending] of adviserCalls) {
+    clearTimeout(pending.timer);
+    post({ type: "adviserReply", req: pending.req, code: 9, message: "Co-commander world request cancelled", payload: new Uint8Array(), generation: pending.generation });
+    adviserCalls.delete(call);
+  }
+}
+function adviserReply(call: number, code: number, message: string, payload: Uint8Array) {
+  const pending = adviserCalls.get(call);
+  if (!pending) { if (call > 0) relay?.reply(call, code, message, payload); return; }
+  adviserCalls.delete(call); clearTimeout(pending.timer);
+  if (pending.generation !== generation) return;
+  post({ type: "adviserReply", req: pending.req, code, message, payload, generation: pending.generation });
+}
 let relay: CompanionRelay | null = null; // the AI co-commander's RPC relay (local companion <-> CompanionBridge)
 
 /** A snapshot without advancing the world (paused game, sandbox editing, camera moves while paused). */
@@ -169,7 +187,7 @@ async function init(msg: Extract<ToWorker, { type: "init" }>) {
     // Sound.AudioReady (SimHost): can this audio file be read now? If not, it is fetched in the background.
     audioReady: (path: string) => lazy?.ready(path) ?? true,
     // The AI co-commander (CompanionRpc.cs): relayed RPC answers, and status/threat/action events for the panel.
-    companionReply: (call: number, code: number, message: string, view: { slice(): Uint8Array }) => relay?.reply(call, code, message, view.slice()),
+    companionReply: (call: number, code: number, message: string, view: { slice(): Uint8Array }) => adviserReply(call, code, message, view.slice()),
     companionEvent: (json: string) => post({ type: "companion", event: JSON.parse(json) }),
     // Sheets committed by the engine go straight to the page (no copy kept in the WebAssembly heap).
     texture: (id: number, version: number, width: number, height: number, view: { slice(): Uint8Array }) => {
@@ -284,14 +302,19 @@ function stopLoop() {
   timer = null;
 }
 
-function start(scenario: string, startPaused = false, companion = false) {
+function start(scenario: string, startPaused = false, companion: boolean | "browser" = false) {
   stopLoop();
+  cancelAdviserCalls();
+  browserAdviser = false;
   const spec = JSON.parse(scenario);
   replayEnd = spec.webReplay?.readonly ? spec.webReplay.end : null;
   network = spec.network ? { ...spec.network, generation, frame: 0, busy: false, stopped: false, pending: [], failedAt: 0 } : null;
   // The co-commander's CompanionBridge is created with the world: enable it first, connect the relay after.
-  companion = companion && !network;
-  S.CompanionEnable(companion);
+  const controllable = !network && !spec.multiplayer && !spec.webReplay?.readonly
+    && Array.isArray(spec.players) && spec.players.some((p: { bot?: string }) => !p.bot);
+  browserAdviser = companion === "browser" && controllable;
+  const companionEnabled = !!companion && controllable;
+  S.CompanionEnable(companionEnabled);
   relay?.close();
   paused = startPaused;
   const t0 = performance.now();
@@ -319,7 +342,7 @@ function start(scenario: string, startPaused = false, companion = false) {
     const local = (spec.players as { client?: number; faction?: string; bot?: string }[]).find((p) => !p.bot && (!spec.multiplayer || p.client === spec.localClient))?.faction;
     if (lazy && local) lazy.prefetch(lazy.backgroundPaths().filter((p) => p.includes(`/eva/${local}/`) || p.includes("/audio/ui/")));
   } catch { /* a scenario without players */ }
-  if (companion) {
+  if (companionEnabled && companion !== "browser") {
     const url = new URL("companion/bridge", base);
     url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
     relay ??= new CompanionRelay(url.href, { call: (id, method, request) => S.CompanionCall(id, method, request) },
@@ -327,6 +350,11 @@ function start(scenario: string, startPaused = false, companion = false) {
     relay.connect();
     // Observations are pushed as they change (compact, see companion.ts), when the runtime can provide them.
     if (S.CompanionObservation) relay.streamObservations(() => S.CompanionObservation());
+  }
+  if (browserAdviser) {
+    // The browser adviser uses the existing engine kill switch; it never enables native AUTO control.
+    S.CompanionCall(nextAdviserCall--, "UpdateCompanionStatus", encodeAdviserStatus(true));
+    post({ type: "companion", event: { kind: "link", connected: true } });
   }
   sendShroud(true);
   running = true;
@@ -483,6 +511,7 @@ self.onmessage = async (e: MessageEvent<ToWorker>) => {
       case "step": if (network) break; if (running && paused) tickOnce(); break;
       case "speed": if (network) break; tickMs = TICK_MS / Math.max(0.25, Math.min(8, m.speed)); break;
       case "end":
+        browserAdviser = false; cancelAdviserCalls();
         if (network) {
           network.stopped = true;
           if (!network.peer) void fetch(new URL("api/multiplayer", base), {method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({op:"leave",room:network.room,token:network.token})}).catch(()=>{});
@@ -494,6 +523,20 @@ self.onmessage = async (e: MessageEvent<ToWorker>) => {
         if (running && paused) refresh();
         break;
       case "select": post({ type: "reply", req: m.req, json: S.Select(JSON.stringify(m.ids), m.additive) }); sendUi(); break;
+      case "adviserRpc": {
+        const replyError = (code: number, message: string) => post({ type: "adviserReply", req: m.req, code, message, payload: new Uint8Array() });
+        if (!browserAdviser || !running || network || replayEnd !== null) { replyError(9, "No controllable single-player co-commander match"); break; }
+        if (m.method !== "Observe" && m.method !== "ExecuteCompanionActions" && m.method !== "UpdateCompanionStatus") { replyError(12, "Unsupported browser co-commander RPC"); break; }
+        if (!(m.payload instanceof Uint8Array) || m.payload.byteLength > 65536) { replyError(3, "Invalid browser co-commander request"); break; }
+        // Native confirmed actions resolve on a game tick. Refuse while paused, before queuing anything.
+        if (m.method === "ExecuteCompanionActions" && paused) { replyError(9, "Resume the match before confirming a co-commander action"); break; }
+        const call = nextAdviserCall--;
+        const timer = setTimeout(() => { adviserReply(call, 4, "Co-commander engine request timed out", new Uint8Array()); }, 5000);
+        adviserCalls.set(call, { req: m.req, generation, timer });
+        try { S.CompanionCall(call, m.method, m.payload); }
+        catch (err) { adviserReply(call, 13, err instanceof Error ? err.message : String(err), new Uint8Array()); }
+        break;
+      }
       case "command": {
         let json: string;
         try { json = replayEnd !== null || network?.observer ? JSON.stringify({ error: "Replay and spectators are read-only" }) : S.Command(m.json); } catch (err) { json = JSON.stringify({ error: String(err instanceof Error ? err.message : err) }); }

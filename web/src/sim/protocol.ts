@@ -311,7 +311,7 @@ export type ToWorker = (
   | { type: "init"; runtime: string; base: string; sab: SharedArrayBuffer | null; privateContent: boolean; voiceLanguage: string; gcParams?: string; profile?: string; rtBase?: string; dataBase?: string }
   | { type: "prepare"; map: string }
   | { type: "preview"; map: string }
-  | { type: "start"; scenario: string; voiceLanguage: string; paused?: boolean; companion?: boolean }
+  | { type: "start"; scenario: string; voiceLanguage: string; paused?: boolean; companion?: boolean | "browser" }
   /** The factions a game will show (null: unknown, all): their sprite sheets are fetched now. */
   | { type: "sheetGroups"; groups: string[] | null; first?: string[] }
   /** Sheets the page drew from but does not have. */
@@ -333,6 +333,7 @@ export type ToWorker = (
   | { type: "record"; req: number }
   | { type: "voiceLanguage"; value?: string; req: number }
   | { type: "voicePreview"; req: number }
+  | { type: "adviserRpc"; req: number; method: "Observe" | "ExecuteCompanionActions" | "UpdateCompanionStatus"; payload: Uint8Array }
   | { type: "resync" }) & { generation?: number };
 
 export type FromWorker = (
@@ -359,6 +360,7 @@ export type FromWorker = (
   | { type: "shroud"; cells: ArrayBuffer }
   | { type: "radar"; blips: ArrayBuffer }
   | { type: "reply"; req: number; json: string }
+  | { type: "adviserReply"; req: number; code: number; message: string; payload: Uint8Array }
   | { type: "icon"; name: string; info: string }
   | { type: "modelbuffer"; id: number; data: ArrayBuffer }
   | { type: "audio"; op: "source"; id: number; channels: number; bits: number; rate: number; data: ArrayBuffer }

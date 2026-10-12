@@ -1,0 +1,1737 @@
+{
+  "aegis": {
+    "name": "Aegis Cruiser",
+    "kind": "unit",
+    "queue": "Ship",
+    "cost": 1200,
+    "order": 30,
+    "provides": []
+  },
+  "amcv": {
+    "name": "Mobile Construction Vehicle",
+    "kind": "unit",
+    "queue": "Vehicle",
+    "cost": 3000,
+    "order": 80,
+    "provides": []
+  },
+  "amradr": {
+    "name": "American Airforce Command Headquarters",
+    "kind": "building",
+    "queue": "Building",
+    "cost": 1000,
+    "order": 60,
+    "provides": [
+      "aircraft.allies",
+      "aircraft.harrier",
+      "amradr",
+      "radar"
+    ],
+    "produces": [
+      "aircraft"
+    ]
+  },
+  "atesla": {
+    "name": "Prism Tower",
+    "kind": "building",
+    "queue": "Support",
+    "cost": 1500,
+    "order": 40,
+    "provides": []
+  },
+  "carrier": {
+    "name": "Aircraft Carrier",
+    "kind": "unit",
+    "queue": "Ship",
+    "cost": 2000,
+    "order": 60,
+    "provides": []
+  },
+  "cleg": {
+    "name": "Chrono Legionnaire",
+    "kind": "unit",
+    "queue": "Infantry",
+    "cost": 1500,
+    "order": 150,
+    "provides": []
+  },
+  "cmin": {
+    "name": "Ore Harvester",
+    "kind": "unit",
+    "queue": "Vehicle",
+    "cost": 1400,
+    "order": 10,
+    "provides": []
+  },
+  "dest": {
+    "name": "Destroyer",
+    "kind": "unit",
+    "queue": "Ship",
+    "cost": 1000,
+    "order": 20,
+    "provides": []
+  },
+  "dlph": {
+    "name": "Dolphin",
+    "kind": "unit",
+    "queue": "Ship",
+    "cost": 500,
+    "order": 40,
+    "provides": []
+  },
+  "dog": {
+    "name": "Attack Dog",
+    "kind": "unit",
+    "queue": "Infantry",
+    "cost": 200,
+    "order": 40,
+    "provides": []
+  },
+  "e1": {
+    "name": "G.I.",
+    "kind": "unit",
+    "queue": "Infantry",
+    "cost": 200,
+    "order": 10,
+    "provides": []
+  },
+  "engineer": {
+    "name": "Engineer",
+    "kind": "unit",
+    "queue": "Infantry",
+    "cost": 500,
+    "order": 30,
+    "provides": []
+  },
+  "fv": {
+    "name": "Infantry Fighting Vehicle",
+    "kind": "unit",
+    "queue": "Vehicle",
+    "cost": 600,
+    "order": 30,
+    "provides": []
+  },
+  "gacnst": {
+    "name": "Construction Yard",
+    "kind": "building",
+    "queue": "Building",
+    "cost": 3000,
+    "order": 1000,
+    "provides": [
+      "structures.allies"
+    ],
+    "produces": [
+      "building",
+      "support"
+    ]
+  },
+  "gacsph": {
+    "name": "Strategic Uplink",
+    "kind": "building",
+    "queue": "Support",
+    "cost": 2500,
+    "order": 80,
+    "provides": []
+  },
+  "gadept": {
+    "name": "Service Depot",
+    "kind": "building",
+    "queue": "Building",
+    "cost": 800,
+    "order": 70,
+    "provides": [
+      "gadept",
+      "repairpad"
+    ]
+  },
+  "gagap": {
+    "name": "Gap Generator",
+    "kind": "building",
+    "queue": "Support",
+    "cost": 1000,
+    "order": 60,
+    "provides": []
+  },
+  "gaorep": {
+    "name": "Ore Purifier",
+    "kind": "building",
+    "queue": "Building",
+    "cost": 2500,
+    "order": 100,
+    "provides": []
+  },
+  "gapile": {
+    "name": "Barracks",
+    "kind": "building",
+    "queue": "Building",
+    "cost": 500,
+    "order": 20,
+    "provides": [
+      "barracks",
+      "gapile"
+    ],
+    "produces": [
+      "infantry"
+    ]
+  },
+  "gapill": {
+    "name": "Pill Box",
+    "kind": "building",
+    "queue": "Support",
+    "cost": 500,
+    "order": 20,
+    "provides": []
+  },
+  "gapowr": {
+    "name": "Power Plant",
+    "kind": "building",
+    "queue": "Building",
+    "cost": 800,
+    "order": 10,
+    "provides": [
+      "power"
+    ]
+  },
+  "garefn": {
+    "name": "Ore Refinery",
+    "kind": "building",
+    "queue": "Building",
+    "cost": 2000,
+    "order": 30,
+    "provides": [
+      "garefn",
+      "refinery"
+    ]
+  },
+  "gaspysat": {
+    "name": "Spy Satellite Uplink",
+    "kind": "building",
+    "queue": "Support",
+    "cost": 1500,
+    "order": 70,
+    "provides": []
+  },
+  "gatech": {
+    "name": "Tech Center",
+    "kind": "building",
+    "queue": "Building",
+    "cost": 2000,
+    "order": 80,
+    "provides": [
+      "gatech"
+    ]
+  },
+  "gawall": {
+    "name": "Wall",
+    "kind": "building",
+    "queue": "Support",
+    "cost": 100,
+    "order": 10,
+    "provides": []
+  },
+  "gaweap": {
+    "name": "Vehicle Factory",
+    "kind": "building",
+    "queue": "Building",
+    "cost": 2000,
+    "order": 40,
+    "provides": [
+      "gaweap"
+    ],
+    "produces": [
+      "vehicle"
+    ]
+  },
+  "gaweat": {
+    "name": "Weather Controller",
+    "kind": "building",
+    "queue": "Support",
+    "cost": 5000,
+    "order": 90,
+    "provides": []
+  },
+  "gayard": {
+    "name": "Naval Yard",
+    "kind": "building",
+    "queue": "Building",
+    "cost": 1000,
+    "order": 50,
+    "provides": [
+      "gayard"
+    ],
+    "produces": [
+      "ship"
+    ]
+  },
+  "jumpjet": {
+    "name": "Rocketeer",
+    "kind": "unit",
+    "queue": "Infantry",
+    "cost": 600,
+    "order": 60,
+    "provides": []
+  },
+  "lcrf": {
+    "name": "Amphibious Transport",
+    "kind": "unit",
+    "queue": "Ship",
+    "cost": 900,
+    "order": 10,
+    "provides": []
+  },
+  "mgtk": {
+    "name": "Mirage Tank",
+    "kind": "unit",
+    "queue": "Vehicle",
+    "cost": 1000,
+    "order": 70,
+    "provides": []
+  },
+  "mtnk": {
+    "name": "Grizzly Battle Tank",
+    "kind": "unit",
+    "queue": "Vehicle",
+    "cost": 700,
+    "order": 20,
+    "provides": []
+  },
+  "nasam": {
+    "name": "Patriot Missile System",
+    "kind": "building",
+    "queue": "Support",
+    "cost": 1000,
+    "order": 30,
+    "provides": []
+  },
+  "orca": {
+    "name": "Harrier",
+    "kind": "unit",
+    "queue": "Aircraft",
+    "cost": 1200,
+    "order": 10,
+    "provides": []
+  },
+  "shad": {
+    "name": "Night Hawk",
+    "kind": "unit",
+    "queue": "Vehicle",
+    "cost": 1000,
+    "order": 90,
+    "provides": []
+  },
+  "spy": {
+    "name": "Spy",
+    "kind": "unit",
+    "queue": "Infantry",
+    "cost": 1000,
+    "order": 130,
+    "provides": []
+  },
+  "sref": {
+    "name": "Prism Tank",
+    "kind": "unit",
+    "queue": "Vehicle",
+    "cost": 1200,
+    "order": 50,
+    "provides": []
+  },
+  "tany": {
+    "name": "Tanya",
+    "kind": "unit",
+    "queue": "Infantry",
+    "cost": 1000,
+    "order": 140,
+    "provides": []
+  },
+  "gaairc": {
+    "name": "Airfield",
+    "kind": "building",
+    "queue": "Building",
+    "cost": 1000,
+    "order": 60,
+    "provides": [
+      "aircraft.allies",
+      "aircraft.harrier",
+      "gaairc",
+      "radar"
+    ],
+    "produces": [
+      "aircraft"
+    ]
+  },
+  "r2bastion": {
+    "name": "Bastion Autocannon",
+    "kind": "building",
+    "queue": "Support",
+    "cost": 650,
+    "order": 20,
+    "provides": []
+  },
+  "r2cloud": {
+    "name": "Cloud Recon Drone",
+    "kind": "unit",
+    "queue": "Vehicle",
+    "cost": 1000,
+    "order": 81,
+    "provides": []
+  },
+  "r2cnnetwork": {
+    "name": "Network Technician",
+    "kind": "unit",
+    "queue": "Infantry",
+    "cost": 550,
+    "order": 65,
+    "provides": []
+  },
+  "r2cnportable": {
+    "name": "Portable Missile Team",
+    "kind": "unit",
+    "queue": "Infantry",
+    "cost": 400,
+    "order": 30,
+    "provides": []
+  },
+  "r2cnrifle": {
+    "name": "Combined-Arms Rifleman",
+    "kind": "unit",
+    "queue": "Infantry",
+    "cost": 170,
+    "order": 10,
+    "provides": []
+  },
+  "r2crane": {
+    "name": "Crane Airlift",
+    "kind": "unit",
+    "queue": "Vehicle",
+    "cost": 1200,
+    "order": 95,
+    "provides": []
+  },
+  "r2haiwang": {
+    "name": "Haiwang Drone Carrier",
+    "kind": "unit",
+    "queue": "Ship",
+    "cost": 2400,
+    "order": 65,
+    "provides": []
+  },
+  "r2haiying": {
+    "name": "Haiying Missile Corvette",
+    "kind": "unit",
+    "queue": "Ship",
+    "cost": 950,
+    "order": 40,
+    "provides": []
+  },
+  "r2jiaolong": {
+    "name": "Jiaolong Submarine",
+    "kind": "unit",
+    "queue": "Ship",
+    "cost": 1300,
+    "order": 50,
+    "provides": []
+  },
+  "r2kunlun": {
+    "name": "Kunlun Landing Ship",
+    "kind": "unit",
+    "queue": "Ship",
+    "cost": 1100,
+    "order": 10,
+    "provides": []
+  },
+  "r2luyang": {
+    "name": "Luyang Destroyer",
+    "kind": "unit",
+    "queue": "Ship",
+    "cost": 1250,
+    "order": 20,
+    "provides": []
+  },
+  "r2lynx": {
+    "name": "Lynx Command Scout",
+    "kind": "unit",
+    "queue": "Vehicle",
+    "cost": 600,
+    "order": 41,
+    "provides": []
+  },
+  "r2mantis": {
+    "name": "Mantis Air Defense",
+    "kind": "unit",
+    "queue": "Vehicle",
+    "cost": 950,
+    "order": 61,
+    "provides": []
+  },
+  "r2phl": {
+    "name": "Longbow Rocket Artillery",
+    "kind": "unit",
+    "queue": "Vehicle",
+    "cost": 1500,
+    "order": 75,
+    "provides": []
+  },
+  "r2qilin": {
+    "name": "Qilin Battle Tank",
+    "kind": "unit",
+    "queue": "Vehicle",
+    "cost": 750,
+    "order": 21,
+    "provides": []
+  },
+  "r2redspear": {
+    "name": "Red Spear",
+    "kind": "unit",
+    "queue": "Infantry",
+    "cost": 1900,
+    "order": 140,
+    "provides": []
+  },
+  "r2skyshield": {
+    "name": "Skyshield Battery",
+    "kind": "building",
+    "queue": "Support",
+    "cost": 1000,
+    "order": 30,
+    "provides": []
+  },
+  "r2skyspear": {
+    "name": "Skyspear Interceptor",
+    "kind": "unit",
+    "queue": "Aircraft",
+    "cost": 1700,
+    "order": 10,
+    "provides": []
+  },
+  "r2spectrum": {
+    "name": "Spectrum Relay",
+    "kind": "building",
+    "queue": "Support",
+    "cost": 1200,
+    "order": 60,
+    "provides": []
+  },
+  "r2zbd": {
+    "name": "Sea Dragon IFV",
+    "kind": "unit",
+    "queue": "Vehicle",
+    "cost": 850,
+    "order": 35,
+    "provides": []
+  },
+  "apoc": {
+    "name": "Apocalypse Tank",
+    "kind": "unit",
+    "queue": "Vehicle",
+    "cost": 1750,
+    "order": 70,
+    "provides": []
+  },
+  "dron": {
+    "name": "Terror Drone",
+    "kind": "unit",
+    "queue": "Vehicle",
+    "cost": 500,
+    "order": 40,
+    "provides": []
+  },
+  "e2": {
+    "name": "Conscript",
+    "kind": "unit",
+    "queue": "Infantry",
+    "cost": 100,
+    "order": 20,
+    "provides": []
+  },
+  "flakt": {
+    "name": "Flak Trooper",
+    "kind": "unit",
+    "queue": "Infantry",
+    "cost": 300,
+    "order": 70,
+    "provides": []
+  },
+  "harv": {
+    "name": "Armed Harvester",
+    "kind": "unit",
+    "queue": "Vehicle",
+    "cost": 1400,
+    "order": 10,
+    "provides": []
+  },
+  "htk": {
+    "name": "AA Carrier",
+    "kind": "unit",
+    "queue": "Vehicle",
+    "cost": 500,
+    "order": 30,
+    "provides": []
+  },
+  "htnk": {
+    "name": "Rhino Heavy Tank",
+    "kind": "unit",
+    "queue": "Vehicle",
+    "cost": 900,
+    "order": 20,
+    "provides": []
+  },
+  "hyd": {
+    "name": "Sea Scorpion",
+    "kind": "unit",
+    "queue": "Ship",
+    "cost": 900,
+    "order": 30,
+    "provides": []
+  },
+  "ivan": {
+    "name": "Crazy Ivan",
+    "kind": "unit",
+    "queue": "Infantry",
+    "cost": 600,
+    "order": 110,
+    "provides": []
+  },
+  "naclon": {
+    "name": "Cloning Vats",
+    "kind": "building",
+    "queue": "Building",
+    "cost": 2500,
+    "order": 100,
+    "provides": [],
+    "produces": [
+      "cloning"
+    ]
+  },
+  "nacnst": {
+    "name": "Construction Yard",
+    "kind": "building",
+    "queue": "Building",
+    "cost": 3000,
+    "order": 1000,
+    "provides": [
+      "structures.soviets"
+    ],
+    "produces": [
+      "building",
+      "support"
+    ]
+  },
+  "nadept": {
+    "name": "Service Depot",
+    "kind": "building",
+    "queue": "Building",
+    "cost": 800,
+    "order": 70,
+    "provides": [
+      "repairpad"
+    ]
+  },
+  "naflak": {
+    "name": "Flak Cannon",
+    "kind": "building",
+    "queue": "Support",
+    "cost": 1000,
+    "order": 30,
+    "provides": []
+  },
+  "nahand": {
+    "name": "Barracks",
+    "kind": "building",
+    "queue": "Building",
+    "cost": 500,
+    "order": 20,
+    "provides": [
+      "barracks",
+      "nahand"
+    ],
+    "produces": [
+      "infantry"
+    ]
+  },
+  "nairon": {
+    "name": "EW Array",
+    "kind": "building",
+    "queue": "Support",
+    "cost": 2500,
+    "order": 80,
+    "provides": []
+  },
+  "nalasr": {
+    "name": "Sentry Gun",
+    "kind": "building",
+    "queue": "Support",
+    "cost": 500,
+    "order": 20,
+    "provides": []
+  },
+  "namisl": {
+    "name": "Nuclear Missile Silo",
+    "kind": "building",
+    "queue": "Support",
+    "cost": 5000,
+    "order": 90,
+    "provides": []
+  },
+  "nanrct": {
+    "name": "Heavy Power Plant",
+    "kind": "building",
+    "queue": "Building",
+    "cost": 1000,
+    "order": 90,
+    "provides": [
+      "power"
+    ]
+  },
+  "napowr": {
+    "name": "Power Plant",
+    "kind": "building",
+    "queue": "Building",
+    "cost": 600,
+    "order": 10,
+    "provides": [
+      "power"
+    ]
+  },
+  "napsis": {
+    "name": "Psychic Sensor",
+    "kind": "building",
+    "queue": "Support",
+    "cost": 1000,
+    "order": 60,
+    "provides": []
+  },
+  "naradr": {
+    "name": "Radar Tower",
+    "kind": "building",
+    "queue": "Building",
+    "cost": 1000,
+    "order": 60,
+    "provides": [
+      "naradr",
+      "radar"
+    ]
+  },
+  "narefn": {
+    "name": "Ore Refinery",
+    "kind": "building",
+    "queue": "Building",
+    "cost": 2000,
+    "order": 30,
+    "provides": [
+      "narefn",
+      "refinery"
+    ]
+  },
+  "natech": {
+    "name": "Tech Center",
+    "kind": "building",
+    "queue": "Building",
+    "cost": 2000,
+    "order": 80,
+    "provides": [
+      "natech"
+    ]
+  },
+  "nawall": {
+    "name": "Wall",
+    "kind": "building",
+    "queue": "Support",
+    "cost": 100,
+    "order": 10,
+    "provides": []
+  },
+  "naweap": {
+    "name": "Vehicle Factory",
+    "kind": "building",
+    "queue": "Building",
+    "cost": 2000,
+    "order": 40,
+    "provides": [
+      "naweap"
+    ],
+    "produces": [
+      "vehicle"
+    ]
+  },
+  "nayard": {
+    "name": "Naval Yard",
+    "kind": "building",
+    "queue": "Building",
+    "cost": 1000,
+    "order": 50,
+    "provides": [
+      "nayard"
+    ],
+    "produces": [
+      "ship"
+    ]
+  },
+  "sapc": {
+    "name": "Amphibious Transport",
+    "kind": "unit",
+    "queue": "Ship",
+    "cost": 900,
+    "order": 10,
+    "provides": []
+  },
+  "shk": {
+    "name": "Tesla Trooper",
+    "kind": "unit",
+    "queue": "Infantry",
+    "cost": 500,
+    "order": 50,
+    "provides": []
+  },
+  "smcv": {
+    "name": "Mobile Construction Vehicle",
+    "kind": "unit",
+    "queue": "Vehicle",
+    "cost": 3000,
+    "order": 80,
+    "provides": []
+  },
+  "sqd": {
+    "name": "Giant Squid",
+    "kind": "unit",
+    "queue": "Ship",
+    "cost": 1000,
+    "order": 40,
+    "provides": []
+  },
+  "sub": {
+    "name": "Typhoon Attack Sub",
+    "kind": "unit",
+    "queue": "Ship",
+    "cost": 1000,
+    "order": 20,
+    "provides": []
+  },
+  "terror": {
+    "name": "Terrorist",
+    "kind": "unit",
+    "queue": "Infantry",
+    "cost": 200,
+    "order": 90,
+    "provides": []
+  },
+  "tesla": {
+    "name": "Tesla Coil",
+    "kind": "building",
+    "queue": "Support",
+    "cost": 1500,
+    "order": 40,
+    "provides": []
+  },
+  "yuri": {
+    "name": "Yuri",
+    "kind": "unit",
+    "queue": "Infantry",
+    "cost": 1200,
+    "order": 160,
+    "provides": []
+  },
+  "zep": {
+    "name": "Kirov Airship",
+    "kind": "unit",
+    "queue": "Vehicle",
+    "cost": 2000,
+    "order": 90,
+    "provides": []
+  },
+  "snipe": {
+    "name": "Sniper",
+    "kind": "unit",
+    "queue": "Infantry",
+    "cost": 600,
+    "order": 80,
+    "provides": []
+  },
+  "gtgcan": {
+    "name": "Grand Cannon",
+    "kind": "building",
+    "queue": "Support",
+    "cost": 2000,
+    "order": 50,
+    "provides": []
+  },
+  "tnkd": {
+    "name": "Tank Destroyer",
+    "kind": "unit",
+    "queue": "Vehicle",
+    "cost": 900,
+    "order": 40,
+    "provides": []
+  },
+  "r2hzaanest": {
+    "name": "Short-Range AA Nest",
+    "kind": "building",
+    "queue": "Support",
+    "cost": 800,
+    "order": 30,
+    "provides": []
+  },
+  "r2hzat": {
+    "name": "Ridge Missile Team",
+    "kind": "unit",
+    "queue": "Infantry",
+    "cost": 500,
+    "order": 20,
+    "provides": []
+  },
+  "r2hzbunker": {
+    "name": "Concealed Bunker",
+    "kind": "building",
+    "queue": "Support",
+    "cost": 450,
+    "order": 20,
+    "provides": []
+  },
+  "r2hzcoastal": {
+    "name": "Coastal Missile Emplacement",
+    "kind": "building",
+    "queue": "Support",
+    "cost": 1000,
+    "order": 40,
+    "provides": []
+  },
+  "r2hzdrone": {
+    "name": "Loiter Drone",
+    "kind": "unit",
+    "queue": "Vehicle",
+    "cost": 450,
+    "order": 85,
+    "provides": []
+  },
+  "r2hzescort": {
+    "name": "Escort Gun Truck",
+    "kind": "unit",
+    "queue": "Vehicle",
+    "cost": 600,
+    "order": 41,
+    "provides": []
+  },
+  "r2hzfpv": {
+    "name": "FPV Team",
+    "kind": "unit",
+    "queue": "Infantry",
+    "cost": 500,
+    "order": 50,
+    "provides": []
+  },
+  "r2hzmissileboat": {
+    "name": "Coastal Missile Boat",
+    "kind": "unit",
+    "queue": "Ship",
+    "cost": 1000,
+    "order": 20,
+    "provides": []
+  },
+  "r2hzrail": {
+    "name": "Rail Technical",
+    "kind": "unit",
+    "queue": "Vehicle",
+    "cost": 450,
+    "order": 55,
+    "provides": []
+  },
+  "r2hzrecoilless": {
+    "name": "Recoilless Technical",
+    "kind": "unit",
+    "queue": "Vehicle",
+    "cost": 475,
+    "order": 21,
+    "provides": []
+  },
+  "r2hzrelay": {
+    "name": "Signal Post",
+    "kind": "building",
+    "queue": "Support",
+    "cost": 750,
+    "order": 65,
+    "provides": []
+  },
+  "r2hzrifle": {
+    "name": "Line Fighter",
+    "kind": "unit",
+    "queue": "Infantry",
+    "cost": 300,
+    "order": 10,
+    "provides": []
+  },
+  "r2hzrockets": {
+    "name": "Mobile Rocket Battery",
+    "kind": "unit",
+    "queue": "Vehicle",
+    "cost": 800,
+    "order": 61,
+    "provides": []
+  },
+  "r2hzscout": {
+    "name": "Cedar Scout",
+    "kind": "unit",
+    "queue": "Infantry",
+    "cost": 1800,
+    "order": 140,
+    "provides": []
+  },
+  "r2hzskiff": {
+    "name": "Attack Skiff",
+    "kind": "unit",
+    "queue": "Ship",
+    "cost": 300,
+    "order": 10,
+    "provides": []
+  },
+  "r2hzspotter": {
+    "name": "Field Spotter",
+    "kind": "unit",
+    "queue": "Infantry",
+    "cost": 450,
+    "order": 60,
+    "provides": []
+  },
+  "r2hzsurvey": {
+    "name": "Coastal Survey Boat",
+    "kind": "unit",
+    "queue": "Ship",
+    "cost": 900,
+    "order": 30,
+    "provides": []
+  },
+  "r2hztechnical": {
+    "name": "Cedar Technical",
+    "kind": "unit",
+    "queue": "Vehicle",
+    "cost": 400,
+    "order": 11,
+    "provides": []
+  },
+  "r2hzworkshop": {
+    "name": "Field Workshop",
+    "kind": "building",
+    "queue": "Support",
+    "cost": 900,
+    "order": 66,
+    "provides": []
+  },
+  "r2azar": {
+    "name": "Azar Strike Aircraft",
+    "kind": "unit",
+    "queue": "Vehicle",
+    "cost": 2050,
+    "order": 120,
+    "provides": []
+  },
+  "r2basij": {
+    "name": "Basij Rifleman",
+    "kind": "unit",
+    "queue": "Infantry",
+    "cost": 90,
+    "order": 10,
+    "provides": []
+  },
+  "r2coast": {
+    "name": "Coastal Missile Launcher",
+    "kind": "unit",
+    "queue": "Vehicle",
+    "cost": 1500,
+    "order": 65,
+    "provides": []
+  },
+  "r2dronecontrol": {
+    "name": "Drone Coordinator",
+    "kind": "unit",
+    "queue": "Infantry",
+    "cost": 550,
+    "order": 70,
+    "provides": []
+  },
+  "r2fajr": {
+    "name": "Fajr Rocket Artillery",
+    "kind": "unit",
+    "queue": "Vehicle",
+    "cost": 1300,
+    "order": 61,
+    "provides": []
+  },
+  "r2ghadir": {
+    "name": "Ghadir Submarine",
+    "kind": "unit",
+    "queue": "Ship",
+    "cost": 1050,
+    "order": 40,
+    "provides": []
+  },
+  "r2iraasite": {
+    "name": "Raad AA Site",
+    "kind": "building",
+    "queue": "Support",
+    "cost": 950,
+    "order": 30,
+    "provides": []
+  },
+  "r2irbunker": {
+    "name": "Gun Bunker",
+    "kind": "building",
+    "queue": "Support",
+    "cost": 450,
+    "order": 20,
+    "provides": []
+  },
+  "r2ircoast": {
+    "name": "Denial Missile Battery",
+    "kind": "building",
+    "queue": "Support",
+    "cost": 1250,
+    "order": 40,
+    "provides": []
+  },
+  "r2karrar": {
+    "name": "Karrar Battle Tank",
+    "kind": "unit",
+    "queue": "Vehicle",
+    "cost": 850,
+    "order": 21,
+    "provides": []
+  },
+  "r2loiter": {
+    "name": "Loiter Munition",
+    "kind": "unit",
+    "queue": "Vehicle",
+    "cost": 500,
+    "order": 85,
+    "provides": []
+  },
+  "r2mohajer": {
+    "name": "Mohajer Recon Drone",
+    "kind": "unit",
+    "queue": "Vehicle",
+    "cost": 950,
+    "order": 81,
+    "provides": []
+  },
+  "r2peykaap": {
+    "name": "Peykaap Missile Craft",
+    "kind": "unit",
+    "queue": "Ship",
+    "cost": 750,
+    "order": 20,
+    "provides": []
+  },
+  "r2raad": {
+    "name": "Raad Air Defense",
+    "kind": "unit",
+    "queue": "Vehicle",
+    "cost": 1000,
+    "order": 41,
+    "provides": []
+  },
+  "r2shadowone": {
+    "name": "Shadow One",
+    "kind": "unit",
+    "queue": "Infantry",
+    "cost": 1900,
+    "order": 140,
+    "provides": []
+  },
+  "r2toophan": {
+    "name": "Toophan AT Team",
+    "kind": "unit",
+    "queue": "Infantry",
+    "cost": 450,
+    "order": 30,
+    "provides": []
+  },
+  "r2toufan": {
+    "name": "Toufan Gunship",
+    "kind": "unit",
+    "queue": "Vehicle",
+    "cost": 1450,
+    "order": 95,
+    "provides": []
+  },
+  "deso": {
+    "name": "Desolator",
+    "kind": "unit",
+    "queue": "Infantry",
+    "cost": 600,
+    "order": 120,
+    "provides": []
+  },
+  "r2ilat": {
+    "name": "Anti-Armor Team",
+    "kind": "unit",
+    "queue": "Infantry",
+    "cost": 500,
+    "order": 20,
+    "provides": []
+  },
+  "r2ilatpost": {
+    "name": "Anti-Armor Emplacement",
+    "kind": "building",
+    "queue": "Support",
+    "cost": 1100,
+    "order": 40,
+    "provides": []
+  },
+  "r2ilbattery": {
+    "name": "Interceptor Battery",
+    "kind": "building",
+    "queue": "Support",
+    "cost": 1200,
+    "order": 30,
+    "provides": []
+  },
+  "r2ilfalcon": {
+    "name": "Falcon Multirole Jet",
+    "kind": "unit",
+    "queue": "Aircraft",
+    "cost": 2200,
+    "order": 20,
+    "provides": []
+  },
+  "r2ilfrigate": {
+    "name": "Shield Frigate",
+    "kind": "unit",
+    "queue": "Ship",
+    "cost": 1850,
+    "order": 30,
+    "provides": []
+  },
+  "r2ilgunship": {
+    "name": "Escort Gunship",
+    "kind": "unit",
+    "queue": "Vehicle",
+    "cost": 1700,
+    "order": 100,
+    "provides": []
+  },
+  "r2ilhowitzer": {
+    "name": "Siege Howitzer",
+    "kind": "unit",
+    "queue": "Vehicle",
+    "cost": 1250,
+    "order": 61,
+    "provides": []
+  },
+  "r2ilobserver": {
+    "name": "Forward Observer",
+    "kind": "unit",
+    "queue": "Infantry",
+    "cost": 600,
+    "order": 60,
+    "provides": []
+  },
+  "r2ilpatrol": {
+    "name": "Coastal Patrol Craft",
+    "kind": "unit",
+    "queue": "Ship",
+    "cost": 650,
+    "order": 10,
+    "provides": []
+  },
+  "r2ilrecon": {
+    "name": "Recon Specialist",
+    "kind": "unit",
+    "queue": "Infantry",
+    "cost": 1900,
+    "order": 140,
+    "provides": []
+  },
+  "r2ilrelay": {
+    "name": "Coordination Relay",
+    "kind": "building",
+    "queue": "Support",
+    "cost": 750,
+    "order": 65,
+    "provides": []
+  },
+  "r2ilrifle": {
+    "name": "Rifle Team",
+    "kind": "unit",
+    "queue": "Infantry",
+    "cost": 220,
+    "order": 10,
+    "provides": []
+  },
+  "r2ilsentry": {
+    "name": "Sentry Emplacement",
+    "kind": "building",
+    "queue": "Support",
+    "cost": 600,
+    "order": 20,
+    "provides": []
+  },
+  "r2ilshield": {
+    "name": "Mobile Air Shield",
+    "kind": "unit",
+    "queue": "Vehicle",
+    "cost": 1050,
+    "order": 41,
+    "provides": []
+  },
+  "r2iltender": {
+    "name": "Fleet Support Tender",
+    "kind": "unit",
+    "queue": "Ship",
+    "cost": 1500,
+    "order": 50,
+    "provides": []
+  },
+  "r2ilworkshop": {
+    "name": "Field Service Station",
+    "kind": "building",
+    "queue": "Support",
+    "cost": 900,
+    "order": 66,
+    "provides": []
+  },
+  "r2merkava": {
+    "name": "Merkava Battle Tank",
+    "kind": "unit",
+    "queue": "Vehicle",
+    "cost": 1300,
+    "order": 21,
+    "provides": []
+  },
+  "r2namer": {
+    "name": "Namer Support Carrier",
+    "kind": "unit",
+    "queue": "Vehicle",
+    "cost": 1050,
+    "order": 31,
+    "provides": []
+  },
+  "beag": {
+    "name": "Black Eagle",
+    "kind": "unit",
+    "queue": "Aircraft",
+    "cost": 1200,
+    "order": 20,
+    "provides": []
+  },
+  "dtruck": {
+    "name": "Demolition Truck",
+    "kind": "unit",
+    "queue": "Vehicle",
+    "cost": 1500,
+    "order": 60,
+    "provides": []
+  },
+  "ttnk": {
+    "name": "Tesla Tank",
+    "kind": "unit",
+    "queue": "Vehicle",
+    "cost": 1200,
+    "order": 50,
+    "provides": []
+  },
+  "r2ah64sa": {
+    "name": "AH-64E Apache",
+    "kind": "unit",
+    "queue": "Vehicle",
+    "cost": 1700,
+    "order": 100,
+    "provides": []
+  },
+  "r2bradley": {
+    "name": "Bradley IFV",
+    "kind": "unit",
+    "queue": "Vehicle",
+    "cost": 850,
+    "order": 31,
+    "provides": []
+  },
+  "r2caesar": {
+    "name": "CAESAR Howitzer",
+    "kind": "unit",
+    "queue": "Vehicle",
+    "cost": 1250,
+    "order": 61,
+    "provides": []
+  },
+  "r2f15sa": {
+    "name": "F-15SA Eagle",
+    "kind": "unit",
+    "queue": "Aircraft",
+    "cost": 2200,
+    "order": 20,
+    "provides": []
+  },
+  "r2falcon": {
+    "name": "Falcon One",
+    "kind": "unit",
+    "queue": "Infantry",
+    "cost": 1900,
+    "order": 140,
+    "provides": []
+  },
+  "r2jubail": {
+    "name": "Al Jubail Support Ship",
+    "kind": "unit",
+    "queue": "Ship",
+    "cost": 1500,
+    "order": 50,
+    "provides": []
+  },
+  "r2m1a2s": {
+    "name": "M1A2S Battle Tank",
+    "kind": "unit",
+    "queue": "Vehicle",
+    "cost": 1150,
+    "order": 21,
+    "provides": []
+  },
+  "r2riyadh": {
+    "name": "Al Riyadh Frigate",
+    "kind": "unit",
+    "queue": "Ship",
+    "cost": 1850,
+    "order": 30,
+    "provides": []
+  },
+  "r2saat": {
+    "name": "ATGM Team",
+    "kind": "unit",
+    "queue": "Infantry",
+    "cost": 500,
+    "order": 20,
+    "provides": []
+  },
+  "r2sadiq": {
+    "name": "Al Sadiq Fast Interceptor",
+    "kind": "unit",
+    "queue": "Ship",
+    "cost": 650,
+    "order": 10,
+    "provides": []
+  },
+  "r2sads": {
+    "name": "Mobile Air Defense System",
+    "kind": "unit",
+    "queue": "Vehicle",
+    "cost": 1050,
+    "order": 41,
+    "provides": []
+  },
+  "r2saguard": {
+    "name": "Guard Tower",
+    "kind": "building",
+    "queue": "Support",
+    "cost": 600,
+    "order": 20,
+    "provides": []
+  },
+  "r2sajtac": {
+    "name": "Saudi JTAC",
+    "kind": "unit",
+    "queue": "Infantry",
+    "cost": 600,
+    "order": 60,
+    "provides": []
+  },
+  "r2sang": {
+    "name": "Saudi National Guard",
+    "kind": "unit",
+    "queue": "Infantry",
+    "cost": 220,
+    "order": 10,
+    "provides": []
+  },
+  "r2sapatriot": {
+    "name": "Patriot Battery",
+    "kind": "building",
+    "queue": "Support",
+    "cost": 1200,
+    "order": 30,
+    "provides": []
+  },
+  "r2satow": {
+    "name": "TOW Emplacement",
+    "kind": "building",
+    "queue": "Support",
+    "cost": 1100,
+    "order": 40,
+    "provides": []
+  },
+  "r2aras": {
+    "name": "Aras-8 Infantry Carrier",
+    "kind": "unit",
+    "queue": "Vehicle",
+    "cost": 650,
+    "order": 15,
+    "provides": []
+  },
+  "r2boran": {
+    "name": "Boran Anti-Armor Turret",
+    "kind": "building",
+    "queue": "Support",
+    "cost": 1300,
+    "order": 40,
+    "provides": []
+  },
+  "r2bozkir": {
+    "name": "Bozkir Battle Tank",
+    "kind": "unit",
+    "queue": "Vehicle",
+    "cost": 950,
+    "order": 21,
+    "provides": []
+  },
+  "r2deniz": {
+    "name": "Deniz Kaplan Amphibious Carrier",
+    "kind": "unit",
+    "queue": "Vehicle",
+    "cost": 950,
+    "order": 55,
+    "provides": []
+  },
+  "r2ege": {
+    "name": "Ege Missile Corvette",
+    "kind": "unit",
+    "queue": "Ship",
+    "cost": 1200,
+    "order": 30,
+    "provides": []
+  },
+  "r2gokkalkan": {
+    "name": "Gokkalkan Air Defense",
+    "kind": "unit",
+    "queue": "Vehicle",
+    "cost": 950,
+    "order": 35,
+    "provides": []
+  },
+  "r2greywolf": {
+    "name": "Grey Wolf",
+    "kind": "unit",
+    "queue": "Infantry",
+    "cost": 1800,
+    "order": 140,
+    "provides": []
+  },
+  "r2hisar": {
+    "name": "Hisar Sentry Turret",
+    "kind": "building",
+    "queue": "Support",
+    "cost": 550,
+    "order": 20,
+    "provides": []
+  },
+  "r2kuzgun": {
+    "name": "Kuzgun Recon Drone",
+    "kind": "unit",
+    "queue": "Vehicle",
+    "cost": 1000,
+    "order": 81,
+    "provides": []
+  },
+  "r2marmara": {
+    "name": "Marmara Frigate",
+    "kind": "unit",
+    "queue": "Ship",
+    "cost": 2000,
+    "order": 60,
+    "provides": []
+  },
+  "r2poyraz": {
+    "name": "Poyraz Patrol Craft",
+    "kind": "unit",
+    "queue": "Ship",
+    "cost": 650,
+    "order": 10,
+    "provides": []
+  },
+  "r2sahin": {
+    "name": "Sahin-X Interceptor",
+    "kind": "unit",
+    "queue": "Aircraft",
+    "cost": 1800,
+    "order": 10,
+    "provides": []
+  },
+  "r2sancak": {
+    "name": "Sancak Support Vehicle",
+    "kind": "unit",
+    "queue": "Vehicle",
+    "cost": 850,
+    "order": 61,
+    "provides": []
+  },
+  "r2siper": {
+    "name": "Siper Air-Defense Battery",
+    "kind": "building",
+    "queue": "Support",
+    "cost": 1100,
+    "order": 30,
+    "provides": []
+  },
+  "r2trat": {
+    "name": "Portable AT Specialist",
+    "kind": "unit",
+    "queue": "Infantry",
+    "cost": 400,
+    "order": 20,
+    "provides": []
+  },
+  "r2trdroneop": {
+    "name": "Forward Drone Operator",
+    "kind": "unit",
+    "queue": "Infantry",
+    "cost": 550,
+    "order": 60,
+    "provides": []
+  },
+  "r2trrifle": {
+    "name": "Mechanized Rifleman",
+    "kind": "unit",
+    "queue": "Infantry",
+    "cost": 155,
+    "order": 10,
+    "provides": []
+  },
+  "r2turna": {
+    "name": "Turna-AH Gunship",
+    "kind": "unit",
+    "queue": "Vehicle",
+    "cost": 1600,
+    "order": 100,
+    "provides": []
+  },
+  "r2yildirim": {
+    "name": "Yildirim Howitzer",
+    "kind": "unit",
+    "queue": "Vehicle",
+    "cost": 1200,
+    "order": 41,
+    "provides": []
+  },
+  "r2hodeidah": {
+    "name": "Hodeidah Missile Craft",
+    "kind": "unit",
+    "queue": "Ship",
+    "cost": 1100,
+    "order": 20,
+    "provides": []
+  },
+  "r2mokha": {
+    "name": "Mokha Surveillance Craft",
+    "kind": "unit",
+    "queue": "Ship",
+    "cost": 900,
+    "order": 30,
+    "provides": []
+  },
+  "r2sahaab": {
+    "name": "Sahaab USV",
+    "kind": "unit",
+    "queue": "Ship",
+    "cost": 300,
+    "order": 10,
+    "provides": []
+  },
+  "r2samad": {
+    "name": "Samad Drone",
+    "kind": "unit",
+    "queue": "Vehicle",
+    "cost": 700,
+    "order": 85,
+    "provides": []
+  },
+  "r2technical": {
+    "name": "Armed Technical",
+    "kind": "unit",
+    "queue": "Vehicle",
+    "cost": 400,
+    "order": 11,
+    "provides": []
+  },
+  "r2wadighost": {
+    "name": "Wadi Ghost",
+    "kind": "unit",
+    "queue": "Infantry",
+    "cost": 1650,
+    "order": 140,
+    "provides": []
+  },
+  "r2ybunker": {
+    "name": "Mountain Bunker",
+    "kind": "building",
+    "queue": "Support",
+    "cost": 450,
+    "order": 20,
+    "provides": []
+  },
+  "r2ycoastal": {
+    "name": "Coastal Missile Battery",
+    "kind": "building",
+    "queue": "Support",
+    "cost": 1200,
+    "order": 40,
+    "provides": []
+  },
+  "r2ymlr": {
+    "name": "Mobile Missile Launcher",
+    "kind": "unit",
+    "queue": "Vehicle",
+    "cost": 900,
+    "order": 61,
+    "provides": []
+  },
+  "r2ymr": {
+    "name": "Mountain Rifleman",
+    "kind": "unit",
+    "queue": "Infantry",
+    "cost": 165,
+    "order": 10,
+    "provides": []
+  },
+  "r2yrpg": {
+    "name": "RPG Hunter",
+    "kind": "unit",
+    "queue": "Infantry",
+    "cost": 350,
+    "order": 20,
+    "provides": []
+  },
+  "r2yspot": {
+    "name": "Drone Spotter",
+    "kind": "unit",
+    "queue": "Infantry",
+    "cost": 525,
+    "order": 60,
+    "provides": []
+  },
+  "r2ytechrr": {
+    "name": "Recoilless Technical",
+    "kind": "unit",
+    "queue": "Vehicle",
+    "cost": 550,
+    "order": 21,
+    "provides": []
+  },
+  "r2yzu": {
+    "name": "ZU-23 Technical",
+    "kind": "unit",
+    "queue": "Vehicle",
+    "cost": 600,
+    "order": 41,
+    "provides": []
+  },
+  "r2yzunest": {
+    "name": "ZU-23 Nest",
+    "kind": "building",
+    "queue": "Support",
+    "cost": 800,
+    "order": 30,
+    "provides": []
+  },
+  "gapurifier": {
+    "name": "Refinery Purifier",
+    "kind": "building",
+    "queue": "Building",
+    "cost": 1000,
+    "order": 100,
+    "provides": []
+  }
+}

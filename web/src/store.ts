@@ -51,9 +51,10 @@ export interface Store {
   keysOpen: boolean;
   /** DisableUserInterface (Shift+=): the HUD hidden, the battlefield only. */
   uiHidden: boolean;
-  /** The AI co-commander (cocommander.ts), and whether this server can run it (local mode). */
+  /** Browser strategy adviser, with an optional local model/voice companion on development servers. */
   cc: CoCommanderState;
   ccAvailable: boolean;
+  ccLocalAvailable: boolean;
   /** Prebaked sprite sheets of the prepared map on the GPU (the world waits for them). */
   sheets: { uploaded: number; total: number };
   paused: boolean;
@@ -94,6 +95,7 @@ export const useStore = create<Store>((set) => ({
   uiHidden: false,
   cc: initialCoCommander(),
   ccAvailable: false,
+  ccLocalAvailable: false,
   sheets: { uploaded: 0, total: 0 },
   paused: false,
   timings: {},

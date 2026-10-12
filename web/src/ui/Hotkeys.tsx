@@ -58,10 +58,10 @@ const GROUPS: [string, Row[]][] = [
     [["P"], "Pause (or Pause key)"],
     [["M"], "Mute"],
     [["?"], "This sheet"],
+    [["G", "or", "J"], "Apply displayed recommendation (Ctrl+⌫ reject)"],
     ...(import.meta.env.VITE_STATIC_BUILD !== "1" ? [
     [["V"], "Co-commander: hold to talk"],
     [["Ctrl", "Space"], "Co-commander: type"],
-    [["G"], "Apply newest recommendation (Ctrl+⌫ reject)"],
     ] as [string[], string][] : []),
   ]],
 ];

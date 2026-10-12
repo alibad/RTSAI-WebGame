@@ -6,6 +6,8 @@ import {
   RING_BYTES, RING_HEADER_BYTES, RING_GENERATION_AT, RING_LEN_AT, RING_SEQ_AT, RING_SLOT_BYTES, RING_SLOTS, parseSnapshot,
   type FromWorker, type Snapshot, type ToWorker,
 } from "./protocol";
+import type { AdviserCommand, AdviserObservation } from "../adviser";
+import { decodeAdviserObservation, decodeAdviserReceipt, decodeAdviserStatus, encodeAdviserActions, encodeAdviserStatus } from "./adviser-rpc";
 import { readVoiceLanguage, saveVoiceLanguage } from "../voice-language";
 import type { Renderer } from "../render/renderer";
 import { gunzipSheet } from "./spritecache";
@@ -35,6 +37,10 @@ export class SimClient {
   private replies = new Map<number, (json: string) => void>();
   private nextReq = 1;
   private resyncing = false;
+  private browserAdviser = false;
+  private disposed = false;
+  private lastAdviserTick = 0;
+  private adviserReplies = new Map<number, { resolve: (data: Uint8Array) => void; reject: (error: Error) => void; timer: ReturnType<typeof setTimeout> }>();
   cur: Snapshot | null = null;
   prev: Snapshot | null = null;
   strings: string[] = [];
@@ -66,9 +72,13 @@ export class SimClient {
   private cancelReplies() {
     for (const reply of this.replies.values()) reply(JSON.stringify({ error: "World request cancelled" }));
     this.replies.clear();
+    for (const pending of this.adviserReplies.values()) { clearTimeout(pending.timer); pending.reject(Error("Co-commander world request cancelled")); }
+    this.adviserReplies.clear();
+    this.lastAdviserTick = 0;
   }
 
   send(m: ToWorker) {
+    if (this.disposed) return;
     if (m.type === "end") { this.generation++; this.active = false; this.pending = []; this.cancelReplies(); }
     this.worker.postMessage({ ...m, generation: this.generation });
   }
@@ -92,12 +102,50 @@ export class SimClient {
 
   previewVoice() { return this.request({ type: "voicePreview" }); }
 
+  private adviserRpc(method: "Observe" | "ExecuteCompanionActions" | "UpdateCompanionStatus", payload = new Uint8Array()): Promise<Uint8Array> {
+    if (this.disposed || !this.active || !this.browserAdviser) return Promise.reject(Error("No active browser co-commander match"));
+    const req = this.nextReq++;
+    return new Promise((resolve, reject) => {
+      const timer = setTimeout(() => { this.adviserReplies.delete(req); reject(Error("Co-commander engine request timed out")); }, 6000);
+      this.adviserReplies.set(req, { resolve, reject, timer });
+      this.send({ type: "adviserRpc", req, method, payload });
+    });
+  }
+
+  async adviserObserve(): Promise<AdviserObservation> {
+    const generation = this.generation;
+    const observation = decodeAdviserObservation(await this.adviserRpc("Observe"));
+    if (generation !== this.generation || this.disposed) throw Error("Co-commander observation belongs to an ended world");
+    this.lastAdviserTick = observation.tick;
+    return observation;
+  }
+
+  async adviserExecute(proposalId: string, commands: AdviserCommand[], expectedTick = this.lastAdviserTick) {
+    const receipt = decodeAdviserReceipt(await this.adviserRpc("ExecuteCompanionActions", encodeAdviserActions(proposalId, expectedTick, commands)));
+    if (receipt.requestId !== proposalId) throw Error("Co-commander engine receipt does not match the proposal");
+    return receipt;
+  }
+
+  async adviserStatus(enabled: boolean, message?: string) {
+    return decodeAdviserStatus(await this.adviserRpc("UpdateCompanionStatus", encodeAdviserStatus(enabled, message)));
+  }
+
+  dispose() {
+    this.active = false;
+    this.browserAdviser = false;
+    this.disposed = true;
+    this.cancelReplies();
+    this.worker.terminate();
+  }
+
   init(runtime: string, base: string, privateContent: boolean, gcParams?: string, profile?: string) {
     this.send({ type: "init", runtime, base, sab: this.sab, privateContent, voiceLanguage: readVoiceLanguage(), gcParams, profile,
       rtBase: import.meta.env.VITE_RT_BASE || undefined, dataBase: import.meta.env.VITE_DATA_BASE || undefined });
   }
 
-  start(scenario: string, paused = false, companion = false) {
+  start(scenario: string, paused = false, companion: boolean | "browser" = false) {
+    if (this.disposed) throw Error("The simulation client is disposed");
+    this.browserAdviser = companion === "browser";
     this.generation++;
     this.active = false;
     this.cancelReplies();
@@ -183,6 +231,15 @@ export class SimClient {
       case "snapshot":
         this.pending.push({ bytes: new Uint8Array(m.bytes), seq: m.seq });
         return;
+      case "adviserReply": {
+        const pending = this.adviserReplies.get(m.req);
+        if (!pending) return;
+        this.adviserReplies.delete(m.req); clearTimeout(pending.timer);
+        if (m.code) pending.reject(Error(m.message || `Co-commander engine error ${m.code}`));
+        else pending.resolve(m.payload);
+        return;
+      }
+      case "error": this.cancelReplies(); break;
       case "reply": {
         const r = this.replies.get(m.req);
         this.replies.delete(m.req);

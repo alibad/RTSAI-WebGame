@@ -48,7 +48,11 @@ export class Game {
   readonly client: SimClient;
   readonly radar = new RadarModel();
   readonly audio = new AudioEngine();
-  readonly cc = new CoCommander(this.audio, () => !this.coach.review);
+  readonly cc = new CoCommander(this.audio, () => !this.coach.review && !this.multiplayer, {
+    observe: () => this.client.adviserObserve(),
+    execute: (id, commands, tick) => this.client.adviserExecute(id, commands, tick),
+    status: (enabled, message) => this.client.adviserStatus(enabled, message),
+  });
   readonly coach = new Coach(this);
   private lastListener = 0;
   private launchGeneration = 0;
@@ -253,6 +257,11 @@ export class Game {
     // The co-commander (skirmish only): the local companion is started first, then the match with its bridge on.
     if (!store.get().cc.enabled || !store.get().ccAvailable || this.sandbox) {
       this.client.start(scenarioJson, paused);
+      return;
+    }
+    if (store.get().cc.mode === "browser") {
+      this.cc.matchStarted();
+      this.client.start(scenarioJson, paused, "browser");
       return;
     }
     store.set({ stage: "Starting the co-commander" });
@@ -706,7 +715,7 @@ export class Game {
   }
 
   requestVerify() {
-    if (this.multiplayer) { store.set({ verify: "The room server compares both players’ OpenRA hashes every frame." }); return; }
+    if (this.multiplayer) { store.set({ verify: "The room server compares both players' OpenRA hashes every frame." }); return; }
     store.set({ verify: "Replaying this game natively..." });
     this.client.send({ type: "log" });
   }
@@ -971,8 +980,8 @@ export class Game {
     // DisableUserInterface (Shift+=) / DisableAllUserInterface (Alt+Shift+=): hide the HUD.
     if (code === "Equal" && shift) { store.set({ uiHidden: !store.get().uiHidden }); return done(); }
 
-    // Co-commander: G applies the newest recommendation; modified shortcuts remain available.
-    if (code === "KeyG" && !ctrl && !alt && !shift) {
+    // Co-commander: G, or J, applies the displayed recommendation; modified shortcuts remain available.
+    if ((code === "KeyG" || code === "KeyJ") && !ctrl && !alt && !shift) {
       const p = this.cc.pending();
       if (p && !e.repeat) void this.cc.decide(p, true);
       return done();
@@ -1043,7 +1052,7 @@ export class Game {
     window.removeEventListener("keydown", this.onKeyDown);
     window.removeEventListener("keyup", this.onKeyUp);
     window.removeEventListener("blur", this.onBlur);
-    this.client.worker.terminate();
+    this.client.dispose();
     this.lock.dispose();
   }
 }

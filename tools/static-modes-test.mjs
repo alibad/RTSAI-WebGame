@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
-import { chromium } from '../web/node_modules/playwright-core/index.mjs';
+import {pathToFileURL} from 'node:url';
+const {chromium}=await import(pathToFileURL(process.env.RTSAI_PLAYWRIGHT_MODULE??path.resolve('web/node_modules/playwright-core/index.mjs')).href);
 import { browserExecutable, browserArgs } from './browser-launch.mjs';
 const base = process.env.RTSAI_TEST_URL || 'http://127.0.0.1:3508/';
 const out = path.resolve(process.env.RTSAI_TEST_OUT || 'artifacts/static-modes');
@@ -19,7 +20,7 @@ try {
     await page.goto(`${base}?profile=${profile}&runtime=aot&private=0`);
     await page.waitForFunction(() => ['setup', 'error'].includes(window.store?.getState().phase), null, { timeout: 240000 });
     const setup = await page.evaluate(() => ({ phase: window.store.getState().phase, error: window.store.getState().error, isolated: crossOriginIsolated, ccAvailable: window.store.getState().ccAvailable, factions: window.store.getState().setup?.factions.filter(f => !f.random).length, missions: window.store.getState().setup?.missions.length }));
-    assert.equal(setup.phase, 'setup', setup.error); assert.equal(setup.isolated, true); assert.equal(setup.ccAvailable, false); assert.equal(setup.factions, 16); assert.equal(setup.missions, 6);
+    assert.equal(setup.phase, 'setup', setup.error); assert.equal(setup.isolated, true); assert.equal(setup.ccAvailable, true); assert.equal(setup.factions, 16); assert.equal(setup.missions, 6);
     assert.equal(await page.getByRole('button', { name: 'Map studio', exact: false }).count(), 0);
     assert.equal(await page.getByRole('button', { name: 'Private multiplayer', exact: true }).count(), 0);
     assert.ok(await page.getByRole('button', { name: 'Direct peer-to-peer', exact:true }).count());
@@ -31,8 +32,9 @@ try {
     await page.evaluate(() => { const m = window.store.getState().setup.missions[0]; window.game.start(JSON.stringify({ map: m.id, mission: m.id, seed: 2026, players: [{ slot: m.slot, faction: m.faction, color: '2A6FDB' }], options: { difficulty: 'normal' } })); });
     await page.waitForFunction(() => window.store.getState().phase === 'playing' && window.store.getState().ui?.tick > 20, null, { timeout: 180000 });
     assert.equal(await page.evaluate(() => window.store.getState().info.gridType), grid);
+    const adviser=await page.evaluate(()=>window.game.client.adviserObserve());assert.ok(adviser.tick>0);assert.ok(adviser.units.length+adviser.buildings.length>0);
     await page.screenshot({ path: path.join(out, `${mode}.png`) }); assert.deepEqual(errors, []); assert.deepEqual(localRequests, []);
-    receipt.modes.push({ mode, profile, grid, setup, selectorRoundTrip: true, actualWorldPlaying: true, localRequests, errors }); await context.close();
+    receipt.modes.push({ mode, profile, grid, setup, selectorRoundTrip: true, actualWorldPlaying: true, missionAdviserObservation:true, localRequests, errors }); await context.close();
   }
   const context = await browser.newContext(); const page = await context.newPage();
   await page.route('**/embed-qa.html', route => route.fulfill({ status: 200, headers: { 'content-type': 'text/html', 'Cross-Origin-Opener-Policy': 'same-origin', 'Cross-Origin-Embedder-Policy': 'require-corp' }, body: '<script>window.starts=[];addEventListener("message",e=>{if(e.origin===location.origin&&e.data?.type==="rtsai:world-started")window.starts.push(e.data)})</script><iframe src="/?profile=public-classic&runtime=aot"></iframe>' }));

@@ -74,12 +74,14 @@ export default function App() {
 
     const requested = params.get("profile") ?? import.meta.env.VITE_DEFAULT_PROFILE ?? "public";
     const profile = params.get("game") === "classic" || requested === "public-classic" ? "public-classic" : "public";
-    // The co-commander needs the local server (it starts the companion and relays its RPCs); a static host has none.
-    if (import.meta.env.VITE_STATIC_BUILD === "1") {
-      useStore.getState().set({ ccAvailable: false });
-    } else fetch(new URL("api/companion/status", new URL("./", location.href)))
-      .then((r) => (r.ok ? r.json() : null)).then((s) => useStore.getState().set({ ccAvailable: !!s && typeof s.running === "boolean" }))
-      .catch(() => useStore.getState().set({ ccAvailable: false }));
+    // The strategy adviser uses the native bridge inside this browser. Local model/voice service is optional.
+    useStore.getState().set({ ccAvailable: true, ccLocalAvailable: false });
+    if (import.meta.env.VITE_STATIC_BUILD !== "1") fetch(new URL("api/companion/status", new URL("./", location.href)))
+      .then((r) => (r.ok ? r.json() : null)).then((s) => {
+        const local = !!s && typeof s.running === "boolean";
+        useStore.getState().set({ ccLocalAvailable: local });
+        if (!local) g.cc.setMode("browser");
+      }).catch(() => g.cc.setMode("browser"));
     g.boot(params.get("runtime") ?? "aot", params.get("private") !== "0", profile);
     return () => g.dispose();
   }, []);

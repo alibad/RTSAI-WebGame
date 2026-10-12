@@ -1,5 +1,13 @@
 # AI co-commander in the browser game
 
+The public static game now includes the **browser strategy adviser**. It ports the existing companion's
+state-based `Advisor.next_step` and threat assessment, reading native fog-filtered observations and issuing
+native orders only after an explicit Apply, **G**, or **J**. It needs no companion server or model download.
+The setup switch is on by default; explicit browser opt-out persists. See [public integration and retrospective](PUBLIC-CO-COMMANDER.md).
+
+The local model/text/voice companion described below remains available through the development server.
+Public conversational model inference and microphone/voice assistance are not delivered by the strategy adviser.
+
 The desktop game's co-commander is the Python companion (OpenRA-AI `services/companion`). It talks gRPC
 (`rl_bridge.proto`) to the mod's `CompanionBridge` trait, which runs inside the game. In the browser, the game runs
 in a Web Worker and cannot host a gRPC server. The browser build keeps both ends unchanged and relays between them:
