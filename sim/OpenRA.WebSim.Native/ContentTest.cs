@@ -1,17 +1,30 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text.Json;
 using OpenRA;
+using OpenRA.Graphics;
+using OpenRA.Mods.Cnc.Traits.Render;
 using OpenRA.Mods.Common;
 using OpenRA.Mods.Common.Traits;
+using OpenRA.Mods.Common.Traits.Render;
 using OpenRA.Primitives;
 using OpenRA.Traits;
 using OpenRA.WebSim;
 
-/// <summary>Exercise real faction tech trees, rendering and specialty production against the bundled public game.</summary>
+/// <summary>
+/// Exercise real faction tech trees, rendering and specialty production against the bundled public game.
+/// Original art (public isometric bundles with web/ea): the nine original countries' actors must draw original images
+/// with original palettes only, every other actor must never draw an original palette ("original palette iff original
+/// image"), and no original file may be missing. --dump writes each own actor's image, voxel image, sequences and
+/// palettes; --baseline compares them with a dump made from the pre-change bundle (modern factions: identical).
+/// </summary>
 static class ContentTest
 {
+	static readonly string[] Originals = ["america", "germany", "england", "france", "korea", "cuba", "libya", "iraq", "russia"];
+	static readonly HashSet<string> NeutralPalettes = ["shadow", "normals", "ts-normals"];
+
 	static readonly Dictionary<string, string> Signatures = new()
 	{
 		["america"] = "e1", ["germany"] = "tnkd", ["england"] = "snipe", ["france"] = "gtgcan", ["korea"] = "beag",
@@ -69,8 +82,115 @@ static class ContentTest
 			world.CreateActor(true, signature, new TypeDictionary { new OwnerInit(own), new LocationInit(new MPos(40, 55).ToCPos(world.Map)), new FactionInit(faction), new DeployStateInit(DeployState.Deployed) });
 		for (var i = 0; i < 120; i++) { SimHost.Tick(); Snapshot.Build(); }
 		if (Snapshot.UnsupportedRenderables > 0) throw new Exception(faction + ": unsupported renderables");
-		Console.WriteLine(JsonSerializer.Serialize(new { faction, signature, production = true, units = units.Select(a => a.Name), unsupported = Snapshot.UnsupportedRenderables, passed = true }));
+		var art = RenderArt(world, own, faction);
+		if (opts.TryGetValue("dump", out var dump))
+			File.WriteAllText(dump, JsonSerializer.Serialize(art.Report, new JsonSerializerOptions { WriteIndented = true }));
+		var compared = opts.TryGetValue("baseline", out var baselinePath) && !Originals.Contains(faction);
+		if (compared)
+		{
+			var baseline = JsonSerializer.Deserialize<SortedDictionary<string, ActorArt>>(File.ReadAllText(baselinePath));
+			var diffs = 0;
+			foreach (var key in baseline.Keys.Union(art.Report.Keys).OrderBy(k => k, StringComparer.Ordinal))
+			{
+				var before = baseline.GetValueOrDefault(key);
+				var after = art.Report.GetValueOrDefault(key);
+				if (before == null || after == null || !before.Equals(after))
+				{
+					diffs++;
+					Console.Error.WriteLine(faction + ": " + key + " differs from the baseline: " + JsonSerializer.Serialize(before) + " -> " + JsonSerializer.Serialize(after));
+				}
+			}
+
+			if (diffs > 0)
+				throw new Exception(faction + ": " + diffs + " actor types render differently from the pre-change baseline");
+		}
+
+		Console.WriteLine(JsonSerializer.Serialize(new { faction, signature, production = true, units = units.Select(a => a.Name), unsupported = Snapshot.UnsupportedRenderables,
+			originalArtActors = art.OriginalActors, originalArtTypes = art.OriginalTypes, baselineCompared = compared, passed = true }));
 		return 0;
+	}
+
+	public sealed record ActorArt(string Image, string Voxel, string[] Sequences, string[] Palettes)
+	{
+		public bool Equals(ActorArt other) => other != null && Image == other.Image && Voxel == other.Voxel
+			&& Sequences.SequenceEqual(other.Sequences) && Palettes.SequenceEqual(other.Palettes);
+
+		public override int GetHashCode() => HashCode.Combine(Image, Voxel);
+	}
+
+	static readonly System.Reflection.FieldInfo ModelsField = typeof(OpenRA.Mods.Cnc.Graphics.ModelRenderable)
+		.GetField("models", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+
+	/// <summary>Whether a renderable draws anything: RenderVoxels returns a model renderable even when every voxel
+	/// component is disabled (an owner the original voxels are not for), and its palette is then never used.</summary>
+	static bool Draws(IPalettedRenderable r)
+	{
+		if (r is OpenRA.Mods.Cnc.Graphics.ModelRenderable && ModelsField?.GetValue(r) is IEnumerable<ModelAnimation> models)
+			return models.Any(m => m.IsVisible);
+		return true;
+	}
+
+	/// <summary>Each own actor type's image, voxel image, image sequences and drawn palettes; original-art checks.</summary>
+	static (SortedDictionary<string, ActorArt> Report, int OriginalActors, int OriginalTypes) RenderArt(World world, Player own, string faction)
+	{
+		var wr = SimHost.WorldRenderer;
+		var original = Originals.Contains(faction);
+		var bundleHasOriginalArt = world.Map.Sequences.Images.Any(i => i.StartsWith("ea-", StringComparison.Ordinal));
+		string Normalize(string palette)
+		{
+			foreach (var p in world.Players)
+				if (palette.Length > p.InternalName.Length && palette.EndsWith(p.InternalName, StringComparison.Ordinal))
+					return palette[..^p.InternalName.Length] + "<player>";
+			return palette;
+		}
+
+		static bool IsOriginal(string name) => name != null && name.StartsWith("ea", StringComparison.Ordinal);
+
+		var report = new SortedDictionary<string, ActorArt>(StringComparer.Ordinal);
+		var originalActors = 0;
+		var originalTypes = new HashSet<string>();
+		foreach (var a in world.Actors.Where(a => a.Owner == own && a.IsInWorld && !a.IsDead).OrderBy(a => a.ActorID))
+		{
+			var rs = a.TraitOrDefault<RenderSprites>();
+			var rv = a.TraitOrDefault<RenderVoxels>();
+			if (rs == null && rv == null)
+				continue;
+
+			var image = rs?.GetImage(a);
+			var renderables = a.Render(wr).OfType<IPalettedRenderable>().ToList();
+			// The voxel image counts only when voxels are drawn (RenderVoxels' image is per actor type).
+			var voxel = renderables.Any(r => r is OpenRA.Mods.Cnc.Graphics.ModelRenderable && Draws(r)) ? rv?.Image : null;
+			var palettes = renderables.Where(Draws).Select(r => r.Palette?.Name).Where(n => n != null).Select(Normalize).ToHashSet();
+			var originalImage = image != null && image.StartsWith("ea-", StringComparison.Ordinal);
+			var originalVoxel = voxel != null && voxel.StartsWith("ea-", StringComparison.Ordinal) && original && (rs == null || originalImage);
+			if (originalImage && !original)
+				throw new Exception(faction + ": " + a.Info.Name + " shows original art " + image);
+
+			if (originalImage || originalVoxel)
+			{
+				var foreign = palettes.Where(p => !IsOriginal(p) && !NeutralPalettes.Contains(p)).ToList();
+				if (foreign.Count > 0)
+					throw new Exception(faction + ": " + a.Info.Name + " (" + image + "/" + voxel + ") draws original art with project palettes " + string.Join(", ", foreign));
+				originalActors++;
+				originalTypes.Add(a.Info.Name);
+			}
+			else if (palettes.Any(IsOriginal))
+				throw new Exception(faction + ": " + a.Info.Name + " (" + image + ") draws project art with original palettes " + string.Join(", ", palettes.Where(IsOriginal)));
+
+			var sequences = image != null && world.Map.Sequences.Images.Contains(image)
+				? world.Map.Sequences.Sequences(image).OrderBy(x => x, StringComparer.Ordinal).ToArray() : [];
+			report.TryAdd(a.Info.Name, new ActorArt(image, voxel, sequences, palettes.OrderBy(x => x, StringComparer.Ordinal).ToArray()));
+		}
+
+		// No original file may be missing (the engine draws a missing sprite as nothing and only logs it).
+		var missing = world.Map.Sequences.SpriteCache.MissingFiles.Where(m => m.Filename.Contains("web/ea", StringComparison.Ordinal)).Select(m => m.Filename).ToList();
+		if (missing.Count > 0)
+			throw new Exception(faction + ": original art files not found: " + string.Join(", ", missing));
+
+		if (original && bundleHasOriginalArt && originalTypes.Count < 10)
+			throw new Exception(faction + ": only " + originalTypes.Count + " actor types show original art");
+
+		return (report, originalActors, originalTypes.Count);
 	}
 
 	static void Spawn(World world, string type, Player owner, CPos cell)

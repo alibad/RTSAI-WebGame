@@ -21,7 +21,7 @@ namespace OpenRA.WebSim
 {
 	/// <summary>
 	/// Sprite pack groups for the browser (SpriteCache.PackGroup): the faction whose actors are the only users of a
-	/// sprite file; "fx" for files only effects use (explosions, projectiles, smudges: images no actor renders as
+	/// sprite file, or the '+'-joined sorted factions when several (and only they) use it; "fx" for files only effects use (explosions, projectiles, smudges: images no actor renders as
 	/// itself), which a game needs only once fighting starts; or "" for files any side may show. Each group is packed into sheets of its own, so the page loads
 	/// the shared sheets and those of the factions in the match, and the rest only if they ever appear.
 	/// Derived from the rules: an actor belongs to a faction when it requires that faction's prerequisite
@@ -106,10 +106,12 @@ namespace OpenRA.WebSim
 			foreach (var (file, users) in fileUsers)
 			{
 				// One faction (or effects only): that group. Effects and one faction: the faction's (its own weapons).
-				var named = users.Where(x => x != "fx").ToList();
+				// Several factions and no one else: those factions, sorted and joined by '+' (e.g. the original art of
+				// the five Allied countries), which the page fetches when any of them is in the match. Anyone: shared.
+				var named = users.Where(x => x != "fx").Distinct().OrderBy(x => x, StringComparer.Ordinal).ToList();
 				groups[file] = named.Count == 0 ? "fx"
-					: named.Count == 1 && named[0] != "" ? named[0]
-					: "";
+					: named.Contains("") ? ""
+					: string.Join("+", named);
 			}
 
 			return file => groups.TryGetValue(file, out var g) ? g : "";
