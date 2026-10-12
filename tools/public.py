@@ -2,6 +2,8 @@
 """Portable public pack/bake adapter. Builds only isolated dependency copies.
 Usage: python3 tools/public.py --inputs <prepare-inputs directory> --out <NEW session build dir>
 Pass --check-only to verify inputs/prerequisites without compiling. No worktree/default private content.
+Isometric only: --ea-art <dir> (tools/prepare-ea-art.py, outside every repository) draws the nine original countries
+with the original Westwood art (EA's free, non-commercial modding guidelines; art files only, never EA audio).
 """
 import argparse
 import importlib.util
@@ -19,7 +21,11 @@ def main():
     ap=argparse.ArgumentParser(description=__doc__)
     ap.add_argument('--inputs',type=Path,required=True); ap.add_argument('--out',type=Path,required=True)
     ap.add_argument('--game-mode',choices=['isometric','classic'],default='isometric'); ap.add_argument('--maps',default='all'); ap.add_argument('--check-only',action='store_true')
+    ap.add_argument('--ea-art',type=Path,help='verified original-art directory (isometric only)')
     args=ap.parse_args(); inputs=args.inputs.resolve(); out=args.out.absolute()
+    ea=args.ea_art.resolve() if args.ea_art else None
+    if ea and args.game_mode!='isometric': raise ValueError('Original art is isometric only; Classic/top-down keeps the stand-ins')
+    if ea: subprocess.run([sys.executable,str(ROOT/'tools/prepare-ea-art.py'),'verify','--dir',str(ea)],check=True)
     mod=inputs/'mod'; engine=inputs/'engine'
     tool=mod/'tools/build-inputs.py'
     expected=json.loads((inputs/'build-inputs.json').read_text())
@@ -44,16 +50,18 @@ def main():
         'engineCommit':pin,'transforms':['stamp private engine VERSION and engine mod versions']},indent=2)+'\n')
     content=out/'content';scenarios=out/'scenarios'
     subprocess.run([sys.executable,str(ROOT/'tools/prepare-content.py'),'--mod',str(mod),'--missions',str(inputs/'missions/missions'),
-                    '--classic-source',str(inputs/'classic-map-source'),'--out',str(content),'--scenarios-out',str(scenarios),'--game-mode',args.game_mode],check=True)
+                    '--classic-source',str(inputs/'classic-map-source'),'--out',str(content),'--scenarios-out',str(scenarios),'--game-mode',args.game_mode,
+                    *(['--ea-art',str(ea)] if ea else [])],check=True)
     props=['-p:WebProfile=public',f'-p:EngineRoot={build_engine}{os.sep}',f'-p:ModRoot={mod}{os.sep}',f'-p:WebBuildRoot={out}{os.sep}']
     subprocess.run(['dotnet','build',str(ROOT/'sim/OpenRA.WebSim.Native/OpenRA.WebSim.Native.csproj'),'-c','Release','--nologo','-v:q',*props],check=True)
     runner=out/'bin/OpenRA.WebSim.Native-public/Release/net10.0/websim.dll'
     data=out/('data/public-classic' if args.game_mode=='classic' else 'data/public');scratch=out/'work/vfs-public'
     def run(*a): subprocess.run(['dotnet',str(runner),*map(str,a)],check=True,env={**os.environ,'OPENRA_AI_HOST':'0'})
-    run('pack','--engine',build_engine,'--mod',mod,'--out',data/'web-bundle.pack','--content',content,'--no-mix-database','--game-mode',args.game_mode)
+    run('pack','--engine',build_engine,'--mod',mod,'--out',data/'web-bundle.pack','--content',content,'--no-mix-database','--game-mode',args.game_mode,*(['--ea',ea] if ea else []))
     run('unpack','--pack',data/'web-bundle.pack','--root',scratch)
     run('bake','--root',scratch,'--maps',args.maps,'--out',data/'sprites')
     shutil.copy2(inputs/'build-inputs.json',data/'build-inputs.json')
+    if ea: shutil.copy2(ea/'EA-INPUTS.json',data/'ea-inputs.json')
     print(f'Public pack/bake ready: {data}; publish browser runtime separately using the same props and private engine copy.')
 
 if __name__=='__main__': main()
