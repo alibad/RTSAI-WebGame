@@ -1,0 +1,44 @@
+{
+  "mission": "lights-in-the-water",
+  "chapter": "The Missing Man · Chapter 1",
+  "title": "Lights in the Water",
+  "style": "Cinematic painted key art for a modern real-time strategy game, the look of classic Command and Conquer box art: dramatic light, rich colour, crisp detail, wide 16:9 composition, no text, no logos, no letters, no flags, no insignia.",
+  "music": {
+    "caption": "tense nocturnal cinematic underscore, soft oud and frame drum, deep strings, sea-wind pads, a lonely trumpet motif, a sense of searching, warm resolve at the end, no vocals",
+    "seconds": 60
+  },
+  "shots": [
+    {
+      "id": "reef-night",
+      "prompt": "Night on a reef coast: a small fishing fleet stranded on a reef line, wooden boats tilted in the white surf, lanterns and torch beams on the water, the lights of a fishing town on the shore behind, moonlight through clouds, tense.",
+      "line": "The navigation lied to every boat at once. The fleet is on the reef.",
+      "motion": "push-in"
+    },
+    {
+      "id": "patrol",
+      "prompt": "Night-vision view from high above: dark patrol boats with no markings sweeping across black water in a search pattern, white searchlight beams, the reef line and breaking surf below, green monochrome surveillance look.",
+      "line": "Patrol boats with no flag are already searching the water. They are looking for someone.",
+      "motion": "pan-right"
+    },
+    {
+      "id": "commander",
+      "reference": "hodeidah-lifeline/commander",
+      "prompt": "Keep this man's face, beard, scarf and uniform exactly. Move him to a dark beach road at night beside the same dusty pickup, moonlight and the red glow of a torch on his face, the sea behind him, determined and quiet.",
+      "line": "Captain Nabil Haidar takes a small team. No base, no noise.",
+      "motion": "push-in-slow"
+    },
+    {
+      "id": "stranger",
+      "prompt": "Fishermen on a stranded boat at night pulling a woman out of the sea: she wears a soaked 1950s military uniform and webbing, dark hair plastered to her face, gasping, lit by a hand torch, the fishermen astonished, waves breaking on the reef.",
+      "line": "On the third boat, the crew has pulled someone out of the water who should not be there.",
+      "motion": "push-in-slow",
+      "action": "The fishermen haul her over the side as a wave breaks behind them."
+    },
+    {
+      "id": "clinic",
+      "prompt": "A small town clinic at the edge of a fishing harbour just before dawn, warm light in its windows, an ambulance and a pickup outside, people wrapped in blankets being helped through the door, the first light on the horizon over the sea.",
+      "line": "Find all three crews. Bring every survivor to the clinic.",
+      "motion": "push-in"
+    }
+  ]
+}
