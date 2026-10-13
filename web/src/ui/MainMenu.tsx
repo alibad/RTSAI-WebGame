@@ -94,7 +94,7 @@ export function MainMenu({ onSkirmish, onCampaign, onWorkshop, onMapStudio }: { 
         </section>}
         <section className="menu-cards" aria-label="Play">
           <MenuCard title="Skirmish" text="Pick a nation, build a base, defeat the AI." image="menu/skirmish.webp" icon={<Swords size={22} />} onClick={onSkirmish} />
-          <MenuCard title="Campaign" text="Lines of Hope · two story arcs, six operations." image="menu/campaign.webp" icon={<BookOpen size={22} />} onClick={onCampaign} />
+          <MenuCard title="Campaign" text="Lines of Hope · 1953 echoes into 2026. Three acts." image="menu/campaign.webp" icon={<BookOpen size={22} />} onClick={onCampaign} />
         </section>
         <div className="menu-row">
           <MenuCard wide title="Scenario workshop" text="Set up a practice battle, then play it." icon={<FlaskConical size={20} />} onClick={onWorkshop} />
