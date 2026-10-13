@@ -1,7 +1,9 @@
 // rtsai.net on one local origin, for end-to-end tests that cross the website and the game (sign-in, the Earth studio's
 // "Play in browser", /api/event): the website's dev server (RTSAI-Web, with the Firebase emulators) at /, this repo's
-// static frontend build at /play/, and the published runtime and data (rt-*/, data-*/) fetched from rtsai-play once
-// and cached on disk. /play/ gets the same cross-origin isolation headers as production.
+// static frontend build at /play/, and the published runtime and data (rt-*/, data-*/) fetched once and cached on disk:
+// from the Cloudflare CDN, where the roots have lived since 13 October, else from rtsai-play on Vercel (older roots).
+// /play/ gets the same cross-origin isolation headers as production. A build whose VITE_RT_BASE / VITE_DATA_BASE are
+// /play/rt-<hash>/ and /play/data-<hash>/ then loads everything from this one origin.
 //   node tools/local-site-server.mjs <frontend dist> [port=3530] [website port=3476]
 import http from "node:http";
 import https from "node:https";
@@ -11,19 +13,30 @@ import crypto from "node:crypto";
 import os from "node:os";
 
 const dist = path.resolve(process.argv[2] ?? "dist"), port = Number(process.argv[3] || 3530), sitePort = Number(process.argv[4] || 3476);
-const upstream = "rtsai-play.vercel.app";
+const upstreams = ["rtsai-play-cdn.pages.dev", "rtsai-play.vercel.app"];
 const cacheDir = path.join(os.tmpdir(), "rtsai-play-cache");
 fs.mkdirSync(cacheDir, { recursive: true });
 const isolation = { "Cross-Origin-Opener-Policy": "same-origin", "Cross-Origin-Embedder-Policy": "require-corp", "Cross-Origin-Resource-Policy": "same-origin" };
 const MIME = { ".html": "text/html; charset=utf-8", ".js": "text/javascript", ".css": "text/css", ".json": "application/json", ".png": "image/png", ".svg": "image/svg+xml", ".webmanifest": "application/manifest+json", ".mp4": "video/mp4", ".vtt": "text/vtt", ".webp": "image/webp", ".woff2": "font/woff2" };
 
-function fetchUpstream(p, range) {
+function fetchFrom(host, p, range) {
   return new Promise((resolve, reject) => {
-    const req = https.request({ host: upstream, path: p, headers: { "accept-encoding": "br", ...(range ? { range } : {}) } }, res => {
+    const req = https.request({ host, path: p, headers: { "accept-encoding": "br", ...(range ? { range } : {}) } }, res => {
       const chunks = []; res.on("data", c => chunks.push(c)); res.on("end", () => resolve({ status: res.statusCode, headers: res.headers, body: Buffer.concat(chunks) }));
     });
     req.on("error", reject); req.end();
   });
+}
+
+/** The first upstream that has the file. Cloudflare answers a missing path with its placeholder page (200, HTML). */
+async function fetchUpstream(p, range) {
+  let r;
+  for (const host of upstreams) {
+    r = await fetchFrom(host, p, range);
+    const placeholder = String(r.headers["content-type"] || "").startsWith("text/html") && !p.endsWith(".html");
+    if ((r.status === 200 || r.status === 206) && !placeholder) return r;
+  }
+  return { ...r, status: 404 };
 }
 
 http.createServer(async (req, res) => {
