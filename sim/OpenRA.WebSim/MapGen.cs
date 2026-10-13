@@ -50,7 +50,9 @@ namespace OpenRA.WebSim
 		[
 			("Lakes", "Lakes", 3),
 			("Puddles", "Ponds", 2),
-			("Plains", "Plains", 3),
+			("Plains", "Plains", 2),
+			("Parks", "Parkland", 2),
+			("Woodlands", "Woodlands", 2),
 			("Rocky", "Rocky hills", 2),
 			("MountainLakes", "Mountain lakes", 1),
 			("Mountains", "Mountains", 1),

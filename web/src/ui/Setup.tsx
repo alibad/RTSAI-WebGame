@@ -229,7 +229,7 @@ export function Setup({ game }: { game: Game }) {
               <button type="button" className="sk-map-thumb sk-map-random" data-sfx-hover onClick={makeMap} aria-busy={making} data-testid="random-map">
                 <span className="sk-map-thumb-art">{making ? <span className="spinner" /> : <Dices size={24} strokeWidth={1.4} aria-hidden="true" />}</span>
                 <span className="sk-map-thumb-name">{making ? "Making a map…" : "New random map"}</span>
-                <small>{makeError || "Lakes, hills, cliffs"}</small>
+                <small>{makeError || "Lakes, forests, cliffs"}</small>
               </button>
               {orderedMaps.map((m) => (
                 <button key={m.id} type="button" className="sk-map-thumb" aria-pressed={m.id === map.id} data-sfx-hover onClick={() => setMapId(m.id)}>
