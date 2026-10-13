@@ -126,6 +126,18 @@ world started at 28.7 s → 32.1 s (31.9 → 33.9 MB transferred); America vs Ru
 the harness starts the match from a setup screen prepared for its default nations, so America's sheets download
 after Start). Return visits: 6.5–6.8 s → 7.2–7.3 s.
 
+## Frontend-only updates
+
+When only the page changes (runtime and data roots unchanged), a deployment can reuse every file of the current
+production deployment by SHA and upload just `index.html`, `BUILD.json` and the new `assets/*` (about 2 MB):
+list the files with `vercel api /v6/deployments/<id>/files`, create a preview with `/v13/deployments`, check it,
+then `vercel promote`. Build the page with the current `rtRoot`/`dataRoot` from the live `BUILD.json`.
+
+**Never request a new asset URL through rtsai.net before the deployment is live.** `/assets/*` carries
+`immutable, max-age=1 year` even on a 404, so rtsai.net's CDN and the browser keep a 404 for a file that does not
+exist yet, and the game shows a blank page. On 13 October this happened; `vercel cache purge --type cdn` in the
+RTSAI-Web checkout (project rtsai-web) cleared it.
+
 ## Hard requirements on the host
 
 1. **Cross-origin isolation** for the snapshot ring (SharedArrayBuffer):
