@@ -100,6 +100,7 @@ namespace OpenRA.WebSim
 
 				Map map = null;
 				MapGenerationException last = null;
+				var attempts = 0;
 				for (var attempt = 0; attempt < Attempts && map == null; attempt++)
 				{
 					var options = new Dictionary<string, string>(Defaults)
@@ -129,7 +130,16 @@ namespace OpenRA.WebSim
 
 					try
 					{
-						map = info.Generate(modData, args);
+						attempts++;
+						var made = info.Generate(modData, args);
+
+						// Some layouts lose a start position after placing it (seen on mountain maps); every player needs one, or
+						// the world cannot be created.
+						var spawns = made.ActorDefinitions.Count(a => a.Value.Value == "mpspawn");
+						if (spawns < players)
+							throw new MapGenerationException($"{spawns} start positions for {players} players");
+
+						map = made;
 						seed += attempt;
 					}
 					catch (MapGenerationException e)
@@ -168,7 +178,7 @@ namespace OpenRA.WebSim
 				var ms = System.Diagnostics.Stopwatch.GetElapsedTime(start).TotalMilliseconds;
 				var playable = new MapPlayers(map.PlayerDefinitions).Players.Values.Count(p => p.Playable);
 				return $"{{\"id\":{Snapshot.Json(id)},\"title\":{Snapshot.Json(map.Title)},\"landscape\":{Snapshot.Json(landscape)}," +
-					$"\"players\":{playable},\"size\":{size},\"seed\":{seed},\"ms\":{ms.ToString("F0", CultureInfo.InvariantCulture)},\"files\":{{{files}}}}}";
+					$"\"players\":{playable},\"size\":{size},\"seed\":{seed},\"attempts\":{attempts},\"ms\":{ms.ToString("F0", CultureInfo.InvariantCulture)},\"files\":{{{files}}}}}";
 			}
 			catch (Exception e) when (e is MapGenerationException || e is InvalidOperationException || e is JsonException || e is YamlException)
 			{
