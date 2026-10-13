@@ -8,7 +8,10 @@ deterministic: every test game replays identically in the desktop engine, tick f
 ## What works
 
 - **Two builds.**
-  - **Public:** the standalone game, project art and audio only, safe to publish.
+  - **Public:** the standalone game: project art and audio. Since 13 October (branch `ea-art`, not deployed)
+    the isometric mode draws the nine original countries with the original Westwood art under EA's free,
+    non-commercial C&C modding guidelines, with EA's notice in the page and in NOTICE and no EA audio; see
+    [DEPLOY-PUBLIC.md](DEPLOY-PUBLIC.md#original-westwood-art-isometric-mode). Classic/top-down is unchanged.
   - **Local:** the RA2 profile, which uses the player's own RA2 files and is never published.
 - **Skirmish.** Seven modern factions; the standalone maps Twin Fords and Harbor Line; bots ("Normal AI", "Rush AI"…).
 - **Game UI.**
