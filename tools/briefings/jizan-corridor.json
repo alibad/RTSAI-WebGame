@@ -1,0 +1,50 @@
+{
+  "mission": "jizan-corridor",
+  "chapter": "The Lifeline · Chapter 1",
+  "title": "A Road Through the Silence",
+  "style": "Cinematic painted key art for a modern real-time strategy game, the look of classic Command and Conquer box art: dramatic light, rich colour, crisp detail, wide 16:9 composition, no text, no logos, no letters.",
+  "music": {
+    "caption": "tense cinematic military briefing underscore, low pulsing synth bass, taiko and frame drums building slowly, distant oud motif, desert dawn atmosphere, rising strings at the end, no vocals",
+    "seconds": 60
+  },
+  "shots": [
+    {
+      "id": "dawn-radar",
+      "prompt": "Dawn over the Red Sea coast near Jizan. A military coastal radar station on a rocky hill has gone dark: its dish is still, its warning light is off, a thin trail of smoke rises from a cable box. Below it a coastal highway runs along the sea in blue morning mist. Quiet, ominous, wide establishing shot.",
+      "line": "Oh five forty. The Jizan coastal radar has gone silent.",
+      "motion": "push-in"
+    },
+    {
+      "id": "briefing-table",
+      "reference": "map",
+      "prompt": "Turn this top-down game map into a glowing holographic tactical map projected on a dark military command table, seen at a slight angle. Keep the coastline, the roads and the terrain layout of the reference. Add a pulsing blue radar icon at the hilltop, two red warning markers in the hills, a gold dashed convoy route along the coast road to a blue port icon. Teal and amber light, a gloved hand at the edge of the table.",
+      "line": "Without it, nobody can see the corridor. Relief trucks are waiting on the coast road, and no one can promise them a safe way to the port.",
+      "motion": "pan-right"
+    },
+    {
+      "id": "intel-launchers",
+      "prompt": "Grainy reconnaissance drone footage seen from high above: two mobile missile launcher trucks hidden under camouflage nets among dry rocky hills, thermal green tint, targeting brackets around the vehicles, scan lines, a surveillance camera look.",
+      "line": "A drone has found two mobile launchers in the hills above the road. While they are out there, nothing moves.",
+      "motion": "zoom-target"
+    },
+    {
+      "id": "commander",
+      "prompt": "Portrait of a fictional Saudi Arabian Army colonel in his fifties, short grey beard, desert camouflage uniform, radio headset, standing in a dim forward command post with glowing screens behind him, calm and determined expression, looking at the viewer, cinematic rim light, painted portrait.",
+      "line": "Commander, your orders. Retake the radar. Remove both launchers. Then bring the convoy through.",
+      "motion": "push-in-slow"
+    },
+    {
+      "id": "convoy",
+      "prompt": "Morning on the coastal desert highway: a long convoy of plain white relief trucks with a simple blue stripe, escorted by desert-tan modern main battle tanks and an armoured personnel carrier, two helicopters overhead, dust in the low golden sun, the sea on the left, hopeful and determined.",
+      "line": "A destroyed enemy base is not the measure of success.",
+      "motion": "pan-left"
+    },
+    {
+      "id": "port",
+      "prompt": "A Red Sea port at sunrise seen from the coast road: cranes, a cargo ship at the pier, warehouses, a small military checkpoint with sandbags, the sea glowing gold, wide and calm, a sense of arrival.",
+      "line": "The convoy must arrive.",
+      "motion": "push-in",
+      "title": true
+    }
+  ]
+}
