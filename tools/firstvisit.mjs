@@ -3,7 +3,8 @@
 // count too), opens the game in a fresh browser profile (empty cache) and times what a player waits for:
 // the setup screen, the map ready (prepared on the setup screen), the world started, plus the bytes transferred.
 // Then it reloads in the same profile (a returning visit, cache warm).
-//   node tools/firstvisit.mjs [--profiles 4g,cable] [--viewport 1600x900] [--mobile]
+//   node tools/firstvisit.mjs [--profiles 4g,cable] [--viewport 1600x900] [--mobile] [--dir <static build>] [--players saudi,iran]
+// The browser profile lives under RTSAI_WEB_SCRATCH (default %LOCALAPPDATA%/RTSAI-WebGame/scratch) and is removed.
 import fs from "node:fs";
 import path from "node:path";
 import { spawn } from "node:child_process";
@@ -16,6 +17,8 @@ const opt = (k, d) => { const i = argv.indexOf(`--${k}`); return i >= 0 ? argv[i
 // WebPageTest's connection profiles (downlink kbit/s, round-trip ms).
 const PROFILES = { "4g": [9000, 170], cable: [5000, 28], lte: [12000, 70], fiber: [20000, 4], none: [0, 0] };
 const profiles = opt("profiles", "4g,cable").split(",");
+const dir = opt("dir", "build/public-web");
+const [localFaction, enemyFaction] = opt("players", "saudi,iran").split(",");
 const mobile = argv.includes("--mobile");
 // --h2: HTTPS + HTTP/2 like a CDN (the default HTTP/1.1 caps a page at six connections, so many small requests queue).
 const h2 = argv.includes("--h2");
@@ -27,11 +30,11 @@ const results = [];
 for (const name of profiles) {
   const [kbps, rtt] = PROFILES[name];
   const port = 3492;
-  const server = spawn(process.execPath, ["tools/static-serve.mjs", "--port", String(port), "--throttle", `${kbps},${rtt}`, ...(h2 ? ["--h2"] : [])], { cwd: repo });
+  const server = spawn(process.execPath, ["tools/static-serve.mjs", "--dir", dir, "--port", String(port), "--throttle", `${kbps},${rtt}`, ...(h2 ? ["--h2"] : [])], { cwd: repo });
   await new Promise((resolve) => server.stdout.on("data", (d) => String(d).includes("static public build") && resolve()));
   // A real (on-disk) browser profile: an incognito context's small in-memory cache cannot hold the game, which would
   // make every return visit look like a first one.
-  const profileDir = path.join(process.env.LOCALAPPDATA, "RTSAI-WebGame", "scratch", `pw-firstvisit-${name}`);
+  const profileDir = path.join(process.env.RTSAI_WEB_SCRATCH ?? path.join(process.env.LOCALAPPDATA, "RTSAI-WebGame", "scratch"), `pw-firstvisit-${name}`);
   fs.rmSync(profileDir, { recursive: true, force: true });
   const browser = await chromium.launchPersistentContext(profileDir, { executablePath: fs.existsSync(exe) ? exe : undefined, headless: true,
     args: ["--use-angle=d3d11", "--enable-gpu", "--ignore-gpu-blocklist"], ignoreHTTPSErrors: h2, ...(mobile ? devices["Pixel 7"] : { viewport: { width: 1600, height: 900 } }) });
@@ -51,12 +54,12 @@ for (const name of profiles) {
     await page.waitForFunction(() => { const s = window.store.getState(); return !!s.preparedMap && s.sheets.uploaded >= s.sheets.total; }, null, { timeout: 900000, polling: 100 });
     const prepared = (Date.now() - t0) / 1000;
     const ts = Date.now();
-    await page.evaluate(async () => {
+    await page.evaluate(async ([local, enemy]) => {
       const s = window.store.getState();
-      const sc = { map: s.preparedMap, seed: 1, players: [{ slot: "Multi0", faction: "saudi", color: "2A6FDB" }, { slot: "Multi1", faction: "iran", bot: "normal", color: "D83A2E" }],
+      const sc = { map: s.preparedMap, seed: 1, players: [{ slot: "Multi0", faction: local, color: "2A6FDB" }, { slot: "Multi1", faction: enemy, bot: "normal", color: "D83A2E" }],
         options: { startingunits: "medium", explored: "False", fog: "True", crates: "False" } };
       window.game.start(JSON.stringify(sc));
-    });
+    }, [localFaction, enemyFaction]);
     await page.waitForFunction(() => window.store.getState().phase === "playing" && !!window.game.client.cur, null, { timeout: 900000, polling: 100 });
     const started = (Date.now() - t0) / 1000;
     const startOnly = (Date.now() - ts) / 1000;
@@ -68,7 +71,7 @@ for (const name of profiles) {
     });
     const mb = (n) => +(n / 1048576).toFixed(1);
     const wire = await stats();
-    const row = { network: name, kbps, rtt, visit, mobile, http: h2 ? 2 : 1, setupS: +setup.toFixed(1), mapReadyS: +prepared.toFixed(1), worldStartedS: +started.toFixed(1), startClickToPlayS: +startOnly.toFixed(2),
+    const row = { network: name, kbps, rtt, visit, mobile, dir, players: `${localFaction},${enemyFaction}`, http: h2 ? 2 : 1, setupS: +setup.toFixed(1), mapReadyS: +prepared.toFixed(1), worldStartedS: +started.toFixed(1), startClickToPlayS: +startOnly.toFixed(2),
       transferredMB: mb(wire.sent), requests: wire.requests, byRoot: Object.fromEntries(Object.entries(wire.byRoot ?? {}).map(([k, v]) => [k, mb(v)])), lazyReadsMB: mb(m.lazy?.fetchedBytes ?? 0), heapMB: Math.round(m.heap), fps: Math.round(m.fps) };
     console.log(JSON.stringify(row));
     results.push(row);
