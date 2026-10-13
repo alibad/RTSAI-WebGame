@@ -2,6 +2,8 @@
 @import "./components/ui/kit.css";
 @import "./ui/menu.css";
 @import "./ui/kit/game.css";
+@import "./ui/hud.css";
+@import "./ui/screens.css";
 
 /* Private room setup shares the game's panel, gold accent, flags and button kit. */
 .mp-match { position: fixed; top: 12px; left: 50%; transform: translateX(-50%); z-index: 100; width: max-content; max-width: calc(100vw - 24px); font-size: 12px; }
