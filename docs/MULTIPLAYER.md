@@ -42,7 +42,9 @@ in-match chat (Enter) and an optional camera and microphone are included.
   is deterministic: the same request gives the same map and the same uid (the preview's colours are drawn from the
   seed, since the uid hashes the preview). A guest can press Ready only once its copy exists, and a copy that comes out
   different is reported instead of joining. Proof: `tools/random-map-multiplayer-test.mjs` (two browsers, the
-  emulators, a synchronized match on the map).
+  emulators, a synchronized match on the map). The page names a random map ("Coldwater Gap") from the seed the engine
+  made it with and its landscape (`web/src/map-names.ts`), so every player's copy has the same name; the engine's
+  title in the map files ("Lakes 2489"), which the uid hashes, is unchanged. `node tools/map-names-unit-test.mjs`.
 - **Compatibility.** The game build fingerprint (`runtime-identity.json` + content pack) must match. The guest
   checks the match's version before joining, and the host checks again over the direct channel.
 - **Disconnects.** A guest leaving the lobby frees the seat. During a match, anyone leaving or going silent for

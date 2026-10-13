@@ -16,6 +16,7 @@ import { AudioEngine } from "./audio";
 import { preferences } from "./preferences";
 import { Sandbox, worldToCell } from "./sandbox";
 import { Coach } from "./ai-lab";
+import { generatedMapName } from "./map-names";
 
 // OpenRA enums
 const MOD_SHIFT = 1, MOD_ALT = 2, MOD_CTRL = 4, MOD_META = 8;
@@ -174,13 +175,16 @@ export class Game {
       this.generateWaiter = null;
       if (m.error || !m.map) { waiter?.reject(Error(m.error || "Couldn't make a map.")); return; }
       // The request that made it: the generator is deterministic, so in multiplayer guests make the same map from it.
+      // Its name comes from the seed and landscape too (map-names.ts), so every player sees the same one; the engine's
+      // own title ("Lakes 2489") stays in the map files, which the map uid hashes.
       const s = store.get();
       if (s.setup && !s.setup.maps.some((x) => x.id === m.map)) {
         const url = m.png?.byteLength ? URL.createObjectURL(new Blob([m.png], { type: "image/png" })) : "";
         const players = m.players ?? 2;
+        const title = m.landscape ? generatedMapName(m.seed ?? m.map, m.landscape) : m.title ?? "Random map";
         store.set({
           previews: { ...s.previews, [m.map]: url },
-          setup: { ...s.setup, maps: [{ id: m.map, uid: m.map, title: m.title ?? "Random map", players, tileset: "TEMPERATE", author: "",
+          setup: { ...s.setup, maps: [{ id: m.map, uid: m.map, title, players, tileset: "TEMPERATE", author: "",
             generated: true, landscape: m.landscape, gen: waiter?.request, slots: Array.from({ length: players }, (_, i) => `Multi${i}`) }, ...s.setup.maps] },
         });
       }

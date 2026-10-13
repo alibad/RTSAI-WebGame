@@ -18,6 +18,8 @@ export interface MatchRecord {
   selection?: number[]; groups?: number[][]; view?: ReturnType<Game["captureUi"]>;
   /** A small picture of the battlefield when it was saved (JPEG data URL). */
   thumb?: string;
+  /** The battlefield's name when it was saved: a random map is not in a later session's map list. */
+  title?: string;
 }
 
 const KEY = "rtsai.local-matches.v1";
@@ -62,9 +64,10 @@ export async function captureThumb(game: Game) {
 export async function recordMatch(game: Game): Promise<MatchRecord> {
   const recording = await game.client.request<{ log: unknown; tick: number; selection: number[]; groups: number[][] }>({ type: "record" });
   const scenario = JSON.parse(game.scenarioJson); delete scenario.webReplay;
-  const profile = useStore.getState().profile;
+  const { profile, setup } = useStore.getState();
   const thumb = await captureThumb(game);
-  return { id: crypto.randomUUID(), date: new Date().toISOString(), scenario, ...recording, profile, identity: await buildIdentity(profile, runtime()), view: game.captureUi(), ...(thumb ? { thumb } : {}) };
+  return { id: crypto.randomUUID(), date: new Date().toISOString(), scenario, ...recording, profile, identity: await buildIdentity(profile, runtime()), view: game.captureUi(),
+    title: matchTitle(scenario, setup), ...(thumb ? { thumb } : {}) };
 }
 
 /** Keeps a save on this device (the newest ten). Without room for its picture, it is kept without one. */
@@ -125,7 +128,7 @@ function SaveCard({ game, record, fresh, onStart }: { game: Game; record: MatchR
   const [confirming, setConfirming] = useState(false);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
-  const title = matchTitle(scenario, setup);
+  const title = matchTitle(scenario, setup, typeof record.title === "string" ? record.title : undefined);
   const sides = matchSides(scenario, setup);
   // A save without its own picture shows the map, when this game has it (the menu asks the engine for previews).
   useEffect(() => {
