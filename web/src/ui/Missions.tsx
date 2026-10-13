@@ -7,6 +7,7 @@ import story from "../campaign-story";
 import { EA_NOTICE } from "../legal";
 import { EmptyState, GameButton } from "./kit/game";
 import { Brackets, Meter, ScreenBackdrop, Segmented } from "./screen-parts";
+import { filmLength, useBriefings } from "../briefings";
 
 // The campaign: story arcs as chapters with their maps and progress, the chosen operation's briefing, objectives and
 // film, then Start mission (or the film first). MissionHud is the operation's objectives panel during the match.
@@ -27,6 +28,7 @@ export function Missions({ game }: { game: Game }) {
   const [showFilm, setShowFilm] = useState(false);
   const [filmError, setFilmError] = useState(false);
   const [deployAfterFilm, setDeployAfterFilm] = useState(false);
+  const briefings = useBriefings();
   const [difficulty, setDifficulty] = useState<Difficulty>("normal");
   const prepared = useStore((s) => s.preparedMap);
   const sheets = useStore((s) => s.sheets);
@@ -39,6 +41,7 @@ export function Missions({ game }: { game: Game }) {
   const arc = story.arcs.find((a) => a.missions.includes(mission?.id ?? ""));
   const chapterNumber = arc ? arc.missions.indexOf(mission?.id ?? "") + 1 : 0;
   useEffect(() => { setShowFilm(false); setFilmError(false); setDeployAfterFilm(false); }, [mission?.id]);
+  const briefing = mission ? briefings[mission.id] : undefined;
   useEffect(() => {
     if (!mission) return;
     game.wantFactions(null, mission.faction);
@@ -141,15 +144,22 @@ export function Missions({ game }: { game: Game }) {
             {chapter && <>
               <p className="cp-intro">{chapter.intro}</p>
               <div className="cp-film">
-                <GameButton size="sm" icon={showFilm ? <X size={14} /> : <Film size={14} />} onClick={() => { setDeployAfterFilm(false); setShowFilm(!showFilm); }}>{showFilm ? "Close story introduction" : "Watch story introduction"}</GameButton>
+                {briefing && !showFilm
+                  ? <button type="button" className="cp-film-card" aria-label="Watch story introduction" data-sfx-hover onClick={() => { setDeployAfterFilm(false); setShowFilm(true); }}>
+                      <img src={briefing.poster} alt="" draggable={false} crossOrigin="anonymous" />
+                      <span className="cp-film-card-play" aria-hidden="true"><Play size={26} fill="currentColor" /></span>
+                      <span className="cp-film-card-meta"><Film size={13} aria-hidden="true" />Briefing · {filmLength(briefing.seconds)}</span>
+                    </button>
+                  : <GameButton size="sm" icon={showFilm ? <X size={14} /> : <Film size={14} />} onClick={() => { setDeployAfterFilm(false); setShowFilm(!showFilm); }}>{showFilm ? "Close story introduction" : "Watch story introduction"}</GameButton>}
                 {showFilm && <div className="cp-film-player">
-                  {!filmError ? <video key={`${mission.id}-${deployAfterFilm}`} controls playsInline autoPlay={deployAfterFilm} preload="metadata" aria-label={`${mission.title} story introduction`} onEnded={() => { if (deployAfterFilm) deploy(); }} onError={() => setFilmError(true)}>
-                    <source src={`${import.meta.env.BASE_URL}campaign-video/${mission.id}.mp4`} type="video/mp4" onError={() => setFilmError(true)} />
-                    <track kind="captions" src={`${import.meta.env.BASE_URL}campaign-video/${mission.id}.vtt`} srcLang="en" label="English" default />
+                  {!filmError ? <video key={`${mission.id}-${deployAfterFilm}-${briefing ? "cdn" : "local"}`} controls playsInline autoPlay={deployAfterFilm || !!briefing} preload="metadata" crossOrigin={briefing ? "anonymous" : undefined} poster={briefing?.poster} aria-label={`${mission.title} story introduction`} onEnded={() => { if (deployAfterFilm) deploy(); }} onError={() => setFilmError(true)}>
+                    <source src={briefing ? briefing.video : `${import.meta.env.BASE_URL}campaign-video/${mission.id}.mp4`} type="video/mp4" onError={() => setFilmError(true)} />
+                    <track kind="captions" src={briefing ? briefing.captions : `${import.meta.env.BASE_URL}campaign-video/${mission.id}.vtt`} srcLang="en" label="English" default />
                   </video> : <p role="status" className="cp-film-error">The video could not load. The complete story is written above; you can still launch the mission.</p>}
                   <div className="cp-film-foot">
-                    <span>Narrated operations map · captions available · playback is optional</span>
-                    {deployAfterFilm && <GameButton variant="ghost" size="sm" disabled={!ready} onClick={deploy}>Skip introduction and deploy</GameButton>}
+                    <span>{briefing ? `Briefing · ${filmLength(briefing.seconds)} · captions` : "Narrated operations map · captions available · playback is optional"}</span>
+                    {deployAfterFilm ? <GameButton variant="ghost" size="sm" disabled={!ready} onClick={deploy}>Skip introduction and deploy</GameButton>
+                      : briefing && <GameButton variant="ghost" size="sm" icon={<X size={14} />} onClick={() => setShowFilm(false)}>Close</GameButton>}
                   </div>
                 </div>}
               </div>

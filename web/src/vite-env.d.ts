@@ -5,6 +5,8 @@ interface ImportMetaEnv {
   readonly VITE_DEFAULT_PROFILE?: string;
   /** Static public build: the content-hashed runtime and data roots (e.g. "rt-3f2a1c/"); "rt/", "data/" otherwise. */
   readonly VITE_RT_BASE?: string;
+  /** Where published mission briefings live (campaign/index.json), e.g. the CDN; unset keeps the bundled introductions. */
+  readonly VITE_CAMPAIGN_BASE?: string;
   readonly VITE_DATA_BASE?: string;
   /** The rtsai-net Firebase web config (public values, shared with rtsai.net). */
   readonly VITE_FIREBASE_API_KEY?: string;
