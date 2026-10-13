@@ -5,8 +5,11 @@
 /* ---------------------------------------------------------------------------------------------- shared */
 
 .scr-root { position: absolute; inset: 0; overflow-x: hidden; overflow-y: auto; background: #070907; isolation: isolate; scrollbar-color: #4a5443 transparent; scrollbar-width: thin; }
-.scr-backdrop { position: fixed; inset: -6%; z-index: -2; background-size: cover; background-position: 62% 50%; filter: saturate(.8) brightness(.42); animation: menu-drift 60s ease-in-out infinite alternate; will-change: transform; }
+/* One slow push-in, then still, like the main menu's (menu.css): an endless drift recomposited the whole screen every
+   frame while a player sat on a setup screen. */
+.scr-backdrop { position: fixed; inset: -6%; z-index: -2; background-size: cover; background-position: 62% 50%; filter: saturate(.8) brightness(.42); animation: menu-drift 16s cubic-bezier(.25, .6, .25, 1) forwards; will-change: transform; }
 .scr-backdrop.soft { inset: -10%; filter: saturate(.9) brightness(.5) blur(22px); image-rendering: auto; }
+:root[data-gpu="software"] .scr-backdrop { animation: none; }
 .scr-shade { position: fixed; inset: 0; z-index: -1; pointer-events: none; background:
   radial-gradient(ellipse at 22% -10%, rgba(241, 210, 139, .07), transparent 55%),
   linear-gradient(180deg, rgba(5, 7, 5, .62), rgba(5, 7, 5, .8) 55%, rgba(5, 7, 5, .93)),
