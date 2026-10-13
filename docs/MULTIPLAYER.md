@@ -7,7 +7,8 @@ One **Multiplayer** button, peer-to-peer play, for signed-in players.
 1. Host: **Multiplayer → Create match**, then **Copy invite** and send the link in any chat app.
 2. Friends open the link. The game loads and drops them straight into the lobby. They can also paste the link or type
    the 6-character code under **Have an invite?**.
-3. The host picks the map and AI opponents. Everyone picks a faction and team. Guests press **Ready**.
+3. The host picks the map (or **New random map**) and AI opponents. Everyone picks a faction and team. Guests press
+   **Ready**.
 4. The host presses **Start match**.
 
 A match holds up to the map's slot count (4 on Four Fronts, 2 elsewhere), humans first, then AI. Lobby chat,
@@ -36,6 +37,12 @@ in-match chat (Enter) and an optional camera and microphone are included.
 - **Lockstep** (`PeerLockstep` in `web/src/peer.ts`). A frame is released when all N players' orders for it have
   arrived and the previous frame's SyncHash reports all agree. Malformed, conflicting or mismatching input stops the
   match for everyone, with the frame number. Bots run on the host (client 1), as in OpenRA.
+- **Random maps.** The lobby carries the request that made a random map (seed, player count, landscape;
+  `Lobby.generated`), not the map. Each guest's browser makes the map from it with the engine's map generator, which
+  is deterministic: the same request gives the same map and the same uid (the preview's colours are drawn from the
+  seed, since the uid hashes the preview). A guest can press Ready only once its copy exists, and a copy that comes out
+  different is reported instead of joining. Proof: `tools/random-map-multiplayer-test.mjs` (two browsers, the
+  emulators, a synchronized match on the map).
 - **Compatibility.** The game build fingerprint (`runtime-identity.json` + content pack) must match. The guest
   checks the match's version before joining, and the host checks again over the direct channel.
 - **Disconnects.** A guest leaving the lobby frees the seat. During a match, anyone leaving or going silent for

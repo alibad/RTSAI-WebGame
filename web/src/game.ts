@@ -43,6 +43,9 @@ export class RadarModel {
   bump() { this.version++; for (const f of this.listeners) f(); }
 }
 
+/** What the engine's map generator is asked for (MapGen.cs). The same request always makes the same map. */
+export type GenerateRequest = { seed: number; size?: number; players?: number; terrain?: string; resources?: string };
+
 export class Game {
   multiplayer = false;
   readonly renderer: Renderer;
@@ -163,6 +166,7 @@ export class Game {
       const waiter = this.generateWaiter;
       this.generateWaiter = null;
       if (m.error || !m.map) { waiter?.reject(Error(m.error || "Couldn't make a map.")); return; }
+      // The request that made it: the generator is deterministic, so in multiplayer guests make the same map from it.
       const s = store.get();
       if (s.setup && !s.setup.maps.some((x) => x.id === m.map)) {
         const url = m.png?.byteLength ? URL.createObjectURL(new Blob([m.png], { type: "image/png" })) : "";
@@ -170,7 +174,7 @@ export class Game {
         store.set({
           previews: { ...s.previews, [m.map]: url },
           setup: { ...s.setup, maps: [{ id: m.map, uid: m.map, title: m.title ?? "Random map", players, tileset: "TEMPERATE", author: "",
-            generated: true, landscape: m.landscape, slots: Array.from({ length: players }, (_, i) => `Multi${i}`) }, ...s.setup.maps] },
+            generated: true, landscape: m.landscape, gen: waiter?.request, slots: Array.from({ length: players }, (_, i) => `Multi${i}`) }, ...s.setup.maps] },
         });
       }
       waiter?.resolve(m.map);
@@ -287,18 +291,23 @@ export class Game {
     });
   }
 
-  private generateWaiter: { resolve: (map: string) => void; reject: (e: Error) => void } | null = null;
+  private generateWaiter: { request: string; resolve: (map: string) => void; reject: (e: Error) => void } | null = null;
+  private generating: Promise<unknown> = Promise.resolve();
 
   /**
    * Makes a random map with the engine's map generator, in the worker (MapGen.cs), and adds it to the setup's map list.
    * Resolves with its id. One at a time: a second request while one runs is refused.
    */
-  generateMap(request: { seed: number; size?: number; players?: number; terrain?: string; resources?: string }): Promise<string> {
-    if (this.generateWaiter) return Promise.reject(Error("A map is already being made."));
-    return new Promise<string>((resolve, reject) => {
-      this.generateWaiter = { resolve, reject };
-      this.client.send({ type: "generateMap", request: JSON.stringify(request) });
+  generateMap(request: GenerateRequest): Promise<string> {
+    // One at a time in the worker: later requests wait their turn.
+    const run = () => new Promise<string>((resolve, reject) => {
+      const json = JSON.stringify(request);
+      this.generateWaiter = { request: json, resolve, reject };
+      this.client.send({ type: "generateMap", request: json });
     });
+    const result = this.generating.then(run, run);
+    this.generating = result.catch(() => undefined);
+    return result;
   }
 
   preview(map: string) {

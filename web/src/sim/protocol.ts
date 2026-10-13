@@ -224,7 +224,7 @@ export interface SetupData {
   factions: { id: string; name: string; side: string; description: string; random: boolean }[];
   bots: { type: string; name: string }[];
   /** `saved`: a player's map from the Earth studio (its Firestore id), mounted when first used (net/saved-maps.ts). */
-  maps: { id: string; uid: string; title: string; players: number; tileset: string; author: string; slots: string[]; saved?: string; place?: string; generated?: boolean; landscape?: string }[];
+  maps: { id: string; uid: string; title: string; players: number; tileset: string; author: string; slots: string[]; saved?: string; place?: string; generated?: boolean; landscape?: string; gen?: string }[];
   options?: { id: string; name: string; default: string; values: { value: string; label: string }[] }[];
 }
 

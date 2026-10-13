@@ -1,7 +1,7 @@
 // Direct multiplayer session: one per game. The host creates a match at the matchmaker (Firestore, net/matchmaker.ts)
 // and shares an invite; each guest's browser connects straight to the host's. The host runs the lobby and relays order
 // packets between guests; the matchmaker only introduces browsers and is closed when the match starts.
-import type { Game } from './game';
+import type { Game, GenerateRequest } from './game';
 import { useStore } from './store';
 import { buildIdentity } from './sim/build-identity';
 import { answerJoin, closeMatch, createMatch, joinMatch, removeJoin, watchJoins } from './net/matchmaker';
@@ -11,8 +11,25 @@ import { DirectPeer, MAX_TEAM, PeerLockstep, peerColors, peerMap, peerOptions, v
 
 export type Seat = { faction: string; team: number; ready: boolean };
 export type AiSeat = { faction: string; bot: string; team: number };
-/** `saved`: the Firestore id when the map is a player's saved Earth map, so guests can fetch it (net/saved-maps.ts). */
-export type Lobby = { revision: number; map: string; mapUid: string; saved?: string; players: Seat[]; ai: AiSeat[] };
+/**
+ * `saved`: the Firestore id when the map is a player's saved Earth map, so guests can fetch it (net/saved-maps.ts).
+ * `generated`: the request that made a random map (game.generateMap), so guests make the same map in their browser.
+ */
+export type Lobby = { revision: number; map: string; mapUid: string; saved?: string; generated?: GeneratedMap; players: Seat[]; ai: AiSeat[] };
+export type GeneratedMap = { request: string; title: string; slots: number };
+
+const LANDSCAPES = ['random', 'Lakes', 'Puddles', 'Plains', 'Parks', 'Woodlands', 'Flat', 'Rocky', 'MountainLakes', 'Mountains'];
+
+/** A generator request from the host, checked before this browser runs it: only the fields MapGen reads, in range. */
+function generatorRequest(value: unknown): GenerateRequest {
+  const r = (typeof value === 'string' ? JSON.parse(value) : null) as Record<string, unknown> | null;
+  const int = (v: unknown, lo: number, hi: number) => Number.isInteger(v) && (v as number) >= lo && (v as number) <= hi;
+  if (!r || !int(r.seed, 0, 2147483647) || !int(r.players, 2, 8) || (r.size !== undefined && !int(r.size, 48, 192))
+    || (r.terrain !== undefined && !LANDSCAPES.includes(r.terrain as string)) || (r.resources !== undefined && !['Low', 'Medium', 'High'].includes(r.resources as string)))
+    throw Error('Invalid random map from the host');
+  return { seed: r.seed as number, players: r.players as number, ...(r.size !== undefined ? { size: r.size as number } : {}),
+    ...(r.terrain !== undefined ? { terrain: r.terrain as string } : {}), ...(r.resources !== undefined ? { resources: r.resources as string } : {}) };
+}
 export type ChatLine = { id: string; author: string; text: string };
 export type RemoteMedia = { id: string; label: string; stream: MediaStream };
 export type Stage = 'idle' | 'connecting' | 'lobby' | 'playing' | 'stopped';
@@ -209,11 +226,28 @@ export class MultiplayerSession {
     if (!this.view.host || !map || this.view.stage !== 'lobby') return;
     if (map.slots.length < this.seats.length) return this.set({ status: `${map.slots.length}-player map: too many commanders.` });
     const ai = this.view.lobby!.ai.slice(0, map.slots.length - this.seats.length);
-    this.set({ lobby: { ...this.view.lobby!, map: map.id, mapUid: map.uid, saved: map.saved, ai }, status: '' });
+    const generated = map.gen ? { request: map.gen, title: map.title, slots: map.slots.length } : undefined;
+    this.set({ lobby: { ...this.view.lobby!, map: map.id, mapUid: map.uid, saved: map.saved, generated, ai }, status: '' });
     this.publish(true);
     // A saved map loads now, so starting doesn't wait for it.
     if (map.saved) this.game.ensureMap(map.id).catch(e => this.set({ status: message(e) }));
   }
+  /** Host: a new random map, sized for everyone already in the lobby, made here and then by each guest. */
+  async newRandomMap() {
+    if (!this.view.host || this.view.stage !== 'lobby' || this.view.mapLoading) return;
+    const turn = this.generation, wanted = this.seats.length + this.view.lobby!.ai.length;
+    this.set({ mapLoading: true, status: 'Making a random map…' });
+    try {
+      const id = await this.game.generateMap({ seed: crypto.getRandomValues(new Uint32Array(1))[0] % 2147483647,
+        players: wanted <= 2 ? 2 : wanted <= 4 ? 4 : Math.min(8, wanted), terrain: 'random' });
+      if (turn !== this.generation) return;
+      this.set({ mapLoading: false, status: '' });
+      this.setMap(id);
+    } catch (e) {
+      if (turn === this.generation) this.set({ mapLoading: false, status: message(e) });
+    }
+  }
+
   setAi(ai: AiSeat[]) {
     if (!this.view.host || this.view.stage !== 'lobby') return;
     const lobby = this.view.lobby!, map = this.setup.maps.find(m => m.id === lobby.map)!;
@@ -279,11 +313,15 @@ export class MultiplayerSession {
       const lobby = m.lobby as Lobby, you = m.you as number;
       if (!lobby || !Array.isArray(lobby.players) || !Array.isArray(lobby.ai) || !Number.isInteger(you) || you < 2 || you > lobby.players.length) throw Error('Invalid lobby');
       const known = this.setup.maps.some(m => m.id === lobby.map && m.uid === lobby.mapUid && m.slots.length >= 2);
-      if (!known && typeof lobby.saved !== 'string') peerMap(this.setup, lobby.map, lobby.mapUid);
+      if (!known && typeof lobby.saved !== 'string' && !lobby.generated) peerMap(this.setup, lobby.map, lobby.mapUid);
+      if (lobby.generated && (typeof lobby.generated.title !== 'string' || !Number.isInteger(lobby.generated.slots) || lobby.generated.slots < 2 || lobby.generated.slots > 8)) throw Error('Invalid lobby');
       const changed = lobby.map !== this.view.lobby?.map;
       if (this.view.stage === 'connecting') track('multiplayer_joined');
-      this.set({ stage: 'lobby', lobby, you, ...(changed ? { status: '', mapLoading: false } : {}) });
+      // A saved or random map this browser doesn't have yet is loading from the start, so Ready never flickers on.
+      const pending = (typeof lobby.saved === 'string' || !!lobby.generated) && !this.setup.maps.some(m => m.id === lobby.map);
+      this.set({ stage: 'lobby', lobby, you, ...(changed ? { status: '', mapLoading: pending } : {}) });
       if (changed && typeof lobby.saved === 'string') void this.loadHostMap(lobby.saved, lobby.map);
+      if (changed && lobby.generated) void this.makeHostMap(lobby.generated.request, lobby.map);
     } else if (m.kind === 'chat') {
       this.addChat(`Player ${Number(m.client) | 0}`, this.chatText(m.text));
     } else if (m.kind === 'start') {
@@ -321,6 +359,21 @@ export class MultiplayerSession {
         this.game.addSavedMaps([map]);
       }
       await this.game.ensureMap(id);
+      if (turn === this.generation && this.view.lobby?.map === id) this.set({ mapLoading: false, status: '' });
+    } catch (e) {
+      if (turn === this.generation && this.view.lobby?.map === id) this.set({ mapLoading: false, status: message(e) });
+    }
+  }
+
+  /** Guest: the host's random map, made in this browser from the host's request; it must come out identical. */
+  private async makeHostMap(request: string, id: string) {
+    const turn = this.generation;
+    this.set({ mapLoading: true, status: 'Making your host’s map…' });
+    try {
+      if (!this.setup.maps.some(m => m.id === id)) {
+        const made = await this.game.generateMap(generatorRequest(request));
+        if (made !== id) throw Error('Your browser made a different map from your host’s. Both of you reload the game, then try again.');
+      }
       if (turn === this.generation && this.view.lobby?.map === id) this.set({ mapLoading: false, status: '' });
     } catch (e) {
       if (turn === this.generation && this.view.lobby?.map === id) this.set({ mapLoading: false, status: message(e) });

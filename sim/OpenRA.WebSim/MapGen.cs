@@ -142,8 +142,19 @@ namespace OpenRA.WebSim
 				if (map == null)
 					throw last;
 
+				// A map's uid hashes its preview, whose terrain colours come from Game.CosmeticRandom. Drawn from the seed, the
+				// same request gives the same uid in every browser, so multiplayer guests can make the host's map themselves.
 				using var package = new ZipFileLoader.ReadWriteZipFile();
-				map.Save(package);
+				var cosmetic = Game.CosmeticRandom;
+				Game.CosmeticRandom = new MersenneTwister(seed);
+				try
+				{
+					map.Save(package);
+				}
+				finally
+				{
+					Game.CosmeticRandom = cosmetic;
+				}
 
 				var id = "gen-" + map.Uid[..16].ToLowerInvariant();
 				var files = new StringBuilder();
