@@ -21,6 +21,7 @@ import { GameButton, Kbd } from "./kit/game";
 import { Flag } from "./Flag";
 import { exitReplay, replayOf, ReplayHud } from "./Replay";
 import { clock, matchKind, matchSides, matchTitle, parseScenario } from "./match-info";
+import { actorName, drawsActor, pictureKey } from "./actor-display";
 
 function HealthBar({ hp, max }: { hp: number; max: number }) {
   const f = max > 0 ? Math.max(0, Math.min(1, hp / max)) : 0;
@@ -43,19 +44,29 @@ function Rank({ rank }: { rank: number }) {
 export function SelectionPanel({ game }: { game: Game }) {
   const selection = useStore((s) => s.ui?.selection);
   const icons = useStore((s) => s.icons);
+  const pictures = useStore((s) => s.actorPictures);
+  const profile = useStore((s) => s.profile);
+  const localFaction = useStore((s) => s.info?.players.find((p) => p.name === s.info?.localPlayer)?.faction);
   const catalog = useStore((s) => s.catalog);
   const actorLabels = useStore((s) => s.actorLabels);
-  // The build menu's names first, then every unit's engine name (units you can't build here, in practice battles or missions).
+  // The build menu's names first, then every actor's engine name (the Construction Yard, the other side's, neutral ones).
   const labels = useMemo(() => new Map([...Object.entries(actorLabels), ...catalog.flatMap((q) => q.items.map((i) => [i.name, i.label] as const))]), [catalog, actorLabels]);
   if (!selection?.length) return null;
+  const name = (type: string, id: number) => actorName(type, labels, ((game.client.cur?.actorById.get(id)?.flags ?? 0) & 8) !== 0);
+  // The engine's cameo, or the actor drawn from its own sprites where the art has no real cameo (Game.drawPictures).
+  const picture = (type: string, id: number) => {
+    const owner = game.actorOwner(id);
+    if (!drawsActor(type, icons[type], localFaction, owner?.faction, profile)) return icons[type];
+    return owner ? pictures[pictureKey(type, owner.index)] ?? "" : "";
+  };
 
   if (selection.length === 1) {
     const a = selection[0];
     return (
       <div className="hud-sel hud-sel-one">
-        <div className="cameo hud-inset"><UnitPortrait type={a.type} label={labels.get(a.type) ?? a.type} icon={icons[a.type]} /></div>
+        <div className="cameo hud-inset"><UnitPortrait type={a.type} label={name(a.type, a.id)} icon={picture(a.type, a.id)} /></div>
         <div className="hud-sel-info">
-          <div className="hud-sel-name"><b>{labels.get(a.type) ?? a.type}</b><Rank rank={a.rank} /></div>
+          <div className="hud-sel-name"><b>{name(a.type, a.id)}</b><Rank rank={a.rank} /></div>
           <div>
             <HealthBar hp={a.hp} max={a.maxHp} />
             <div className="digits hud-sel-hp">{a.hp} / {a.maxHp}</div>
@@ -65,18 +76,18 @@ export function SelectionPanel({ game }: { game: Game }) {
     );
   }
 
-  const groups = new Map<string, { count: number; hp: number; max: number; rank: number }>();
+  const groups = new Map<string, { id: number; count: number; hp: number; max: number; rank: number }>();
   for (const a of selection) {
-    const g = groups.get(a.type) ?? { count: 0, hp: 0, max: 0, rank: 0 };
+    const g = groups.get(a.type) ?? { id: a.id, count: 0, hp: 0, max: 0, rank: 0 };
     g.count++; g.hp += a.hp; g.max += a.maxHp; g.rank = Math.max(g.rank, a.rank);
     groups.set(a.type, g);
   }
   return (
     <div className="hud-sel hud-sel-many" style={{ "--cols": Math.min(groups.size, 7) } as React.CSSProperties}>
       {[...groups].map(([type, g]) => (
-        <button key={type} type="button" aria-label={`Select only ${labels.get(type) ?? type}`} data-tip={`${labels.get(type) ?? type}${g.count > 1 ? ` ×${g.count}` : ""}`} data-tip-pos="top" onClick={() => game.selectType(type)}>
+        <button key={type} type="button" aria-label={`Select only ${name(type, g.id)}`} data-tip={`${name(type, g.id)}${g.count > 1 ? ` ×${g.count}` : ""}`} data-tip-pos="top" onClick={() => game.selectType(type)}>
           <div className="cameo hud-inset relative">
-            <UnitPortrait type={type} label={labels.get(type) ?? type} icon={icons[type]} />
+            <UnitPortrait type={type} label={name(type, g.id)} icon={picture(type, g.id)} />
             {g.count > 1 && <span className="digits hud-sel-count">{g.count}</span>}
             <span className="absolute bottom-[1px] right-[1px]"><Rank rank={g.rank} /></span>
           </div>

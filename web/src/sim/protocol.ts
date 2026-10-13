@@ -344,7 +344,8 @@ export type FromWorker = (
   | { type: "peerOut"; events: import('../peer').PeerEvent[] }
   | { type: "networkStatus"; frame: number; latency: number; error?: string }
   | { type: "progress"; stage: string; detail?: string }
-  | { type: "ready"; timings: Record<string, number>; runtimeMs: number; downloadBytes: Record<string, number>; setup: SetupData; privateContent: boolean }
+  /** `actorNames`: every actor's display name from the mod's Fluent messages (fluent-names.ts). */
+  | { type: "ready"; timings: Record<string, number>; runtimeMs: number; downloadBytes: Record<string, number>; setup: SetupData; privateContent: boolean; actorNames?: Record<string, string> }
   | { type: "prepared"; map: string; ms: number; timings: Record<string, number>; lazy?: LazyStats }
   | { type: "preview"; map: string; png: ArrayBuffer }
   | { type: "mapMounted"; map: string; error?: string }
