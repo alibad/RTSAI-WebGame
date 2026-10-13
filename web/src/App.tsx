@@ -19,19 +19,93 @@ import { MainMenu } from "./ui/MainMenu";
 import { installUiFeel } from "./ui/feel";
 import { siteOrigin } from "./net/account";
 import { mySavedMaps, savedMap } from "./net/saved-maps";
+import { ArrowLeft, Check, Copy, RotateCcw, TriangleAlert } from "lucide-react";
+import { GameButton, Kbd } from "./ui/kit/game";
+import { Brackets, Meter, ScreenBackdrop } from "./ui/screen-parts";
+import { preferences } from "./preferences";
 
-function Loading() {
+// What the engine is doing while it boots or builds a match (the worker's "progress" stages) as the player reads it,
+// and roughly how far along that is: the bar never goes back and creeps forward while a step runs.
+const LOAD_STEPS: Record<string, [number, string]> = {
+  "Starting the engine": [0.04, "Starting the engine"],
+  "Downloading game data": [0.18, "Downloading game data"],
+  "Mounting game data": [0.6, "Unpacking game data"],
+  "Loading rules": [0.68, "Loading the rules"],
+  "boot.mods": [0.74, "Loading the armies"],
+  "boot.moddata": [0.8, "Loading the armies"],
+  "boot.loaders": [0.86, "Preparing the art"],
+  "boot.maps": [0.92, "Surveying the battlefields"],
+  "Building the world": [0.06, "Building the world"],
+  "Loading art": [0.12, "Loading art"],
+  "Starting the co-commander": [0.93, "Briefing your co-commander"],
+};
+const LOAD_TIPS: [string, string][] = [
+  ["a", "Attack-move: your units fight whatever they meet on the way."],
+  ["f", "Deploy: unpack your construction vehicle into a base."],
+  ["c", "Repair: click a damaged building to fix it."],
+  ["z", "Sell: click one of your buildings to turn it back into credits."],
+  ["d", "Guard: selected units follow and protect another unit."],
+  ["s", "Stop: selected units drop their current orders."],
+];
+
+function useLoadProgress(phase: string, stage: string, detail: string) {
+  const [value, setValue] = useState(0);
+  const state = useRef({ phase, value: 0, artSeen: false });
+  if (state.current.phase !== phase) state.current = { phase, value: 0, artSeen: false };
+  if (stage === "Loading art") state.current.artSeen = true;
+  const art = stage === "Loading art" ? /^(\d+)\s*\/\s*(\d+)$/.exec(detail) : null;
+  const target = art ? 0.12 + 0.74 * (Number(art[1]) / Math.max(1, Number(art[2])))
+    : stage === "Building the world" && state.current.artSeen ? 0.88 : LOAD_STEPS[stage]?.[0] ?? state.current.value;
+  state.current.value = Math.max(state.current.value, target);
+  useEffect(() => {
+    const ceiling = Math.min(0.97, target + (art ? 0.04 : 0.1));
+    const timer = setInterval(() => {
+      const s = state.current;
+      if (s.value < ceiling) s.value += (ceiling - s.value) * 0.025;
+      setValue(s.value);
+    }, 120);
+    return () => clearInterval(timer);
+  }, [target]); // eslint-disable-line react-hooks/exhaustive-deps
+  return Math.max(value, state.current.value);
+}
+
+function Loading({ game }: { game: Game | null }) {
+  const phase = useStore((s) => s.phase);
   const stage = useStore((s) => s.stage);
   const detail = useStore((s) => s.detail);
+  const setup = useStore((s) => s.setup);
+  const previews = useStore((s) => s.previews);
+  const publicShot = useStore((s) => s.publicShot);
+  const progress = useLoadProgress(phase, stage, detail);
+  const [tip, setTip] = useState(() => Math.floor(Math.random() * LOAD_TIPS.length));
+  useEffect(() => { const t = setInterval(() => setTip((i) => (i + 1) % LOAD_TIPS.length), 6000); return () => clearInterval(t); }, []);
+  // Building a match: where the player is going.
+  let target: { title: string; preview: string } | null = null;
+  if (phase === "loading" && game?.scenarioJson && setup) {
+    try {
+      const scenario = JSON.parse(game.scenarioJson) as { map?: string; mission?: string };
+      const id = scenario.mission ?? scenario.map ?? "";
+      const title = setup.missions?.find((m) => m.id === id)?.title ?? setup.maps.find((m) => m.id === id)?.title;
+      if (title) target = { title, preview: publicShot ? "" : previews[id] ?? "" };
+    } catch { /* no scenario */ }
+  }
+  const label = LOAD_STEPS[stage]?.[1] ?? (stage.includes(".") || !stage ? "Preparing" : stage);
+  const [key, text] = LOAD_TIPS[tip];
   return (
-    <div className="absolute inset-0 grid place-items-center bg-[radial-gradient(ellipse_at_50%_40%,#1a2219,#070907_70%)]">
-      <div className="flex flex-col items-center gap-4">
-        <div className="text-[30px] font-black tracking-wide text-[var(--hud-gold)]">RTS AI</div>
-        <div className="flex items-center gap-3 text-[13px]">
-          <div className="spinner" />
-          <span>{stage}</span>
-          {detail && <span className="text-[var(--muted-foreground)]">{detail}</span>}
-        </div>
+    <div className="ld-root" aria-busy="true">
+      <ScreenBackdrop image={target?.preview || "menu/backdrop.webp"} soft={!!target?.preview} />
+      <div className="ld-logo">
+        <span className="menu-eyebrow">Modern real-time strategy</span>
+        <div className="ld-wordmark">RTS <b>AI</b></div>
+      </div>
+      <div className="ld-panel">
+        {target && <div className="ld-deploy">
+          {target.preview && <span className="ld-deploy-map"><img src={target.preview} alt="" /><Brackets className="always" /></span>}
+          <span className="ld-deploy-text"><span className="menu-eyebrow">Deploying to</span><b>{target.title}</b></span>
+        </div>}
+        <div className="ld-status" aria-live="polite"><span>{label}</span><span className="digits">{Math.round(progress * 100)}%</span></div>
+        <Meter value={progress} label="Loading" className="ld-meter" />
+        <p key={tip} className="ld-tip"><Kbd>{(preferences.bindings[key] ?? key).toUpperCase()}</Kbd><span>{text}</span></p>
       </div>
     </div>
   );
@@ -39,16 +113,25 @@ function Loading() {
 
 function ErrorCard({ game }: { game: Game | null }) {
   const error = useStore((s) => s.error);
+  const [copied, setCopied] = useState(false);
+  const copy = () => navigator.clipboard?.writeText(error).then(() => { setCopied(true); setTimeout(() => setCopied(false), 2000); }, () => undefined);
   return (
-    <div className="absolute inset-0 grid place-items-center bg-black/80 p-6">
-      <div className="hud-panel w-[min(720px,100%)] p-5">
-        <div className="mb-2 text-[16px] font-bold text-[var(--hud-red)]">Something went wrong</div>
-        <pre className="max-h-[50vh] overflow-auto whitespace-pre-wrap text-[11px] text-[var(--muted-foreground)]">{error}</pre>
-        <div className="mt-3 flex gap-2">
-          <button type="button" className="text-[var(--hud-gold)] underline" onClick={() => location.reload()}>Reload</button>
-          {game && <button type="button" className="text-[var(--muted-foreground)] underline" onClick={() => game.quit()}>Back to setup</button>}
+    <div className="er-root" data-ui-sfx role="alertdialog" aria-modal="true" aria-labelledby="er-title" aria-describedby="er-text">
+      <ScreenBackdrop />
+      <section className="er-panel">
+        <span className="er-icon" aria-hidden="true"><TriangleAlert size={26} /></span>
+        <h1 id="er-title">Something went wrong</h1>
+        <p id="er-text">The game stopped unexpectedly. Reloading usually fixes it.</p>
+        <div className="er-actions">
+          <GameButton variant="primary" size="lg" icon={<RotateCcw size={16} />} onClick={() => location.reload()}>Reload</GameButton>
+          {game && <GameButton size="lg" onClick={() => game.quit()}>Back to menu</GameButton>}
         </div>
-      </div>
+        {error && <details className="er-details">
+          <summary>Technical details</summary>
+          <pre>{error}</pre>
+          <GameButton variant="ghost" size="sm" icon={copied ? <Check size={14} /> : <Copy size={14} />} onClick={() => void copy()}>{copied ? "Copied" : "Copy details"}</GameButton>
+        </details>}
+      </section>
     </div>
   );
 }
@@ -142,9 +225,12 @@ export default function App() {
         <div className="menu-utility" data-ui-sfx><MatchLibrary game={game} /><GameSettings game={game} /><Feedback game={game} /></div>
         {mode === "home" ? <MainMenu onSkirmish={() => setMode("skirmish")} onCampaign={() => setMode("missions")} onWorkshop={() => setPracticeOpen(true)} onMapStudio={import.meta.env.VITE_STATIC_BUILD !== "1" ? () => setMapStudioOpen(true) : () => location.assign(studioUrl)} /> : <>
           {mode === "missions" ? <Missions game={game} /> : <Setup game={game} />}
-          <nav className="menu-subnav" aria-label="Game modes" data-ui-sfx>
-            <button type="button" onClick={() => setMode("home")} className="menu-subnav-back">← Main menu</button>
-            <button type="button" onClick={() => setMode(mode === "missions" ? "skirmish" : "missions")}>{mode === "missions" ? "Skirmish" : "Campaign"}</button>
+          <nav className="menu-subnav scr-subnav" aria-label="Game modes" data-ui-sfx>
+            <button type="button" onClick={() => setMode("home")} className="menu-subnav-back" aria-label="Main menu"><ArrowLeft size={15} aria-hidden="true" /><span>Main menu</span></button>
+            <div className="scr-tabs">
+              <button type="button" aria-current={mode === "skirmish" ? "page" : undefined} onClick={() => setMode("skirmish")}>Skirmish</button>
+              <button type="button" aria-current={mode === "missions" ? "page" : undefined} onClick={() => setMode("missions")}>Campaign</button>
+            </div>
             <button type="button" onClick={() => import.meta.env.VITE_STATIC_BUILD !== "1" ? setMapStudioOpen(true) : location.assign(studioUrl)}>Map studio</button>
           </nav>
         </>}
@@ -155,7 +241,7 @@ export default function App() {
       {game && useStore.getState().setup && practiceOpen && <Practice game={game} close={() => setPracticeOpen(false)} />}
       {game && phase === "setup" && mapStudioOpen && <MapWorkshop game={game} close={() => setMapStudioOpen(false)} />}
       {game && !mapStudioOpen && !sandboxMode && <Multiplayer game={game} />}
-      {(phase === "boot" || phase === "loading" || (phase === "setup" && sandboxMode)) && <Loading />}
+      {(phase === "boot" || phase === "loading" || (phase === "setup" && sandboxMode)) && <Loading game={game} />}
       {phase === "error" && <ErrorCard game={game} />}
     </div>
   );

@@ -1,64 +1,68 @@
-/* In-game feedback dialog (ui/Feedback.tsx). Local to the feedback components: the shared tray and annotator styles
-   are in feedback-kit.css, themed here through the --fbk-* variables with the HUD palette. */
+/* In-game feedback dialog (ui/Feedback.tsx), on the game kit's look (ui/kit/game.css). Local to the feedback components:
+   the shared tray and annotator styles are in feedback-kit.css, themed here through the --fbk-* variables. */
 
 .gfb-overlay {
   position: fixed; inset: 0; z-index: 130; display: grid; place-items: center; padding: 20px;
-  background: radial-gradient(ellipse at 50% 35%, rgba(10, 15, 9, .72), rgba(3, 5, 3, .92));
-  backdrop-filter: blur(6px);
+  background: rgba(3, 5, 3, .78); backdrop-filter: blur(6px); animation: settings-fade .16s ease-out;
   --fbk-surface: #0b1109; --fbk-ink: #e9eee2; --fbk-muted: #9aa58f; --fbk-edge: #343d2f;
   --fbk-accent: var(--hud-gold, #f1d28b); --fbk-accent-ink: #151a12; --fbk-radius: 8px;
 }
-.gfb-dialog {
+.gfb-dialog.hud-panel {
   width: min(600px, 100%); max-height: calc(100dvh - 40px); overflow-y: auto; overscroll-behavior: contain;
-  display: grid; gap: 14px; padding: 22px; border-radius: 14px; color: #e9eee2;
-  animation: gfb-in .16s ease-out;
+  display: grid; gap: 14px; padding: 20px 24px 20px; border: 1px solid var(--hud-edge-hi); border-radius: 12px; color: #e9eee2;
+  background: linear-gradient(180deg, #1b2118, #0e110d);
+  box-shadow: 0 30px 80px rgba(0, 0, 0, .6), inset 0 1px 0 rgba(255, 255, 255, .05);
+  animation: settings-pop .2s cubic-bezier(.2, .8, .2, 1);
 }
-@keyframes gfb-in { from { opacity: 0; transform: translateY(6px) scale(.985); } }
 .gfb-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
-.gfb-eyebrow { font-size: 10px; font-weight: 700; letter-spacing: .18em; text-transform: uppercase; color: var(--hud-gold, #f1d28b); }
-.gfb-head h1 { margin: 4px 0 0; font-size: 22px; font-weight: 650; line-height: 1.2; }
+.gfb-eyebrow { display: block; font-size: 11px; font-weight: 700; letter-spacing: .22em; text-transform: uppercase; color: var(--hud-gold-dim, #a8924f); }
+.gfb-head h1 { margin: 4px 0 0; font-size: 22px; font-weight: 800; line-height: 1.15; color: #f2ecdc; }
 
 .gfb-text { position: relative; color: #b9c2ae; }
 .gfb-text textarea {
-  display: block; width: 100%; min-height: 112px; padding: 11px 46px 11px 12px; resize: vertical;
-  background: #070b06; border: 1px solid #3a4434; border-radius: 8px; color: #edf0e7;
-  font: inherit; font-size: 14px; line-height: 1.5; user-select: text;
+  display: block; width: 100%; min-height: 116px; padding: 12px 46px 12px 13px; resize: vertical;
+  background: rgba(5, 7, 4, .9); border: 1px solid #4a5443; border-radius: 8px; color: #edf0e7;
+  font: inherit; font-size: 14px; line-height: 1.5; user-select: text; transition: border-color .15s, box-shadow .15s;
 }
 .gfb-text textarea::placeholder { color: #737d69; }
-.gfb-text textarea:focus { outline: 2px solid var(--hud-gold, #f1d28b); outline-offset: 1px; border-color: transparent; }
+.gfb-text textarea:hover { border-color: #6d7a5c; }
+.gfb-text textarea:focus { outline: none; border-color: var(--hud-gold, #f1d28b); box-shadow: 0 0 0 3px rgba(241, 210, 139, .14); }
 
 .gfb-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .gfb-chip {
   display: inline-flex; align-items: center; gap: 7px; height: 34px; padding: 0 13px;
-  border: 1px solid #45503d; border-radius: 999px; background: linear-gradient(180deg, #1b2317, #10160e);
-  color: #dfe5d6; font-size: 12.5px; font-weight: 600; cursor: pointer;
-  transition: border-color .12s, background .12s, color .12s;
+  border: 1px solid var(--hud-edge-hi, #4a5443); border-radius: 6px; background: rgba(14, 18, 13, .85);
+  color: #e3e7d8; font-size: 12.5px; font-weight: 700; cursor: var(--cursor-pointer, pointer);
+  transition: border-color .15s, background .15s, color .15s, transform .12s;
 }
 .gfb-chip svg { color: var(--hud-gold, #f1d28b); }
-.gfb-chip:hover:not(:disabled) { border-color: var(--hud-gold, #f1d28b); background: #222c1b; color: #fff; }
+.gfb-chip:hover:not(:disabled) { border-color: var(--hud-gold, #f1d28b); background: rgba(31, 35, 22, .95); color: var(--hud-gold, #f1d28b); transform: translateY(-1px); }
+.gfb-chip:active:not(:disabled) { transform: translateY(1px); }
 .gfb-chip:focus-visible { outline: 2px solid var(--hud-gold, #f1d28b); outline-offset: 2px; }
-.gfb-chip:disabled { opacity: .4; cursor: not-allowed; }
+.gfb-chip:disabled { opacity: .4; cursor: var(--cursor-blocked, not-allowed); }
 
-.gfb-footer { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; padding-top: 14px; border-top: 1px solid #2c3329; }
+.gfb-footer { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; margin: 0 -24px -20px; padding: 14px 24px 18px; border-top: 1px solid var(--hud-edge, #2c3329); }
 .gfb-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; }
 .gfb-topic[data-slot] { width: 168px; height: 38px; min-height: 38px; padding: 6px 10px; font-size: 13px; }
 .gfb-rating { display: flex; gap: 1px; }
-.gfb-rating button { padding: 3px; color: #4b5442; cursor: pointer; }
-.gfb-rating button:hover { color: #c9b16f; }
+.gfb-rating button { padding: 3px; color: #4b5442; cursor: var(--cursor-pointer, pointer); transition: color .12s, transform .12s; }
+.gfb-rating button:hover { color: #c9b16f; transform: scale(1.12); }
 .gfb-rating button.on { color: var(--hud-gold, #f1d28b); }
-.gfb-rating button.on svg { fill: currentColor; }
+.gfb-rating button.on svg { fill: currentColor; filter: drop-shadow(0 0 4px rgba(241, 210, 139, .4)); }
 .gfb-send {
-  display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 40px; padding: 0 22px;
-  border: 0; border-radius: 8px; background: var(--hud-gold, #f1d28b); color: #151a12;
-  font-size: 14px; font-weight: 700; letter-spacing: .02em; cursor: pointer; text-decoration: none;
-  box-shadow: inset 0 0 0 1px rgba(255, 236, 180, .3), 0 6px 18px rgba(241, 210, 139, .16);
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 42px; padding: 0 24px;
+  border: 1px solid #000; border-radius: 6px; background: linear-gradient(180deg, #f6dc9c, #c9a253); color: #1a160c;
+  font-size: 13px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; cursor: var(--cursor-pointer, pointer); text-decoration: none;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, .6), 0 6px 18px rgba(241, 210, 139, .2);
+  transition: filter .15s, transform .12s, box-shadow .15s;
 }
-.gfb-send:hover:not(:disabled) { filter: brightness(1.07); }
-.gfb-send:focus-visible { outline: 2px solid #fff3cf; outline-offset: 2px; }
-.gfb-send:disabled { opacity: .45; cursor: not-allowed; box-shadow: none; }
+.gfb-send:hover:not(:disabled) { filter: brightness(1.1); transform: translateY(-1px); box-shadow: 0 0 0 1px rgba(0, 0, 0, .6), 0 8px 22px rgba(241, 210, 139, .3); }
+.gfb-send:active:not(:disabled) { transform: translateY(1px); }
+.gfb-send:focus-visible { outline: 2px solid var(--hud-gold, #f1d28b); outline-offset: 2px; }
+.gfb-send:disabled { opacity: .45; cursor: var(--cursor-blocked, not-allowed); box-shadow: none; }
 
 .gfb-notice { margin: 0; color: #c8d0bd; font-size: 12px; line-height: 1.5; }
-.gfb-error { margin: 0; padding: 10px 12px; border: 1px solid #843e32; border-radius: 8px; background: #321b16; color: #ffd0c6; font-size: 13px; line-height: 1.5; }
+.gfb-error { margin: 0; padding: 10px 12px; border: 1px solid #7a3a2e; border-radius: 8px; background: rgba(50, 22, 16, .85); color: #ffd0c6; font-size: 13px; line-height: 1.5; }
 .gfb-thanks { margin: 0; color: #c8d0bd; font-size: 14px; line-height: 1.6; }
 .gfb-thanks strong { color: var(--hud-gold, #f1d28b); font-family: ui-monospace, Consolas, monospace; letter-spacing: .06em; }
 .gfb-spin { animation: gfb-spin .8s linear infinite; }
@@ -66,9 +70,9 @@
 
 @media (max-width: 650px), (max-height: 520px) {
   .gfb-overlay { padding: 0; }
-  .gfb-dialog { width: 100%; height: 100dvh; max-height: 100dvh; align-content: start; padding: 16px 16px calc(16px + env(safe-area-inset-bottom)); border-radius: 0; }
+  .gfb-dialog.hud-panel { width: 100%; height: 100dvh; max-height: 100dvh; align-content: start; padding: 16px 16px calc(16px + env(safe-area-inset-bottom)); border-radius: 0; }
   .gfb-chip { height: 44px; }
-  .gfb-footer { flex-direction: column; align-items: stretch; }
-  .gfb-send { width: 100%; height: 46px; }
+  .gfb-footer { flex-direction: column; align-items: stretch; margin: 0 -16px; padding: 14px 16px 0; }
+  .gfb-send { width: 100%; height: 48px; }
 }
-@media (prefers-reduced-motion: reduce) { .gfb-dialog { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .gfb-overlay, .gfb-dialog.hud-panel { animation: none; } .gfb-chip, .gfb-send, .gfb-rating button { transition: none; } }

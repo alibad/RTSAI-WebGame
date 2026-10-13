@@ -15,6 +15,7 @@ import {
 } from "./feedback/media";
 import { createFeedbackReport, FEEDBACK_REPORT_REUSE_MS, storeFeedbackFile, type FeedbackFileKind } from "./feedback/report-files";
 import { ScreenshotAnnotator } from "./feedback/ScreenshotAnnotator";
+import { GameButton } from "./kit/game";
 import { DictationButton, useFeedbackDictation } from "./feedback/useFeedbackDictation";
 import "./feedback/feedback-game.css";
 
@@ -216,15 +217,15 @@ export function Feedback({ game, compact = false }: { game: Game; compact?: bool
     <Button size="sm" variant="outline" aria-label="Feedback" onClick={() => void openFeedback()}><MessageSquareHeart size={14} />{!compact && " Feedback"}</Button>
     {open && <div id={FEEDBACK_ROOT_ID}>
       {/* Stays mounted (hidden) under the annotator, so returning from markup keeps the draft view as it was. */}
-      <div className="gfb-overlay" role="presentation" style={annotating ? { visibility: "hidden" } : undefined} onMouseDown={(e) => { if (e.target === e.currentTarget) close(); }} onKeyDown={(e) => { if (e.key === "Escape" && !kitPopupOpen()) close(); e.stopPropagation(); }}>
+      <div className="gfb-overlay" role="presentation" data-ui-sfx style={annotating ? { visibility: "hidden" } : undefined} onMouseDown={(e) => { if (e.target === e.currentTarget) close(); }} onKeyDown={(e) => { if (e.key === "Escape" && !kitPopupOpen()) close(); e.stopPropagation(); }}>
         <section role="dialog" aria-modal="true" aria-labelledby="feedback-title" className="hud-panel gfb-dialog">
           <header className="gfb-head">
             <div><span className="gfb-eyebrow">RTS AI · Feedback</span><h1 id="feedback-title">{receipt ? "Thank you, commander" : "What did you see?"}</h1></div>
-            <Button variant="ghost" size="icon-sm" aria-label="Close feedback" onClick={close}><X size={16} /></Button>
+            <button type="button" className="gd-close" aria-label="Close feedback" onClick={close}><X size={18} /></button>
           </header>
           {receipt ? <>
             <p className="gfb-thanks">Your report reached the team. Receipt <strong>{receipt}</strong>.</p>
-            <div className="gfb-footer"><span /><Button size="lg" onClick={close}>Back to the game</Button></div>
+            <div className="gfb-footer"><span /><GameButton variant="primary" size="lg" onClick={close}>Back to the game</GameButton></div>
           </> : signedIn === false ? <>
             <p className="gfb-thanks">Sign in to send feedback with your RTS AI account.</p>
             <div className="gfb-footer"><span /><a className="gfb-send" href={signInUrl()}>Sign in</a></div>

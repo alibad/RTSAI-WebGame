@@ -1,8 +1,10 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { Pause, Play, Sparkles, X } from "lucide-react";
 import type { Game } from "../game";
 import { useStore } from "../store";
 import { GameSelect, SearchSelect, type Option } from "../components/ui/fields";
 import { Flag } from "./Flag";
+import { GameButton } from "./kit/game";
 import {
   factionUnits, interpret, loadPracticeCatalog, MAX_FORCE, nativeIssues, pickUnit, practiceScenario, probeRoster, unitClass, validatePlan, waitForArt, waitForWorld,
   type PlanField, type PlanIssue, type PracticePlan, type Rosters, type UnitOption,
@@ -182,59 +184,62 @@ export function Practice({ game, close }: { game: Game; close: () => void }) {
     const option = (u: UnitOption, group?: string): Option => ({ value: u.name, label: u.label, group, leading: cameo(u.name, "h-[16px] w-[20px] shrink-0 object-contain") });
     return own.length ? [...own.map(u => option(u, factionNames[faction] ?? faction)), ...rest.map(u => option(u, "Other units"))] : rest.map(u => option(u));
   };
-  const FieldIssue = ({ field }: { field: PlanField }) => issue(field) ? <p id={`practice-${field}-issue`} role="alert" className="text-[12px] leading-snug text-[var(--hud-red)]">{issue(field)}</p> : null;
+  const FieldIssue = ({ field }: { field: PlanField }) => issue(field) ? <p id={`practice-${field}-issue`} role="alert" className="pw-issue">{issue(field)}</p> : null;
   const sides = [
     { side: 0, title: "You", faction: "faction", unit: "unit", count: "count", labels: ["Your faction", "Your unit", "Your force"] },
     { side: 1, title: "Opponent", faction: "enemy", unit: "enemyUnit", count: "enemyCount", labels: ["Opponent faction", "Opponent unit", "Opponent force"] },
   ] as const;
-  const inputClass = "block h-8 w-full rounded-md border border-input bg-black px-2 text-[13px] aria-[invalid=true]:border-[var(--hud-red)]";
+  const inputClass = "pw-input";
 
   return <>
     {/* The map behind the panel: a paused preview you look at, not a game you play (yet). */}
     <div data-practice-map className="fixed inset-0 z-40" onMouseDown={e => e.preventDefault()} onContextMenu={e => e.preventDefault()}>
-      {busy || !plan ? <div className="absolute inset-0 grid place-items-center bg-[radial-gradient(ellipse_at_40%_40%,#1a2219,#070907_75%)]" style={{ paddingRight: (panel.current?.offsetWidth ?? 420) + 32 }}>
-        <div className="flex items-center gap-3 text-[13px]"><div className="spinner" /><span>{units.length ? "Setting up the battle" : "Reading the arsenal"}</span></div>
+      {busy || !plan ? <div className="pw-wait" style={{ paddingRight: (panel.current?.offsetWidth ?? 420) + 32 }}>
+        <div className="pw-wait-card"><span className="scr-radar" aria-hidden="true"><i /><i /><i /></span><span>{units.length ? "Setting up the battle" : "Reading the arsenal"}</span></div>
       </div> : <>
         {stale && <div className="absolute inset-0 bg-black/55" />}
-        {area && !stale && <span className="absolute -translate-x-1/2 rounded-full bg-black/75 px-3 py-1 text-[12px] tracking-wide text-[var(--hud-gold)]" style={{ left: (area.left + area.right) / 2, top: area.top + 16 }}>Paused preview</span>}
-        {!stale && tags.map(t => <span key={t.side} data-side-tag={t.side} className="absolute -translate-x-1/2 -translate-y-full rounded px-2 py-0.5 text-[12px] font-bold text-white shadow" style={{ left: t.x, top: t.y - 8, background: SIDE_COLOR[t.side] }}>{t.side ? "Opponent" : "You"}</span>)}
+        {area && !stale && <span className="pw-paused absolute -translate-x-1/2" style={{ left: (area.left + area.right) / 2, top: area.top + 16 }}><Pause size={11} aria-hidden="true" />Paused preview</span>}
+        {!stale && tags.map(t => <span key={t.side} data-side-tag={t.side} className="pw-tag absolute -translate-x-1/2 -translate-y-full" style={{ left: t.x, top: t.y - 8, "--side": SIDE_COLOR[t.side] } as CSSProperties}>{t.side ? "Opponent" : "You"}</span>)}
       </>}
     </div>
-    <section ref={panel} data-practice className="absolute inset-y-4 right-4 z-50 flex w-[420px] max-w-[calc(100%-32px)] flex-col gap-3 overflow-auto hud-panel p-4 text-sm" onKeyDown={e => e.stopPropagation()}>
-      <div className="flex items-center justify-between"><h2 className="text-xl font-bold text-[var(--hud-gold)]">Scenario workshop</h2><button type="button" aria-label="Close workshop" onClick={() => { game.quit(); close(); }}>✕</button></div>
-      <form onSubmit={e => { e.preventDefault(); reinterpret(); }}>
+    <section ref={panel} data-practice data-ui-sfx className="pw-panel" onKeyDown={e => e.stopPropagation()}>
+      <header className="pw-head">
+        <div className="min-w-0"><span className="menu-eyebrow">Practice battle</span><h2>Scenario workshop</h2></div>
+        <button type="button" className="gd-close" aria-label="Close workshop" onClick={() => { game.quit(); close(); }}><X size={18} /></button>
+      </header>
+      <form className="pw-request" onSubmit={e => { e.preventDefault(); reinterpret(); }}>
         <textarea aria-label="Scenario request" placeholder={DEFAULT_REQUEST} value={request} rows={2} onChange={e => setRequest(e.target.value)}
-          onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); reinterpret(); } }} className="w-full resize-none rounded-md bg-black/60 p-2" />
-        <button disabled={!units.length} className="text-[var(--hud-gold)] disabled:opacity-40">Interpret request</button>
+          onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); reinterpret(); } }} />
+        <GameButton type="submit" size="sm" icon={<Sparkles size={14} />} disabled={!units.length}>Interpret request</GameButton>
       </form>
       {plan && <>
-        <div className="grid grid-cols-2 gap-2">
+        <div className="pw-sides">
           {sides.map(s => {
             const unit = units.find(u => u.name === plan[s.unit]);
-            return <section key={s.side} aria-label={s.title} className="hud-inset flex min-w-0 flex-col gap-1.5 p-2" style={{ boxShadow: `inset 0 3px 0 ${SIDE_COLOR[s.side]}` }}>
-              <b className="text-[13px]" style={{ color: SIDE_COLOR[s.side] }}>{s.title}</b>
+            return <section key={s.side} aria-label={s.title} className="pw-side" style={{ "--side": SIDE_COLOR[s.side] } as CSSProperties}>
+              <b className="pw-side-title">{s.title}</b>
               <SearchSelect size="sm" aria-label={s.labels[0]} value={plan[s.faction]} options={nations} onValueChange={v => patch({ [s.faction]: v })} />
               <FieldIssue field={s.faction} />
-              <div className="mx-auto grid aspect-[60/48] w-[104px] place-items-center overflow-hidden bg-black">{cameo(plan[s.unit], "h-full w-full object-contain") ?? <span className="px-1 text-center text-[10px] text-[var(--muted-foreground)]">{unit?.label}</span>}</div>
+              <div className="pw-cameo">{cameo(plan[s.unit], "h-full w-full object-contain") ?? <span>{unit?.label}</span>}</div>
               <SearchSelect size="sm" aria-label={s.labels[1]} value={plan[s.unit]} options={unitOptions(plan[s.faction])} placeholder="Find a unit…"
                 onValueChange={v => { live.current.pinned = { ...live.current.pinned, [s.unit]: true }; setPinned(live.current.pinned); patch({ [s.unit]: v }); }} />
               <FieldIssue field={s.unit} />
-              <label className="flex items-center gap-2"><span aria-hidden="true" className="text-[var(--muted-foreground)]">×</span>
+              <label className="pw-count"><span aria-hidden="true">×</span>
                 <input aria-label={s.labels[2]} type="number" min={1} max={MAX_FORCE} value={Number.isFinite(plan[s.count]) ? plan[s.count] : ""} aria-invalid={!!issue(s.count)} aria-describedby={issue(s.count) ? `practice-${s.count}-issue` : undefined}
                   onChange={e => patch({ [s.count]: e.target.value === "" ? NaN : Number(e.target.value) })} className={inputClass} /></label>
               <FieldIssue field={s.count} />
             </section>;
           })}
         </div>
-        <div className="grid grid-cols-2 gap-x-2 gap-y-1.5 text-[12px] text-[var(--muted-foreground)]">
-          <label>Goal<GameSelect aria-label="Practice objective" className="w-full" value={plan.objective} onChange={e => patch({ objective: e.target.value as PracticePlan["objective"] })}><option value="survive">Survive</option><option value="eliminate">Eliminate them</option></GameSelect></label>
-          <label>Orders<GameSelect aria-label="Opponent orders" className="w-full" value={plan.enemyOrder} onChange={e => patch({ enemyOrder: e.target.value as PracticePlan["enemyOrder"] })}><option value="engage">Engage</option><option value="hold">Hold position</option></GameSelect></label>
-          <label>Seconds<input aria-label="Duration seconds" type="number" min={30} max={600} value={Number.isFinite(plan.duration) ? plan.duration : ""} aria-invalid={!!issue("duration")} onChange={e => patch({ duration: e.target.value === "" ? NaN : Number(e.target.value) })} className={inputClass} /><FieldIssue field="duration" /></label>
-          <label>Seed<input aria-label="Seed" type="number" min={0} max={2147483647} value={Number.isFinite(plan.seed) ? plan.seed : ""} aria-invalid={!!issue("seed")} onChange={e => patch({ seed: e.target.value === "" ? NaN : Number(e.target.value) })} className={inputClass} /><FieldIssue field="seed" /></label>
+        <div className="pw-rules">
+          <label className="pw-field"><span>Goal</span><GameSelect aria-label="Practice objective" className="w-full" value={plan.objective} onChange={e => patch({ objective: e.target.value as PracticePlan["objective"] })}><option value="survive">Survive</option><option value="eliminate">Eliminate them</option></GameSelect></label>
+          <label className="pw-field"><span>Orders</span><GameSelect aria-label="Opponent orders" className="w-full" value={plan.enemyOrder} onChange={e => patch({ enemyOrder: e.target.value as PracticePlan["enemyOrder"] })}><option value="engage">Engage</option><option value="hold">Hold position</option></GameSelect></label>
+          <label className="pw-field"><span>Seconds</span><input aria-label="Duration seconds" type="number" min={30} max={600} value={Number.isFinite(plan.duration) ? plan.duration : ""} aria-invalid={!!issue("duration")} onChange={e => patch({ duration: e.target.value === "" ? NaN : Number(e.target.value) })} className={inputClass} /><FieldIssue field="duration" /></label>
+          <label className="pw-field"><span>Seed</span><input aria-label="Seed" type="number" min={0} max={2147483647} value={Number.isFinite(plan.seed) ? plan.seed : ""} aria-invalid={!!issue("seed")} onChange={e => patch({ seed: e.target.value === "" ? NaN : Number(e.target.value) })} className={inputClass} /><FieldIssue field="seed" /></label>
         </div>
-        <button type="button" disabled={!canStart} onClick={start} className="w-full rounded-md bg-[var(--hud-gold)] p-3 text-base font-bold text-black disabled:opacity-30"><span aria-hidden="true">▶ </span>Start battle</button>
+        <GameButton variant="primary" size="lg" className="pw-start" icon={<Play size={16} aria-hidden="true" />} disabled={!canStart} onClick={start}>Start battle</GameButton>
       </>}
-      {[...issues.filter(i => !i.field).map(i => i.message), ...(failure ? [failure] : [])].map((m, i) => <p key={i} role="alert" className="text-[var(--hud-red)]">{m}</p>)}
+      {[...issues.filter(i => !i.field).map(i => i.message), ...(failure ? [failure] : [])].map((m, i) => <p key={i} role="alert" className="pw-alert">{m}</p>)}
     </section>
   </>;
 }

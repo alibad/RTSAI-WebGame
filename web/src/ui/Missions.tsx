@@ -1,15 +1,22 @@
-import { GameSelect } from "../components/ui/fields";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { Check, ChevronDown, ChevronRight, CircleCheck, CircleX, Diamond, Film, Lightbulb, LoaderCircle, LocateFixed, MapPin, Play, Rocket, Target, Trophy, X } from "lucide-react";
 import type { Game } from "../game";
 import { useStore } from "../store";
 import { Flag } from "./Flag";
-import { cn } from "../lib/utils";
 import story from "../campaign-story";
 import { EA_NOTICE } from "../legal";
+import { EmptyState, GameButton } from "./kit/game";
+import { Brackets, Meter, ScreenBackdrop, Segmented } from "./screen-parts";
+
+// The campaign: story arcs as chapters with their maps and progress, the chosen operation's briefing, objectives and
+// film, then Start mission (or the film first). MissionHud is the operation's objectives panel during the match.
 
 function progress(): Record<string, string> {
   try { return JSON.parse(localStorage.getItem("rtsai.missions.completed") ?? "{}"); } catch { return {}; }
 }
+
+const DIFFICULTIES = [{ value: "easy", label: "Easy" }, { value: "normal", label: "Normal" }, { value: "hard", label: "Hard" }] as const;
+type Difficulty = (typeof DIFFICULTIES)[number]["value"];
 
 export function Missions({ game }: { game: Game }) {
   const setup = useStore((s) => s.setup)!;
@@ -20,10 +27,12 @@ export function Missions({ game }: { game: Game }) {
   const [showFilm, setShowFilm] = useState(false);
   const [filmError, setFilmError] = useState(false);
   const [deployAfterFilm, setDeployAfterFilm] = useState(false);
-  const [difficulty, setDifficulty] = useState("normal");
+  const [difficulty, setDifficulty] = useState<Difficulty>("normal");
   const prepared = useStore((s) => s.preparedMap);
   const sheets = useStore((s) => s.sheets);
   const previews = useStore((s) => s.previews);
+  const publicShot = useStore((s) => s.publicShot);
+  const detail = useRef<HTMLElement>(null);
   const completed = progress();
   const mission = missions.find((m) => m.id === selected) ?? missions[0];
   const chapter = mission ? story.chapters[mission.id as keyof typeof story.chapters] : undefined;
@@ -36,6 +45,8 @@ export function Missions({ game }: { game: Game }) {
     game.preview(mission.id);
     game.prepare(mission.id);
   }, [game, mission]);
+  // Every operation's map, for the chapter list.
+  useEffect(() => { for (const m of missions) game.preview(m.id); }, [game, missions]);
   const ready = mission && prepared === mission.id && sheets.uploaded >= sheets.total;
   const deploy = () => {
     if (!ready || !mission) return;
@@ -45,78 +56,150 @@ export function Missions({ game }: { game: Game }) {
       options: { difficulty, startingcash: "10000", fog: "True", explored: "False" },
     }));
   };
+  const choose = (id: string) => {
+    setSelected(id);
+    // One column: the briefing is below the list, so bring it into view.
+    if (innerWidth < 1000) requestAnimationFrame(() => detail.current?.scrollIntoView({ behavior: "smooth", block: "start" }));
+  };
+  const preview = (id: string) => (publicShot ? "" : previews[id] ?? "");
+  const done = missions.filter((m) => completed[m.id]).length;
+  const factionName = (id: string) => setup.factions.find((f) => f.id === id)?.name ?? id;
+  const loose = missions.filter((m) => !story.arcs.some((a) => a.missions.includes(m.id)));
+
+  const missionButton = (m: (typeof missions)[number], label: string) => (
+    <li key={m.id}>
+      <button type="button" className="cp-mission" aria-pressed={selected === m.id} data-sfx-hover onClick={() => choose(m.id)}>
+        <span className="cp-mission-art">
+          {preview(m.id) ? <img src={preview(m.id)} alt="" draggable={false} /> : null}
+          <span className="cp-mission-flag"><Flag id={m.faction} /></span>
+        </span>
+        <span className="cp-mission-text"><small>{label}</small><b>{m.title}</b></span>
+        {completed[m.id] ? <span className="cp-mission-done" title={`Completed on ${completed[m.id]}`}><Check size={13} strokeWidth={3} aria-hidden="true" /><span className="sr-only">Completed</span></span>
+          : <ChevronRight className="cp-mission-go" size={16} aria-hidden="true" />}
+        <Brackets />
+      </button>
+    </li>
+  );
+
   return (
-    <div className="absolute inset-x-0 bottom-0 top-[64px] overflow-y-auto bg-[#070907] px-6 pt-6 pb-[76px]">
-      <div className="mx-auto grid max-w-[1200px] grid-cols-[minmax(260px,0.8fr)_minmax(0,1.4fr)] gap-5 max-[800px]:grid-cols-1">
-        <section className="hud-panel p-4">
-          <h1 className="mb-2 text-[25px] font-black text-[var(--hud-gold)]">{story.title}</h1>
-          <p className="mb-5 text-sm text-[var(--muted-foreground)]">Two campaign arcs. Six operations. Your progress stays on this device; every chapter is available to replay.</p>
-          {story.arcs.map((campaign) => (
-            <div key={campaign.id} className="mb-5">
-              <h2 className="mb-2 text-sm font-bold text-[var(--hud-gold)]">{campaign.title} · {campaign.missions.filter((id) => completed[id]).length}/{campaign.missions.length}</h2>
-              <p className="mb-3 text-xs leading-relaxed text-[var(--muted-foreground)]">{campaign.premise}</p>
-              {campaign.missions.map((id) => missions.find((m) => m.id === id)).filter((m) => !!m).map((m, index) => (
-                <button type="button" key={m.id} onClick={() => setSelected(m.id)} aria-pressed={selected === m.id}
-                  className={cn("mb-2 flex w-full items-center gap-3 rounded border border-white/10 p-3 text-left hover:bg-white/5", selected === m.id && "border-[var(--hud-gold)] bg-white/5")}>
-                  <Flag id={m.faction} className="h-6 w-10 rounded-sm" />
-                  <span className="flex-1 text-sm"><span className="text-[var(--hud-gold-dim)]">{index + 1}. </span>{m.title}</span>
-                  {completed[m.id] && <span className="text-xs text-[var(--hud-green)]" title={`Completed on ${completed[m.id]}`}>✓</span>}
-                </button>
-              ))}
-            </div>
-          ))}
-          {missions.filter((m) => !story.arcs.some((a) => a.missions.includes(m.id))).map((m) => <button key={m.id} className="mb-2 block text-sm" onClick={() => setSelected(m.id)}>{m.title}</button>)}
-          {!missions.length && <p className="text-sm">This game profile has no compatible missions. Use the public RTS AI profile.</p>}
-          <p data-testid="ea-notice" className="mt-4 text-[11px] leading-snug text-[var(--muted-foreground)]">{EA_NOTICE}</p>
-        </section>
-        {mission && <section className="hud-panel p-5">
-          <p className="mb-2 text-xs uppercase tracking-widest text-[var(--hud-gold-dim)]">{arc ? `${arc.title} / Chapter ${chapterNumber}` : mission.campaign}</p>
-          {previews[mission.id] && <img src={previews[mission.id]} alt={`${mission.title} map`} className="mb-5 h-[240px] w-full bg-black object-contain [image-rendering:pixelated]" />}
-          <h2 className="mb-3 text-xl font-bold text-[var(--hud-gold)]">{mission.title}</h2>
-          {chapter && <>
-            <h3 className="mb-2 text-lg font-semibold">{chapter.title}</h3>
-            <p className="mb-4 text-sm leading-relaxed text-[var(--muted-foreground)]">{chapter.intro}</p>
-            <button type="button" className="mb-4 text-sm text-[var(--hud-gold)] underline" onClick={() => { setDeployAfterFilm(false); setShowFilm(!showFilm); }}>{showFilm ? "Close story introduction" : "Watch story introduction"}</button>
-            {showFilm && <div className="mb-5">
-              {!filmError ? <video key={`${mission.id}-${deployAfterFilm}`} controls playsInline autoPlay={deployAfterFilm} preload="metadata" className="w-full rounded bg-black" aria-label={`${mission.title} story introduction`} onEnded={() => { if (deployAfterFilm) deploy(); }} onError={() => setFilmError(true)}>
-                <source src={`${import.meta.env.BASE_URL}campaign-video/${mission.id}.mp4`} type="video/mp4" onError={() => setFilmError(true)} />
-                <track kind="captions" src={`${import.meta.env.BASE_URL}campaign-video/${mission.id}.vtt`} srcLang="en" label="English" default />
-              </video> : <p role="status" className="text-sm">The video could not load. The complete story is written above; you can still launch the mission.</p>}
-              <p className="mt-2 text-xs text-[var(--muted-foreground)]">Narrated operations map · captions available · playback is optional</p>
-              {deployAfterFilm && <button type="button" disabled={!ready} className="mt-2 text-sm text-[var(--hud-gold)] underline" onClick={deploy}>Skip introduction and deploy</button>}
+    <div className="scr-root cp-root" data-ui-sfx>
+      <ScreenBackdrop image={mission && preview(mission.id) ? preview(mission.id) : "menu/campaign.webp"} soft={!!(mission && preview(mission.id))} />
+      <div className="scr-topbar" aria-hidden="true" />
+      <main className="scr-content cp-layout">
+        <aside className="cp-side">
+          <header className="scr-head cp-head">
+            <span className="menu-eyebrow">Campaign</span>
+            <h1>{story.title}</h1>
+            {missions.length > 0 && <div className="cp-progress">
+              <Meter value={done / missions.length} label="Campaign progress" />
+              <span><b>{done}</b> / {missions.length} operations</span>
             </div>}
-            <p className="mb-4 text-sm leading-relaxed"><b>Command advice:</b> {chapter.tactics}</p>
-          </>}
-          <details className="mb-5 text-sm text-[var(--muted-foreground)]"><summary className="cursor-pointer">Original mission briefing and background</summary><p className="mt-3 whitespace-pre-line leading-relaxed">{mission.briefing}</p></details>
-          <h3 className="mb-2 text-sm font-bold">Objectives</h3>
-          <ul className="mb-5 space-y-2 text-sm">
-            {mission.objectives.map((o, i) => <li key={i}>◇ {o.text}{o.secondary && <span className="text-[var(--muted-foreground)]"> (bonus)</span>}</li>)}
-          </ul>
-          <div className="mb-4 flex flex-wrap items-center gap-3">
-            <label htmlFor="mission-difficulty" className="text-sm">Difficulty</label>
-            <GameSelect id="mission-difficulty" value={difficulty} onChange={(e) => setDifficulty(e.target.value)} className="hud-inset rounded p-2">
-              <option value="easy">Easy</option><option value="normal">Normal</option><option value="hard">Hard</option>
-            </GameSelect>
-            <button type="button" className="cta-start" disabled={!ready} onClick={deploy}>{ready ? "Start mission" : "Preparing mission…"}</button>
-            {chapter && <button type="button" className="cta-secondary" disabled={!ready} onClick={() => { setFilmError(false); setDeployAfterFilm(true); setShowFilm(true); }}>Play briefing & deploy</button>}
+          </header>
+          {story.arcs.map((campaign, index) => {
+            const list = campaign.missions.map((id) => missions.find((m) => m.id === id)).filter((m) => !!m);
+            if (!list.length) return null;
+            const arcDone = campaign.missions.filter((id) => completed[id]).length;
+            return (
+              <section key={campaign.id} className="cp-arc" aria-label={campaign.title}>
+                <header className="cp-arc-head">
+                  <span className="cp-arc-index">{index + 1}</span>
+                  <div className="cp-arc-title"><span className="menu-eyebrow">Story arc {index + 1}</span><h2>{campaign.title}</h2></div>
+                  <span className="cp-arc-pips" aria-label={`${arcDone} of ${campaign.missions.length} complete`}>
+                    {campaign.missions.map((id) => <i key={id} data-done={!!completed[id]} />)}
+                  </span>
+                </header>
+                <p className="cp-arc-premise">{campaign.premise}</p>
+                <ol className="cp-missions">{list.map((m, i) => missionButton(m, `Chapter ${i + 1}`))}</ol>
+              </section>
+            );
+          })}
+          {loose.length > 0 && <section className="cp-arc" aria-label="More operations">
+            <ol className="cp-missions">{loose.map((m) => missionButton(m, m.campaign))}</ol>
+          </section>}
+          {!missions.length && <EmptyState icon={<Target size={20} />} title="No campaign in this game">This game profile has no compatible missions. Use the public RTS AI profile.</EmptyState>}
+        </aside>
+
+        {mission && <section ref={detail} className="cp-detail" aria-label="Operation">
+          <div className="cp-hero" key={mission.id}>
+            <div className="cp-hero-map">
+              {preview(mission.id) ? <img src={preview(mission.id)} alt={`${mission.title} map`} draggable={false} /> : <Target size={40} strokeWidth={1.2} aria-hidden="true" />}
+              <Brackets className="always" />
+            </div>
+            <div className="cp-hero-text">
+              <span className="menu-eyebrow">{arc ? `${arc.title} · Chapter ${chapterNumber}` : mission.campaign}</span>
+              <h2>{mission.title}</h2>
+              {chapter && <p className="cp-hero-sub">{chapter.title}</p>}
+              <div className="scr-chips">
+                <span className="scr-chip"><Flag id={mission.faction} />{factionName(mission.faction)}</span>
+                {chapter && <span className="scr-chip"><MapPin size={12} aria-hidden="true" />{chapter.location}</span>}
+                {completed[mission.id] && <span className="scr-chip done"><Check size={12} strokeWidth={3} aria-hidden="true" />Completed · {completed[mission.id]}</span>}
+              </div>
+            </div>
           </div>
-          <p className="text-xs text-[var(--muted-foreground)]">{mission.adaptation}</p>
-          <p className="mt-2 text-xs text-[var(--muted-foreground)]">Original fictional story. Campaign arcs connect perspectives and exercises; they do not transfer armies or resources between missions.</p>
+
+          <div className="cp-body">
+            {chapter && <>
+              <p className="cp-intro">{chapter.intro}</p>
+              <div className="cp-film">
+                <GameButton size="sm" icon={showFilm ? <X size={14} /> : <Film size={14} />} onClick={() => { setDeployAfterFilm(false); setShowFilm(!showFilm); }}>{showFilm ? "Close story introduction" : "Watch story introduction"}</GameButton>
+                {showFilm && <div className="cp-film-player">
+                  {!filmError ? <video key={`${mission.id}-${deployAfterFilm}`} controls playsInline autoPlay={deployAfterFilm} preload="metadata" aria-label={`${mission.title} story introduction`} onEnded={() => { if (deployAfterFilm) deploy(); }} onError={() => setFilmError(true)}>
+                    <source src={`${import.meta.env.BASE_URL}campaign-video/${mission.id}.mp4`} type="video/mp4" onError={() => setFilmError(true)} />
+                    <track kind="captions" src={`${import.meta.env.BASE_URL}campaign-video/${mission.id}.vtt`} srcLang="en" label="English" default />
+                  </video> : <p role="status" className="cp-film-error">The video could not load. The complete story is written above; you can still launch the mission.</p>}
+                  <div className="cp-film-foot">
+                    <span>Narrated operations map · captions available · playback is optional</span>
+                    {deployAfterFilm && <GameButton variant="ghost" size="sm" disabled={!ready} onClick={deploy}>Skip introduction and deploy</GameButton>}
+                  </div>
+                </div>}
+              </div>
+            </>}
+
+            <div className="cp-cols">
+              <section className="cp-card">
+                <h3 className="scr-label"><Target size={14} aria-hidden="true" />Objectives</h3>
+                <ul className="cp-objectives">
+                  {mission.objectives.map((o, i) => <li key={i} data-bonus={o.secondary}><Diamond size={11} aria-hidden="true" /><span>{o.text}</span>{o.secondary && <em>Bonus</em>}</li>)}
+                </ul>
+              </section>
+              {chapter && <section className="cp-card">
+                <h3 className="scr-label"><Lightbulb size={14} aria-hidden="true" />Command advice</h3>
+                <p className="cp-advice">{chapter.tactics}</p>
+              </section>}
+            </div>
+
+            <details className="cp-original"><summary>Original mission briefing and background</summary><p>{mission.briefing}</p></details>
+            <p className="scr-fine">{mission.adaptation} Original fictional story. Campaign arcs connect perspectives and exercises; they do not transfer armies or resources between missions.</p>
+            <p data-testid="ea-notice" className="scr-notice">{EA_NOTICE}</p>
+          </div>
+
+          <div className="scr-command cp-command">
+            <Segmented label="Difficulty" value={difficulty} options={DIFFICULTIES} onChange={setDifficulty} />
+            <span className="cp-launch">
+              {chapter && <GameButton size="lg" className="cp-briefing" icon={<Play size={15} aria-hidden="true" />} disabled={!ready} onClick={() => { setFilmError(false); setDeployAfterFilm(true); setShowFilm(true); }}>Play briefing & deploy</GameButton>}
+              <GameButton variant="primary" size="lg" className="scr-cta cp-start" disabled={!ready} onClick={deploy}
+                icon={ready ? <Rocket size={17} aria-hidden="true" /> : <LoaderCircle className="menu-spin" size={17} aria-hidden="true" />}>{ready ? "Start mission" : "Preparing mission…"}</GameButton>
+            </span>
+          </div>
         </section>}
-      </div>
+      </main>
+      <div className="scr-footbar" aria-hidden="true" />
     </div>
   );
 }
 
+/** The operation's objectives during the match, and the campaign debrief when it ends. */
 export function MissionHud({ game }: { game: Game }) {
   const mission = useStore((s) => s.ui?.mission);
   const win = useStore((s) => s.ui?.win);
-  const [expanded, setExpanded] = useState(true);
+  // Phones start with the objectives folded: the battlefield is small enough already.
+  const [expanded, setExpanded] = useState(() => innerWidth >= 700 && innerHeight >= 500);
   useEffect(() => {
     if (mission && win === "Won") {
       try { localStorage.setItem("rtsai.missions.completed", JSON.stringify({ ...progress(), [mission.id]: mission.difficulty })); } catch { /* storage unavailable */ }
     }
   }, [mission?.id, mission?.difficulty, win]);
+  useEffect(() => { if (win === "Won" || win === "Lost") setExpanded(true); }, [win]);
   if (!mission) return null;
   const chapter = story.chapters[mission.id as keyof typeof story.chapters];
   const arc = story.arcs.find((a) => a.missions.includes(mission.id));
@@ -125,20 +208,29 @@ export function MissionHud({ game }: { game: Game }) {
     try { sessionStorage.setItem("rtsai.campaign.next", id); } catch { /* storage unavailable */ }
     game.quit();
   };
-  return <aside className="hud-panel absolute left-3 top-3 z-20 w-[min(370px,calc(100vw-var(--sidebar-w)-24px))] p-3">
-    <button type="button" className="flex w-full items-center justify-between text-left text-sm font-bold text-[var(--hud-gold)]" aria-expanded={expanded} onClick={() => setExpanded(!expanded)}>
-      {mission.title}<span>{expanded ? "−" : "+"}</span>
+  const primary = mission.objectives.filter((o) => !o.secondary);
+  const doneCount = primary.filter((o) => o.status === "complete").length;
+  const over = win === "Won" || win === "Lost";
+  return <aside className="mh-panel" data-ui-sfx data-outcome={over ? win : undefined}>
+    <button type="button" className="mh-head" aria-expanded={expanded} onClick={() => setExpanded(!expanded)}>
+      <span className="mh-icon" aria-hidden="true"><Target size={14} /></span>
+      <span className="mh-title">{mission.title}</span>
+      <span className="mh-count digits">{doneCount}/{primary.length}</span>
+      <ChevronDown className="mh-chevron" size={15} aria-hidden="true" />
     </button>
-    {expanded && <ul className="mt-3 max-h-[35vh] space-y-2 overflow-auto text-xs leading-relaxed" aria-label="Mission objectives">
-      {mission.objectives.map((o, i) => <li key={i} className={cn(o.status === "complete" && "text-[var(--hud-green)]", o.status === "failed" && "text-[var(--hud-red)]")}>
-        {o.status === "complete" ? "✓" : o.status === "failed" ? "✕" : "◇"} {o.text} {o.progress && <span className="text-[var(--hud-gold-dim)]">{o.progress}</span>}{o.secondary && " (bonus)"}
-        {o.status === "active" && !!o.markers?.length && <div className="mt-1 flex flex-wrap gap-2">{o.markers.map((m) => <button key={m.name} type="button" className="text-[var(--hud-gold-dim)] underline" onClick={() => game.lookAt(m.x, m.y)}>Locate {m.name.replace(/([a-z])([A-Z])/g, "$1 $2")}</button>)}</div>}
+    {expanded && <ul className="mh-objectives" aria-label="Mission objectives">
+      {mission.objectives.map((o, i) => <li key={i} data-status={o.status} data-bonus={o.secondary}>
+        <span className="mh-mark" aria-hidden="true">{o.status === "complete" ? <CircleCheck size={14} /> : o.status === "failed" ? <CircleX size={14} /> : <Diamond size={11} />}</span>
+        <div className="mh-text">
+          <span>{o.text}{o.progress && <b className="mh-progress digits">{o.progress}</b>}{o.secondary && <em>Bonus</em>}</span>
+          {o.status === "active" && !!o.markers?.length && <div className="mh-markers">{o.markers.map((m) => <button key={m.name} type="button" onClick={() => game.lookAt(m.x, m.y)}><LocateFixed size={11} aria-hidden="true" />Locate {m.name.replace(/([a-z])([A-Z])/g, "$1 $2")}</button>)}</div>}
+        </div>
       </li>)}
     </ul>}
-    {(win === "Won" || win === "Lost") && <section className="mt-3 border-t border-white/10 pt-3" aria-label="Campaign debrief">
-      <h2 className="text-sm font-bold text-[var(--hud-gold)]">{win === "Won" ? "Operation complete" : "Regroup and retry"}</h2>
-      <p className="mt-2 text-xs leading-relaxed">{chapter ? (win === "Won" ? chapter.victory : chapter.defeat) : "Return to the campaign to choose an operation."}</p>
-      <button type="button" className="mt-3 text-sm text-[var(--hud-gold)] underline" onClick={() => returnTo(win === "Won" && next ? next : mission.id)}>{win === "Won" && next ? "Continue to next chapter" : win === "Lost" ? "Retry this chapter" : "Return to campaign"}</button>
+    {over && <section className="mh-debrief" aria-label="Campaign debrief">
+      <div className="mh-debrief-head"><span className="mh-debrief-icon" aria-hidden="true">{win === "Won" ? <Trophy size={16} /> : <Target size={16} />}</span><h2>{win === "Won" ? "Operation complete" : "Regroup and retry"}</h2></div>
+      <p>{chapter ? (win === "Won" ? chapter.victory : chapter.defeat) : "Return to the campaign to choose an operation."}</p>
+      <GameButton variant="primary" size="sm" onClick={() => returnTo(win === "Won" && next ? next : mission.id)}>{win === "Won" && next ? "Continue to next chapter" : win === "Lost" ? "Retry this chapter" : "Return to campaign"}</GameButton>
     </section>}
   </aside>;
 }
