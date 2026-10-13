@@ -29,9 +29,10 @@
     },
     {
       "id": "commander",
-      "prompt": "Portrait of a fictional Yemeni army captain in his thirties, short black beard, olive field uniform and a scarf around the neck, radio handset in hand, standing beside a dusty pickup at a roadside post, focused and resolute, looking at the viewer, cinematic rim light, painted portrait.",
+      "prompt": "Portrait of a fictional Yemeni army captain in his thirties, short black beard, olive field uniform and a scarf around the neck, radio handset in hand, standing beside a dusty pickup truck on an empty desert roadside under a clear sky, nothing else in the background, focused and resolute, looking at the viewer, cinematic rim light, painted portrait.",
       "line": "Commander. Protect the deliveries, then bring the evacuation convoy home.",
-      "motion": "push-in-slow"
+      "motion": "push-in-slow",
+      "seed": 1
     },
     {
       "id": "evacuation",
