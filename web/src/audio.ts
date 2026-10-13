@@ -187,7 +187,7 @@ export class AudioEngine {
     this.master.gain.value = this.muted ? 0 : preferences.master;
     this.buses.sfx!.gain.value = preferences.effects;
     this.buses.voice!.gain.value = preferences.voice;
-    this.music.gain.value = preferences.music * (this.voiceNode ? 0.35 : 1);
+    this.music.gain.value = preferences.music * (this.voiceNode || this.radioNode ? 0.35 : 1);
   }
 
   /** The co-commander's spoken reply (a WAV); music ducks while it plays. Resolves when it ends. */
@@ -206,13 +206,43 @@ export class AudioEngine {
     await new Promise<void>((resolve) => { node.onended = () => resolve(); });
     if (this.voiceNode === node) {
       this.voiceNode = null;
-      this.music.gain.setTargetAtTime(preferences.music, ctx.currentTime, 0.3);
+      if (!this.radioNode) this.music.gain.setTargetAtTime(preferences.music, ctx.currentTime, 0.3);
     }
   }
 
   stopVoice() {
     try { this.voiceNode?.stop(); } catch { /* not started */ }
     this.voiceNode = null;
-    if (this.ctx) this.music.gain.setTargetAtTime(preferences.music, this.ctx.currentTime, 0.2);
+    if (this.ctx && !this.radioNode) this.music.gain.setTargetAtTime(preferences.music, this.ctx.currentTime, 0.2);
+  }
+
+  private radioNode: AudioBufferSourceNode | null = null;
+  /**
+   * A campaign radio call's voice (radio.ts; an encoded file), on the voice bus with the music ducked like the
+   * co-commander's. Muting, the master and voice volumes and the pause apply to it. Returns its length in seconds; it
+   * does not start if `wanted` says the call has gone while the file was decoding.
+   */
+  async radio(encoded: ArrayBuffer, wanted: () => boolean) {
+    const ctx = this.ensure();
+    const buf = await ctx.decodeAudioData(encoded);
+    if (!wanted()) return 0;
+    this.stopRadio();
+    if (!this.soundOn) return buf.duration;
+    const node = ctx.createBufferSource();
+    node.buffer = buf;
+    node.connect(this.buses.voice!);
+    this.music.gain.setTargetAtTime(preferences.music * 0.35, ctx.currentTime, 0.08);
+    this.radioNode = node;
+    node.onended = () => { if (this.radioNode === node) this.stopRadio(); };
+    node.start();
+    return buf.duration;
+  }
+
+  stopRadio() {
+    const node = this.radioNode;
+    this.radioNode = null;
+    if (!node) return;
+    try { node.stop(); } catch { /* ended */ }
+    if (this.ctx && !this.voiceNode) this.music.gain.setTargetAtTime(preferences.music, this.ctx.currentTime, 0.3);
   }
 }

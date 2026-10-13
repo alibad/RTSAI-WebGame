@@ -4,10 +4,15 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { chromium } from '../web/node_modules/playwright-core/index.mjs';
 const url = process.env.CAMPAIGN_TEST_URL ?? 'http://127.0.0.1:3489/?mode=missions&profile=public';
-const story = JSON.parse(fs.readFileSync('../RTSAI-Mod/resources/campaign-story.json','utf8'));
+const story = JSON.parse(fs.readFileSync(process.env.CAMPAIGN_STORY_JSON ?? '../RTSAI-Mod/resources/campaign-story.json','utf8'));
 const missions = JSON.parse(fs.readFileSync('content/missions.json','utf8'));
-assert.deepEqual(Object.keys(story.chapters).sort(), missions.map(m=>m.id).sort());
-assert.equal(new Set(story.arcs.flatMap(a=>a.missions)).size,6);
+// Every operation has its chapter; the acts list every chapter once. A chapter can start when it is not "coming" and its
+// operation is in this game's catalog; the rest show as locked cards.
+const order = story.arcs.flatMap(a=>a.missions);
+for (const m of missions) assert(story.chapters[m.id], `no chapter for ${m.id}`);
+assert.deepEqual([...new Set(order)].sort(), Object.keys(story.chapters).sort());
+const launchable = id => story.chapters[id].status !== 'coming' && missions.some(m=>m.id===id);
+assert.equal(order.filter(launchable).length, missions.length);
 const out='artifacts/campaign-story';fs.mkdirSync(out,{recursive:true});
 const browser=await chromium.launch({executablePath:path.join(process.env.LOCALAPPDATA,'ms-playwright/chromium-1228/chrome-win64/chrome.exe'),headless:true,args:['--use-angle=d3d11','--ignore-gpu-blocklist']});
 const page=await browser.newPage({viewport:{width:1440,height:1000}});const errors=[];const media=[];
@@ -20,7 +25,14 @@ try {
   assert.equal(await page.evaluate(()=>window.store.getState().phase),'setup',JSON.stringify(await page.evaluate(()=>({error:window.store.getState().error,stage:window.store.getState().stage}))));
   console.log('Campaign setup loaded.');
   await page.getByRole('heading',{name:story.title,exact:true}).waitFor();
-  for(const arc of story.arcs)for(const id of arc.missions){
+  for(const id of order.filter(id=>!launchable(id))){
+    const card=page.locator(`.cp-mission.is-locked[data-chapter="${id}"]`);
+    await card.waitFor();
+    assert.equal(await card.evaluate(el=>el.tagName),'DIV');
+    assert.match(await card.textContent(),/In production/);
+  }
+  console.log('Locked chapters passed.');
+  for(const id of order.filter(launchable)){
     const m=missions.find(m=>m.id===id);
     await page.getByRole('button',{name:new RegExp(m.title)}).click();
     await page.getByRole('button',{name:'Watch story introduction',exact:true}).click();
@@ -35,7 +47,7 @@ try {
   }
   // A missing movie must not block the written briefing or playable mission.
   await page.getByRole('button',{name:/Jizan Corridor/}).click();
-  const jizanFilm=u=>/campaign-video\/jizan-corridor\.mp4$|campaign\/jizan-corridor\/briefing\.mp4$/.test(u.href);await page.route(jizanFilm,route=>route.abort()); // the bundled film or the published briefing (briefings.ts)
+  const jizanFilm=u=>/campaign-video\/jizan-corridor\.mp4$|\/jizan-corridor\/briefing\.mp4$/.test(u.href);await page.route(jizanFilm,route=>route.abort()); // the bundled film or the published briefing under any campaign base (briefings.ts)
   await page.getByRole('button',{name:'Watch story introduction',exact:true}).click();
   await page.getByRole('status').filter({hasText:'video could not load'}).waitFor({timeout:30000});
   console.log('Missing-video fallback passed.',await page.evaluate(()=>({phase:window.store.getState().phase,prepared:window.store.getState().preparedMap,sheets:window.store.getState().sheets,error:window.store.getState().error})));
@@ -64,5 +76,5 @@ try {
   assert.equal(await page.getByRole('button',{name:/Jizan Corridor/}).getAttribute('aria-pressed'),'false');
   assert.equal(errors.length,0,JSON.stringify(errors));
   fs.writeFileSync(`${out}/acceptance.json`,JSON.stringify({passed:true,media,realMissionLaunch:'jizan-corridor',launchAfterVideo:true,syntheticOutcomeUi:['loss-does-not-complete','victory-saves','next-chapter','reload-persists'],videoFailureFallback:true,errors},null,2));
-  console.log('Six movies played and sought with captions; real mission launched; synthetic debrief/navigation and reload checks passed.');
+  console.log(`${media.length} movies played and sought with captions; real mission launched; synthetic debrief/navigation and reload checks passed.`);
 }finally{await browser.close();}

@@ -1,13 +1,12 @@
 import { useEffect, useState } from "react";
+import { CAMPAIGN_BASE as BASE } from "./campaign";
 
 // Mission briefings made through Montage (tools/briefings: Qwen-Image stills animated by a local video model, narrated
 // and scored), published to the CDN under campaign/<mission>/ with an index at campaign/index.json. Nothing loads until
-// the campaign screen asks: the index when it opens, a film only when it is played.
+// the campaign screen asks: the index when it opens, a film only when it is played. The prologue's film is listed
+// under the mission id "prologue".
 
 export interface Briefing { mission: string; title: string; eyebrow?: string; seconds: number; video: string; captions: string; poster: string }
-
-/** The CDN folder holding campaign/index.json; unset in local builds, which keep the bundled introductions. */
-const BASE = (import.meta.env.VITE_CAMPAIGN_BASE as string | undefined)?.replace(/\/?$/, "/") ?? null;
 
 let pending: Promise<Record<string, Briefing>> | null = null;
 

@@ -13,6 +13,7 @@ import { store, type Perf } from "./store";
 import { cursorFor, loadModCursors } from "./ui/cursors";
 import { MouseLock } from "./pointer";
 import { AudioEngine } from "./audio";
+import { Radio } from "./radio";
 import { preferences } from "./preferences";
 import { Sandbox, worldToCell } from "./sandbox";
 import { Coach } from "./ai-lab";
@@ -57,6 +58,8 @@ export class Game {
   readonly client: SimClient;
   readonly radar = new RadarModel();
   readonly audio = new AudioEngine();
+  /** Campaign radio calls: triggered from the match state the page already receives (radio.ts). */
+  readonly radio = new Radio(this.audio);
   // Practice battles and encounters (sandbox scenarios) have no co-commander: it neither observes nor advises there.
   readonly cc = new CoCommander(this.audio, () => !this.coach.review && !this.multiplayer && !this.sandboxMatch && !this.replayMatch, {
     observe: () => this.client.adviserObserve(),

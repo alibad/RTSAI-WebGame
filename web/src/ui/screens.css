@@ -263,7 +263,7 @@
 .cp-arc-pips i[data-done="true"] { border-color: var(--hud-gold); background: var(--hud-gold); box-shadow: 0 0 8px rgba(241, 210, 139, .5); }
 .cp-arc-premise { margin: 9px 0 11px; font-size: 12px; line-height: 1.5; color: #98a28e; }
 .cp-missions { display: flex; flex-direction: column; gap: 7px; margin: 0; padding: 0; list-style: none; }
-.cp-mission { position: relative; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 12px; width: 100%; padding: 6px 12px 6px 6px; border-radius: 8px; border: 1px solid var(--hud-edge); background: rgba(8, 11, 7, .72); color: inherit; text-align: left; transition: transform .16s ease, border-color .16s, background .2s, box-shadow .2s; }
+.cp-mission { position: relative; display: grid; grid-template-columns: auto minmax(0, 1fr); grid-auto-flow: column; grid-auto-columns: auto; align-items: center; gap: 12px; width: 100%; padding: 6px 12px 6px 6px; border-radius: 8px; border: 1px solid var(--hud-edge); background: rgba(8, 11, 7, .72); color: inherit; text-align: left; transition: transform .16s ease, border-color .16s, background .2s, box-shadow .2s; }
 .cp-mission-art { position: relative; display: block; width: 88px; aspect-ratio: 16 / 10; overflow: hidden; border-radius: 5px; box-shadow: 0 0 0 1px #000; background:
   linear-gradient(rgba(241, 210, 139, .05) 1px, transparent 1px) 0 0 / 11px 11px,
   linear-gradient(90deg, rgba(241, 210, 139, .05) 1px, transparent 1px) 0 0 / 11px 11px, #0b0f09; }
@@ -284,6 +284,38 @@
 .cp-mission[aria-pressed="true"] { border-color: var(--hud-gold); background: linear-gradient(90deg, rgba(72, 62, 30, .9), rgba(22, 21, 12, .92)); box-shadow: 0 0 0 3px rgba(241, 210, 139, .12), 0 10px 24px rgba(0, 0, 0, .45), 0 0 22px rgba(241, 210, 139, .16); }
 .cp-mission[aria-pressed="true"] .cp-mission-text b { color: var(--hud-gold); }
 .cp-mission:focus-visible { outline: 2px solid var(--hud-gold); outline-offset: 3px; }
+/* The chapter's commander (cast portrait, ui/Portrait.tsx), at the card's right. */
+.cp-mission-speaker { width: 32px; height: 32px; }
+.cp-mission[aria-pressed="true"] .cp-mission-speaker { box-shadow: 0 0 0 1px #000, 0 0 0 2px var(--hud-gold), 0 0 12px rgba(241, 210, 139, .35); }
+/* A chapter still in production: dim, dashed, no hover; its one line under the title. */
+.cp-mission.is-locked { border-style: dashed; border-color: rgba(168, 146, 79, .3); background: rgba(8, 11, 7, .5); }
+.cp-mission.is-locked:hover { transform: none; }
+.cp-mission.is-locked .cp-mission-art { display: grid; place-items: center; color: rgba(241, 210, 139, .4); background:
+  repeating-linear-gradient(135deg, rgba(241, 210, 139, .05) 0 6px, transparent 6px 12px), #0a0d09; }
+.cp-mission.is-locked .cp-mission-text b { color: #b9bfad; }
+.cp-mission.is-locked .cp-mission-speaker { filter: grayscale(.7) brightness(.75); }
+.cp-mission-teaser { overflow: hidden; font-size: 11.5px; line-height: 1.35; color: #7f8977; white-space: nowrap; text-overflow: ellipsis; }
+.cp-mission-label { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.cp-mission-soon { display: inline-flex; flex: none; align-items: center; gap: 4px; padding: 1px 5px; border-radius: 3px; border: 1px solid rgba(168, 146, 79, .45); color: var(--hud-gold-dim); font-size: 8.5px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; white-space: nowrap; }
+.cp-mission.is-locked .cp-mission-art { width: 64px; }
+.cp-arc-pips i[data-locked] { border-style: dashed; border-color: rgba(168, 146, 79, .4); }
+
+/* The prologue's film: a wide poster card above the acts (shown once the film is published). */
+.cp-prologue { position: relative; display: block; width: 100%; aspect-ratio: 21 / 9; padding: 0; overflow: hidden; border-radius: 11px; border: 1px solid var(--hud-edge-hi); color: inherit; text-align: left; background: radial-gradient(ellipse at 30% 40%, rgba(241, 210, 139, .12), transparent 65%), #070907; box-shadow: 0 14px 34px rgba(0, 0, 0, .5); animation: menu-rise .45s ease-out backwards; transition: border-color .18s, transform .18s, box-shadow .2s; }
+.cp-prologue .lazy-img.cp-prologue-art { position: absolute; inset: 0; }
+.cp-prologue-art img { object-fit: cover; filter: brightness(.62) saturate(.8); transition: filter .3s, transform .6s cubic-bezier(.2, .7, .2, 1); }
+.cp-prologue::after { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, rgba(5, 7, 5, .88), rgba(5, 7, 5, .2) 62%, transparent); pointer-events: none; }
+.cp-prologue-text { position: absolute; z-index: 1; left: 16px; bottom: 12px; display: flex; flex-direction: column; }
+.cp-prologue-text small { font-size: 10.5px; font-weight: 800; letter-spacing: .26em; text-transform: uppercase; color: var(--hud-gold); }
+.cp-prologue-text b { font-size: 40px; line-height: 1; font-weight: 900; letter-spacing: .04em; color: #f4ecd6; text-shadow: 0 2px 0 #000, 0 0 24px rgba(241, 210, 139, .2); }
+.cp-prologue-play { position: absolute; z-index: 1; right: 18px; top: 50%; display: grid; place-items: center; width: 50px; height: 50px; transform: translateY(-50%); border-radius: 50%; background: rgba(241, 210, 139, .92); color: #1a160c; box-shadow: 0 0 0 5px rgba(241, 210, 139, .18), 0 8px 24px rgba(0, 0, 0, .6); transition: transform .18s; }
+.cp-prologue-play svg { margin-left: 3px; }
+.cp-prologue-meta { position: absolute; z-index: 1; right: 10px; top: 9px; display: inline-flex; align-items: center; gap: 5px; padding: 3px 8px; border-radius: 999px; background: rgba(5, 7, 5, .78); color: #e8e2cf; font-size: 11px; font-weight: 700; }
+.cp-prologue:hover, .cp-prologue[aria-pressed="true"] { border-color: var(--hud-gold); box-shadow: 0 0 0 3px rgba(241, 210, 139, .12), 0 18px 40px rgba(0, 0, 0, .6), 0 0 26px rgba(241, 210, 139, .16); }
+.cp-prologue:hover { transform: translateY(-2px); }
+.cp-prologue:hover img, .cp-prologue[aria-pressed="true"] img { filter: brightness(.8); transform: scale(1.03); }
+.cp-prologue:hover .cp-prologue-play { transform: translateY(-50%) scale(1.08); }
+.cp-prologue:focus-visible { outline: 2px solid var(--hud-gold); outline-offset: 3px; }
 
 /* The operation: its map and title, the briefing, objectives, film and the launch. */
 .cp-detail { position: relative; display: flex; flex-direction: column; min-width: 0; scroll-margin-top: 72px; border: 1px solid var(--hud-edge-hi); border-radius: 12px; background: linear-gradient(180deg, rgba(25, 31, 22, .94), rgba(10, 13, 9, .96)); box-shadow: 0 18px 44px rgba(0, 0, 0, .5), inset 0 1px 0 rgba(255, 255, 255, .05); animation: menu-rise .45s .08s ease-out backwards; }
@@ -300,6 +332,16 @@
 .cp-hero-sub { margin: 0 0 14px; font-size: 16px; font-style: italic; color: var(--hud-gold); }
 .cp-body { display: flex; flex-direction: column; gap: 16px; padding: 18px 24px 6px; }
 .cp-intro { margin: 0; max-width: 74ch; font-size: 15px; line-height: 1.65; color: #dadfd0; }
+.cp-hero-poster .lazy-img { position: absolute; inset: 0; }
+.cp-hero-poster .lazy-img > img { image-rendering: auto; }
+/* The briefing as a transmission: the chapter's commander beside the intro. */
+.cp-voice { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: start; gap: 16px; }
+.cp-voice:not(:has(.cp-voice-portrait)) { grid-template-columns: minmax(0, 1fr); }
+.cp-voice-portrait { width: 72px; height: 72px; border-radius: 10px; box-shadow: 0 0 0 1px #000, 0 0 0 2px rgba(241, 210, 139, .55), 0 10px 24px rgba(0, 0, 0, .5); }
+.cp-voice-portrait .cast-initials { font-size: 24px; }
+.cp-voice-who { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; margin-bottom: 4px; }
+.cp-voice-who b { font-size: 12px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; color: var(--hud-gold); }
+.cp-voice-who small { font-size: 11.5px; color: #8f9886; }
 .cp-film { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; }
 .cp-film-player { width: 100%; overflow: hidden; border-radius: 8px; border: 1px solid var(--hud-edge-hi); background: #000; box-shadow: 0 14px 30px rgba(0, 0, 0, .55); animation: menu-rise .3s ease-out; }
 .cp-film-player video { display: block; width: 100%; max-height: 54vh; background: #000; }
@@ -321,12 +363,21 @@
 .cp-command { gap: 10px; }
 .cp-launch { display: flex; gap: 10px; }
 .cp-briefing.gbtn-lg { height: 52px; padding: 0 20px; letter-spacing: .06em; font-size: 12.5px; }
-.cp-start.gbtn-lg { min-width: 228px; padding: 0 26px; letter-spacing: .18em; }
+.cp-start.gbtn-lg, .cp-begin.gbtn-lg { min-width: 228px; padding: 0 26px; letter-spacing: .18em; }
+.cp-command-begin { justify-content: flex-end; }
 .cp-command .scr-segmented button { padding: 0 13px; }
 
 /* ---------------------------------------------------------------------------------------------- mission objectives in a match */
 
-.mh-panel { position: absolute; left: 12px; top: var(--mission-hud-top, 56px); z-index: 20; width: min(316px, calc(100vw - var(--sidebar-w) - 24px)); overflow: hidden; border: 1px solid var(--hud-edge-hi); border-radius: 9px; background: linear-gradient(180deg, rgba(25, 31, 22, .95), rgba(10, 13, 9, .95)); box-shadow: 0 10px 26px rgba(0, 0, 0, .5), inset 0 1px 0 rgba(255, 255, 255, .05); color: #dfe3d4; font-size: 12px; animation: menu-rise .3s ease-out; }
+/* The objectives with the radio call under them, top left; only the panels themselves take clicks. */
+.mh-stack { position: absolute; left: 12px; top: var(--mission-hud-top, 56px); z-index: 20; display: flex; flex-direction: column; gap: 8px; width: min(316px, calc(100vw - var(--sidebar-w) - 24px));
+  max-height: calc(100dvh - var(--mission-hud-top, 56px) - var(--hud-console-h, 0px) - 64px); pointer-events: none; }
+/* Short screens: the objectives scroll to leave the radio room above the command bar. */
+.mh-stack > * { flex: none; }
+.mh-stack > .mh-panel { display: flex; flex: 0 1 auto; flex-direction: column; min-height: 0; }
+.mh-panel > * { flex: none; }
+.mh-panel > .mh-objectives { flex: 0 1 auto; min-height: 0; }
+.mh-panel { position: relative; overflow: hidden; pointer-events: auto; border: 1px solid var(--hud-edge-hi); border-radius: 9px; background: linear-gradient(180deg, rgba(25, 31, 22, .95), rgba(10, 13, 9, .95)); box-shadow: 0 10px 26px rgba(0, 0, 0, .5), inset 0 1px 0 rgba(255, 255, 255, .05); color: #dfe3d4; font-size: 12px; animation: menu-rise .3s ease-out; }
 .mh-panel::before { content: ""; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: linear-gradient(90deg, var(--hud-gold), rgba(241, 210, 139, 0) 70%); }
 .mh-head { display: flex; align-items: center; gap: 9px; width: 100%; padding: 9px 10px; text-align: left; }
 .mh-icon { display: grid; place-items: center; flex: none; width: 24px; height: 24px; border-radius: 5px; border: 1px solid rgba(241, 210, 139, .4); background: rgba(241, 210, 139, .1); color: var(--hud-gold); }
@@ -361,6 +412,42 @@
 .mh-panel[data-outcome="Lost"] .mh-debrief-icon { background: #5a2a20; color: #ffd0c6; box-shadow: none; }
 .mh-panel[data-outcome="Lost"] .mh-debrief h2 { color: #ffc9bb; }
 .mh-debrief p { margin: 8px 0 11px; font-size: 12px; line-height: 1.5; color: #c9cfbe; }
+
+/* A radio call (ui/Radio.tsx): the speaker's portrait in a framed slot, name with live signal bars, the line. */
+.rd-call { position: relative; display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: start; gap: 10px; padding: 9px 30px 10px 9px; overflow: hidden; border: 1px solid rgba(241, 210, 139, .5); border-radius: 9px; background: linear-gradient(100deg, rgba(48, 42, 21, .96), rgba(14, 17, 11, .95) 55%); box-shadow: 0 10px 26px rgba(0, 0, 0, .55), 0 0 0 3px rgba(241, 210, 139, .06), inset 0 1px 0 rgba(255, 255, 255, .06); color: #f2ecdc; animation: rd-in .32s cubic-bezier(.2, .7, .2, 1); }
+.rd-call::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--hud-gold); box-shadow: 0 0 10px rgba(241, 210, 139, .6); }
+.rd-call::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: repeating-linear-gradient(0deg, rgba(255, 255, 255, .025) 0 1px, transparent 1px 3px); }
+@keyframes rd-in { 0% { opacity: 0; transform: translateX(-14px); } 40% { opacity: .55; } 55% { opacity: .9; } 65% { opacity: .6; } 100% { opacity: 1; transform: none; } }
+.rd-portrait { width: 56px; height: 56px; border-radius: 6px; box-shadow: 0 0 0 1px #000, 0 0 0 2px rgba(241, 210, 139, .6), 0 6px 14px rgba(0, 0, 0, .5); }
+.rd-portrait .cast-initials { font-size: 19px; }
+.rd-text { min-width: 0; }
+.rd-who { display: flex; align-items: center; gap: 7px; min-width: 0; }
+.rd-who b { min-width: 0; font-size: 10.5px; font-weight: 800; line-height: 1.25; letter-spacing: .12em; text-transform: uppercase; color: var(--hud-gold); }
+.rd-waiting { flex: none; padding: 0 5px; border-radius: 3px; background: rgba(0, 0, 0, .45); color: #c9cfbe; font-size: 10px; font-weight: 700; }
+.rd-waves { display: flex; flex: none; align-items: flex-end; gap: 2px; height: 11px; }
+.rd-waves i { width: 2px; height: 100%; border-radius: 1px; background: var(--hud-gold); transform-origin: bottom; animation: rd-wave .9s ease-in-out infinite; }
+.rd-waves i:nth-child(2) { animation-delay: -.3s; }
+.rd-waves i:nth-child(3) { animation-delay: -.6s; }
+.rd-waves i:nth-child(4) { animation-delay: -.15s; }
+@keyframes rd-wave { 0%, 100% { transform: scaleY(.3); } 50% { transform: scaleY(1); } }
+.rd-call[data-paused] .rd-waves i { animation-play-state: paused; }
+.rd-line { margin: 4px 0 0; font-size: 13px; line-height: 1.42; color: #eef0e6; text-shadow: 0 1px 0 #000; }
+.rd-skip { position: absolute; z-index: 1; top: 5px; right: 5px; display: grid; place-items: center; width: 22px; height: 22px; border-radius: 5px; color: #8f9886; pointer-events: auto; transition: color .15s, background .15s; }
+.rd-skip:hover { color: var(--hud-gold); background: rgba(241, 210, 139, .1); }
+.rd-skip:focus-visible { outline: 2px solid var(--hud-gold); outline-offset: 1px; }
+@media (max-width: 680px), (max-height: 480px) {
+  .rd-call { gap: 8px; padding: 7px 26px 8px 7px; }
+  .rd-portrait { width: 40px; height: 40px; }
+  .rd-portrait .cast-initials { font-size: 14px; }
+  .rd-line { font-size: 12px; line-height: 1.35; }
+}
+
+/* Cast portraits (ui/Portrait.tsx): the picture once it is on screen and loaded, the initials until then or without one. */
+.cast-portrait { position: relative; display: block; flex: none; overflow: hidden; border-radius: 50%; background: radial-gradient(circle at 50% 30%, #3a3a26, #10130d 75%); box-shadow: 0 0 0 1px #000, 0 0 0 2px rgba(168, 146, 79, .55); }
+.lazy-img { position: relative; display: block; width: 100%; height: 100%; }
+.lazy-img > img { position: relative; z-index: 1; display: block; width: 100%; height: 100%; object-fit: cover; }
+.cast-portrait .lazy-img > img { animation: hud-fade .3s ease-out; }
+.cast-initials { position: absolute; inset: 0; display: grid; place-items: center; color: var(--hud-gold); font-size: 11px; font-weight: 900; letter-spacing: .04em; text-shadow: 0 1px 0 #000; }
 
 @media (max-width: 1080px) {
   .cp-layout { grid-template-columns: minmax(0, 1fr); }
@@ -502,18 +589,24 @@
   .cp-command .scr-segmented button { flex: 1; }
   .cp-launch { width: 100%; flex-direction: column-reverse; }
   .cp-launch .gbtn, .cp-launch .scr-cta.gbtn-lg { flex: none; width: 100%; height: 50px; }
+  .cp-voice { gap: 12px; }
+  .cp-voice-portrait { width: 52px; height: 52px; }
+  .cp-voice-portrait .cast-initials { font-size: 18px; }
+  .cp-prologue-text b { font-size: 32px; }
+  .cp-mission-speaker { width: 28px; height: 28px; }
+  .cp-mission.is-locked { gap: 10px; }
+  .cp-mission.is-locked .cp-mission-art { width: 56px; }
 
-
-  .mh-panel { width: min(280px, calc(100vw - var(--sidebar-w) - 24px)); }
+  .mh-stack { width: min(280px, calc(100vw - var(--sidebar-w) - 24px)); }
 
   .ld-deploy-text b { font-size: 20px; }
   .ld-tip { font-size: 12px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .scr-backdrop, .scr-head, .scr-panel, .scr-cta.gbtn-lg, .sk-hero, .sk-hero-banner, .sk-hero-flag, .sk-hero-text, .sk-hero-units img, .sk-opp, .sk-nation-check, .sk-map-view > img, .cp-arc, .cp-detail, .cp-hero, .cp-hero-map img, .cp-film-player, .mh-panel, .mh-debrief, .ld-logo, .ld-panel, .ld-meter i::after, .ld-tip, .er-panel, .pw-panel, .ag-logo, .ag-panel { animation: none; }
+  .scr-backdrop, .scr-head, .scr-panel, .scr-cta.gbtn-lg, .sk-hero, .sk-hero-banner, .sk-hero-flag, .sk-hero-text, .sk-hero-units img, .sk-opp, .sk-nation-check, .sk-map-view > img, .cp-arc, .cp-detail, .cp-hero, .cp-hero-map img, .cp-film-player, .cp-prologue, .mh-panel, .mh-debrief, .rd-call, .rd-waves i, .ld-logo, .ld-panel, .ld-meter i::after, .ld-tip, .er-panel, .pw-panel, .ag-logo, .ag-panel { animation: none; }
   .scr-radar i:nth-child(3) { animation-duration: 6s; }
-  .sk-nation, .sk-map-thumb, .sk-map-random .sk-map-thumb-art svg, .sk-swatch, .cp-mission, .cp-mission img, .scr-brackets i, .scr-meter i { transition: none; }
+  .sk-nation, .sk-map-thumb, .sk-map-random .sk-map-thumb-art svg, .sk-swatch, .cp-mission, .cp-mission img, .cp-prologue, .cp-prologue img, .scr-brackets i, .scr-meter i { transition: none; }
 }
 
 /* A published briefing (briefings.ts): its poster with a play button, the film loading only when played. */
