@@ -277,7 +277,11 @@ export class CoCommander {
       // IDs are immutable for the displayed command set. Only current-state revalidation can dispatch it.
       this.push("proposal", advice.summary, { proposalId: id, state: "pending", commands: advice.commands });
     } catch (error) {
-      if (match === this.matchRevision) this.set({ linked: false, error: `Adviser unavailable: ${error instanceof Error ? error.message : error}` });
+      const text = error instanceof Error ? error.message : String(error);
+      // The engine publishes its first observation a moment after the match starts, and none when the co-commander is
+      // off for the match: the adviser waits quietly then, and only real failures show.
+      const waiting = /No co-commander observation yet|co-commander disabled for this match|No active browser co-commander match|No controllable single-player co-commander/i.test(text);
+      if (match === this.matchRevision) this.set({ linked: false, error: waiting ? "" : `Adviser unavailable: ${text}` });
     } finally { if (match === this.matchRevision) this.polling = false; }
   }
 

@@ -98,7 +98,7 @@ export function CoCommander({ game }: { game: Game }) {
   const paused = useStore(s => s.paused);
   const feedRef = useRef<HTMLDivElement>(null);
   useEffect(() => { feedRef.current?.scrollTo({ top: 1e6 }); }, [cc.feed.length, cc.open]);
-  if (!cc.enabled || !available) return null;
+  if (!cc.enabled || !available || game.sandboxMatch || game.replayMatch) return null;
 
   const state = cc.listening ? "listening" : cc.thinking || hud?.state.startsWith("thinking") ? "thinking"
     : cc.error || hud?.state === "error" ? "error" : cc.linked && cc.running ? "ready" : "offline";

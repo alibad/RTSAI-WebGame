@@ -48,7 +48,8 @@ export class Game {
   readonly client: SimClient;
   readonly radar = new RadarModel();
   readonly audio = new AudioEngine();
-  readonly cc = new CoCommander(this.audio, () => !this.coach.review && !this.multiplayer, {
+  // Practice battles and encounters (sandbox scenarios) have no co-commander: it neither observes nor advises there.
+  readonly cc = new CoCommander(this.audio, () => !this.coach.review && !this.multiplayer && !this.sandboxMatch && !this.replayMatch, {
     observe: () => this.client.adviserObserve(),
     execute: (id, commands, tick) => this.client.adviserExecute(id, commands, tick),
     status: (enabled, message) => this.client.adviserStatus(enabled, message),
@@ -291,6 +292,21 @@ export class Game {
   }
 
   private cursorsRequested = false;
+  /** A practice battle or encounter (a sandbox scenario), not a skirmish, mission or multiplayer match. */
+  get sandboxMatch() { try { return JSON.parse(this.scenarioJson || "{}").sandbox === true; } catch { return false; } }
+  /** Watching a saved match's recorded orders (MatchLibrary): nobody can command, so nothing offers orders. */
+  get replayMatch() { try { return JSON.parse(this.scenarioJson || "{}").webReplay?.readonly === true; } catch { return false; } }
+  /** Every unit's display name (the engine's tooltips), loaded once: the selection panel names units the build menu does not list. */
+  private actorLabelsLoaded = false;
+  private loadActorLabels() {
+    if (this.actorLabelsLoaded) return;
+    this.actorLabelsLoaded = true;
+    void this.command<{ units?: { name: string; label: string }[] }>({ cmd: "units" }).then((r) => {
+      const labels: Record<string, string> = {};
+      for (const u of r.units ?? []) labels[u.name] = u.label.replace(/(\w+)\s+$/i, "$1");
+      store.set({ actorLabels: labels });
+    }).catch(() => { this.actorLabelsLoaded = false; });
+  }
   /** The mod's cursors, asked once: by the menu as soon as the mod is loaded (ui/feel.ts), else by the first match. */
   requestCursors() { if (!this.cursorsRequested) { this.cursorsRequested = true; this.client.send({ type: "cursorset" }); } }
 
@@ -299,6 +315,7 @@ export class Game {
   }
   private started(info: StartInfo, radarTerrain: ArrayBuffer, startMs: number) {
     this.requestCursors();
+    this.loadActorLabels();
     // The sandbox keeps its camera between editing and running (it frames the placements itself).
     if (!this.sandbox || !this.info) this.cam = { x: info.start[0], y: info.start[1], zoom: 1 };
     this.info = info;

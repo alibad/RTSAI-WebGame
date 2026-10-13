@@ -35,6 +35,8 @@ export interface Store {
   privateContent: boolean;
   /** "" (the RA2 mod with the player's own files) or "public" (the standalone game). */
   profile: string;
+  /** Unit type -> display name from the engine (Game.loadActorLabels), for units the build menu does not list. */
+  actorLabels: Record<string, string>;
   setup: SetupData | null;
   preparedMap: string | null;
   preparing: string | null;
@@ -79,6 +81,7 @@ export const useStore = create<Store>((set) => ({
   shared: false,
   privateContent: false,
   profile: "",
+  actorLabels: {},
   setup: null,
   preparedMap: null,
   preparing: null,

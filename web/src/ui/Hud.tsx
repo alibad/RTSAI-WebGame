@@ -45,7 +45,9 @@ export function SelectionPanel({ game }: { game: Game }) {
   const selection = useStore((s) => s.ui?.selection);
   const icons = useStore((s) => s.icons);
   const catalog = useStore((s) => s.catalog);
-  const labels = useMemo(() => new Map(catalog.flatMap((q) => q.items.map((i) => [i.name, i.label] as const))), [catalog]);
+  const actorLabels = useStore((s) => s.actorLabels);
+  // The build menu's names first, then every unit's engine name (units you can't build here, in practice battles or missions).
+  const labels = useMemo(() => new Map([...Object.entries(actorLabels), ...catalog.flatMap((q) => q.items.map((i) => [i.name, i.label] as const))]), [catalog, actorLabels]);
   if (!selection?.length) return null;
 
   if (selection.length === 1) {
