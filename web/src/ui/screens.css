@@ -515,3 +515,14 @@
   .scr-radar i:nth-child(3) { animation-duration: 6s; }
   .sk-nation, .sk-map-thumb, .sk-map-random .sk-map-thumb-art svg, .sk-swatch, .cp-mission, .cp-mission img, .scr-brackets i, .scr-meter i { transition: none; }
 }
+
+/* A published briefing (briefings.ts): its poster with a play button, the film loading only when played. */
+.cp-film-card { position: relative; display: block; width: 100%; max-width: 640px; aspect-ratio: 16 / 9; padding: 0; overflow: hidden; border-radius: 8px; border: 1px solid var(--hud-edge-hi); background: #000; box-shadow: 0 14px 30px rgba(0, 0, 0, .55); transition: border-color .18s, transform .18s, box-shadow .2s; }
+.cp-film-card img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; transition: transform .6s cubic-bezier(.2, .7, .2, 1), filter .3s; filter: brightness(.85); }
+.cp-film-card-play { position: absolute; left: 50%; top: 50%; display: grid; place-items: center; width: 68px; height: 68px; transform: translate(-50%, -50%); border-radius: 50%; background: rgba(241, 210, 139, .92); color: #1a160c; box-shadow: 0 0 0 6px rgba(241, 210, 139, .2), 0 10px 30px rgba(0, 0, 0, .6); transition: transform .18s; }
+.cp-film-card-play svg { margin-left: 4px; }
+.cp-film-card-meta { position: absolute; left: 12px; bottom: 10px; display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px; background: rgba(5, 7, 5, .78); color: #e8e2cf; font-size: 12px; font-weight: 700; }
+.cp-film-card:hover, .cp-film-card:focus-visible { border-color: var(--hud-gold); transform: translateY(-2px); box-shadow: 0 18px 40px rgba(0, 0, 0, .6), 0 0 26px rgba(241, 210, 139, .16); }
+.cp-film-card:hover img { transform: scale(1.04); filter: brightness(1); }
+.cp-film-card:hover .cp-film-card-play { transform: translate(-50%, -50%) scale(1.08); }
+.cp-film-card:focus-visible { outline: 2px solid var(--hud-gold); outline-offset: 3px; }

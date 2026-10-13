@@ -102,9 +102,9 @@ if (!same) {
 }
 if (film.captions && fs.existsSync(media(film.captions))) fs.copyFileSync(media(film.captions), files.captions);
 else console.warn("This film has no captions file; briefing.vtt was not written.");
-if (film.poster && fs.existsSync(media(film.poster))) {
-  execFileSync("ffmpeg", ["-v", "error", "-y", "-i", media(film.poster), "-vf", "scale=1280:-2:flags=lanczos", "-c:v", "libwebp", "-quality", "82", files.poster]);
-} else console.warn("This film has no poster; poster.webp was not written.");
+// The poster is a frame of the opening shot (after the fade from black), not Montage's title card: the game draws its
+// own play button and length over it, which would cover the title.
+execFileSync("ffmpeg", ["-v", "error", "-y", "-ss", "3", "-i", src, "-frames:v", "1", "-vf", "scale=1280:-2:flags=lanczos", "-c:v", "libwebp", "-quality", "82", files.poster]);
 
 const probe = JSON.parse(execFileSync("ffprobe", ["-v", "error", "-show_entries", "format=duration:stream=codec_name,width,height", "-of", "json", files.video]).toString());
 const seconds = Number(probe.format.duration);
@@ -125,6 +125,16 @@ const manifest = {
   exportedAt: new Date().toISOString(),
 };
 fs.writeFileSync(files.manifest, JSON.stringify(manifest, null, 2));
+
+// The index the game reads when the campaign screen opens (web/src/briefings.ts): every exported briefing.
+const campaignDir = path.dirname(outDir);
+const briefings = fs.readdirSync(campaignDir, { withFileTypes: true }).filter((d) => d.isDirectory())
+  .map((d) => path.join(campaignDir, d.name, "briefing.json")).filter((f) => fs.existsSync(f))
+  .map((f) => JSON.parse(fs.readFileSync(f, "utf8")))
+  .filter((b) => b.video && b.captions && b.poster)
+  .map((b) => ({ mission: b.mission, title: b.title, eyebrow: b.eyebrow, seconds: b.seconds }))
+  .sort((x, y) => x.mission.localeCompare(y.mission));
+fs.writeFileSync(path.join(campaignDir, "index.json"), JSON.stringify({ updatedAt: new Date().toISOString(), briefings }, null, 2));
 
 console.log(`"${film.story?.title}" (${film.eyebrow ?? mission}) — Montage film ${film.id}, read from ${got.from}`);
 console.log(`  source  ${src}`);

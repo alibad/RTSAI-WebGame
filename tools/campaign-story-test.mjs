@@ -35,11 +35,11 @@ try {
   }
   // A missing movie must not block the written briefing or playable mission.
   await page.getByRole('button',{name:/Jizan Corridor/}).click();
-  await page.route('**/campaign-video/jizan-corridor.mp4',route=>route.abort());
+  const jizanFilm=u=>/campaign-video\/jizan-corridor\.mp4$|campaign\/jizan-corridor\/briefing\.mp4$/.test(u.href);await page.route(jizanFilm,route=>route.abort()); // the bundled film or the published briefing (briefings.ts)
   await page.getByRole('button',{name:'Watch story introduction',exact:true}).click();
   await page.getByRole('status').filter({hasText:'video could not load'}).waitFor({timeout:30000});
   console.log('Missing-video fallback passed.',await page.evaluate(()=>({phase:window.store.getState().phase,prepared:window.store.getState().preparedMap,sheets:window.store.getState().sheets,error:window.store.getState().error})));
-  await page.unroute('**/campaign-video/jizan-corridor.mp4');
+  await page.unroute(jizanFilm);
   // Launch the actual mission through the player UI.
   await page.getByRole('button',{name:'Start mission',exact:true}).waitFor({timeout:600000});
   await page.getByRole('button',{name:'Play briefing & deploy',exact:true}).click();
