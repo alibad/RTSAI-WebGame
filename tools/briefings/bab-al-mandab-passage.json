@@ -1,0 +1,50 @@
+{
+  "mission": "bab-al-mandab-passage",
+  "chapter": "The Lifeline · Chapter 3",
+  "title": "Four Ships at First Light",
+  "style": "Cinematic painted key art for a modern real-time strategy game, the look of classic Command and Conquer box art: dramatic light, rich colour, crisp detail, wide 16:9 composition, no text, no logos, no letters, no flags, no insignia.",
+  "music": {
+    "caption": "epic naval cinematic underscore, deep brass swells, steady war drums, sea-wind pads, a hopeful horn theme at dawn, building to a final crescendo, no vocals",
+    "seconds": 60
+  },
+  "shots": [
+    {
+      "id": "ships-dawn",
+      "prompt": "Four large merchant cargo ships in a line approaching a narrow sea strait at first light, mountains on both shores, calm silver water, a sense of scale and fragility.",
+      "line": "Four merchant vessels are approaching the strait.",
+      "motion": "push-in"
+    },
+    {
+      "id": "briefing-table",
+      "reference": "map",
+      "prompt": "Turn this top-down game map into a glowing holographic tactical map projected on a dark command table, seen at a slight angle. Keep the terrain layout, coastline and roads of the reference. Add three blue shipping lanes through the water, three red warning markers on the shore, a blue tower icon for Passage Control, teal and gold light.",
+      "line": "Their crews see the shipping lanes. Your command sees the gaps in the coastal picture.",
+      "motion": "pan-right"
+    },
+    {
+      "id": "radar-build",
+      "prompt": "Engineers raising a modern radar tower and a technology centre on a coastal plateau at sunrise, cranes and trucks, sparks from welding, the strait below.",
+      "line": "Build the radar and technology network, and survey every sector.",
+      "motion": "push-in-slow"
+    },
+    {
+      "id": "launchers-shore",
+      "prompt": "Grainy thermal reconnaissance footage from high above a rocky shoreline: two mobile missile launchers hidden among boulders near the water, targeting brackets, scan lines, a surveillance camera look.",
+      "line": "Mobile launchers are hiding along the shore. Find them before the ships arrive.",
+      "motion": "zoom-target"
+    },
+    {
+      "id": "commander",
+      "prompt": "Portrait of a fictional Saudi Arabian naval commander in his forties, neat black beard, navy uniform with a headset, standing in a dim harbour control room with radar screens behind him, calm and decisive, looking at the viewer, cinematic rim light, painted portrait.",
+      "line": "Hold Passage Control until the last vessel is through.",
+      "motion": "push-in-slow"
+    },
+    {
+      "id": "open-sea",
+      "prompt": "The last cargo ship sailing out of the strait into the open sea at sunrise, patrol boats escorting it, golden light on the water, gulls, triumphant and calm.",
+      "line": "The lifeline ends where the open sea begins.",
+      "motion": "push-in",
+      "title": true
+    }
+  ]
+}

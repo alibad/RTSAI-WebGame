@@ -1,0 +1,50 @@
+{
+  "mission": "hezbollah-relay",
+  "chapter": "Broken Signals · Chapter 3",
+  "title": "Keep the Signal Alive",
+  "style": "Cinematic painted key art for a modern real-time strategy game, the look of classic Command and Conquer box art: dramatic light, rich colour, crisp detail, wide 16:9 composition, no text, no logos, no letters, no flags, no insignia.",
+  "music": {
+    "caption": "gritty defensive cinematic underscore, heavy percussion and distorted low drums, tense string ostinato, a stubborn rising theme, ends with a driving charge, no vocals",
+    "seconds": 60
+  },
+  "shots": [
+    {
+      "id": "relay-mast",
+      "prompt": "A lone field radio relay mast on a rocky hill in a fictional training ground at dusk, cables running down to a small sandbagged hut, distant hills, wind, isolated and important.",
+      "line": "One field relay connects your forward teams to their supply base.",
+      "motion": "push-in"
+    },
+    {
+      "id": "briefing-table",
+      "reference": "map",
+      "prompt": "Turn this top-down game map into a glowing holographic tactical map projected on a dark command table, seen at a slight angle. Keep the terrain layout, coastline and roads of the reference. Add a pulsing blue relay icon, red incoming attack arrows from the far side, a red enemy command post marker, amber light.",
+      "line": "In this exercise, the attacks arrive before your workshop is secure.",
+      "motion": "pan-right"
+    },
+    {
+      "id": "workshop",
+      "prompt": "A busy field workshop being built in a valley: trucks unloading crates, engineers welding, a small depot growing behind sandbags, warm work lights at dusk.",
+      "line": "Expand the economy, build the workshop, and assemble a mixed defence.",
+      "motion": "pan-left"
+    },
+    {
+      "id": "commander",
+      "prompt": "Portrait of a fictional field signals commander in his forties, short dark beard, plain olive fatigues without any badges or insignia, headset, standing beside radio equipment in a dim bunker, determined, looking at the viewer, cinematic rim light, painted portrait.",
+      "line": "Hold the line. Keep the signal alive.",
+      "motion": "push-in-slow"
+    },
+    {
+      "id": "defence",
+      "prompt": "Night defence at a river ford in a training exercise: anti-tank teams behind sandbags, tracer light, armoured vehicles advancing through shallow water in the distance, flares overhead, intense and dramatic.",
+      "line": "Mix anti-tank teams with reconnaissance, and keep a reserve at the base.",
+      "motion": "push-in"
+    },
+    {
+      "id": "counter",
+      "prompt": "Dawn after the battle: a column of light vehicles crossing the ford toward a distant enemy command post on a hill, the relay mast standing behind them with its light still on, hopeful and resolute.",
+      "line": "Then turn the defence into an assault.",
+      "motion": "pan-right",
+      "title": true
+    }
+  ]
+}

@@ -1,0 +1,50 @@
+{
+  "mission": "haitan-network",
+  "chapter": "Broken Signals · Chapter 2",
+  "title": "Bring the Islands Online",
+  "style": "Cinematic painted key art for a modern real-time strategy game, the look of classic Command and Conquer box art: dramatic light, rich colour, crisp detail, wide 16:9 composition, no text, no logos, no letters, no flags, no insignia.",
+  "music": {
+    "caption": "mysterious naval tech cinematic underscore, glassy synth arpeggios, deep taiko pulse, low strings, electronic pulses like a network coming online, rising to a bright resolve, no vocals",
+    "seconds": 60
+  },
+  "shots": [
+    {
+      "id": "dark-islands",
+      "prompt": "A chain of green islands at night seen from the sea, a few dead communication masts and dark radar domes, faint fog, a single blinking red light, isolated and silent.",
+      "line": "The command network is broken across the islands.",
+      "motion": "push-in"
+    },
+    {
+      "id": "briefing-table",
+      "reference": "map",
+      "prompt": "Turn this top-down game map into a glowing holographic tactical map projected on a dark command table, seen at a slight angle. Keep the terrain layout, coastline and roads of the reference. Add a glowing blue water gate in a channel, a red command node marker, dotted blue network links between the islands, teal light.",
+      "line": "Obsidian Directorate holds the approaches. The water gate is the only way in for your amphibious vehicles.",
+      "motion": "pan-right"
+    },
+    {
+      "id": "specialist",
+      "prompt": "A network specialist soldier kneeling at a field terminal on a rocky island shore at night, plugging a cable into a relay mast that lights up blue, armoured vehicles waiting behind, cinematic.",
+      "line": "Deploy your network specialist. Every restored link makes the next move possible.",
+      "motion": "push-in-slow"
+    },
+    {
+      "id": "commander",
+      "prompt": "Portrait of a fictional Chinese navy marine commander in his forties, short black hair, blue digital camouflage uniform and headset, standing on the deck of a ship at night with glowing screens and the sea behind him, focused and composed, looking at the viewer, cinematic rim light, painted portrait.",
+      "line": "Reconnaissance first. Then missiles, aircraft and ships, together.",
+      "motion": "push-in-slow"
+    },
+    {
+      "id": "water-gate",
+      "prompt": "Two amphibious armoured vehicles surging through a narrow sea channel at dawn between rocky cliffs, a line of floating barriers opening, a warship covering them, spray and light, dramatic.",
+      "line": "Send the amphibious vehicles through the gate under covering fire.",
+      "motion": "pan-left"
+    },
+    {
+      "id": "islands-online",
+      "prompt": "The island chain at dawn with every communication mast glowing blue and linked by light across the water, ships at anchor, a sense of victory and connection.",
+      "line": "Bring the islands online.",
+      "motion": "push-in",
+      "title": true
+    }
+  ]
+}

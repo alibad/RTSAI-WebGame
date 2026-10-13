@@ -1,0 +1,50 @@
+{
+  "mission": "straits-shield",
+  "chapter": "Broken Signals · Chapter 1",
+  "title": "Across the Divide",
+  "style": "Cinematic painted key art for a modern real-time strategy game, the look of classic Command and Conquer box art: dramatic light, rich colour, crisp detail, wide 16:9 composition, no text, no logos, no letters, no flags, no insignia.",
+  "music": {
+    "caption": "tense combined-arms cinematic underscore, modern hybrid orchestra, pulsing synth ostinato, timpani hits, a bold low brass theme, builds steadily, no vocals",
+    "seconds": 60
+  },
+  "shots": [
+    {
+      "id": "far-shore",
+      "prompt": "A fortified far shore across a narrow sea strait seen through morning haze: bunkers, radar domes and three tall drone uplink masts with blinking lights on the hills, patrol boats on the water, menacing.",
+      "line": "Orion Group holds the far shore.",
+      "motion": "push-in"
+    },
+    {
+      "id": "briefing-table",
+      "reference": "map",
+      "prompt": "Turn this top-down game map into a glowing holographic tactical map projected on a dark command table, seen at a slight angle. Keep the terrain layout, coastline and roads of the reference. Add three red uplink markers, a blue relay icon, gold dashed crossing routes over the water, teal and amber light.",
+      "line": "Three drone uplinks watch the crossing, and a harbour relay ties them together.",
+      "motion": "pan-right"
+    },
+    {
+      "id": "three-branches",
+      "prompt": "A coordinated military operation at a coastline: reconnaissance drones and aircraft above, tanks and armoured vehicles on the beach, frigates and landing craft offshore, all moving together toward one objective, sunrise, heroic composition.",
+      "line": "A straight assault will leave you stranded between land and sea. Build every branch of your command together.",
+      "motion": "pan-left"
+    },
+    {
+      "id": "commander",
+      "prompt": "Portrait of a fictional Turkish army colonel in his fifties, short grey hair and moustache, green camouflage uniform, headset, standing at a coastal command post with the sea behind him, confident and calm, looking at the viewer, cinematic rim light, painted portrait.",
+      "line": "Recon above. Armour ashore. Ships along the crossing. Then we go.",
+      "motion": "push-in-slow"
+    },
+    {
+      "id": "assault",
+      "prompt": "Amphibious assault at dawn: landing craft reaching a rocky beach under covering fire from frigates, tanks rolling off the ramps, helicopters overhead, spray and smoke, dynamic and dramatic.",
+      "line": "This operation is a lesson in making the whole army matter.",
+      "motion": "push-in"
+    },
+    {
+      "id": "shore-taken",
+      "prompt": "A captured harbour relay tower on a hill at sunset with friendly vehicles around it, the calm strait behind, smoke drifting, quiet victory.",
+      "line": "Take the far shore.",
+      "motion": "push-in-slow",
+      "title": true
+    }
+  ]
+}

@@ -1,4 +1,8 @@
-"""Assemble a mission's motion briefing from its shot list (tools/briefings/<mission>.json), the art drawn by
+"""SUPERSEDED (2026-10-13): its zoompan camera moves flicker. Briefings are now animated by the BeTenshi Video Forge
+and cut by Montage: tools/briefings/commission.mjs <mission>, then tools/briefings/from-montage.mjs <mission>.
+Kept for reference only.
+
+Assemble a mission's motion briefing from its shot list (tools/briefings/<mission>.json), the art drawn by
 tools/briefings/art.mjs and the score from the local ACE-Step engine (music.wav in the same folder).
 
 Each shot is one image with a slow camera move (push in, pan, zoom on a target) for as long as its narration line
