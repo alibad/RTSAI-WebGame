@@ -215,6 +215,10 @@ namespace OpenRA.WebSim.Browser
 		[JSExport]
 		public static byte[] MapPreview(string mapId) => SetupInfo.Preview(mapId);
 
+		/// <summary>A random map from the engine's map generator: its id and files, for the page to mount (MapGen).</summary>
+		[JSExport]
+		public static string GenerateMap(string json) => MapGen.Generate(json);
+
 		/// <summary>Loads a map's rules, sequences and sprites ahead of Start (called from the setup screen).</summary>
 		[JSExport]
 		public static string Prepare(string mapId)

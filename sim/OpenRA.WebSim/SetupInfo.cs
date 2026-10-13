@@ -9,6 +9,7 @@
  */
 #endregion
 
+using System;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -78,7 +79,18 @@ namespace OpenRA.WebSim
 		{
 			IReadOnlyFileSystem preview = SimHost.ModData.MapCache.FirstOrDefault(p => Path.GetFileName(p.Path) == mapId);
 			if (preview == null || !preview.TryOpen("map.png", out var s))
-				return [];
+			{
+				// Maps without a picture (the practice arenas the bundle builds): the engine draws one, as the editor does.
+				try
+				{
+					using var map = SimHost.LoadMap(SimHost.MapPath(mapId));
+					return map.SavePreview();
+				}
+				catch (Exception e) when (e is IOException || e is InvalidDataException)
+				{
+					return [];
+				}
+			}
 
 			using var _ = s;
 			using var ms = new MemoryStream();

@@ -147,6 +147,22 @@ export class Game {
       this.mountWaiters.delete(m.map);
       if (m.error) waiter?.reject(Error("Couldn't load this map.")); else waiter?.resolve();
     });
+    c.on("mapGenerated", (m) => {
+      const waiter = this.generateWaiter;
+      this.generateWaiter = null;
+      if (m.error || !m.map) { waiter?.reject(Error(m.error || "Couldn't make a map.")); return; }
+      const s = store.get();
+      if (s.setup && !s.setup.maps.some((x) => x.id === m.map)) {
+        const url = m.png?.byteLength ? URL.createObjectURL(new Blob([m.png], { type: "image/png" })) : "";
+        const players = m.players ?? 2;
+        store.set({
+          previews: { ...s.previews, [m.map]: url },
+          setup: { ...s.setup, maps: [{ id: m.map, uid: m.map, title: m.title ?? "Random map", players, tileset: "TEMPERATE", author: "",
+            generated: true, landscape: m.landscape, slots: Array.from({ length: players }, (_, i) => `Multi${i}`) }, ...s.setup.maps] },
+        });
+      }
+      waiter?.resolve(m.map);
+    });
     c.on("started", (m) => this.started(m.info, m.radarTerrain, m.startMs));
     c.on("ui", (m) => this.onUi(JSON.parse(m.json) as UiState));
     c.on("shroud", (m) => {
@@ -256,6 +272,20 @@ export class Game {
       const error = e instanceof Error && e.message ? e.message : "Couldn't load this map. Check your connection and try again.";
       store.set({ mapErrors: { ...store.get().mapErrors, [map]: error } });
       throw Error(error);
+    });
+  }
+
+  private generateWaiter: { resolve: (map: string) => void; reject: (e: Error) => void } | null = null;
+
+  /**
+   * Makes a random map with the engine's map generator, in the worker (MapGen.cs), and adds it to the setup's map list.
+   * Resolves with its id. One at a time: a second request while one runs is refused.
+   */
+  generateMap(request: { seed: number; size?: number; players?: number; terrain?: string; resources?: string }): Promise<string> {
+    if (this.generateWaiter) return Promise.reject(Error("A map is already being made."));
+    return new Promise<string>((resolve, reject) => {
+      this.generateWaiter = { resolve, reject };
+      this.client.send({ type: "generateMap", request: JSON.stringify(request) });
     });
   }
 

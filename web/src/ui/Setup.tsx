@@ -3,7 +3,7 @@
 // chosen map is prepared in the background while the player decides, so starting only builds the world.
 
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
-import { Bot, Brain, Check, ChevronDown, Map as MapIcon, Plus, SlidersHorizontal, Swords, Users, X } from "lucide-react";
+import { Bot, Brain, Check, ChevronDown, Dices, Map as MapIcon, Plus, SlidersHorizontal, Swords, Users, X } from "lucide-react";
 import type { Game } from "../game";
 import { useStore } from "../store";
 import { GameSelect, OptionSelect, SearchSelect, type Option } from "../components/ui/fields";
@@ -97,10 +97,24 @@ export function Setup({ game }: { game: Game }) {
     leading: <Flag id={f.id} className="h-[12px] w-[18px] rounded-[1px]" />,
   })), [factions]); // eslint-disable-line react-hooks/exhaustive-deps
   const botOptions: Option[] = setup.bots.map((b) => ({ value: b.type, label: b.name }));
-  // Saved Earth maps (net/saved-maps.ts) come first, as the player's own.
-  const mapOptions: Option[] = [...setup.maps.filter((m) => m.saved), ...setup.maps.filter((m) => !m.saved)].map((m) => ({ value: m.id, label: m.title,
-    description: m.saved ? [m.place, `${m.players} players`].filter(Boolean).join(" · ") : `${m.players} players`, group: m.saved ? "Your maps" : `${m.players} players` }));
+  // Maps made here by the generator first (newest first), then saved Earth maps (net/saved-maps.ts), as the player's own.
+  const orderedMaps = [...setup.maps.filter((m) => m.generated), ...setup.maps.filter((m) => m.saved), ...setup.maps.filter((m) => !m.saved && !m.generated)];
+  const mapOptions: Option[] = orderedMaps.map((m) => ({ value: m.id, label: m.title,
+    description: m.saved ? [m.place, `${m.players} players`].filter(Boolean).join(" · ") : `${m.players} players`,
+    group: m.generated ? "Random maps" : m.saved ? "Your maps" : `${m.players} players` }));
   const mapError = useStore((s) => (map ? s.mapErrors[map.id] : undefined));
+  // A new random map from the engine's own map generator, made in this browser (game.generateMap): a landscape picked
+  // at random, sized for everyone in the match.
+  const [making, setMaking] = useState(false);
+  const [makeError, setMakeError] = useState("");
+  const makeMap = () => {
+    if (making) return;
+    setMaking(true);
+    setMakeError("");
+    game.generateMap({ seed: Math.floor(Math.random() * 1e9), players: Math.max(2, opponents.length + 1), terrain: "random" })
+      .then((id) => setMapId(id), (e: Error) => setMakeError(e.message))
+      .finally(() => setMaking(false));
+  };
 
   const start = () => {
     if (!map) return;
@@ -202,23 +216,29 @@ export function Setup({ game }: { game: Game }) {
                 <h2>{map.title}</h2>
                 <div className="scr-chips">
                   <span className="scr-chip"><Users size={12} aria-hidden="true" />{map.players} players</span>
-                  {map.saved ? <>{map.place && <span className="scr-chip">{map.place}</span>}<span className="scr-chip">Your map</span></> : <span className="scr-chip">{titleCase(map.tileset)}</span>}
+                  {map.saved ? <>{map.place && <span className="scr-chip">{map.place}</span>}<span className="scr-chip">Your map</span></>
+                    : map.generated ? <><span className="scr-chip">{map.landscape}</span><span className="scr-chip"><Dices size={12} aria-hidden="true" />Random</span></>
+                    : <span className="scr-chip">{titleCase(map.tileset)}</span>}
                 </div>
               </div>
               <span className="sk-map-status" data-ready={ready} data-error={!!mapError} role="status">
                 {mapError ? <><i className="scr-dot" /> {mapError}</> : ready ? <><i className="scr-dot" /> Ready</> : <><span className="spinner" />{loadingArt ? `Loading art ${Math.round((100 * sheets.uploaded) / Math.max(1, sheets.total))}%` : "Preparing"}</>}
               </span>
             </div>
-            {setup.maps.length > 1 && <div className="sk-maps" role="group" aria-label="Maps">
-              {/* Saved Earth maps first, as the player's own. */}
-              {[...setup.maps.filter((m) => m.saved), ...setup.maps.filter((m) => !m.saved)].map((m) => (
+            <div className="sk-maps" role="group" aria-label="Maps">
+              <button type="button" className="sk-map-thumb sk-map-random" data-sfx-hover onClick={makeMap} aria-busy={making} data-testid="random-map">
+                <span className="sk-map-thumb-art">{making ? <span className="spinner" /> : <Dices size={24} strokeWidth={1.4} aria-hidden="true" />}</span>
+                <span className="sk-map-thumb-name">{making ? "Making a map…" : "New random map"}</span>
+                <small>{makeError || "Lakes, hills, cliffs"}</small>
+              </button>
+              {orderedMaps.map((m) => (
                 <button key={m.id} type="button" className="sk-map-thumb" aria-pressed={m.id === map.id} data-sfx-hover onClick={() => setMapId(m.id)}>
                   <span className="sk-map-thumb-art">{preview(m.id) ? <img src={preview(m.id)} alt="" draggable={false} /> : <MapIcon size={22} strokeWidth={1.4} aria-hidden="true" />}</span>
                   <span className="sk-map-thumb-name">{m.title}</span>
                   <small>{m.players} players</small>
                 </button>
               ))}
-            </div>}
+            </div>
             {setup.maps.length > 8 && <SearchSelect value={mapId} onValueChange={setMapId} options={mapOptions} aria-label="Map" placeholder="Find a map…" className="sk-map-search" />}
           </div>}
 

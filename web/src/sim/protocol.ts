@@ -224,7 +224,7 @@ export interface SetupData {
   factions: { id: string; name: string; side: string; description: string; random: boolean }[];
   bots: { type: string; name: string }[];
   /** `saved`: a player's map from the Earth studio (its Firestore id), mounted when first used (net/saved-maps.ts). */
-  maps: { id: string; uid: string; title: string; players: number; tileset: string; author: string; slots: string[]; saved?: string; place?: string }[];
+  maps: { id: string; uid: string; title: string; players: number; tileset: string; author: string; slots: string[]; saved?: string; place?: string; generated?: boolean; landscape?: string }[];
   options?: { id: string; name: string; default: string; values: { value: string; label: string }[] }[];
 }
 
@@ -312,6 +312,8 @@ export type ToWorker = (
   | { type: "init"; runtime: string; base: string; sab: SharedArrayBuffer | null; privateContent: boolean; voiceLanguage: string; gcParams?: string; profile?: string; rtBase?: string; dataBase?: string }
   | { type: "prepare"; map: string }
   | { type: "mountMap"; map: string; yaml: string; bin: ArrayBuffer; png: ArrayBuffer }
+  /** A random map from the engine's map generator (MapGen.cs), made and mounted in the worker. `request`: JSON. */
+  | { type: "generateMap"; request: string }
   | { type: "preview"; map: string }
   | { type: "start"; scenario: string; voiceLanguage: string; paused?: boolean; companion?: boolean | "browser" }
   /** The factions a game will show (null: unknown, all): their sprite sheets are fetched now. */
@@ -346,6 +348,7 @@ export type FromWorker = (
   | { type: "prepared"; map: string; ms: number; timings: Record<string, number>; lazy?: LazyStats }
   | { type: "preview"; map: string; png: ArrayBuffer }
   | { type: "mapMounted"; map: string; error?: string }
+  | { type: "mapGenerated"; map?: string; title?: string; landscape?: string; players?: number; seed?: number; ms?: number; png?: ArrayBuffer; error?: string }
   | { type: "started"; info: StartInfo; terrain: ArrayBuffer; radarTerrain: ArrayBuffer; startMs: number; lazy?: LazyStats }
   | { type: "snapshot"; bytes: ArrayBuffer; seq: number } // postMessage fallback when SharedArrayBuffer is unavailable
   | { type: "texture"; id: number; version: number; width: number; height: number; kind: number; data: ArrayBuffer }

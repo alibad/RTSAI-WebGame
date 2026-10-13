@@ -187,6 +187,12 @@
 .sk-map-thumb[aria-pressed="true"] { border-color: var(--hud-gold); background: rgba(56, 49, 24, .78); box-shadow: 0 0 0 2px rgba(241, 210, 139, .15), 0 0 18px rgba(241, 210, 139, .16); }
 .sk-map-thumb[aria-pressed="true"] .sk-map-thumb-name { color: var(--hud-gold); }
 .sk-map-thumb:focus-visible { outline: 2px solid var(--hud-gold); outline-offset: 2px; }
+.sk-map-random { border-style: dashed; border-color: color-mix(in srgb, var(--hud-gold) 45%, var(--hud-edge)); }
+.sk-map-random .sk-map-thumb-art { color: var(--hud-gold); }
+.sk-map-random .sk-map-thumb-art svg { transition: transform .25s; }
+.sk-map-random:hover .sk-map-thumb-art svg { transform: rotate(-14deg) scale(1.1); }
+.sk-map-random .sk-map-thumb-name { color: var(--hud-gold); }
+.sk-map-random[aria-busy="true"] { cursor: progress; }
 .sk-map-search { margin: 0 14px 14px; width: calc(100% - 28px); }
 
 /* Opponents: one slot per AI, its flag and colour first. */
@@ -504,5 +510,5 @@
 @media (prefers-reduced-motion: reduce) {
   .scr-backdrop, .scr-head, .scr-panel, .scr-cta.gbtn-lg, .sk-hero, .sk-hero-banner, .sk-hero-flag, .sk-hero-text, .sk-hero-units img, .sk-opp, .sk-nation-check, .sk-map-view > img, .cp-arc, .cp-detail, .cp-hero, .cp-hero-map img, .cp-film-player, .mh-panel, .mh-debrief, .ld-logo, .ld-panel, .ld-meter i::after, .ld-tip, .er-panel, .pw-panel, .ag-logo, .ag-panel { animation: none; }
   .scr-radar i:nth-child(3) { animation-duration: 6s; }
-  .sk-nation, .sk-map-thumb, .sk-swatch, .cp-mission, .cp-mission img, .scr-brackets i, .scr-meter i { transition: none; }
+  .sk-nation, .sk-map-thumb, .sk-map-random .sk-map-thumb-art svg, .sk-swatch, .cp-mission, .cp-mission img, .scr-brackets i, .scr-meter i { transition: none; }
 }

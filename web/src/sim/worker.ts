@@ -470,6 +470,23 @@ self.onmessage = async (e: MessageEvent<ToWorker>) => {
         post({ type: "mapMounted", map: m.map });
         break;
       }
+      case "generateMap": {
+        // The engine's own generator (MapGen.cs) makes the map here, in the player's browser. Its files are mounted
+        // where Earth maps go (web/content/maps/<id>/); the id is a hash of the map, so the same request gives the same id.
+        const result = JSON.parse(S.GenerateMap(m.request) as string);
+        if (result.error || !lazy) { post({ type: "mapGenerated", error: result.error ?? "Map generation is unavailable" }); break; }
+        const files: Record<string, Uint8Array> = {};
+        for (const [name, b64] of Object.entries(result.files as Record<string, string>))
+          files[name] = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+        if (!mountedMaps.has(result.id)) {
+          const dir = `/vfs/mods/rtsai/web/content/maps/${result.id}`;
+          for (const [name, bytes] of Object.entries(files)) lazy.add(`${dir}/${name}`, bytes.length, (s, e) => bytes.subarray(s, e));
+          mountedMaps.add(result.id);
+        }
+        const png = (files["map.png"] ?? new Uint8Array()).slice().buffer;
+        post({ type: "mapGenerated", map: result.id, title: result.title, landscape: result.landscape, players: result.players, seed: result.seed, ms: result.ms, png }, [png]);
+        break;
+      }
       case "preview": {
         const png: Uint8Array = S.MapPreview(m.map);
         const buf = png.slice().buffer;
