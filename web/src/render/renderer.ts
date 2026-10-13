@@ -105,6 +105,11 @@ export class Renderer {
   actorFilter: ((actorType: number) => boolean) | null = null;
   /** Set to request a pixel readback right after the next frame (verification without screenshots). */
   pixelProbe: ((stats: { nonBackground: number; colors: number; meanRGB: number[] }) => void) | null = null;
+  /**
+   * Set to receive a copy of the next drawn frame (the feedback screenshot). Copied inside the frame, before the browser
+   * presents and clears the drawing buffer, so the context needs no preserveDrawingBuffer.
+   */
+  frameGrab: ((frame: HTMLCanvasElement) => void) | null = null;
 
   constructor(readonly canvas: HTMLCanvasElement) {
     const gl = canvas.getContext("webgl2", { antialias: false, depth: true, premultipliedAlpha: true, alpha: false, powerPreference: "high-performance" });
@@ -499,6 +504,15 @@ export class Renderer {
       const cb = this.pixelProbe;
       this.pixelProbe = null;
       cb({ nonBackground: non / (w * h), colors: colors.size, meanRGB: sum.map((s) => Math.round(s / Math.max(1, non))) });
+    }
+    if (this.frameGrab) {
+      const grab = this.frameGrab;
+      this.frameGrab = null;
+      const copy = document.createElement("canvas");
+      copy.width = w;
+      copy.height = h;
+      copy.getContext("2d")!.drawImage(this.canvas, 0, 0);
+      grab(copy);
     }
   }
 

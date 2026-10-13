@@ -43,6 +43,14 @@ standalone SHA, bundle id). To check the output exactly as a CDN would serve it:
 The public game starts only for signed-in players (`VITE_REQUIRE_SIGNIN=1`, set by `build-public.mjs`). Sign-in,
 `/api/event` and `/api/feedback` belong to the website (RTSAI-Web), which shares the rtsai.net origin with /play.
 
+In-game feedback (`web/src/ui/Feedback.tsx`) is the website's flow: the battlefield frame grabbed when Feedback opens
+(`Game.captureFrame`), the annotator, dictation, a voice note and files. Files upload straight to the website's Vercel
+Blob store with a token from `/api/feedback/upload`, so deploy a website that has that route (and its
+`BLOB_READ_WRITE_TOKEN`) before a game build with this flow. `tools/feedback-browser-test.mjs` checks it in a running
+match with the website's endpoints mocked. The shared files in `web/src/ui/feedback/` (`media.ts`,
+`ScreenshotAnnotator.tsx`, `FeedbackMedia.tsx`, `feedback-kit.css`, `useFeedbackDictation.tsx`) are copies of
+RTSAI-Web `app/components/feedback/` (and `useFeedbackDictation.tsx`); change both together.
+
 1. **Firebase web config.** Copy rtsai.net's public `NEXT_PUBLIC_FIREBASE_*` values into
    `web/.env.production.local` (gitignored) as `VITE_FIREBASE_API_KEY`, `VITE_FIREBASE_AUTH_DOMAIN`,
    `VITE_FIREBASE_PROJECT_ID`, `VITE_FIREBASE_APP_ID` and `VITE_FIREBASE_MEASUREMENT_ID`. `build-public.mjs` refuses

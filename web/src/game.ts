@@ -745,6 +745,21 @@ export class Game {
     return new Promise<{ nonBackground: number; colors: number; meanRGB: number[] }>((resolve) => (this.renderer.pixelProbe = resolve));
   }
 
+  /**
+   * The next battlefield frame exactly as drawn (the WebGL canvas at device resolution, without the DOM HUD), for
+   * feedback screenshots. Rejects when no world frame is drawn in time (no match running, or the tab is hidden).
+   */
+  captureFrame(timeoutMs = 1500) {
+    return new Promise<HTMLCanvasElement>((resolve, reject) => {
+      const done = (frame: HTMLCanvasElement) => { clearTimeout(timer); resolve(frame); };
+      const timer = setTimeout(() => {
+        if (this.renderer.frameGrab === done) this.renderer.frameGrab = null;
+        reject(new Error("No battlefield frame was drawn"));
+      }, timeoutMs);
+      this.renderer.frameGrab = done;
+    });
+  }
+
   // ---------------------------------------------------------------- DOM input
 
   private mods(e: MouseEvent | KeyboardEvent) {

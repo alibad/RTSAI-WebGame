@@ -1,0 +1,99 @@
+/*
+ * Feedback media kit, shared verbatim by RTSAI-Web (app/components/feedback) and RTSAI-WebGame (web/src/ui/feedback).
+ * Everything is scoped to .fbk-* classes. A host themes the tray by setting these on an ancestor:
+ *   --fbk-surface  tile background        --fbk-ink     text
+ *   --fbk-muted    secondary text         --fbk-edge    borders
+ *   --fbk-accent   highlight              --fbk-accent-ink text on the highlight
+ *   --fbk-radius   corner radius
+ * The annotator is always the dark full-screen editor.
+ */
+
+.fbk-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* ---------------------------------------------------------------- tray */
+
+.fbk-shots { display: flex; flex-wrap: wrap; gap: 10px; }
+.fbk-shot { position: relative; margin: 0; width: 168px; aspect-ratio: 16 / 10; }
+.fbk-shot:only-child { width: fit-content; max-width: 100%; aspect-ratio: auto; margin: 0 auto; }
+.fbk-shot-image { position: relative; display: block; width: 100%; height: 100%; padding: 0; overflow: hidden; border: 1px solid var(--fbk-edge, #3a4434); border-radius: var(--fbk-radius, 8px); background: #000; cursor: pointer; }
+.fbk-shot-image img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.fbk-shot:only-child .fbk-shot-image img { width: auto; max-width: 100%; height: auto; max-height: min(300px, 36vh); object-fit: contain; }
+.fbk-shot-hint { position: absolute; left: 8px; bottom: 8px; display: inline-flex; align-items: center; gap: 6px; padding: 5px 9px; border-radius: 999px; background: rgba(5, 7, 5, .82); color: #f4ead0; font-size: 11px; font-weight: 650; letter-spacing: .02em; opacity: .92; transition: opacity .15s, transform .15s; }
+.fbk-shot-image:hover .fbk-shot-hint, .fbk-shot-image:focus-visible .fbk-shot-hint { opacity: 1; transform: translateY(-1px); background: var(--fbk-accent, #f1d28b); color: var(--fbk-accent-ink, #151a12); }
+.fbk-shot-image:focus-visible { outline: 2px solid var(--fbk-accent, #f1d28b); outline-offset: 2px; }
+.fbk-remove { position: absolute; top: 6px; right: 6px; width: 28px; height: 28px; display: grid; place-items: center; padding: 0; border: 0; border-radius: 999px; background: rgba(5, 7, 5, .78); color: #f4ead0; cursor: pointer; }
+.fbk-remove:hover { background: #b4341f; color: #fff; }
+
+.fbk-recording { display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 6px 6px 6px 12px; border: 1px solid rgba(239, 68, 68, .55); border-radius: var(--fbk-radius, 8px); background: rgba(239, 68, 68, .1); color: var(--fbk-ink, #e9eee2); font-size: 12px; }
+.fbk-rec-dot { width: 10px; height: 10px; flex: none; border-radius: 50%; background: #ef4444; box-shadow: 0 0 0 0 rgba(239, 68, 68, .6); animation: fbk-pulse 1.2s ease-out infinite; }
+.fbk-rec-label { font-weight: 650; }
+.fbk-rec-track { flex: 1; height: 4px; overflow: hidden; border-radius: 4px; background: rgba(239, 68, 68, .2); }
+.fbk-rec-track > span { display: block; height: 100%; background: #ef4444; transition: width .25s linear; }
+.fbk-rec-time { font-variant-numeric: tabular-nums; font-weight: 600; }
+.fbk-rec-stop { display: inline-flex; align-items: center; gap: 6px; min-height: 32px; padding: 0 12px; border: 0; border-radius: 999px; background: #ef4444; color: #fff; font-size: 12px; font-weight: 650; cursor: pointer; }
+.fbk-rec-stop:hover { background: #dc2626; }
+@keyframes fbk-pulse { 0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, .55); } 80%, 100% { box-shadow: 0 0 0 9px rgba(239, 68, 68, 0); } }
+
+.fbk-voice { display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 5px 6px 5px 5px; border: 1px solid var(--fbk-edge, #3a4434); border-radius: var(--fbk-radius, 8px); background: var(--fbk-surface, #0b1109); color: var(--fbk-ink, #e9eee2); font-size: 12px; }
+.fbk-voice audio { display: none; }
+.fbk-voice-play { width: 34px; height: 34px; flex: none; display: grid; place-items: center; padding: 0; border: 0; border-radius: 999px; background: var(--fbk-accent, #f1d28b); color: var(--fbk-accent-ink, #151a12); cursor: pointer; }
+.fbk-voice-wave { position: relative; flex: 1; height: 18px; border-radius: 4px; background: repeating-linear-gradient(90deg, color-mix(in srgb, var(--fbk-muted, #8a9482) 55%, transparent) 0 2px, transparent 2px 5px); -webkit-mask: linear-gradient(#000, #000); }
+.fbk-voice-wave > span { position: absolute; inset: 0 auto 0 0; background: repeating-linear-gradient(90deg, var(--fbk-accent, #f1d28b) 0 2px, transparent 2px 5px); }
+.fbk-voice-time { min-width: 36px; text-align: right; font-variant-numeric: tabular-nums; color: var(--fbk-muted, #a3ad99); }
+
+.fbk-remove-inline { width: 30px; height: 30px; flex: none; display: grid; place-items: center; padding: 0; border: 0; border-radius: 6px; background: transparent; color: var(--fbk-muted, #a3ad99); cursor: pointer; }
+.fbk-remove-inline:hover { background: rgba(180, 52, 31, .14); color: #d9452d; }
+.fbk-confirm { display: inline-flex; align-items: center; gap: 4px; font-weight: 650; color: #d9452d; }
+.fbk-confirm button { width: 30px; height: 30px; display: grid; place-items: center; padding: 0; border: 1px solid currentColor; border-radius: 6px; background: transparent; color: inherit; cursor: pointer; }
+.fbk-confirm button:first-of-type { background: #d9452d; border-color: #d9452d; color: #fff; }
+.fbk-confirm button:last-of-type { color: var(--fbk-muted, #a3ad99); }
+
+.fbk-files { display: flex; flex-wrap: wrap; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.fbk-file { display: inline-flex; align-items: center; gap: 8px; max-width: 100%; min-height: 40px; padding: 4px 4px 4px 10px; border: 1px solid var(--fbk-edge, #3a4434); border-radius: var(--fbk-radius, 8px); background: var(--fbk-surface, #0b1109); color: var(--fbk-ink, #e9eee2); font-size: 12px; }
+.fbk-file > svg { flex: none; color: var(--fbk-accent, #f1d28b); }
+.fbk-file > img { width: 28px; height: 28px; flex: none; margin-left: -4px; border-radius: 4px; object-fit: cover; }
+.fbk-file-name { min-width: 0; max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fbk-file small { color: var(--fbk-muted, #a3ad99); font-variant-numeric: tabular-nums; }
+
+.fbk-drop { width: 100%; min-height: 44px; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 8px 12px; border: 1px dashed color-mix(in srgb, var(--fbk-muted, #8a9482) 70%, transparent); border-radius: var(--fbk-radius, 8px); background: transparent; color: var(--fbk-muted, #a3ad99); font: inherit; font-size: 12px; cursor: pointer; transition: border-color .15s, background .15s, color .15s; }
+.fbk-drop small { opacity: .75; }
+.fbk-drop:hover, .fbk-drop[data-over] { border-color: var(--fbk-accent, #f1d28b); border-style: solid; color: var(--fbk-ink, #e9eee2); background: color-mix(in srgb, var(--fbk-accent, #f1d28b) 9%, transparent); }
+.fbk-drop:focus-visible { outline: 2px solid var(--fbk-accent, #f1d28b); outline-offset: 2px; }
+.fbk-drop:disabled { opacity: .5; cursor: not-allowed; }
+
+/* ---------------------------------------------------------------- annotator */
+
+.fbk-annotator { position: fixed; inset: 0; z-index: 400; display: flex; flex-direction: column; background: #000; color: #eef0e8; font-family: system-ui, "Segoe UI", sans-serif; outline: none; user-select: none; }
+.fbk-annotator-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px; padding: 10px 12px; background: linear-gradient(180deg, #171c15, #0d100c); border-bottom: 1px solid #2c3329; }
+.fbk-group { display: flex; align-items: center; gap: 2px; padding: 3px; border: 1px solid #2c3329; border-radius: 10px; background: #0a0d09; }
+.fbk-end { margin-left: auto; gap: 6px; border-color: transparent; background: transparent; }
+.fbk-tool { width: 36px; height: 36px; display: grid; place-items: center; padding: 0; border: 0; border-radius: 7px; background: transparent; color: #c9cfc2; cursor: pointer; transition: background .12s, color .12s; }
+.fbk-tool:hover:not(:disabled) { background: #1d2419; color: #fff; }
+.fbk-tool[aria-pressed="true"] { background: #f1d28b; color: #151a12; }
+.fbk-tool:disabled { opacity: .3; cursor: default; }
+.fbk-tool:focus-visible, .fbk-swatch:focus-visible, .fbk-done:focus-visible { outline: 2px solid #f1d28b; outline-offset: 2px; }
+.fbk-swatch { width: 22px; height: 22px; margin: 0 3px; padding: 0; border: 2px solid rgba(255, 255, 255, .22); border-radius: 50%; cursor: pointer; display: grid; place-items: center; color: #c9cfc2; }
+.fbk-swatch[aria-pressed="true"] { border-color: #fff; box-shadow: 0 0 0 2px #0a0d09, 0 0 0 4px #f1d28b; }
+.fbk-swatch-custom { border-style: dashed; border-color: #8a9482; background: transparent; }
+.fbk-custom { position: relative; display: inline-grid; }
+.fbk-custom input { position: absolute; inset: 0; width: 22px; height: 22px; margin: 0 3px; padding: 0; border: 0; opacity: 0; pointer-events: none; }
+.fbk-width { gap: 8px; padding: 3px 10px; color: #c9cfc2; font-size: 12px; }
+.fbk-width input { width: 92px; accent-color: #f1d28b; }
+.fbk-width output { min-width: 16px; text-align: right; font-variant-numeric: tabular-nums; }
+.fbk-done { display: inline-flex; align-items: center; gap: 6px; height: 38px; padding: 0 16px; border: 0; border-radius: 8px; background: #f1d28b; color: #151a12; font-size: 13px; font-weight: 700; cursor: pointer; }
+.fbk-done:hover:not(:disabled) { filter: brightness(1.07); }
+.fbk-done:disabled { opacity: .5; cursor: wait; }
+.fbk-annotator-stage { position: relative; flex: 1; min-height: 0; display: grid; place-items: center; overflow: hidden; }
+.fbk-annotator-canvas { display: block; box-shadow: 0 0 0 1px #2c3329, 0 20px 60px rgba(0, 0, 0, .6); touch-action: none; }
+.fbk-text-input { position: absolute; z-index: 2; min-width: 140px; margin: 0; padding: 0; border: 0; border-bottom: 1px dashed rgba(255, 255, 255, .55); outline: none; background: transparent; line-height: 1.2; }
+.fbk-text-input::placeholder { color: rgba(255, 255, 255, .45); text-shadow: none; }
+
+@media (max-width: 760px) {
+  .fbk-annotator-bar { justify-content: flex-start; overflow-x: auto; flex-wrap: nowrap; }
+  .fbk-end { margin-left: 0; }
+  .fbk-shot { width: calc(50% - 5px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fbk-rec-dot { animation: none; }
+}
