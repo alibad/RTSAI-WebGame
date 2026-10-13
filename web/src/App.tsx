@@ -5,7 +5,6 @@ import { Hud } from "./ui/Hud";
 import { Setup } from "./ui/Setup";
 import { Missions, MissionHud } from "./ui/Missions";
 import { Multiplayer } from "./ui/Multiplayer";
-import { DirectMultiplayer } from "./ui/DirectMultiplayer";
 import { MatchLibrary } from "./ui/MatchLibrary";
 import { GameSettings } from "./ui/GameSettings";
 import { MapWorkshop } from "./ui/MapWorkshop";
@@ -14,6 +13,8 @@ import { ARENA, Sandbox, parseSandboxUrl } from "./sandbox";
 import { Practice } from "./ui/Practice";
 import { CoachPanel } from "./ui/Coach";
 import { Annotations } from "./ui/Annotations";
+import { installTelemetry } from "./net/telemetry";
+import { Feedback } from "./ui/Feedback";
 
 function Loading() {
   const stage = useStore((s) => s.stage);
@@ -69,6 +70,7 @@ export default function App() {
     const only = params.get("only") ?? (params.get("shot") === "1" ? "r2" : null);
     if (only) g.renderer.actorFilter = (t) => g.client.str(t).startsWith(only);
     setGame(g);
+    installTelemetry(g);
     // AOT by default; ?runtime=interp is the developer fallback. ?private=0 runs without the player's own files.
     // A static public build (tools/build-public.mjs) defaults to the standalone game, and so does the installed app
 
@@ -111,7 +113,7 @@ export default function App() {
       <canvas ref={canvasRef} className="stage" tabIndex={0} style={{ right: playing ? "var(--sidebar-w)" : 0, width: playing ? "calc(100% - var(--sidebar-w))" : "100%", visibility: playing ? "visible" : "hidden" }} />
       {game && playing && !uiHidden && !practiceOpen && (sandboxMode ? <SandboxHud game={game} /> : <Hud game={game} />)}
       {game && phase === "setup" && !sandboxMode && !mapStudioOpen && <>
-        <div className="absolute bottom-4 left-4 z-20 flex gap-2"><MatchLibrary game={game} /><GameSettings game={game} /></div>
+        <div className="absolute bottom-4 left-4 z-20 flex gap-2"><MatchLibrary game={game} /><GameSettings game={game} /><Feedback game={game} /></div>
         {mode === "home" ? <div className="absolute inset-0 grid place-items-center overflow-auto bg-[radial-gradient(ellipse_at_40%_30%,#24301b,#070907_75%)] p-6">
           <div className="w-[min(760px,100%)]">
             <h1 className="mb-3 text-5xl font-black tracking-wide text-[var(--hud-gold)]">RTS AI</h1>
@@ -147,8 +149,7 @@ export default function App() {
       {game && playing && !practiceOpen && !uiHidden && <Annotations game={game} />}
       {game && useStore.getState().setup && practiceOpen && <Practice game={game} close={() => setPracticeOpen(false)} />}
       {game && phase === "setup" && mapStudioOpen && <MapWorkshop game={game} close={() => setMapStudioOpen(false)} />}
-      {game && !mapStudioOpen && import.meta.env.VITE_STATIC_BUILD !== "1" && !sandboxMode && (phase === "setup" || phase === "playing" || phase === "loading") && <Multiplayer game={game} />}
-      {game && !mapStudioOpen && !sandboxMode && <DirectMultiplayer game={game} />}
+      {game && !mapStudioOpen && !sandboxMode && <Multiplayer game={game} />}
       {(phase === "boot" || phase === "loading" || (phase === "setup" && sandboxMode)) && <Loading />}
       {phase === "error" && <ErrorCard game={game} />}
     </div>

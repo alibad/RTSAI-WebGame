@@ -22,3 +22,6 @@ private/
 
 # Local Python adapter bytecode.
 /tools/__pycache__/
+
+# Local env files (Firebase web config for the public build lives in web/.env.production.local).
+.env*.local

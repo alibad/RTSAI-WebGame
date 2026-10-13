@@ -23,7 +23,8 @@ let S: any = null;
 let generation = 0;
 let voiceLanguage = "faction";
 let booted = false;
-let network: { generation: number; room: string; token: string; frame: number; busy: boolean; stopped: boolean; pending: unknown[]; failedAt: number; observer?: boolean; peer?: boolean } | null = null; // [JSExport] surface of OpenRA.WebSim.Browser.Interop
+// Direct multiplayer: frames arrive from the page's lockstep (peerFrame); the worker only reports its own orders.
+let network: { generation: number; frame: number; stopped: boolean } | null = null; // [JSExport] surface of OpenRA.WebSim.Browser.Interop
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let runtimeApi: any = null;
 let base = "/";
@@ -308,7 +309,7 @@ function start(scenario: string, startPaused = false, companion: boolean | "brow
   browserAdviser = false;
   const spec = JSON.parse(scenario);
   replayEnd = spec.webReplay?.readonly ? spec.webReplay.end : null;
-  network = spec.network ? { ...spec.network, generation, frame: 0, busy: false, stopped: false, pending: [], failedAt: 0 } : null;
+  network = spec.network?.peer ? { generation, frame: 0, stopped: false } : null;
   // The co-commander's CompanionBridge is created with the world: enable it first, connect the relay after.
   const controllable = !network && !spec.multiplayer && !spec.webReplay?.readonly
     && Array.isArray(spec.players) && spec.players.some((p: { bot?: string }) => !p.bot);
@@ -395,36 +396,9 @@ function tickOnce() {
   }
 }
 
-async function networkTick() {
-  const n = network!;
-  if (n.peer) {
-    const events = JSON.parse(S.NetworkPoll());
-    if (events.length) post({ type: "peerOut", events });
-    return;
-  }
-  n.busy = true;
-  try {
-    const t = performance.now();
-    if (!n.pending.length) n.pending = JSON.parse(S.NetworkPoll());
-    const response = await fetch(new URL("api/multiplayer", base), {signal:AbortSignal.timeout(12000),method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({op:n.observer ? "watch" : "exchange",after:n.frame,room:n.room,token:n.token,events:n.observer ? [] : n.pending})});
-    const result = await response.json();
-    if (network !== n || n.stopped || !running) return;
-    if (!response.ok || result.state === "ended" && (!n.observer || n.frame >= result.frame - 1)) { n.stopped = true; stopLoop(); throw new Error(result.error || "Match disconnected"); }
-    n.pending = []; n.failedAt = 0;
-    const frames = n.observer ? (result.frames ?? []) : result.completed ? [result.completed] : [];
-    for (const frame of frames) if (frame.frame > n.frame) {
-      if (frame.frame !== n.frame + 1) { n.stopped = true; stopLoop(); throw new Error("Missing synchronized frame"); }
-      for (const packet of frame.packets) S.NetworkInject(packet.client, frame.frame, packet.data);
-      tickOnce();
-      n.frame = frame.frame;
-    }
-    post({type:"networkStatus", generation:n.generation, frame:n.frame, latency:performance.now()-t});
-  } catch (e) {
-    if (network !== n || n.stopped || !running) return;
-    n.failedAt ||= performance.now();
-    if (performance.now() - n.failedAt > 60000) { n.stopped = true; stopLoop(); }
-    post({type:"networkStatus",generation:n.generation,frame:n.frame,latency:0,error:n.stopped ? String(e instanceof Error ? e.message : e) : "Connection interrupted. Retrying…"});
-  } finally { n.busy = false; }
+function networkTick() {
+  const events = JSON.parse(S.NetworkPoll());
+  if (events.length) post({ type: "peerOut", events });
 }
 
 function loop() {
@@ -432,7 +406,7 @@ function loop() {
   if (!running) return;
   const now = performance.now();
   if (network) {
-    if (!network.busy && !network.stopped) void networkTick();
+    if (!network.stopped) networkTick();
     nextTick = now + tickMs;
   } else if (!paused) {
     let n = 0;
@@ -498,24 +472,21 @@ self.onmessage = async (e: MessageEvent<ToWorker>) => {
         if (lazy?.trace) { if (lazy.trace.length) console.info("lazy reads during start: " + lazy.trace.join(" ")); lazy.trace = null; }
         break;
       case "peerFrame":
-        if (!network?.peer || network.stopped || !running) break;
+        if (!network || network.stopped || !running) break;
         if (m.frame !== network.frame + 1) throw Error("Missing direct peer frame");
         for (const packet of m.packets) S.NetworkInject(packet.client, m.frame, packet.data);
         tickOnce(); network.frame = m.frame;
         post({ type: "networkStatus", frame: m.frame, latency: 0 });
         break;
       case "peerStop":
-        if (network?.peer) { network.stopped = true; stopLoop(); post({ type: "networkStatus", frame: network.frame, latency: 0, error: m.error }); }
+        if (network) { network.stopped = true; stopLoop(); post({ type: "networkStatus", frame: network.frame, latency: 0, error: m.error }); }
         break;
       case "refresh": refresh(); break;
       case "step": if (network) break; if (running && paused) tickOnce(); break;
       case "speed": if (network) break; tickMs = TICK_MS / Math.max(0.25, Math.min(8, m.speed)); break;
       case "end":
         browserAdviser = false; cancelAdviserCalls();
-        if (network) {
-          network.stopped = true;
-          if (!network.peer) void fetch(new URL("api/multiplayer", base), {method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({op:"leave",room:network.room,token:network.token})}).catch(()=>{});
-        }
+        if (network) network.stopped = true;
         stopLoop(); relay?.close(); S.EndGame(); break;
       case "pause": if (network) break; paused = m.paused; if (paused) refresh(); break;
       case "view":
@@ -539,13 +510,13 @@ self.onmessage = async (e: MessageEvent<ToWorker>) => {
       }
       case "command": {
         let json: string;
-        try { json = replayEnd !== null || network?.observer ? JSON.stringify({ error: "Replay and spectators are read-only" }) : S.Command(m.json); } catch (err) { json = JSON.stringify({ error: String(err instanceof Error ? err.message : err) }); }
+        try { json = replayEnd !== null ? JSON.stringify({ error: "Replays are read-only" }) : S.Command(m.json); } catch (err) { json = JSON.stringify({ error: String(err instanceof Error ? err.message : err) }); }
         post({ type: "reply", req: m.req, json });
         sendUi(); // mode changes show without waiting for the next tick
         break;
       }
       case "click": {
-        const count = replayEnd !== null || network?.observer ? 0 : S.Click(m.x | 0, m.y | 0, m.button, m.mods);
+        const count = replayEnd !== null ? 0 : S.Click(m.x | 0, m.y | 0, m.button, m.mods);
         post({ type: "ordered", count, t: m.t, tick: S.WorldTick() });
         sendUi();
         break;
@@ -585,7 +556,6 @@ self.onmessage = async (e: MessageEvent<ToWorker>) => {
   } catch (err) {
     if (network) {
       network.stopped = true;
-      if (!network.peer) void fetch(new URL("api/multiplayer", base), {method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({op:"leave",room:network.room,token:network.token})}).catch(()=>{});
       stopLoop();
     }
     const detail = err instanceof Error ? `${err.message}\n${err.stack ?? ""}` : err && typeof err === "object" ? JSON.stringify(err, Object.getOwnPropertyNames(err)) : String(err);

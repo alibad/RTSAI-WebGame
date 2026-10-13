@@ -1,5 +1,6 @@
 // Static production build of the public web game (the standalone mod: project art and audio only) for a static
-// host or CDN. No server APIs: no private content, no co-commander (it needs the local companion), no native verify.
+// host or CDN. No server APIs: sign-in, events and feedback belong to the website (same origin at rtsai.net/play),
+// and multiplayer matchmaking is Firestore. No private content, no local companion, no native verify.
 //   node tools/build-public.mjs [--out build/public-web] [--quality 11]
 // Inputs: data/public (tools/pin-standalone.ps1 or tools/public.ps1) and its AOT runtime (data/public/wasm-aot).
 // This only builds; deploying it needs the owner's approval (see docs/DEPLOY-PUBLIC.md).
@@ -78,9 +79,16 @@ if (fs.existsSync(out)) {
   if (!fs.existsSync(path.join(out, "BUILD.json"))) throw new Error(`Output exists without a public-build marker: ${out}`);
   fs.rmSync(out, { recursive: true, force: true });
 }
+// Accounts: the rtsai-net Firebase web config (public values, the same as rtsai.net's NEXT_PUBLIC_FIREBASE_*) comes
+// from web/.env.production.local (gitignored). Without it the public game would start for anyone, so refuse.
+const envFile = path.join(repo, "web", ".env.production.local");
+const webEnv = Object.fromEntries((fs.existsSync(envFile) ? fs.readFileSync(envFile, "utf8") : "").split(/\r?\n/)
+  .map(l => l.match(/^\s*([A-Z0-9_]+)\s*=\s*"?([^"]*)"?\s*$/)).filter(Boolean).map(m => [m[1], m[2]]));
+for (const key of ["VITE_FIREBASE_API_KEY", "VITE_FIREBASE_AUTH_DOMAIN", "VITE_FIREBASE_PROJECT_ID", "VITE_FIREBASE_APP_ID"])
+  if (!(process.env[key] || webEnv[key])) throw new Error(`Missing ${key}: copy rtsai.net's NEXT_PUBLIC_FIREBASE_* values into web/.env.production.local (see docs/DEPLOY-PUBLIC.md)`);
 execSync(`npx vite build --outDir "${out}" --emptyOutDir`, {
   cwd: path.join(repo, "web"), stdio: "inherit",
-  env: { ...process.env, VITE_DEFAULT_PROFILE: "public", VITE_GAME_MODES: profiles.map(p => p.id).join(","), RTSAI_PUBLIC_BUILD: "1", VITE_STATIC_BUILD: "1", VITE_RT_BASE: rtRoot, VITE_DATA_BASE: dataRoot },
+  env: { ...process.env, VITE_DEFAULT_PROFILE: "public", VITE_GAME_MODES: profiles.map(p => p.id).join(","), RTSAI_PUBLIC_BUILD: "1", VITE_STATIC_BUILD: "1", VITE_RT_BASE: rtRoot, VITE_DATA_BASE: dataRoot, VITE_REQUIRE_SIGNIN: "1", VITE_SITE_ORIGIN: "https://rtsai.net", VITE_FIREBASE_EMULATORS: "" },
 });
 
 // 2. Runtime and data at the paths the worker requests.

@@ -17,6 +17,7 @@ import { UnitPortrait } from "./UnitPortrait";
 import { MatchLibrary } from "./MatchLibrary";
 import { GameSettings } from "./GameSettings";
 import { preferences } from "../preferences";
+import { Feedback } from "./Feedback";
 
 function HealthBar({ hp, max, className }: { hp: number; max: number; className?: string }) {
   const f = max > 0 ? Math.max(0, Math.min(1, hp / max)) : 0;
@@ -235,7 +236,7 @@ export function Hud({ game }: { game: Game }) {
   return (
     <>
       <RepairIndicators game={game} />
-      <div className="absolute left-3 top-3 flex max-w-[calc(100%-var(--sidebar-w)-24px)] flex-wrap items-center gap-2"><GameMenu game={game} /><HotkeyButton /><MatchLibrary game={game} /><GameSettings game={game} /></div>
+      <div className="absolute left-3 top-3 flex max-w-[calc(100%-var(--sidebar-w)-24px)] flex-wrap items-center gap-2"><GameMenu game={game} /><HotkeyButton /><MatchLibrary game={game} /><GameSettings game={game} /><Feedback game={game} compact /></div>
       {statsOpen && <Stats game={game} />}
       <div className="pointer-events-none absolute bottom-3 left-3 flex flex-col items-start gap-2 [&>*]:pointer-events-auto">
         <GroupBar game={game} />

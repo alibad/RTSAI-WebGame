@@ -11,8 +11,6 @@
 
 import http from "node:http";
 import { trustedLocalRequest } from "./local-boundary.mjs";
-import { createRooms } from "./rooms.mjs";
-const rooms = createRooms();
 import fs from "node:fs";
 import path from "node:path";
 import zlib from "node:zlib";
@@ -279,7 +277,6 @@ const server = http.createServer(async (req, res) => {
       if (!isLocal(req)) return res.writeHead(403).end("local only");
       return await mapWorkshop(req, res, url);
     }
-    if (p === "/api/multiplayer" && req.method === "POST") return await rooms.handle(req, res);
     if (p === "/api/verify" && req.method === "POST") return await verify(req, res);
     if (p === "/api/health") {
       return json(res, {

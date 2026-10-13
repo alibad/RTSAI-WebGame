@@ -52,7 +52,7 @@ export interface BakeStats { restored: number; saved: number; bytes: number; ms:
  * stored plane after plane (planar). The host compresses them (brotli); the browser inflates them natively.
  */
 export interface ShippedSheet { width: number; height: number; rows: number; planar: boolean; group: string; url: string }
-export interface ShippedPacking { key: string; table: Uint8Array; sheets: ShippedSheet[]; early: Map<string, Promise<Response>> }
+export interface ShippedPacking { key: string; table: Uint8Array; sheets: ShippedSheet[]; early: string[] }
 
 /** A shipped sheet's raw bytes, for the page to upload (it re-interleaves planar ones). */
 export interface SheetBytes { id: number; width: number; height: number; rows: number; planar: boolean; data: ArrayBuffer }
@@ -71,9 +71,8 @@ export async function fetchShippedSprites(dir: string, bundleId: string): Promis
       return null;
     }
     return await Promise.all(Object.entries(index.packings).map(async ([key, p]) => {
-      // The shared sheets are requested now, while the engine is still loading (they are needed for any game).
-      const early = new Map<string, Promise<Response>>();
-      p.sheets.forEach((sh, i) => { if (!sh.group) { const url = new URL(`${key}.${i}.bin`, dir).href; early.set(url, fetch(url)); } });
+      // The shared sheets (needed for any game) are fetched ahead of the map once the player heads for a game.
+      const early = p.sheets.flatMap((sh, i) => sh.group ? [] : [new URL(`${key}.${i}.bin`, dir).href]);
       const t = await fetch(new URL(`${key}.table.bin`, dir));
       if (!t.ok) throw new Error(`${key}.table.bin: HTTP ${t.status}`);
       return {
@@ -154,20 +153,30 @@ export class SpriteBake {
     this.capture?.set(id, gzip(data.slice()));
   }
 
-  /** Shipped sheets requested before their packing is restored (while the engine boots), by URL. */
+  /** Shipped sheets requested before their packing is restored, by URL. */
   private early = new Map<string, Promise<Response>>();
+  private earlyUrls: string[] = [];
+  private warmed = false;
 
-  /**
-   * A shipped packing (from the data's index). Its shared sheets are requested right away, so they download while
-   * the engine boots instead of after the map is prepared.
-   */
+  /** A shipped packing (from the data's index). Its shared sheets wait for warm(). */
   addShipped(p: ShippedPacking) {
     this.shipped.set(p.key, p);
-    for (const [url, res] of p.early) this.early.set(url, res);
+    this.earlyUrls.push(...p.early);
+    if (this.warmed) this.warm();
+  }
+
+  /**
+   * The player is heading for a game (a setup screen, a lobby, or a start): the shared sheets start downloading
+   * now, ahead of the map, while the player still chooses. Someone who only looks at the menu never fetches them.
+   */
+  private warm() {
+    this.warmed = true;
+    for (const url of this.earlyUrls.splice(0)) if (!this.early.has(url)) this.early.set(url, fetch(url));
   }
 
   /** The pack groups (factions) a game will show; their sheets are fetched now, the others only on demand. */
   setWanted(groups: string[] | null, first: string[] = []) {
+    this.warm();
     this.wanted = groups ? new Set(groups) : null;
     this.first = new Set(first);
     for (const [id, sheet] of this.pendingSheets) if (this.isWanted(sheet.group)) this.enqueue(id);

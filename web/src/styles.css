@@ -57,7 +57,7 @@
 .mp-invite .digits { overflow-wrap: anywhere; }
 .mp-copy { display: flex; gap: 10px; align-items: center; margin-top: 12px; }
 .mp-copy input { font-size: 12px; }
-.mp-lobby { grid-template-columns: minmax(220px,.8fr) minmax(0,1.2fr); }
+.mp-lobby { grid-template-columns: minmax(220px,.8fr) minmax(0,1.2fr); align-items: start; }
 .mp-map { width: 100%; height: 140px; object-fit: contain; background: #070b06; border-radius: 6px; margin: 14px 0; image-rendering: pixelated; }
 .mp-roster { padding: 20px; }
 .mp-player { padding: 14px 0; border-bottom: 1px solid var(--hud-edge); }
@@ -71,7 +71,21 @@
 .mp-footer { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 14px; border-top: 1px solid var(--hud-edge); padding-top: 20px; margin-top: 20px; }
 .mp-footer p { font-size: 13px; color: #b7c0af; flex: 1; min-width: 160px; }
 .mp-footer .mp-actions { margin-top: 0; }
-@media(max-width:650px) { .mp-overlay { padding: 10px; } .mp-dialog { padding: 18px; max-height: calc(100dvh - 20px); } .mp-choices,.mp-lobby { grid-template-columns: 1fr; } .mp-card { padding: 18px; } .mp-steps { gap: 12px; } .mp-copy { flex-wrap: wrap; } .mp-copy input { flex-basis: 100%; } }
+.mp-dialog .mp-footer { position: sticky; bottom: -28px; z-index: 2; margin: 20px -28px -28px; padding: 16px 28px; background: #111611; border-radius: 0 0 16px 16px; }
+.mp-map-empty { display: grid; place-content: center; gap: 4px; text-align: center; color: #a8b0a5; font-size: 13px; background: repeating-linear-gradient(45deg, #0c0f0c 0 10px, #101410 10px 20px); }
+.mp-map-empty span { color: #7f8a78; font-size: 11px; }
+.mp-code { font-family: ui-monospace, monospace; letter-spacing: .14em; color: var(--hud-gold); font-size: 15px; }
+.mp-progress { display: flex; align-items: center; gap: 10px; margin: 28px 0 8px; padding: 18px 20px; border: 1px solid var(--hud-edge); border-radius: 10px; color: #c8d0bd; font-size: 14px; }
+.mp-progress .mp-dot { animation: mp-pulse 1.2s ease-in-out infinite; }
+@keyframes mp-pulse { 50% { opacity: .3; } }
+.mp-extras { display: flex; align-items: flex-start; flex-wrap: wrap; gap: 10px; margin-top: 18px; }
+.mp-extras > .hud-panel { flex: 1; min-width: 220px; }
+.mp-media { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.mp-match ~ .mp-media { position: fixed; left: 12px; bottom: 12px; z-index: 100; margin: 0; }
+.mp-media-tile { position: relative; width: 160px; border-radius: 8px; overflow: hidden; background: #070b06; border: 1px solid var(--hud-edge); }
+.mp-media-tile video { display: block; width: 100%; aspect-ratio: 4 / 3; object-fit: cover; }
+.mp-media-tile figcaption { position: absolute; left: 6px; bottom: 4px; font-size: 11px; color: #edf0e7; text-shadow: 0 1px 2px #000; }
+@media(max-width:650px) { .mp-overlay { padding: 10px; } .mp-dialog { padding: 18px; max-height: calc(100dvh - 20px); } .mp-dialog .mp-footer { bottom: -18px; margin: 16px -18px -18px; padding: 12px 18px; } .mp-choices,.mp-lobby { grid-template-columns: 1fr; } .mp-card { padding: 18px; } .mp-steps { gap: 12px; } .mp-copy { flex-wrap: wrap; } .mp-copy input { flex-basis: 100%; } }
 
 /* Game chrome tokens on top of the kit palette: a dark gunmetal frame with the gold accent. */
 :root {
@@ -214,3 +228,29 @@ select option { background: #172014; color: #f4e9cf; }
 
 #mission-difficulty { width: 140px; }
 [aria-label="Replay speed"] { width: 110px; }
+
+/* Sign-in gate before the public game boots (ui/AccountGate.tsx). */
+.account-gate { min-height: 100dvh; display: grid; place-items: center; padding: 24px; background: radial-gradient(circle at 50% 30%, #1d2617, #070a06 70%); }
+.account-gate-card { width: min(440px, 100%); display: flex; flex-direction: column; align-items: flex-start; gap: 14px; padding: 32px; border-radius: 16px; }
+.account-gate-icon { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 50%; background: #2a3322; color: var(--hud-gold); }
+.account-gate-card h1 { font-size: 30px; font-weight: 650; margin: 0; }
+.account-gate-card > p { color: #b8bfae; font-size: 14px; line-height: 1.6; margin: 0; }
+.account-gate-card ul { list-style: none; padding: 0; margin: 4px 0 8px; display: grid; gap: 10px; color: #d7d5ca; font-size: 14px; }
+.account-gate-card li { display: flex; align-items: center; gap: 10px; }
+.account-gate-card li svg { color: var(--hud-gold); flex: none; }
+.account-gate-primary { width: 100%; text-align: center; padding: 13px 18px; border-radius: 8px; background: var(--hud-gold); color: #151a12; font-weight: 650; }
+.account-gate-primary:hover { filter: brightness(1.08); }
+.account-gate-secondary { align-self: center; color: #9aa58f; font-size: 12px; }
+.account-gate-secondary:hover { color: #d7d5ca; }
+
+/* In-game feedback (ui/Feedback.tsx). */
+.feedback-dialog { width: min(560px, 100%); max-height: calc(100dvh - 48px); overflow-y: auto; border-radius: 16px; padding: 28px; display: grid; gap: 16px; }
+.feedback-dialog .mp-header h1 { font-size: 24px; }
+.feedback-dialog textarea { width: 100%; min-height: 120px; padding: 10px; background: #090d08; border: 1px solid #3a4434; border-radius: 6px; color: inherit; font: inherit; font-size: 13px; resize: vertical; }
+.feedback-dialog textarea:focus { outline: 2px solid var(--hud-gold); outline-offset: 2px; }
+.feedback-rating { display: flex; align-items: center; gap: 4px; font-size: 12px; color: #b8c0b2; }
+.feedback-rating span { margin-right: 8px; }
+.feedback-rating button { color: #4b5442; padding: 2px; }
+.feedback-rating button.on { color: var(--hud-gold); }
+.feedback-rating button.on svg { fill: currentColor; }
+.feedback-thanks { color: #c8d0bd; font-size: 14px; line-height: 1.6; }

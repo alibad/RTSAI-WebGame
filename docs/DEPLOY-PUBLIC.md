@@ -9,7 +9,7 @@ apply:
 ## What gets published
 
 `node tools/build-public.mjs` writes `build/public-web/`. This is the standalone game: project art and audio only,
-no EA content, no server APIs. Its exact standalone and engine inputs are recorded in the verified `build-inputs.json`; use `tools/pin-standalone.ps1` to prepare those inputs.
+no EA content, no server APIs (accounts, events and matchmaking: below). Its exact standalone and engine inputs are recorded in the verified `build-inputs.json`; use `tools/pin-standalone.ps1` to prepare those inputs.
 
 The static builder validates the actual ORAPACK1 `ora/BUNDLE_ID` against each supplied `sprites/index.json` before deleting output or running Vite. Missing, malformed, duplicate or mismatched IDs stop the build; rebuild the prebakes from the exact current pack. The builder never relabels a cache automatically. Run `node --test tools/public-sprite-inputs.test.mjs` to check this guard and output preservation.
 
@@ -30,6 +30,20 @@ would still be read from the art pack; without it that read is now an I/O error 
 The build also writes `vercel.json` and `_headers` (Netlify / Cloudflare Pages), plus `BUILD.json` (sizes,
 standalone SHA, bundle id). To check the output exactly as a CDN would serve it:
 `node tools/static-serve.mjs [--throttle 9000,170] [--h2]`.
+
+## Accounts, events and matchmaking
+
+The public game starts only for signed-in players (`VITE_REQUIRE_SIGNIN=1`, set by `build-public.mjs`). Sign-in,
+`/api/event` and `/api/feedback` belong to the website (RTSAI-Web), which shares the rtsai.net origin with /play.
+
+1. **Firebase web config.** Copy rtsai.net's public `NEXT_PUBLIC_FIREBASE_*` values into
+   `web/.env.production.local` (gitignored) as `VITE_FIREBASE_API_KEY`, `VITE_FIREBASE_AUTH_DOMAIN`,
+   `VITE_FIREBASE_PROJECT_ID`, `VITE_FIREBASE_APP_ID` and `VITE_FIREBASE_MEASUREMENT_ID`. `build-public.mjs` refuses
+   to build without them, because the game would otherwise start for anyone.
+2. **Firestore rules** for matchmaking and usage counters are deployed from RTSAI-Web
+   (`firebase deploy --only firestore:rules --project rtsai-net`). Deploy them before a game build that uses them.
+3. **TTL policies** on the `expires` field of the `p2pMatches` and `joins` collection groups delete leftover
+   matchmaking documents.
 
 ## Hard requirements on the host
 

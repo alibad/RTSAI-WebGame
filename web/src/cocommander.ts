@@ -9,6 +9,7 @@ import type { AudioEngine } from "./audio";
 import { nextAdvice, assessThreat, type AdviserThreat, type AdviserCommand, type AdviserObservation } from "./adviser";
 import type { AdviserActionReceipt } from "./sim/adviser-rpc";
 import adviserTree from "./adviser-tree.json";
+import { track } from "./net/track";
 
 export interface BrowserAdviser {
   observe(): Promise<AdviserObservation>;
@@ -364,6 +365,7 @@ export class CoCommander {
     if (e.kind === "executed") {
       if (this.s.mode === "browser" && (!this.browserProposals.has(e.id) || this.receipts.has(e.id))) return;
       this.receipts.set(e.id, { accepted: e.accepted, detail: e.detail });
+      if (e.accepted) track("ai_assist", { mode: this.s.mode });
       this.set({ uncertainProposalId: this.s.uncertainProposalId === e.id ? "" : this.s.uncertainProposalId, feed: this.s.feed.map(f => f.proposalId === e.id ? { ...f, state: e.accepted ? "accepted" : "failed" } : f) });
       this.push(e.accepted ? "done" : "rejected", e.detail || (e.accepted ? "Orders issued" : "Orders refused"));
       return;

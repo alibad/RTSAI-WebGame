@@ -23,7 +23,7 @@ try {
     assert.equal(setup.phase, 'setup', setup.error); assert.equal(setup.isolated, true); assert.equal(setup.ccAvailable, true); assert.equal(setup.factions, 16); assert.equal(setup.missions, 6);
     assert.equal(await page.getByRole('button', { name: 'Map studio', exact: false }).count(), 0);
     assert.equal(await page.getByRole('button', { name: 'Private multiplayer', exact: true }).count(), 0);
-    assert.ok(await page.getByRole('button', { name: 'Direct peer-to-peer', exact:true }).count());
+    assert.ok(await page.getByRole('button', { name: 'Multiplayer', exact:true }).count());
     const selectedMode = mode === 'classic' ? 'Isometric' : 'Classic / top-down';
     await page.getByRole('button', { name: selectedMode, exact: true }).click();
     await page.waitForFunction(expected => window.store?.getState().phase === 'setup' && window.store.getState().profile === expected, profile === 'public' ? 'public-classic' : 'public', { timeout: 240000 });
