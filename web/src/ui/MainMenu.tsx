@@ -1,7 +1,8 @@
 import { useState, type ReactNode } from "react";
-import { BookOpen, Check, ChevronRight, FlaskConical, LoaderCircle, Map as MapIcon, Swords } from "lucide-react";
+import { BookOpen, Check, ChevronRight, FlaskConical, LoaderCircle, Map as MapIcon, MonitorX, Swords, X } from "lucide-react";
 import { EA_NOTICE } from "../legal";
 import { useStore } from "../store";
+import { gpuInfo } from "../gpu";
 
 // The main menu: the battlefield drifting behind, the battlefield view to play in, and the game's choices as cards.
 // Images live in public/menu (cropped from real matches by the game itself), relative to the page.
@@ -35,6 +36,20 @@ function MenuCard({ title, text, image, icon, wide, onClick }: { title: string; 
   );
 }
 
+/** The browser is drawing without the graphics card (gpu.ts): say so, and how to fix it, until the player hides it. */
+function GpuNotice() {
+  const [hidden, setHidden] = useState(() => { try { return sessionStorage.getItem("rtsai.gpuNotice") === "hidden"; } catch { return false; } });
+  if (hidden || !gpuInfo().software) return null;
+  const hide = () => { setHidden(true); try { sessionStorage.setItem("rtsai.gpuNotice", "hidden"); } catch { /* private mode */ } };
+  return (
+    <div className="menu-gpu" role="status">
+      <MonitorX size={18} aria-hidden="true" />
+      <p><b>Your graphics card isn't being used, so the game will feel slow.</b> Restart your browser. If that doesn't help, turn on <i>Use graphics acceleration when available</i> in its settings (Chrome and Edge: Settings → System).</p>
+      <button type="button" onClick={hide} aria-label="Hide this notice"><X size={16} /></button>
+    </div>
+  );
+}
+
 export function MainMenu({ onSkirmish, onCampaign, onWorkshop, onMapStudio }: { onSkirmish: () => void; onCampaign: () => void; onWorkshop: () => void; onMapStudio?: () => void }) {
   const profile = useStore((s) => s.profile);
   const current = profile === "public-classic" ? "classic" : "isometric";
@@ -60,6 +75,7 @@ export function MainMenu({ onSkirmish, onCampaign, onWorkshop, onMapStudio }: { 
           <span className="menu-eyebrow">Modern real-time strategy</span>
           <h1>RTS <b>AI</b></h1>
         </header>
+        <GpuNotice />
         {views.length > 1 && <section className="menu-views" aria-label="Gameplay mode">
           <span className="menu-eyebrow">Battlefield view</span>
           <div className="menu-view-row">

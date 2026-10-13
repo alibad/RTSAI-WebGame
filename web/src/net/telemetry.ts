@@ -3,6 +3,7 @@
 import type { Game } from "../game";
 import { useStore } from "../store";
 import { track } from "./track";
+import { gpuInfo } from "../gpu";
 
 type Scenario = { map?: string; mission?: string; multiplayer?: boolean; sandbox?: boolean; webReplay?: unknown; players?: { client?: number; bot?: string }[] };
 
@@ -24,7 +25,7 @@ export function installTelemetry(game: Game) {
     track("match_started", { kind, mode: mode(), map: s.mission ?? s.map, faction: local?.faction, players: s.players?.length });
   });
   useStore.subscribe((s, prev) => {
-    if (!loaded && s.phase === "setup") { loaded = true; track("game_loaded", { mode: mode(), seconds: Math.round(performance.now() / 100) / 10 }); }
+    if (!loaded && s.phase === "setup") { loaded = true; track("game_loaded", { mode: mode(), seconds: Math.round(performance.now() / 100) / 10, gpu: gpuInfo().software ? "software" : "hardware" }); }
     const win = s.ui?.win, before = prev.ui?.win;
     if (win !== before && (win === "Won" || win === "Lost")) end(win === "Won" ? "won" : "lost");
     if (s.phase === "setup" && prev.phase === "playing") end("left");

@@ -522,14 +522,16 @@ export class Game {
     this.raf = requestAnimationFrame(this.frame);
     const dt = this.lastFrame ? Math.min(100, now - this.lastFrame) : 16;
     this.lastFrame = now;
-    if (store.get().phase === "playing") this.scroll(dt);
+    const playing = store.get().phase === "playing";
+    if (playing) this.scroll(dt);
     this.client.poll(performance.now());
     const cur = this.client.cur;
     this.updateHover(cur);
     this.overlay.markers = this.sandboxMarkers();
     const replay = this.coach.review ? [this.coach.review.snapshot, null] as const : this.sandbox?.replayFrame();
-    if (replay) this.renderer.render(replay[0], replay[1], this.cam, this.overlay, replay[0].receivedAt + 40);
-    else this.renderer.render(cur, this.client.prev, this.cam, this.overlay, performance.now());
+    // Outside a match the canvas is hidden behind the menus (App.tsx): drawing it there was full-screen work every frame.
+    if (playing && replay) this.renderer.render(replay[0], replay[1], this.cam, this.overlay, replay[0].receivedAt + 40);
+    else if (playing) this.renderer.render(cur, this.client.prev, this.cam, this.overlay, performance.now());
     if (this.iconQueue.size) this.rasterIcons();
     if (now - this.lastListener > 100) { this.audio.setListener(this.cam.x, this.cam.y); this.lastListener = now; }
 

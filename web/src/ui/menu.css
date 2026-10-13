@@ -7,11 +7,13 @@ html, body { cursor: var(--cursor-default, default); }
 
 /* Main menu: the battlefield drifting behind, the game's choices in front. */
 .menu-root { position: absolute; inset: 0; overflow-x: hidden; overflow-y: auto; background: #070907; isolation: isolate; }
-.menu-backdrop { position: fixed; inset: -6%; z-index: -2; background-size: cover; background-position: 62% 50%; filter: saturate(.85) brightness(.5); animation: menu-drift 50s ease-in-out infinite alternate; will-change: transform; }
+.menu-backdrop { position: fixed; inset: -6%; z-index: -2; background-size: cover; background-position: 62% 50%; filter: saturate(.85) brightness(.5); animation: menu-drift 16s cubic-bezier(.25, .6, .25, 1) forwards; will-change: transform; }
 .menu-shade { position: fixed; inset: 0; z-index: -1; pointer-events: none; background:
   linear-gradient(90deg, rgba(5, 7, 5, .95) 0%, rgba(5, 7, 5, .8) 36%, rgba(5, 7, 5, .38) 72%, rgba(5, 7, 5, .6) 100%),
   radial-gradient(ellipse at 50% 125%, rgba(0, 0, 0, .85), transparent 62%),
   repeating-linear-gradient(0deg, rgba(255, 255, 255, .02) 0 1px, transparent 1px 3px); }
+/* One slow push-in when the menu opens, then still: an endless drift made the browser recomposite the whole screen
+   every frame, so an idle menu kept the graphics card (or, without one, the CPU) busy. */
 @keyframes menu-drift { from { transform: scale(1.04) translate3d(0, 0, 0); } to { transform: scale(1.13) translate3d(-3%, -2%, 0); } }
 @keyframes menu-rise { from { opacity: 0; transform: translateY(12px); } }
 
@@ -69,6 +71,13 @@ html, body { cursor: var(--cursor-default, default); }
 .menu-card:hover .menu-card-brackets i, .menu-card:focus-visible .menu-card-brackets i { opacity: 1; transform: none; }
 .menu-card:focus-visible, .view-tile:focus-visible { outline: 2px solid var(--hud-gold); outline-offset: 3px; }
 .menu-notice { max-width: 760px; font-size: 11px; line-height: 1.5; color: #848b7b; }
+/* The browser draws without the graphics card (gpu.ts): the fix, in plain words. */
+.menu-gpu { display: flex; align-items: flex-start; gap: 12px; max-width: 760px; padding: 12px 14px; border: 1px solid rgba(239, 91, 63, .55); border-radius: 8px; background: rgba(36, 14, 10, .88); color: #f3e6d6; font-size: 13px; line-height: 1.5; }
+.menu-gpu > svg { flex: none; margin-top: 2px; color: var(--hud-red); }
+.menu-gpu p { margin: 0; }
+.menu-gpu b { font-weight: 700; color: #fff4e6; }
+.menu-gpu button { flex: none; display: grid; place-items: center; width: 28px; height: 28px; margin: -4px -6px 0 auto; border: 0; border-radius: 6px; background: transparent; color: #d7c8b6; cursor: pointer; }
+.menu-gpu button:hover { background: rgba(255, 255, 255, .08); color: #fff; }
 
 /* The menu's utility buttons and the sub-screens' way back: dark glass, gold when aimed at. */
 .menu-utility { position: absolute; left: 16px; bottom: 16px; z-index: 20; display: flex; flex-wrap: wrap; gap: 8px; }
@@ -85,6 +94,10 @@ html, body { cursor: var(--cursor-default, default); }
   .view-tile { width: calc(50% - 7px); }
   .view-tile-label small { display: none; }
 }
+/* Software drawing: no motion and no blur, which the CPU would redraw every frame. */
+:root[data-gpu="software"] .menu-backdrop, :root[data-gpu="software"] .menu-title, :root[data-gpu="software"] .menu-views, :root[data-gpu="software"] .menu-card { animation: none; }
+:root[data-gpu="software"] * { backdrop-filter: none !important; }
+
 @media (prefers-reduced-motion: reduce) {
   .menu-backdrop, .menu-title, .menu-views, .menu-card { animation: none; }
   .menu-card, .view-tile, .menu-card-art, .view-tile img, .menu-card-go, .menu-card-brackets i { transition: none; }
