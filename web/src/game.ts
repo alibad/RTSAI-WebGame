@@ -90,6 +90,18 @@ export class Game {
   private frames = 0;
   private fpsT = 0;
   private lastFrame = 0;
+  /**
+   * Most frames drawn a second (?fps=N; 0: every display refresh). The world ticks 25 times a second and is
+   * interpolated between ticks, so 60 looks the same as every refresh of a 144 Hz screen, at well under half the work.
+   */
+  private readonly maxFps = (() => {
+    const v = Number(new URLSearchParams(location.search).get("fps") ?? 60);
+    return Number.isFinite(v) && v >= 0 ? v : 60;
+  })();
+  private nextDraw = 0;
+  private lastDraw = 0;
+  /** What the last drawn frame showed (shouldDraw skips an identical one). */
+  private drawn: { snapshot: Snapshot | null; version: number; view: string } = { snapshot: null, version: -1, view: "" };
   private lastClick = { t: 0, id: -1 };
   private lastGroupTap = { t: 0, index: -1 };
   private iconRequested = new Set<string>();
@@ -528,10 +540,13 @@ export class Game {
     const cur = this.client.cur;
     this.updateHover(cur);
     this.overlay.markers = this.sandboxMarkers();
-    const replay = this.coach.review ? [this.coach.review.snapshot, null] as const : this.sandbox?.replayFrame();
     // Outside a match the canvas is hidden behind the menus (App.tsx): drawing it there was full-screen work every frame.
-    if (playing && replay) this.renderer.render(replay[0], replay[1], this.cam, this.overlay, replay[0].receivedAt + 40);
-    else if (playing) this.renderer.render(cur, this.client.prev, this.cam, this.overlay, performance.now());
+    const replay = playing ? (this.coach.review ? [this.coach.review.snapshot, null] as const : this.sandbox?.replayFrame()) : null;
+    if (playing && this.shouldDraw(now, cur, !!replay)) {
+      if (replay) this.renderer.render(replay[0], replay[1], this.cam, this.overlay, replay[0].receivedAt + 40);
+      else this.renderer.render(cur, this.client.prev, this.cam, this.overlay, performance.now());
+      this.frames++;
+    }
     if (this.iconQueue.size) this.rasterIcons();
     if (now - this.lastListener > 100) { this.audio.setListener(this.cam.x, this.cam.y); this.lastListener = now; }
 
@@ -542,7 +557,6 @@ export class Game {
       this.pendingLatency = null;
     }
 
-    this.frames++;
     if (now - this.fpsT >= 500) {
       const h = cur?.header;
       this.perf({
@@ -554,6 +568,31 @@ export class Game {
       this.fpsT = now;
     }
   };
+
+  /**
+   * Whether this display refresh draws: at most maxFps frames a second, and only when the frame would differ from
+   * the last one drawn (a new or still-interpolating tick, a camera or overlay change, new textures...). A paused
+   * game or an idle view draws only the 4-a-second safety refresh.
+   */
+  private shouldDraw(now: number, cur: Snapshot | null, replaying: boolean) {
+    const interval = this.maxFps > 0 ? 1000 / this.maxFps : 0;
+    if (now < this.nextDraw - 1) return false;
+    const r = this.renderer, ov = this.overlay, c = this.canvas;
+    let selected = 0;
+    for (const id of ov.selected) selected += id;
+    const view = [this.cam.x, this.cam.y, this.cam.zoom, c.clientWidth, c.clientHeight, window.devicePixelRatio, ov.hover,
+      ov.selected.size, selected, ov.dragBox, ov.statusBars, JSON.stringify(ov.markers ?? [])].join();
+    const interpolating = !!cur && now - cur.receivedAt < 60; // ticks are 40 ms apart, drawn in between
+    const flashing = !!ov.orderFlash && now - ov.orderFlash.t < 650;
+    const changed = replaying || interpolating || flashing || cur !== this.drawn.snapshot || r.version !== this.drawn.version
+      || view !== this.drawn.view || r.pixelProbe !== null || r.frameGrab !== null || now - this.lastDraw > 250;
+    if (!changed) return false;
+    if (this.nextDraw + interval < now) this.nextDraw = now; // after idle refreshes: restart the cadence
+    this.nextDraw += interval;
+    this.lastDraw = now;
+    this.drawn = { snapshot: cur, version: r.version, view };
+    return true;
+  }
 
   // ---------------------------------------------------------------- camera
 

@@ -14,6 +14,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Numerics;
+using System.Runtime.CompilerServices;
 using OpenRA.Graphics;
 using OpenRA.Primitives;
 
@@ -37,6 +38,23 @@ namespace OpenRA.WebSim
 		public static Action<string, int[]> Restored;
 
 		static readonly byte[] Magic = "ORASPR01"u8.ToArray();
+
+		/// <summary>
+		/// Restored sheets belong to no SheetBuilder, so SpriteCache.Dispose never frees them: they are kept here per
+		/// cache and disposed with their map (Release), which frees the page's GPU copies.
+		/// </summary>
+		static readonly ConditionalWeakTable<SpriteCache, Sheet[]> RestoredSheets = new();
+
+		/// <summary>Disposes the sheets restored for this cache (its map is being disposed).</summary>
+		public static void Release(SpriteCache cache)
+		{
+			if (cache == null || !RestoredSheets.TryGetValue(cache, out var sheets))
+				return;
+
+			RestoredSheets.Remove(cache);
+			foreach (var sheet in sheets)
+				sheet.Dispose();
+		}
 
 		public IReadOnlyDictionary<int, Sprite[]> TryRestore(SpriteCache cache, string key)
 		{
@@ -102,6 +120,7 @@ namespace OpenRA.WebSim
 				result[token] = sprites;
 			}
 
+			RestoredSheets.AddOrUpdate(cache, sheets);
 			Restored?.Invoke(key, ids);
 			return result;
 		}

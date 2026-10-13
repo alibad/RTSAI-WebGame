@@ -188,6 +188,16 @@ export class SpriteBake {
   /** Sheets the page drew from but does not have (a faction outside the wanted groups appeared). */
   need(ids: number[]) { for (const id of ids) this.enqueue(id); }
 
+  /** Sheets whose map was disposed: never fetched or handed to the page again (texture ids are never reused). */
+  private dead = new Set<number>();
+
+  /** The engine disposed this texture (SpriteStore.Release): drop its pending fetch. */
+  forget(id: number) {
+    this.dead.add(id);
+    this.pendingSheets.delete(id);
+    this.queue = this.queue.filter((q) => q.id !== id);
+  }
+
   /**
    * Shared sheets, the wanted factions', and the effects ("fx": fetched right after, never waited for). A group of
    * several factions ("america+england+...", PackGroups.cs) is wanted when any of them is.
@@ -221,10 +231,12 @@ export class SpriteBake {
         this.early.delete(sheet.url);
         const res = await (early ?? fetch(sheet.url));
         if (!res.ok) throw new Error(`${sheet.url}: HTTP ${res.status}`);
-        this.onSheetBytes({ id, width: sheet.width, height: sheet.height, rows: sheet.rows, planar: sheet.planar, data: await res.arrayBuffer() });
+        const data = await res.arrayBuffer();
+        if (this.dead.has(id)) continue; // its map was disposed meanwhile
+        this.onSheetBytes({ id, width: sheet.width, height: sheet.height, rows: sheet.rows, planar: sheet.planar, data });
       } catch (e) {
         console.warn("sprite cache: shipped sheet failed", e);
-        this.pendingSheets.set(id, sheet); // may be asked for again
+        if (!this.dead.has(id)) this.pendingSheets.set(id, sheet); // may be asked for again
       }
     }
   }

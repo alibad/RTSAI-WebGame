@@ -79,7 +79,12 @@ export class SimClient {
 
   send(m: ToWorker) {
     if (this.disposed) return;
-    if (m.type === "end") { this.generation++; this.active = false; this.pending = []; this.cancelReplies(); }
+    if (m.type === "end") {
+      this.generation++; this.active = false; this.pending = []; this.cancelReplies();
+      // Nothing of the ended world stays drawable (or drawn behind the menus).
+      this.cur = this.prev = null;
+      this.renderer.clearWorld();
+    }
     this.worker.postMessage({ ...m, generation: this.generation });
   }
 
@@ -185,7 +190,7 @@ export class SimClient {
   }
 
   private handle(m: FromWorker) {
-    const asset = m.type === "sheetList" || m.type === "texturebin" || m.type === "texturegz";
+    const asset = m.type === "sheetList" || m.type === "texturebin" || m.type === "texturegz" || m.type === "texturefree";
     if (!asset && m.generation !== undefined && m.generation !== this.generation) return;
     switch (m.type) {
       case "started":

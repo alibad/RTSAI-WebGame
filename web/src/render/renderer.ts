@@ -64,7 +64,8 @@ function compile(gl: WebGL2RenderingContext, vs: string, fs: string) {
   return p;
 }
 
-interface GLTex { tex: WebGLTexture; width: number; height: number; version: number }
+/** height: rows allocated; rowScale: the engine sheet's full height / height (shipped sheets hold only their used rows). */
+interface GLTex { tex: WebGLTexture; width: number; height: number; version: number; rowScale: number }
 
 export class Renderer {
   readonly gl: WebGL2RenderingContext;
@@ -87,7 +88,13 @@ export class Renderer {
   private paletteRows = 1;
   private sprites: SpriteInfo[] = [];
   private terrainVao: WebGLVertexArrayObject | null = null;
+  private terrainBuffers: WebGLBuffer[] = [];
   private terrainIndexCount = 0;
+  /** Textures the engine disposed: ids are never reused, so a late upload for one (a sheet still in flight) is dropped. */
+  private freed = new Set<number>();
+  private rowScales = new Float32Array(8);
+  private spriteRowScale: WebGLUniformLocation | null;
+  private terrainRowScale: WebGLUniformLocation | null;
   private terrainSheets: number[] = [];
   private spriteVao: WebGLVertexArrayObject;
   private instanceBuffer: WebGLBuffer;
@@ -99,6 +106,8 @@ export class Renderer {
   private colorData = new Float32Array(MAX_RECTS * COLOR_FLOATS);
   private info: StartInfo | null = null;
   stats = { draws: 0, batches: 0, skipped: 0, frameMs: 0 };
+  /** Bumped by every change a frame would show besides the camera and the overlay (the page skips identical frames). */
+  version = 0;
   /** A sprite's sheet is not on the GPU (e.g. a faction's sheets not loaded yet): the page fetches it. */
   onMissingTexture: (id: number) => void = () => {};
   /** Debug filter (?only=r2): draw only actors whose type passes, no terrain or effects. */
@@ -177,7 +186,10 @@ export class Renderer {
       gl.useProgram(prog);
       for (let i = 0; i < 8; i++) gl.uniform1i(gl.getUniformLocation(prog, `Texture${i}`), i);
       gl.uniform1i(gl.getUniformLocation(prog, "Palette"), 8);
+      gl.uniform1fv(gl.getUniformLocation(prog, "uRowScale"), new Float32Array(8).fill(1));
     }
+    this.spriteRowScale = gl.getUniformLocation(this.spriteProg, "uRowScale");
+    this.terrainRowScale = gl.getUniformLocation(this.terrainProg, "uRowScale");
   }
 
   setStartInfo(info: StartInfo, terrain: ArrayBuffer) {
@@ -186,6 +198,7 @@ export class Renderer {
     // No sprite reset here: the client resets the table when it requests the start, and the first snapshot
     // (which defines every sprite) can arrive through the shared ring before this message is handled.
     this.terrainSheets = info.terrainSheets;
+    this.dropTerrain();
     const vao = gl.createVertexArray()!;
     gl.bindVertexArray(vao);
     const vb = gl.createBuffer()!;
@@ -210,11 +223,32 @@ export class Renderer {
     gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, idx, gl.STATIC_DRAW);
     gl.bindVertexArray(null);
     this.terrainVao = vao;
+    this.terrainBuffers = [vb, ib];
     this.terrainIndexCount = idx.length;
+    this.version++;
+  }
+
+  private dropTerrain() {
+    const gl = this.gl;
+    if (this.terrainVao) gl.deleteVertexArray(this.terrainVao);
+    for (const b of this.terrainBuffers) gl.deleteBuffer(b);
+    this.terrainVao = null;
+    this.terrainBuffers = [];
+    this.terrainIndexCount = 0;
+  }
+
+  /** The match ended: its world is no longer drawn (the canvas only clears) and its terrain buffers are freed. */
+  clearWorld() {
+    this.info = null;
+    this.dropTerrain();
+    this.sprites = [];
+    this.capUploaded = null;
+    this.version++;
   }
 
   resetSprites() {
     this.sprites = [];
+    this.version++;
   }
 
   /**
@@ -258,6 +292,7 @@ export class Renderer {
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
     this.shroudSize = [W, H];
+    this.version++;
   }
 
   private drawShroud(cam: Camera) {
@@ -287,9 +322,12 @@ export class Renderer {
 
   addSprites(s: SpriteInfo[]) {
     for (const x of s) this.sprites.push(x);
+    if (s.length) this.version++;
   }
 
   uploadTexture(id: number, version: number, width: number, height: number, kind: number, data: ArrayBuffer) {
+    if (this.freed.has(id)) return;
+    this.version++;
     const gl = this.gl;
     const existing = kind === 1 ? this.palette : this.textures.get(id);
     const tex = existing?.tex ?? gl.createTexture()!;
@@ -305,7 +343,7 @@ export class Renderer {
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-    const entry = { tex, width, height, version };
+    const entry = { tex, width, height, version, rowScale: 1 };
     if (kind === 1) {
       this.palette = entry;
       this.paletteRows = height;
@@ -317,27 +355,31 @@ export class Renderer {
   hasTexture(id: number) { return this.textures.has(id); }
 
   /**
-   * A sheet whose first `rows` rows are given (the rest is empty): allocated at full size, so sprite coordinates
-   * stay those of the engine's sheet.
+   * A sheet whose first `rows` rows are given (the rest is empty). Only those rows are allocated (shipped sheets are
+   * about half empty); the samplers scale v by height / rows, so sprite coordinates stay those of the engine's sheet.
    */
   uploadSheetRows(id: number, width: number, height: number, rows: number, data: Uint8Array) {
+    if (this.freed.has(id)) return;
+    this.version++;
     const gl = this.gl;
+    const allocated = Math.max(1, rows);
     const tex = this.textures.get(id)?.tex ?? gl.createTexture()!;
     gl.bindTexture(gl.TEXTURE_2D, tex);
     gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, width, height, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
-    if (rows > 0) gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, width, rows, gl.RGBA, gl.UNSIGNED_BYTE, data);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, width, allocated, 0, gl.RGBA, gl.UNSIGNED_BYTE, rows > 0 ? data.subarray(0, width * rows * 4) : null);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-    this.textures.set(id, { tex, width, height, version: 1 });
+    this.textures.set(id, { tex, width, height: allocated, version: 1, rowScale: height / allocated });
   }
 
   /** The engine disposed this texture: its ids are never reused, so the GPU copy can go. */
   freeTexture(id: number) {
+    this.freed.add(id);
     const t = this.textures.get(id);
     if (!t) return;
+    this.version++;
     this.models.freeTarget(id);
     this.gl.deleteTexture(t.tex);
     this.textures.delete(id);
@@ -345,17 +387,22 @@ export class Renderer {
 
   /** A cameo as a PNG data URL, or null until its sheet and the palette are on the GPU. */
   renderIcon(s: IconSprite): string | null {
-    if (!this.textures.has(s.tex)) this.onMissingTexture(s.tex);
-    return this.iconRaster.render(s, this.textures.get(s.tex)?.tex, this.palette?.tex, this.paletteRows);
+    const t = this.textures.get(s.tex);
+    if (!t) this.onMissingTexture(s.tex);
+    const k = t?.rowScale ?? 1;
+    const sprite = k === 1 ? s : { ...s, uv: [s.uv[0], s.uv[1] * k, s.uv[2], s.uv[3] * k] as IconSprite["uv"] };
+    return this.iconRaster.render(sprite, t?.tex, this.palette?.tex, this.paletteRows);
   }
 
   setModelBuffer(id: number, data: ArrayBuffer) {
     this.models.setBuffer(id, data);
+    this.version++;
   }
 
   /** Draws this snapshot's voxel models into their sheets (once per snapshot, not per frame). */
   runModels(s: Snapshot) {
     if (!this.palette || s.header.modelCmds === 0) return;
+    this.version++;
     this.models.run(s.captured.modelCmds, s.header.modelCmds, (id) => this.textures.get(id)?.tex ?? null, this.palette.tex, this.paletteRows);
   }
 
@@ -386,11 +433,14 @@ export class Renderer {
       for (let i = 0; i < 8; i++) {
         const id = b.textures[i];
         const t = id >= 0 ? this.textures.get(id) : undefined;
-        if (id >= 0 && !t) { ok = false; this.onMissingTexture(id); }
+        // A freed id is a stale sampler the batch does not use (ids are never reused): bound empty, not waited for.
+        if (id >= 0 && !t && !this.freed.has(id)) { ok = false; this.onMissingTexture(id); }
         gl.activeTexture(gl.TEXTURE0 + i);
         gl.bindTexture(gl.TEXTURE_2D, t?.tex ?? null);
+        this.rowScales[i] = t?.rowScale ?? 1;
       }
       if (!ok) continue;
+      gl.uniform1fv(this.terrainRowScale, this.rowScales);
       setBlend(gl, b.blend);
       gl.drawElements(gl.TRIANGLES, (b.count / 4) * 6, gl.UNSIGNED_INT, (b.start / 4) * 6 * 4);
       this.stats.batches++;
@@ -466,7 +516,9 @@ export class Renderer {
         const t = this.textures.get(this.terrainSheets[i]);
         gl.activeTexture(gl.TEXTURE0 + i);
         gl.bindTexture(gl.TEXTURE_2D, t?.tex ?? null);
+        this.rowScales[i] = t?.rowScale ?? 1;
       }
+      gl.uniform1fv(this.terrainRowScale, this.rowScales);
       setBlend(gl, 1);
       gl.bindVertexArray(this.terrainVao);
       gl.drawElements(gl.TRIANGLES, this.terrainIndexCount, gl.UNSIGNED_INT, 0);
@@ -546,10 +598,14 @@ export class Renderer {
     const flush = () => {
       if (n === batchStart) return;
       setBlend(gl, blend);
+      this.rowScales.fill(1);
       for (const [texId, slot] of slots) {
+        const t = this.textures.get(texId)!;
         gl.activeTexture(gl.TEXTURE0 + slot);
-        gl.bindTexture(gl.TEXTURE_2D, this.textures.get(texId)!.tex);
+        gl.bindTexture(gl.TEXTURE_2D, t.tex);
+        this.rowScales[slot] = t.rowScale;
       }
+      gl.uniform1fv(this.spriteRowScale, this.rowScales);
       gl.bindBuffer(gl.ARRAY_BUFFER, this.instanceBuffer);
       gl.bufferSubData(gl.ARRAY_BUFFER, batchStart * INSTANCE_FLOATS * 4, this.instanceF32, batchStart * INSTANCE_FLOATS, (n - batchStart) * INSTANCE_FLOATS);
       // Instanced attributes start at the batch: rebind with an offset by drawing from a sub-range.

@@ -247,7 +247,7 @@ namespace OpenRA.WebSim
 			if (preparedMap != null && preparedMapName == mapName)
 				return;
 
-			preparedMap?.Dispose();
+			DisposeMap(preparedMap);
 			preparedMap = null;
 			Map map = null;
 			Time("prepare.map", () => map = LoadMap(MapPath(mapName)));
@@ -280,6 +280,17 @@ namespace OpenRA.WebSim
 			preparedMapName = mapName;
 		}
 
+		/// <summary>Map.Dispose frees its sheet builders' sheets; its restored prebaked sheets are freed here.</summary>
+		static void DisposeMap(Map map)
+		{
+			if (map == null)
+				return;
+
+			var spriteCache = map.Sequences?.SpriteCache;
+			map.Dispose();
+			SpriteStore.Release(spriteCache);
+		}
+
 		static readonly FieldInfo SheetTextureField = typeof(Sheet).GetField("texture", BindingFlags.NonPublic | BindingFlags.Instance);
 
 		/// <summary>A sheet's texture without committing it (GetTexture would upload pending data).</summary>
@@ -295,7 +306,9 @@ namespace OpenRA.WebSim
 			Game.Sound.StopAudio();
 			Game.Sound.StopMusic();
 			WorldRenderer?.Dispose();
-			World.Dispose();
+			var spriteCache = World.Map.Sequences?.SpriteCache;
+			World.Dispose(); // disposes World.Map
+			SpriteStore.Release(spriteCache);
 			OrderManager?.Dispose();
 			World = null;
 			WorldRenderer = null;

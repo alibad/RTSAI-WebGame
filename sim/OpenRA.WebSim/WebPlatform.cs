@@ -383,7 +383,11 @@ namespace OpenRA.WebSim
 
 		public WebShader(string name) => Name = name;
 
-		public int TextureId(string name) => textures.TryGetValue(name, out var t) && t is WebTexture w ? w.Id : -1;
+		/// <summary>
+		/// A sampler's texture id, or -1. The engine only rebinds the samplers a batch uses, so the others keep whatever
+		/// an earlier batch (even an earlier world) bound: a disposed texture is reported as unbound.
+		/// </summary>
+		public int TextureId(string name) => textures.TryGetValue(name, out var t) && t is WebTexture { Disposed: false } w ? w.Id : -1;
 		public float[] Vec(string name) => vecs.TryGetValue(name, out var v) ? v : null;
 		public float[] Matrix(string name) => matrices.TryGetValue(name, out var m) ? m : null;
 

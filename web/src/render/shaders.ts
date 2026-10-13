@@ -114,6 +114,8 @@ uniform sampler2D Texture6;
 uniform sampler2D Texture7;
 uniform sampler2D Palette;
 uniform float DepthTextureScale;
+// Per sampler: the sheet's full height / its allocated rows (shipped sheets hold only their used rows), else 1.
+uniform float uRowScale[8];
 
 in vec4 vTexCoord;
 flat in float vTexPalette;
@@ -129,14 +131,14 @@ vec4 Sample(uint i, vec2 p)
 {
   switch (i)
   {
-    case 7u: return texture(Texture7, p);
-    case 6u: return texture(Texture6, p);
-    case 5u: return texture(Texture5, p);
-    case 4u: return texture(Texture4, p);
-    case 3u: return texture(Texture3, p);
-    case 2u: return texture(Texture2, p);
-    case 1u: return texture(Texture1, p);
-    default: return texture(Texture0, p);
+    case 7u: return texture(Texture7, vec2(p.x, p.y * uRowScale[7]));
+    case 6u: return texture(Texture6, vec2(p.x, p.y * uRowScale[6]));
+    case 5u: return texture(Texture5, vec2(p.x, p.y * uRowScale[5]));
+    case 4u: return texture(Texture4, vec2(p.x, p.y * uRowScale[4]));
+    case 3u: return texture(Texture3, vec2(p.x, p.y * uRowScale[3]));
+    case 2u: return texture(Texture2, vec2(p.x, p.y * uRowScale[2]));
+    case 1u: return texture(Texture1, vec2(p.x, p.y * uRowScale[1]));
+    default: return texture(Texture0, vec2(p.x, p.y * uRowScale[0]));
   }
 }
 
