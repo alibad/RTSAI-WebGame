@@ -147,6 +147,23 @@ then `vercel promote`. Build the page with the current `rtRoot`/`dataRoot` from 
 exist yet, and the game shows a blank page. On 13 October this happened; `vercel cache purge --type cdn` in the
 RTSAI-Web checkout (project rtsai-web) cleared it.
 
+## Engine and data on Cloudflare
+
+Since 13 October the page at rtsai.net/play (Vercel) loads the runtime and data roots from the Cloudflare Pages project
+`rtsai-play-cdn` (https://rtsai-play-cdn.pages.dev). Cloudflare has an edge in Doha; Vercel answers players in Qatar
+from Mumbai. Measured from Qatar: about 4 ms per file against about 215 ms, and 18 ms against about 410 ms for a new
+connection. To publish new roots:
+1. Copy `rt-<hash>/` and `data-<hash>/` from the build into a folder with a `_headers` file. That file holds the build's
+   `/rt-*` and `/data-*` rules (Cache-Control, `Content-Encoding: br`, Content-Type) plus `Access-Control-Allow-Origin: *`
+   and `Cross-Origin-Resource-Policy: cross-origin` for every path. Cloudflare serves the pre-compressed files as they
+   are; this was verified.
+2. Run `npx wrangler pages deploy <folder> --project-name rtsai-play-cdn --branch main`. Each deployment replaces the
+   whole site, so keep older roots in the folder while old pages may still use them. Limits: 20,000 files, 25 MiB per
+   file.
+3. Build the page with `VITE_RT_BASE=https://rtsai-play-cdn.pages.dev/rt-<hash>/` and
+   `VITE_DATA_BASE=https://rtsai-play-cdn.pages.dev/data-<hash>/`, then deploy it to Vercel as before.
+   `BUILD.json` records `assetHost`.
+
 ## Hard requirements on the host
 
 1. **Cross-origin isolation** for the snapshot ring (SharedArrayBuffer):
