@@ -66,14 +66,15 @@ export function Practice({ game, close }: { game: Game; close: () => void }) {
     });
     if (!boxes.length) return;
     const span = (list: typeof boxes) => ({ x0: Math.min(...list.map(b => b.x0)), x1: Math.max(...list.map(b => b.x1)), y0: Math.min(...list.map(b => b.y0)), y1: Math.max(...list.map(b => b.y1)) });
-    const all = span(boxes), scale = game.canvas.width / rect.width;
+    const all = span(boxes);
     const edge = besidePanel && panel.current ? Math.min(rect.right, panel.current.getBoundingClientRect().left) : rect.right;
     const free = { left: rect.left + 24, right: Math.max(rect.left + 160, edge - 24), top: rect.top + 72, bottom: rect.bottom - 32 };
-    const zoom = Math.max(0.35, Math.min(1.5, (free.right - free.left) * scale / (all.x1 - all.x0), (free.bottom - free.top) * scale / (all.y1 - all.y0)));
+    // The camera works in CSS pixels: zoom is CSS px per world px.
+    const zoom = Math.max(0.35, Math.min(1.5, (free.right - free.left) / (all.x1 - all.x0), (free.bottom - free.top) / (all.y1 - all.y0)));
     game.cam.zoom = zoom;
-    game.lookAt((all.x0 + all.x1) / 2 - ((free.left + free.right) / 2 - (rect.left + rect.width / 2)) * scale / zoom,
-      (all.y0 + all.y1) / 2 - ((free.top + free.bottom) / 2 - (rect.top + rect.height / 2)) * scale / zoom);
-    const css = (wx: number, wy: number) => ({ x: rect.left + rect.width / 2 + (wx - game.cam.x) * game.cam.zoom / scale, y: rect.top + rect.height / 2 + (wy - game.cam.y) * game.cam.zoom / scale });
+    game.lookAt((all.x0 + all.x1) / 2 - ((free.left + free.right) / 2 - (rect.left + rect.width / 2)) / zoom,
+      (all.y0 + all.y1) / 2 - ((free.top + free.bottom) / 2 - (rect.top + rect.height / 2)) / zoom);
+    const css = (wx: number, wy: number) => ({ x: rect.left + rect.width / 2 + (wx - game.cam.x) * game.cam.zoom, y: rect.top + rect.height / 2 + (wy - game.cam.y) * game.cam.zoom });
     setArea({ left: free.left, right: free.right, top: rect.top });
     setTags(([0, 1] as const).map(side => { const b = span(boxes.filter(x => x.side === side)); return { side, ...css((b.x0 + b.x1) / 2, b.y0) }; }));
   };

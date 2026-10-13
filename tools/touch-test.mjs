@@ -46,8 +46,8 @@ const state = () => page.evaluate(() => {
 });
 /** World -> CSS pixel position of an actor on screen. */
 const screenOf = (a) => page.evaluate(([sx, sy]) => {
-  const g = window.game, r = g.canvas.getBoundingClientRect(), dpr = window.devicePixelRatio || 1;
-  return [r.left + ((sx - g.cam.x) * g.cam.zoom + g.canvas.width / 2) / dpr, r.top + ((sy - g.cam.y) * g.cam.zoom + g.canvas.height / 2) / dpr];
+  const g = window.game, r = g.canvas.getBoundingClientRect();
+  return [r.left + r.width / 2 + (sx - g.cam.x) * g.cam.zoom, r.top + r.height / 2 + (sy - g.cam.y) * g.cam.zoom];
 }, [a.sx, a.sy]);
 
 await page.goto(url);
@@ -71,8 +71,10 @@ await tap(mx, my);
 s = await state();
 check("tap selects own unit", s.selected.length === 1 && s.selected[0] === mcv.id, JSON.stringify(s.selected));
 
-// Tap the ground: the selected MCV is ordered there (it moves).
-await tap(mx + 70, my + 30);
+// Tap the ground: the selected MCV is ordered there (it moves). Three cells over in world px, clear of its escort, so
+// the construction yard is not blocked where it stops (an escort in the footprint cancels the deploy below).
+const [gx, gy] = await screenOf({ sx: mcv.sx + 180, sy: mcv.sy + 90 });
+await tap(gx, gy);
 await page.waitForTimeout(2500);
 s = await state();
 const moved = s.own.find((a) => a.id === mcv.id);

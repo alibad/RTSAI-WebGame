@@ -52,21 +52,18 @@ export function RepairIndicators({ game }: { game: Game }) {
         container.style.top = `${rect.top}px`;
         container.style.width = `${rect.width}px`;
         container.style.height = `${rect.height}px`;
-        const dpr = window.devicePixelRatio || 1;
-        const width = game.canvas.width || rect.width * dpr;
-        const height = game.canvas.height || rect.height * dpr;
-        const scaleX = rect.width / width;
-        const scaleY = rect.height / height;
+        // The camera works in CSS pixels: zoom is CSS px per world px at any device pixel ratio.
+        const zoom = game.cam.zoom;
         for (const [id, element] of elements.current) {
           const actor = actors.get(id);
           if (!actor || rect.width <= 0 || rect.height <= 0 || state.phase !== "playing" || game.coach.review) {
             element.style.display = "none";
             continue;
           }
-          const left = ((Math.round(actor.sx) + actor.bx - game.cam.x) * game.cam.zoom + width / 2) * scaleX;
-          const top = ((Math.round(actor.sy) + actor.by - game.cam.y) * game.cam.zoom + height / 2) * scaleY;
-          const right = left + actor.bw * game.cam.zoom * scaleX;
-          const bottom = top + actor.bh * game.cam.zoom * scaleY;
+          const left = (Math.round(actor.sx) + actor.bx - game.cam.x) * zoom + rect.width / 2;
+          const top = (Math.round(actor.sy) + actor.by - game.cam.y) * zoom + rect.height / 2;
+          const right = left + actor.bw * zoom;
+          const bottom = top + actor.bh * zoom;
           const x = (left + right) / 2;
           const y = top - 9;
           const visible = right > 0 && left < rect.width && bottom > 0 && top < rect.height

@@ -21,8 +21,7 @@ export function Annotations({ game }: { game: Game }) {
   const offer = [...feed].reverse().find(f => f.kind === "proposal" && f.state === "pending");
   if (!offer?.commands?.length || offer.id === dismissed) return null;
   const canvas = game.canvas.getBoundingClientRect();
-  const scale = game.canvas.width / canvas.width;
-  const project = (x: number, y: number) => ({ x: canvas.width / 2 + (x - game.cam.x) * game.cam.zoom / scale, y: canvas.height / 2 + (y - game.cam.y) * game.cam.zoom / scale });
+  const project = (x: number, y: number) => ({ x: canvas.width / 2 + (x - game.cam.x) * game.cam.zoom, y: canvas.height / 2 + (y - game.cam.y) * game.cam.zoom });
   const paths = (offer.commands ?? []).slice(0, 24).flatMap(c => {
     const actor = c.actor_id === undefined ? undefined : s.actorById.get(c.actor_id);
     if (!actor || actor.owner !== s.header.localPlayer) return [];

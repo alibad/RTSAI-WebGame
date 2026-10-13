@@ -109,8 +109,8 @@ try {
   await page.locator('[data-practice]').waitFor({ state: 'detached' });
   assert.equal(await page.evaluate(() => window.store.getState().paused), false);
   const target = await page.evaluate(() => {
-    const g = window.game, s = g.client.cur, box = g.canvas.getBoundingClientRect(), scale = g.canvas.width / box.width;
-    const css = (x, y) => ({ x: box.left + box.width / 2 + (x - g.cam.x) * g.cam.zoom / scale, y: box.top + box.height / 2 + (y - g.cam.y) * g.cam.zoom / scale });
+    const g = window.game, s = g.client.cur, box = g.canvas.getBoundingClientRect();
+    const css = (x, y) => ({ x: box.left + box.width / 2 + (x - g.cam.x) * g.cam.zoom, y: box.top + box.height / 2 + (y - g.cam.y) * g.cam.zoom });
     const a = s.actors.find(a => a.owner === s.header.localPlayer && (a.flags & 1) && !(a.flags & 8));
     const at = css(a.sx, a.sy), clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
     // A destination well inside the battlefield, up and towards the middle of the screen.

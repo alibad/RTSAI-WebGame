@@ -436,7 +436,7 @@ export class Game {
     if (!this.sandbox && practice.sandbox && practice.placements?.length) {
       const p = practice.placements as {u: number; v: number}[];
       const xs = p.map(a => a.u * info.tileSize[0]); const ys = p.map(a => a.v * info.tileSize[1] / 2);
-      this.cam.zoom = Math.max(.35, Math.min(1.5, this.canvas.width / (Math.max(...xs) - Math.min(...xs) + 500), this.canvas.height / (Math.max(...ys) - Math.min(...ys) + 400)));
+      this.cam.zoom = Math.max(.35, Math.min(1.5, this.canvas.clientWidth / (Math.max(...xs) - Math.min(...xs) + 500), this.canvas.clientHeight / (Math.max(...ys) - Math.min(...ys) + 400)));
       this.cam.x = info.cellOrigin[0] + p.reduce((n, a) => n + 2 * a.u + (a.v & 1), 0) / p.length * info.tileSize[0] / 2;
       this.cam.y = info.cellOrigin[1] + p.reduce((n, a) => n + a.v, 0) / p.length * info.tileSize[1] / 2;
     }
@@ -596,18 +596,15 @@ export class Game {
 
   // ---------------------------------------------------------------- camera
 
+  /** Client (CSS) coordinates to world: the camera works in CSS pixels at any device pixel ratio (Renderer.viewSize). */
   private toWorld(clientX: number, clientY: number): [number, number] {
     const r = this.canvas.getBoundingClientRect();
-    const dpr = window.devicePixelRatio || 1;
-    const sx = (clientX - r.left) * dpr;
-    const sy = (clientY - r.top) * dpr;
-    return [this.cam.x + (sx - this.canvas.width / 2) / this.cam.zoom, this.cam.y + (sy - this.canvas.height / 2) / this.cam.zoom];
+    return [this.cam.x + (clientX - r.left - r.width / 2) / this.cam.zoom, this.cam.y + (clientY - r.top - r.height / 2) / this.cam.zoom];
   }
 
   /** The visible world rectangle (x0, y0, x1, y1) for the minimap frame. */
   viewRect(): [number, number, number, number] {
-    const W = this.canvas.width / this.cam.zoom;
-    const H = this.canvas.height / this.cam.zoom;
+    const [W, H] = Renderer.viewSize(this.canvas, this.cam.zoom);
     return [this.cam.x - W / 2, this.cam.y - H / 2, this.cam.x + W / 2, this.cam.y + H / 2];
   }
 
@@ -668,9 +665,8 @@ export class Game {
       if (this.mouse.sy >= r.bottom - EDGE_PX) uy = uy || 1;
     }
     if (ux || uy) {
-      // Rate for a 25 ms step, diagonals no faster (UpdateCameraTick); view px to world px.
-      const dpr = window.devicePixelRatio || 1;
-      const step = (Math.min(dt, 25) * SCROLL_PX_PER_MS * preferences.scroll * dpr) / (this.cam.zoom * Math.max(1, Math.hypot(ux, uy)));
+      // Rate for a 25 ms step, diagonals no faster (UpdateCameraTick); view (CSS) px to world px.
+      const step = (Math.min(dt, 25) * SCROLL_PX_PER_MS * preferences.scroll) / (this.cam.zoom * Math.max(1, Math.hypot(ux, uy)));
       this.cam.x += ux * step;
       this.cam.y += uy * step;
       this.clampCam();
@@ -967,9 +963,8 @@ export class Game {
     const d = this.drag;
     if (!d) return;
     if (d.pan) {
-      const dpr = window.devicePixelRatio || 1;
-      this.cam.x -= ((e.clientX - d.cx) * dpr) / this.cam.zoom;
-      this.cam.y -= ((e.clientY - d.cy) * dpr) / this.cam.zoom;
+      this.cam.x -= (e.clientX - d.cx) / this.cam.zoom;
+      this.cam.y -= (e.clientY - d.cy) / this.cam.zoom;
       d.cx = e.clientX;
       d.cy = e.clientY;
       this.clampCam();
@@ -1009,9 +1004,8 @@ export class Game {
       setBox: (box) => { this.overlay.dragBox = box; },
       clear: () => { if (this.ui?.mode) this.command({ cmd: "mode", mode: "none" }); else this.select([]); },
       pan: (dx, dy) => {
-        const dpr = window.devicePixelRatio || 1;
-        this.cam.x -= (dx * dpr) / this.cam.zoom;
-        this.cam.y -= (dy * dpr) / this.cam.zoom;
+        this.cam.x -= dx / this.cam.zoom;
+        this.cam.y -= dy / this.cam.zoom;
         this.clampCam();
         this.sendView();
       },

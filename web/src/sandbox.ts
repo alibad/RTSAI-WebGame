@@ -176,7 +176,7 @@ export class Sandbox {
     const xs = pts.map((p) => p[0]), ys = pts.map((p) => p[1]);
     const [x0, x1, y0, y1] = [Math.min(...xs), Math.max(...xs), Math.min(...ys), Math.max(...ys)];
     const canvas = this.game.canvas;
-    const zoom = Math.max(0.35, Math.min(1.5, Math.min(canvas.width / (x1 - x0 + 500), canvas.height / (y1 - y0 + 400))));
+    const zoom = Math.max(0.35, Math.min(1.5, Math.min(canvas.clientWidth / (x1 - x0 + 500), canvas.clientHeight / (y1 - y0 + 400))));
     this.game.cam.zoom = zoom;
     this.game.lookAt((x0 + x1) / 2, (y0 + y1) / 2);
   }

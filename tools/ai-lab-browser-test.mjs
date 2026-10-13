@@ -93,9 +93,9 @@ try {
   }, null, { timeout: 30000 });
   results.annotationCommands = await page.evaluate(() => window.game.cc.pending().commands);
   const aligned = await page.evaluate(() => {
-    const g = window.game, command = g.cc.pending().commands[0], actor = g.client.cur.actorById.get(command.actor_id), box = g.canvas.getBoundingClientRect(), scale = g.canvas.width / box.width;
+    const g = window.game, command = g.cc.pending().commands[0], actor = g.client.cur.actorById.get(command.actor_id), box = g.canvas.getBoundingClientRect();
     const circle = document.querySelector('[data-annotations] circle');
-    return Math.abs(Number(circle.getAttribute('cx')) - (box.width / 2 + (actor.sx - g.cam.x) * g.cam.zoom / scale)) < 2 && Math.abs(Number(circle.getAttribute('cy')) - (box.height / 2 + (actor.sy - g.cam.y) * g.cam.zoom / scale)) < 2;
+    return Math.abs(Number(circle.getAttribute('cx')) - (box.width / 2 + (actor.sx - g.cam.x) * g.cam.zoom)) < 2 && Math.abs(Number(circle.getAttribute('cy')) - (box.height / 2 + (actor.sy - g.cam.y) * g.cam.zoom)) < 2;
   }); assert(aligned, 'Proposal ring must align with the actor’s native screen position');
   const tick = await page.evaluate(() => window.store.getState().ui.tick);
   await page.screenshot({ path: `${out}/annotations.png` });

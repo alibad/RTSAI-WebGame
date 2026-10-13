@@ -267,7 +267,7 @@ async function frameOn(ids, zoom = 1.25) {
     if (!own.length) return;
     const c = own.reduce((acc, a) => [acc[0] + a.sx / own.length, acc[1] + a.sy / own.length], [0, 0]);
     g.cam.zoom = zoom;
-    const halfW = g.canvas.width / zoom / 2, halfH = g.canvas.height / zoom / 2;
+    const halfW = g.canvas.clientWidth / zoom / 2, halfH = g.canvas.clientHeight / zoom / 2;
     const m = 72, b0 = g.info.bounds; // the map's visible rectangle (screen px), kept clear of its ragged edge
     const b = b0 && [b0[0] + m, b0[1] + m, b0[2] - m, b0[3] - m];
     // The subject in the lower part of the frame: the open co-commander feed covers the top centre.
@@ -374,7 +374,7 @@ async function take(name) {
       if (!pos) break;
       await page.evaluate(([x, y]) => {
         const g = window.game;
-        const m = 72, b0 = g.info.bounds, halfW = g.canvas.width / g.cam.zoom / 2, halfH = g.canvas.height / g.cam.zoom / 2, b = b0 && [b0[0] + m, b0[1] + m, b0[2] - m, b0[3] - m];
+        const m = 72, b0 = g.info.bounds, halfW = g.canvas.clientWidth / g.cam.zoom / 2, halfH = g.canvas.clientHeight / g.cam.zoom / 2, b = b0 && [b0[0] + m, b0[1] + m, b0[2] - m, b0[3] - m];
         let tx = g.cam.x + (x - g.cam.x) * 0.06, ty = g.cam.y + (y - g.cam.y) * 0.06;
         if (b) { tx = Math.min(b[2] - halfW, Math.max(b[0] + halfW, tx)); ty = Math.min(b[3] - halfH, Math.max(b[1] + halfH, ty)); }
         g.lookAt(tx, ty);
@@ -427,7 +427,7 @@ async function take(name) {
   await sleep(600);
   // The wider view (no sidebar) kept inside the map as well.
   await page.evaluate(() => {
-    const g = window.game, m = 72, b0 = g.info.bounds, halfW = g.canvas.width / g.cam.zoom / 2, halfH = g.canvas.height / g.cam.zoom / 2;
+    const g = window.game, m = 72, b0 = g.info.bounds, halfW = g.canvas.clientWidth / g.cam.zoom / 2, halfH = g.canvas.clientHeight / g.cam.zoom / 2;
     g.lookAt(Math.min(b0[2] - m - halfW, Math.max(b0[0] + m + halfW, g.cam.x)), Math.min(b0[3] - m - halfH, Math.max(b0[1] + m + halfH, g.cam.y)));
   });
   await sleep(400);

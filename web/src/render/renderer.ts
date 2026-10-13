@@ -448,10 +448,18 @@ export class Renderer {
     gl.bindVertexArray(null);
   }
 
+  /**
+   * The world rectangle in view is the canvas's CSS size over the zoom: at zoom 1 a world pixel is a CSS pixel on any
+   * display. A Retina or 4K-at-200% screen shows the same battlefield as any other, drawn with more pixels, instead
+   * of twice as much world at half the size (which ran past the map's edge into black on smaller maps).
+   */
+  static viewSize(canvas: HTMLCanvasElement, zoom: number): [number, number] {
+    return [Math.max(1, canvas.clientWidth) / zoom, Math.max(1, canvas.clientHeight) / zoom];
+  }
+
   private viewUniforms(prog: WebGLProgram, cam: Camera) {
     const gl = this.gl;
-    const W = this.canvas.width / cam.zoom;
-    const H = this.canvas.height / cam.zoom;
+    const [W, H] = Renderer.viewSize(this.canvas, cam.zoom);
     const depthOn = !!this.info?.depthBuffer;
     const margin = this.info?.depthMargin ?? 0;
     const sx = cam.x - W / 2;
@@ -464,7 +472,8 @@ export class Renderer {
     gl.uniform3f(gl.getUniformLocation(prog, "uScroll"), sx, sy, depthOn ? sy - pad : 0);
     gl.uniform3f(gl.getUniformLocation(prog, "uP1"), 2 / W, -2 / H, -depth);
     gl.uniform3f(gl.getUniformLocation(prog, "uP2"), -1, 1, depthOn ? 1 : 0);
-    gl.uniform1f(gl.getUniformLocation(prog, "uZoom"), cam.zoom);
+    // Drawing-buffer pixels per world pixel: the sprite shaders snap to whole pixels of what is actually drawn.
+    gl.uniform1f(gl.getUniformLocation(prog, "uZoom"), gl.drawingBufferWidth / W);
     const pr = gl.getUniformLocation(prog, "uPaletteRows");
     if (pr) gl.uniform1f(pr, this.paletteRows);
     const dts = gl.getUniformLocation(prog, "DepthTextureScale");
@@ -490,7 +499,10 @@ export class Renderer {
       this.canvas.width = w;
       this.canvas.height = h;
     }
-    gl.viewport(0, 0, w, h);
+    // The browser may allocate a smaller drawing buffer than the canvas asks for (a size or memory cap); it is still
+    // stretched over the whole element, so draw into all of it rather than the canvas's nominal size.
+    const bw = gl.drawingBufferWidth, bh = gl.drawingBufferHeight;
+    gl.viewport(0, 0, bw, bh);
     gl.clearColor(0.02, 0.03, 0.04, 1);
     gl.clearDepth(1);
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
@@ -540,8 +552,8 @@ export class Renderer {
     this.stats.frameMs = performance.now() - t0;
 
     if (this.pixelProbe) {
-      const px = new Uint8Array(w * h * 4);
-      gl.readPixels(0, 0, w, h, gl.RGBA, gl.UNSIGNED_BYTE, px);
+      const px = new Uint8Array(bw * bh * 4);
+      gl.readPixels(0, 0, bw, bh, gl.RGBA, gl.UNSIGNED_BYTE, px);
       let non = 0;
       const sum = [0, 0, 0];
       const colors = new Set<number>();
@@ -555,7 +567,7 @@ export class Renderer {
       }
       const cb = this.pixelProbe;
       this.pixelProbe = null;
-      cb({ nonBackground: non / (w * h), colors: colors.size, meanRGB: sum.map((s) => Math.round(s / Math.max(1, non))) });
+      cb({ nonBackground: non / (bw * bh), colors: colors.size, meanRGB: sum.map((s) => Math.round(s / Math.max(1, non))) });
     }
     if (this.frameGrab) {
       const grab = this.frameGrab;
