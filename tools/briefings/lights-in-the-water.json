@@ -35,13 +35,9 @@
       "motion": "push-in-slow",
       "action": "The fishermen haul her over the side as a wave breaks behind them.",
       "seed": 1
-    },
-    {
-      "id": "clinic",
-      "prompt": "Inside a small town clinic just before dawn: survivors wrapped in grey blankets sitting on simple cots, a nurse handing out cups of tea, fishermen in knitted caps, warm lamp light, the first pale light of dawn over the sea through a large window, calm and safe after danger.",
-      "line": "Find all three crews. Bring every survivor to the clinic.",
-      "motion": "push-in",
-      "seed": 2
     }
-  ]
+  ],
+  "gameLines": {
+    "clinic": "Find all three crews. Bring every survivor to the clinic."
+  }
 }
