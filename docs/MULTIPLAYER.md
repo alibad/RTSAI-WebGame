@@ -28,8 +28,8 @@ in-match chat (Enter) and an optional camera and microphone are included.
   - The host creates `p2pMatches/{code}` naming itself.
   - A guest adds `joins/{id}` holding its WebRTC offer. Only the host can list and read the offers, and only the host
     can answer them.
-  - Both sides are pushed updates (no polling). The host deletes the match when it starts; `expires` plus a Firestore
-    TTL policy cleans up the rest.
+  - Both sides are pushed updates (no polling). The host deletes each offer once that guest is seated or turned
+    away, and the match when it starts or closes.
   - The rules live in RTSAI-Web `firestore.rules` and are tested by RTSAI-Web `tools/firestore-rules-test.mjs`.
 - **Star topology.** Each guest connects to the host. The host runs the lobby and relays every player's order and
   hash events to the others, so every world receives identical frames.

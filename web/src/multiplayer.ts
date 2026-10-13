@@ -4,7 +4,7 @@
 import type { Game } from './game';
 import { useStore } from './store';
 import { buildIdentity } from './sim/build-identity';
-import { answerJoin, closeMatch, createMatch, joinMatch, watchJoins } from './net/matchmaker';
+import { answerJoin, closeMatch, createMatch, joinMatch, removeJoin, watchJoins } from './net/matchmaker';
 import { track } from './net/track';
 import { DirectPeer, MAX_TEAM, PeerLockstep, peerColors, peerMap, peerOptions, validatePeerScenario, type PeerEvent, type PeerScenario } from './peer';
 
@@ -135,7 +135,7 @@ export class MultiplayerSession {
       if (guest.seated) throw Error('Repeated handshake');
       if (m.version !== this.version) return this.turnAway(guest, 'Your game version differs from the host’s. Both of you reload the page, then try again.');
       if (this.view.stage !== 'lobby' || this.seatsLeft() <= 0) return this.turnAway(guest, 'This match is full. Ask your host to pick a map with more players, or to remove an AI.');
-      clearTimeout(guest.timer); guest.seated = true;
+      clearTimeout(guest.timer); guest.seated = true; void removeJoin(this.view.room, guest.key);
       this.seats = [...this.seats, { faction: this.freeFaction(), team: 0, ready: false }];
       this.publish(false, `Player ${this.client(guest)} joined.`);
       return;
@@ -170,7 +170,7 @@ export class MultiplayerSession {
 
   /** Tells a guest why it can't join, then hangs up once the message has had time to arrive. */
   private turnAway(guest: Guest, reason: string) {
-    clearTimeout(guest.timer);
+    clearTimeout(guest.timer); void removeJoin(this.view.room, guest.key);
     guest.peer.onMessage = () => {};
     this.trySend(guest.peer, { kind: 'stop', reason });
     setTimeout(() => this.dropGuest(guest, ''), 1500);

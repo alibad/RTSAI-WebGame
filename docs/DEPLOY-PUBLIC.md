@@ -42,8 +42,9 @@ The public game starts only for signed-in players (`VITE_REQUIRE_SIGNIN=1`, set 
    to build without them, because the game would otherwise start for anyone.
 2. **Firestore rules** for matchmaking and usage counters are deployed from RTSAI-Web
    (`firebase deploy --only firestore:rules --project rtsai-net`). Deploy them before a game build that uses them.
-3. **TTL policies** on the `expires` field of the `p2pMatches` and `joins` collection groups delete leftover
-   matchmaking documents.
+3. **Cleanup** is done by the clients: the host deletes each join offer once that guest is seated or turned away,
+   and the match when it starts or closes. (Firestore TTL policies would need the paid Blaze plan; rtsai-net stays on
+   the free Spark plan.)
 
 ## Hard requirements on the host
 

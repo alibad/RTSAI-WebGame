@@ -1,6 +1,8 @@
 // Matchmaking for direct multiplayer, in Firestore (rtsai-net, rules in RTSAI-Web firestore.rules). It only
 // introduces browsers: p2pMatches/{code} names the host, and each guest leaves a WebRTC offer in
 // p2pMatches/{code}/joins/{id} that only the host can read and answer. The match itself never touches Firestore.
+// Cleanup is explicit (TTL policies need a paid plan): the host deletes each offer once that guest is seated or turned
+// away, and the match when it starts or closes; a guest deletes its own offer when it gives up.
 import { currentUser, firestore } from "./account";
 
 const MATCH_TTL_MS = 110 * 60_000, JOIN_TTL_MS = 30 * 60_000;
@@ -54,7 +56,12 @@ export async function answerJoin(room: string, id: string, answer: string) {
   try { await F.updateDoc(F.doc(db, "p2pMatches", room, "joins", id), { answer }); } catch (e) { throw friendly(e); }
 }
 
-/** Host: late joiners can no longer find the match. Best effort; expiry cleans up regardless. */
+/** Host: an offer that has served its purpose (the guest is seated or was turned away). */
+export async function removeJoin(room: string, id: string) {
+  try { const [db, F] = await Promise.all([firestore(), import("firebase/firestore")]); await F.deleteDoc(F.doc(db, "p2pMatches", room, "joins", id)); } catch { /* best effort */ }
+}
+
+/** Host: late joiners can no longer find the match. Best effort. */
 export async function closeMatch(room: string) {
   try { const [db, F] = await Promise.all([firestore(), import("firebase/firestore")]); await F.deleteDoc(F.doc(db, "p2pMatches", room)); } catch { /* expires anyway */ }
 }

@@ -156,6 +156,13 @@ try {
   await host.getByRole('button', { name: 'Start match', exact: true }).click();
   await Promise.all(pages.map(p => p.waitForFunction(() => ['playing', 'error'].includes(window.store.getState().phase), null, { timeout: 300000 })));
   for (const p of pages) assert.equal(await p.evaluate(() => window.store.getState().phase), 'playing', await p.evaluate(() => window.store.getState().error));
+  // Nothing of the introduction is left in Firestore once the match runs.
+  await host.waitForTimeout(3000);
+  const leftover = await fetch(`http://127.0.0.1:8085/v1/projects/demo-rtsai/databases/(default)/documents/p2pMatches/${code}/joins`, { headers: { Authorization: 'Bearer owner' } }).then(r => r.json());
+  const matchDoc = await fetch(`http://127.0.0.1:8085/v1/projects/demo-rtsai/databases/(default)/documents/p2pMatches/${code}`, { headers: { Authorization: 'Bearer owner' } });
+  assert.deepEqual(leftover.documents ?? [], [], 'join offers removed once players are seated');
+  assert.equal(matchDoc.status, 404, 'match removed when it starts');
+  receipt.checks.matchmakingCleanedUp = true; console.log('PASS matchmakingCleanedUp');
   await Promise.all(pages.map(p => p.waitForFunction(() => window.peerFrames.at(-1) >= 100 || window.peerErrors.length, null, { timeout: 180000 })));
   const mcvs = [];
   for (const [i, p] of pages.entries()) {
