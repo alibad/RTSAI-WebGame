@@ -4,11 +4,13 @@ Isometric loads the project `rtsai` profile (`public`). Classic/top-down loads
 `rtsai-topdown` (`public-classic`) with the fixed engine's Rectangular grid,
 32×32 tiles, square radar/shroud cells and square campaign terrain. The historical
 owned-RA2 `rtsai-classic` add-on is separate. Both standalone modes require no
-owned game and ship project audio only. Classic/top-down draws project sprites only.
-Isometric also ships the original Westwood art of the nine original countries
-(EA's free, non-commercial C&C modding guidelines; EA's notice on the main menu,
-skirmish and campaign screens and in the static root's NOTICE); see
-[DEPLOY-PUBLIC.md](DEPLOY-PUBLIC.md#original-westwood-art-isometric-mode). Mode changes
+owned game. Classic/top-down draws project sprites and plays project audio only.
+Isometric also ships the original Westwood art of the nine original countries and
+their original unit voices and weapon sounds, and the Attack Dog's original barks for every faction
+(EA's free, non-commercial C&C modding guidelines, no C&C music; EA's notice on the
+main menu, skirmish and campaign screens and in the static root's NOTICE); see
+[DEPLOY-PUBLIC.md](DEPLOY-PUBLIC.md#original-westwood-art-isometric-mode) and
+[original unit voices](DEPLOY-PUBLIC.md#original-unit-voices-and-weapon-sounds-isometric-mode). Mode changes
 reload the page, creating a fresh runtime and world. Native rules remain authoritative.
 
 Build each mode with `tools/public.py --game-mode isometric|classic`, separate

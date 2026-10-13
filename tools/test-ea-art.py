@@ -1,24 +1,35 @@
 #!/usr/bin/env python3
-"""Original-art (EA) regressions.
+"""Original-art and original-voice (EA) regressions.
 
 Unit checks (always): the MiniYaml port's merge/inheritance/removal semantics, the web manifest order, the art
-allowlist and the footprint exclusions.
+allowlist and the footprint exclusions; the voice generator's file resolution (prefixes, variants), the clip allowlist
+(no EVA, music or archives), the WAVE and audio.idx readers.
 Generated-content checks (with --content <generated content dir> [--ea-art <verified original-art dir>]):
-  * every original file the overlays name is in EA-INPUTS.json (and the allowlist), no audio anywhere;
+  * every original file the overlays name is in EA-INPUTS.json (and the allowlist), no audio among the art files;
   * every actor's FactionImages keys equal its WithFactionPalettes/GrantConditionOnFaction factions, all original
     countries and nothing else, and every image it names is generated;
-  * the five footprint-mismatched Soviet buildings get no original art.
+  * the five footprint-mismatched Soviet buildings get no original art;
+  * voices: the rules overlay touches voice traits and voice-only conditions only, granted to original countries only
+    (the dog: its original voice for everyone, no condition); every original clip a voice set or the dog's bite names
+    is listed in EA-INPUTS.json's audio, which lists exactly the clips the content plays.
   python tools/test-ea-art.py [--content D:/build/public-iso/content --ea-art D:/rtsai-ea-build/ea-art]
 """
 import argparse
+import importlib.util
 import json
 from pathlib import Path
 import re
+import struct
 import sys
 import unittest
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import ea_originals as E  # noqa: E402
+import ea_voices as V  # noqa: E402
+
+_spec = importlib.util.spec_from_file_location('prepare_ea_art', Path(__file__).resolve().parent / 'prepare-ea-art.py')
+P = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(P)
 
 ARGS = None
 
@@ -75,6 +86,65 @@ class Manifest(unittest.TestCase):
         png = E.blank_png()
         self.assertEqual(png[:8], b'\x89PNG\r\n\x1a\n')
         self.assertEqual(png[25], 6)
+
+
+class Voices(unittest.TestCase):
+    def test_files_follow_prefixes_and_variants(self):
+        node = E.parse('Engineer:\n\tDefaultVariant: .wav\n\tPrefixes:\n\t\tamerica: iena\n\t\tcuba: iens\n'
+                       '\tVariants:\n\t\tkorea: .aud\n\tDisablePrefixes: Zapped\n\tVoices:\n\t\tSelect: sea, seb\n\t\tZapped: igenzapa\n')[0]
+        v = V.VoiceSet('Engineer', node)
+        self.assertEqual(v.files('Select', 'america'), ['ienasea.wav', 'ienaseb.wav'])
+        self.assertEqual(v.files('Select', 'cuba'), ['ienssea.wav', 'iensseb.wav'])
+        self.assertEqual(v.files('Select', 'korea'), ['sea.aud', 'seb.aud'])
+        self.assertEqual(v.files('Zapped', 'cuba'), ['igenzapa.wav'])
+
+    def test_several_prefixes_per_faction_are_refused(self):
+        node = E.parse('X:\n\tPrefixes:\n\t\tamerica: a, b\n\tVoices:\n\t\tSelect: s\n')[0]
+        with self.assertRaises(V.VoiceError):
+            V.VoiceSet('X', node)
+
+    def test_clip_names(self):
+        self.assertEqual(V.clip_file('IGISEA.WAV'), 'igisea.wav')
+        self.assertIsNone(V.clip_file('ra2|modern-factions/audio/rcn-infantry-select-en.wav'))
+        self.assertIsNone(V.clip_file('igisea.aud'))
+        with self.assertRaises(V.VoiceError):
+            V.clip_file('a-very-long-project-clip-name.wav')
+        self.assertIsNone(V.clip_file('a-very-long-project-clip-name.wav', strict=False))
+
+    def test_clip_allowlist(self):
+        for ok in ('igisea.wav', 'idogatta.wav', 'vsquat1a.wav'):
+            self.assertTrue(P.allowed_audio(ok), ok)
+        for bad in ('ceva001.wav', 'theme.mix', 'audio.bag', 'audio.idx', 'grinder.aud', '../igisea.wav', 'a/b.wav', 'IGISEA.WAV'):
+            self.assertFalse(P.allowed_audio(bad), bad)
+
+    @staticmethod
+    def wave(code, data, rate=22050, align=512, per_block=1017):
+        fmt = struct.pack('<HHIIHH', code, 1, rate, rate, align if code == 17 else 2, 4 if code == 17 else 16)
+        if code == 17:
+            fmt += struct.pack('<HH', 2, per_block)
+        body = b'WAVE' + b'fmt ' + struct.pack('<I', len(fmt)) + fmt + b'data' + struct.pack('<I', len(data)) + data
+        return b'RIFF' + struct.pack('<I', len(body)) + body
+
+    def test_wave_reader(self):
+        adpcm = P.wav_info(self.wave(17, b'\0' * 1024))
+        self.assertEqual((adpcm['format'], adpcm['data'], adpcm['seconds']), ('ima-adpcm', 1024, round(2 * 1017 / 22050, 3)))
+        pcm = P.wav_info(self.wave(1, b'\0' * 44100))
+        self.assertEqual((pcm['format'], pcm['seconds']), ('pcm', 1.0))
+        with self.assertRaises(ValueError):
+            P.wav_info(b'RIFF\0\0\0\0AVI LIST')
+        with self.assertRaises(ValueError):
+            P.check_clip('igisea.wav', self.wave(1, b'\0' * (P.MAX_CLIP_BYTES + 2)))
+        with self.assertRaises(ValueError):
+            # Small but long: 1000 bytes at 10 Hz is 50 s, music or speech rather than a clip.
+            P.check_clip('igisea.wav', self.wave(1, b'\0' * 1000, rate=10))
+        self.assertEqual(P.check_clip('igisea.wav', self.wave(17, b'\0' * 1024))['format'], 'ima-adpcm')
+
+    def test_audio_index_reader(self):
+        entry = b'igisea'.ljust(16, b'\0') + struct.pack('<5I', 10, 20, 22050, 12, 512)
+        index = P.read_idx(b'GABA' + struct.pack('<ii', 2, 1) + entry)
+        self.assertEqual(index, {'igisea.wav': (10, 20, 22050, 12, 512)})
+        with self.assertRaises(ValueError):
+            P.read_idx(b'MIX1' + b'\0' * 8)
 
 
 class Generated(unittest.TestCase):
@@ -158,6 +228,12 @@ class Generated(unittest.TestCase):
                 factions = E.split_list(hint.val('Factions'))
                 self.assertTrue(factions and set(factions) <= set(E.COUNTRIES + E.MODERN), key)
 
+    def test_art_manifest_lists_no_audio(self):
+        if not ARGS.ea_art:
+            self.skipTest('pass --ea-art to check against EA-INPUTS.json')
+        manifest = json.loads((ARGS.ea_art / 'EA-INPUTS.json').read_text())
+        self.assertFalse([f['name'] for f in manifest['files'] if Path(f['name']).suffix.lower() in ('.wav', '.aud')])
+
     def test_palettes(self):
         palettes = {c.key for c in self.rules['^Palettes'].children}
         self.assertIn('PlayerColorPalette@eaplayer', palettes)
@@ -168,6 +244,116 @@ class Generated(unittest.TestCase):
             for group in ('PlayerPalettes', 'Palettes'):
                 for p in (t.get(group).children if t.get(group) is not None else []):
                     self.assertIn(p.value, E.EA_PALETTE_NAMES | E.NEUTRAL_PALETTES, f'{key}: {p.value}')
+
+
+class GeneratedVoices(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        if not ARGS.content or not (ARGS.content / 'ea-audio.json').is_file():
+            raise unittest.SkipTest('pass --content with generated original voices to check them')
+        c = ARGS.content
+        cls.rules = {n.key: n for n in E.parse((c / 'ea-audio.yaml').read_text(encoding='utf-8'))}
+        cls.voices = {n.key: n for n in E.parse((c / 'ea-voices.yaml').read_text(encoding='utf-8'))}
+        cls.weapons = {n.key: n for n in E.parse((c / 'ea-weapons.yaml').read_text(encoding='utf-8'))}
+        cls.summary = json.loads((c / 'ea-audio.json').read_text(encoding='utf-8'))
+
+    def clips(self, value):
+        return [x.strip() for x in (value or '').split(',') if x.strip()]
+
+    def test_rules_touch_voices_only(self):
+        for key, actor in self.rules.items():
+            for t in actor.children:
+                kind = E.trait_type(t.key)
+                if kind == 'GrantConditionOnFaction':
+                    self.assertTrue(t.key.startswith('GrantConditionOnFaction@' + V.CONDITION), f'{key}.{t.key}')
+                    self.assertTrue(t.val('Condition').startswith(V.CONDITION), key)
+                    self.assertTrue(set(E.split_list(t.val('Factions'))) <= set(E.COUNTRIES), f'{key}: {t.val("Factions")}')
+                    self.assertEqual({c.key for c in t.children}, {'Condition', 'Factions'}, key)
+                elif kind in V.VOICE_TRAITS:
+                    self.assertTrue({c.key for c in t.children} <= {'VoiceSet', 'Volume', 'RequiresCondition'}, f'{key}.{t.key}')
+                    if t.val('VoiceSet'):
+                        self.assertIn(t.val('VoiceSet'), self.voices, f'{key}.{t.key}')
+                        self.assertTrue(t.val('VoiceSet').startswith('Ea'), key)
+                else:
+                    self.fail(f'{key}.{t.key}: not a voice trait')
+
+    def test_original_voices_only_for_original_countries_except_the_dog(self):
+        for key, actor in self.rules.items():
+            grants = [t for t in actor.children if t.key.startswith('GrantConditionOnFaction@')]
+            twins = [t for t in actor.children if '@' in t.key and E.trait_type(t.key) in V.VOICE_TRAITS]
+            if key in V.EVERY_FACTION_ACTORS:
+                self.assertEqual(grants, [], key)
+                self.assertEqual([t.key for t in actor.children], ['RTSAIVoiced'], key)
+                continue
+            self.assertTrue(grants and twins, key)
+            granted = set()
+            for g in grants:
+                granted |= set(E.split_list(g.val('Factions')))
+            self.assertEqual(granted, set(E.COUNTRIES), key)
+            project = [t for t in actor.children if '@' not in t.key and E.trait_type(t.key) in V.VOICE_TRAITS]
+            self.assertEqual(len(project), 1, key)
+            for g in grants:
+                self.assertIn('!' + g.val('Condition'), project[0].val('RequiresCondition'), key)
+            for t in twins:
+                self.assertTrue(t.val('RequiresCondition').startswith(t.key.split('@', 1)[1]), key)
+        self.assertEqual(self.rules['dog'].get('RTSAIVoiced').val('VoiceSet'), 'EaDogVoice')
+        for unit in ('e1', 'e2', 'engineer', 'mtnk', 'htnk', 'spy'):
+            self.assertIn(unit, self.rules)
+
+    def test_voice_sets_name_extracted_clips_or_project_files(self):
+        played = set(self.summary['clips'])
+        used = set()
+        for key, n in self.voices.items():
+            self.assertTrue(key.startswith('Ea'), key)
+            self.assertEqual(n.val('DefaultVariant'), '.wav', key)
+            for phrase in n.get('Voices').children:
+                for clip in self.clips(phrase.value):
+                    if clip.startswith(V.AUDIO_PREFIX):
+                        name = clip[len(V.AUDIO_PREFIX):] + '.wav'
+                        self.assertIn(name, played, f'{key}.{phrase.key}')
+                        used.add(name)
+                    else:
+                        self.assertNotIn('web/ea', clip, f'{key}.{phrase.key}')
+        report = self.clips(self.weapons['DogJaw'].val('Report'))
+        self.assertTrue(report and all(r.startswith(V.AUDIO_PREFIX) for r in report), report)
+
+        def sounds(node):
+            for c in node.children:
+                yield from self.clips(c.value)
+                yield from sounds(c)
+        for w in self.weapons.values():
+            used |= {x[len(V.AUDIO_PREFIX):] for x in sounds(w) if x.startswith(V.AUDIO_PREFIX)}
+        self.assertEqual(used, played)
+
+    def test_weapons_overlay_sets_sounds_only(self):
+        fields = set(V.WEAPON_SOUND_FIELDS)
+        for key, w in self.weapons.items():
+            for c in w.children:
+                if E.trait_type(c.key) == 'Warhead':
+                    self.assertEqual({x.key for x in c.children}, set(V.WARHEAD_SOUND_FIELDS) & {x.key for x in c.children}, f'{key}.{c.key}')
+                    self.assertTrue(c.children, f'{key}.{c.key}')
+                else:
+                    self.assertIn(c.key, fields, f'{key}.{c.key}')
+        # Original sounds only for the dog's bite and weapons only original-country actors fire; inheritors keep theirs.
+        for key, entry in self.summary['weapons'].items():
+            if 'kept' in entry:
+                self.assertFalse([v for v in entry['kept'].values() if 'web/ea' in v], key)
+            elif key != 'DogJaw':
+                self.assertTrue(entry['firedBy'], key)
+
+    def test_clips_match_the_manifest(self):
+        if not ARGS.ea_art:
+            self.skipTest('pass --ea-art to check against EA-INPUTS.json')
+        manifest = json.loads((ARGS.ea_art / 'EA-INPUTS.json').read_text())
+        audio = manifest['audio']
+        self.assertEqual(sorted(f['name'] for f in audio['files']), sorted(self.summary['clips']))
+        self.assertEqual(sorted(audio['absent']), sorted(self.summary['absent']))
+        for f in audio['files']:
+            self.assertTrue(P.allowed_audio(f['name']), f['name'])
+            self.assertLessEqual(f['size'], P.MAX_CLIP_BYTES, f['name'])
+            self.assertLessEqual(f['seconds'], P.MAX_CLIP_SECONDS, f['name'])
+        on_disk = {p.name for p in (ARGS.ea_art / audio['folder']).iterdir()} - set(P.AUDIO_RECORDS)
+        self.assertEqual(on_disk, {f['name'] for f in audio['files']})
 
 
 def main():

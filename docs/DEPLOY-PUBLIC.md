@@ -14,8 +14,11 @@ apply:
 `node tools/build-public.mjs` writes `build/public-web/`. This is the standalone game: project art and audio, no
 server APIs (accounts, events and matchmaking: below). Since 13 October the isometric mode also draws the nine
 original countries with the original Westwood art, under EA's free, non-commercial C&C modding guidelines: see
-[Original Westwood art](#original-westwood-art-isometric-mode). No EA audio, music or video is ever included. Its exact
-standalone and engine inputs are recorded in the verified `build-inputs.json`; use `tools/pin-standalone.ps1` to
+[Original Westwood art](#original-westwood-art-isometric-mode). With the
+[original unit voices](#original-unit-voices-and-weapon-sounds-isometric-mode) those countries also speak with their
+original RA2 voices and fire their own weapons with the original sounds, and the Attack Dog barks with its original clips
+for every faction. No C&C music, EVA or video is ever included. Its
+exact standalone and engine inputs are recorded in the verified `build-inputs.json`; use `tools/pin-standalone.ps1` to
 prepare those inputs.
 
 The static builder validates the actual ORAPACK1 `ora/BUNDLE_ID` against each supplied `sprites/index.json` before deleting output or running Vite. Missing, malformed, duplicate or mismatched IDs stop the build; rebuild the prebakes from the exact current pack. The builder never relabels a cache automatically. Run `node --test tools/public-sprite-inputs.test.mjs` to check this guard and output preservation.
@@ -26,7 +29,7 @@ The static builder validates the actual ORAPACK1 `ora/BUNDLE_ID` against each su
 | `rt-<hash>/public/aot/_framework/` | .NET runtime + engine + mod, lean AOT | 48 MB | 11.0 MB (brotli 11) | always |
 | `data-<hash>/public/web-bundle.pack` | rules, maps, terrain, small files | 9.2 MB | 4.7 MB (brotli 11) | always |
 | `data-<hash>/public/sprites/` | prebaked sprite sheets, one set per faction + shared + effects | 467 MB | 16.7 MB (brotli 11) | shared 2.7 + own faction 1.6 before the game; the other factions and effects (2 MB) right after; factions not in the match only if they appear |
-| `data-<hash>/public/audio/` | sounds and music, one file each | 84 MB | 70 MB (WAVs brotli) | as played; the announcer and the music fetched in the background |
+| `data-<hash>/public/audio/` | sounds and music, one file each (with the original voices and weapon sounds: 521 more clips under `web/ea/audio/`, 6.1 MB, 4.9 MB stored) | 89 MB | 72 MB (WAVs brotli) | as played; the announcer and the music fetched in the background |
 | `data-<hash>/public/web-art.pack` + .json | large sprite files, read by byte range only if sheets were not prebaked | 108 MB | as stored | normally never |
 
 `web-art.pack` can be left out (e.g. over a host's file-size limit): every map's sprites are prebaked, and since
@@ -81,14 +84,16 @@ follows the faction.
 **Legal conditions** (EA's C&C Franchise Modding Guidelines: free, non-commercial):
 - the page shows "EA has not endorsed and does not support this product." on the main menu, the skirmish screen and
   the campaign screen (`web/src/legal.ts`), and the static root carries `NOTICE`;
-- only art files (`.shp .vxl .hva .pal`); no `theme.mix`, EVA, voices or any other EA audio, music or video;
+- only art files (`.shp .vxl .hva .pal`) and, since the original voices, short unit voice and sound clips (`.wav`
+  from `audio.bag`); never `theme.mix` or any other C&C music, EVA, video or archives (the guidelines forbid only the
+  music);
 - the extracted files live outside every Git repository; `EA-INPUTS.json` records each file's name, sha256 and
-  source, and the bundle carries `mods/rtsai/web/ea/ea-content.json`.
+  source (the clips under `audio`), and the bundle carries `mods/rtsai/web/ea/ea-content.json`.
 
 **Build.**
 ```sh
 python tools/prepare-ea-art.py plan --inputs <inputs> --out <plan.json>
-python tools/prepare-ea-art.py extract --plan <plan.json> --out <dir outside every repository>
+python tools/prepare-ea-art.py extract --plan <plan.json> --out <dir outside every repository> [--mod <RTSAI-Mod> --support <OpenRA/Support>]
 python tools/prepare-ea-art.py manifest --plan <plan.json> --dir <that dir> --inputs <inputs>
 python tools/public.py --inputs <inputs> --out <new isometric build> --ea-art <that dir>
 python tools/public.py --inputs <inputs> --out <new classic build> --game-mode classic
@@ -112,12 +117,16 @@ trait would draw project art with a swapped palette, or if another owner's cameo
 `websim pack --ea` bundles exactly the hashed `EA-INPUTS.json` files (large sprites in `web-art.pack`) and appends
 the three overlays at the very end of Rules, Sequences and ModelSequences.
 
+The plan also lists the original voice clips; `extract` and `manifest` handle both, and `public.py --no-ea-audio`
+builds the original art without the voices (see
+[Original unit voices](#original-unit-voices-and-weapon-sounds-isometric-mode)).
+
 **Checks.** `tools/test-ea-art.py`, `tools/test-bundle-paths.py`, `node --test tools/ea-gate.test.mjs`;
 `websim contenttest --faction <each of 16> --baseline <dump>`: original palettes iff original images, no missing
 original file, modern factions identical to a dump of the same build without original art; `build-public.mjs`
-refuses MIX/BAG/IDX/VQA/BIK payloads, audio under `web/ea`, unlisted original files and original art in the Classic
-profile (`tools/ea-gate.mjs`); `tools/ea-art-browser-test.mjs` (notice, screenshots, no original audio requests,
-sheet groups). Parity on 13 October: 14 runs (isometric and Classic, AOT and interpreter, 1500 ticks each,
+refuses MIX/BAG/IDX/VQA/BIK payloads, audio in the art folder, unlisted original files and original art in the
+Classic profile (`tools/ea-gate.mjs`); `tools/ea-art-browser-test.mjs` (notice, screenshots, original voices, sheet
+groups). Parity on 13 October: 14 runs (isometric and Classic, AOT and interpreter, 1500 ticks each,
 including `skirmish-originals` and `battle-originals`) identical.
 
 **Sizes** (13 October build, brotli 11, compared with the same build without original art):
@@ -134,6 +143,71 @@ First visit on emulated 4G (9 Mbps, 170 ms, HTTP/1.1, standard AOT runtime, one 
 world started at 28.7 s → 32.1 s (31.9 → 33.9 MB transferred); America vs Russia 28.9 s → 35.9 s (32.3 → 39.4 MB;
 the harness starts the match from a setup screen prepared for its default nations, so America's sheets download
 after Start). Return visits: 6.5–6.8 s → 7.2–7.3 s.
+
+## Original unit voices and weapon sounds (isometric mode)
+
+**What.** The units of America, Germany, England, France, Korea, Cuba, Libya, Iraq and Russia speak with their original
+RA2 voice sets: GIVoice, ConscriptVoice, the Allied and Soviet vehicle and naval voices, Tanya, the Spy, the Engineer
+(Allied or Soviet), Kirov and the rest (select, move, attack, feedback, die, and the generic infantry deaths); 47 actor
+types. The Attack Dog barks with its original clips (DogVoice) and bites with its original sounds (weapon `DogJaw`) for
+EVERY faction: a real bark is not a faction voice, and the dog is drawn in the original art for everyone already.
+Shared units (engineer, spy, MCVs, harvesters, …) speak with the original voice only when an original country owns
+them; the seven modern factions keep their own voices. Like the art, the voice follows the builder's faction.
+
+The weapons only original-country actors fire (61: the Grizzly's, Rhino's elite and Apocalypse's cannons, the Tesla
+tank, coil and trooper, the Prism, the Mirage, the Harrier's and Black Eagle's missiles, the Kirov's bombs, Tanya's
+pistols, the Desolator, …) play their original fire and impact sounds (`Report`, `StartBurstReport`, `AfterFireSound`,
+the warheads' `ImpactSounds`). A weapon a modern faction can also fire keeps the project's sounds: the G.I.'s and the
+Conscript's guns (modern factions field `e1`/`e2` in missions), the destroyer's, the harvester's, building explosions.
+
+521 clips, 6.1 MB raw, kept exactly as Westwood stored them (IMA-ADPCM WAV, which the engine decodes), fetched one by
+one when first played. EVA, building sounds and music are unchanged (project audio).
+
+**Legal.** EA's guidelines forbid only C&C music files; other C&C assets (art, audio) are under the same free,
+non-commercial, revocable licence as the art. The page notice (`web/src/legal.ts`) and `NOTICE` say so; no music.
+
+**Build.** `prepare-ea-art.py plan` lists the clips the original voice sets and those weapons name
+(`tools/ea_voices.py`); `extract` takes them from the player's own RA2 files (`OpenRA.Utility rtsai-classic --extract`,
+the classic add-on's mounts) into `<dir>/audio/`, only clips RA2's `audio.idx` lists, each checked against the index
+(data length) and refused if it is not a short RIFF WAVE file (512 KB / 20 s at most) or an EVA name. Six planned clips
+RA2 lacks (`icraate`, `icramoe`, `itesseb`, `vkirfea-c`) are recorded in `audio/absent.json`: the pool plays the
+others, and a phrase with no original clip keeps the project's sound. `manifest` records the clips under `audio` in
+`EA-INPUTS.json` (the art identity `sha256` is unchanged, so builds without voices still verify).
+
+**How.** `tools/ea_voices.py` (run by `prepare-content.py --ea-art`) compares the classic add-on's voice set of each
+actor an original country fields (the reference) with the current one, and writes:
+- `content/ea-voices.yaml`: a twin voice set per reference set (`EaGIVoice-via-R2ChinainfantryVoice`, …) naming
+  `ra2|web/ea/audio/<clip>`, with explicit names (per-faction prefixes resolved, e.g. the Allied and Soviet engineer);
+  every phrase the current set defines stays defined (the engine throws on a phrase a voice set lacks), from the
+  original clips, or from the current set's clips where the original set has no such phrase (its RA2-named stand-ins
+  become the originals);
+- `content/ea-audio.yaml` (rules, loaded last): `GrantConditionOnFaction@ea-voice` for the nine countries, the project
+  voice trait disabled by it and `RTSAIVoiced@ea-voice` enabled by it; the dog's voice set replaced for everyone;
+- `content/ea-weapons.yaml`: the sounds of `DogJaw` and of every weapon only actors the nine countries own name (their
+  skirmish reachability and the mission placements; a weapon another weapon names, or one with different sounds in the
+  original game, is left alone). Weapons that inherit a changed one get their current sounds restated ("kept" in
+  `ea-audio.json`: e.g. the modern factions' missiles inheriting `Maverick`), and the generator fails if any other
+  weapon's resolved sounds would change;
+- `content/ea-audio.json`: the clips played. `websim pack` bundles exactly those (it fails on a clip the content plays
+  but `EA-INPUTS.json` lacks, a listed clip nothing plays, a changed hash, a non-WAVE file or a name outside the
+  allowlist) into `web-audio.pack` under `mods/rtsai/web/ea/audio/`, lists them in `ea-content.json`, and appends the
+  three overlays to Rules, Voices and Weapons. A clip the rules name that is neither extracted nor recorded absent
+  fails `prepare-content.py`.
+
+The browser runtime and the engine are unchanged: the rules add voices, a voice-only condition and weapon sounds, and
+the only `sim/` change is the native packer and its content test (`sim/OpenRA.WebSim.Native`, not part of the runtime).
+A release needs a new data root (rules, bundle id, sprite sheets rebuilt by `public.py`) and a page pointing at it; the
+runtime root stays (checked on 14 October: the live `rt-08958508163b/` runtime with this data passes the browser test).
+
+**Checks.** `tools/test-ea-art.py` (voice generator, clip allowlist, WAVE/IDX readers; with `--content --ea-art`: the
+rules touch voice traits only, conditions go to the nine countries only, every clip is listed);
+`tools/test-bundle-paths.py` (packer fixtures); `node --test tools/ea-gate.test.mjs` (the static gate allows exactly the
+listed `web/ea/audio/*.wav` clips and refuses archives, music, EVA, unlisted or oversized clips and EA audio in the
+Classic profile); `websim unpack --audio` then `websim contenttest --faction <each of 16>` (original countries speak
+only original voices, modern factions only the dog's and fire no weapon with original sounds but its bite, every clip on
+disk); `tools/ea-art-browser-test.mjs` (an America G.I. plays GIVoice and a Russia Conscript ConscriptVoice from
+`web/ea/audio`, decoded by the engine, a Russia Tesla tank fires its original bolt; a China rifleman
+keeps China's voice and a China dog barks with the original clips, the only ones a modern match fetches).
 
 ## Frontend-only updates
 
@@ -261,3 +335,6 @@ The code paths those browsers would exercise:
   ([PUBLIC-CO-COMMANDER.md](PUBLIC-CO-COMMANDER.md)).
 - **Analytics and error reporting.**
 - **A credits/licenses page** for the project's audio.
+- **Original sounds for shared weapons, buildings and EVA** for the original countries. Weapons are shared definitions:
+  per-faction sounds for a weapon modern factions also fire (the G.I.'s gun) would need per-faction weapon twins behind
+  conditional armaments, which changes the actors' armaments (simulation) and needs a parity check.

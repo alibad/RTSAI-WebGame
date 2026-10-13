@@ -3,7 +3,9 @@
 Usage: python3 tools/public.py --inputs <prepare-inputs directory> --out <NEW session build dir>
 Pass --check-only to verify inputs/prerequisites without compiling. No worktree/default private content.
 Isometric only: --ea-art <dir> (tools/prepare-ea-art.py, outside every repository) draws the nine original countries
-with the original Westwood art (EA's free, non-commercial modding guidelines; art files only, never EA audio).
+with the original Westwood art and gives them their original unit voices, and the Attack Dog its original barks and bite
+for every faction (EA's free, non-commercial modding guidelines: art and unit voice/sound clips, never C&C music).
+--no-ea-audio keeps the original art without the original voices.
 """
 import argparse
 import importlib.util
@@ -22,6 +24,7 @@ def main():
     ap.add_argument('--inputs',type=Path,required=True); ap.add_argument('--out',type=Path,required=True)
     ap.add_argument('--game-mode',choices=['isometric','classic'],default='isometric'); ap.add_argument('--maps',default='all'); ap.add_argument('--check-only',action='store_true')
     ap.add_argument('--ea-art',type=Path,help='verified original-art directory (isometric only)')
+    ap.add_argument('--no-ea-audio',action='store_true',help='with --ea-art: original art only, no original unit voices or sounds')
     args=ap.parse_args(); inputs=args.inputs.resolve(); out=args.out.absolute()
     ea=args.ea_art.resolve() if args.ea_art else None
     if ea and args.game_mode!='isometric': raise ValueError('Original art is isometric only; Classic/top-down keeps the stand-ins')
@@ -51,7 +54,7 @@ def main():
     content=out/'content';scenarios=out/'scenarios'
     subprocess.run([sys.executable,str(ROOT/'tools/prepare-content.py'),'--mod',str(mod),'--missions',str(inputs/'missions/missions'),
                     '--classic-source',str(inputs/'classic-map-source'),'--out',str(content),'--scenarios-out',str(scenarios),'--game-mode',args.game_mode,
-                    *(['--ea-art',str(ea)] if ea else [])],check=True)
+                    *(['--ea-art',str(ea)] if ea else []),*(['--no-ea-audio'] if ea and args.no_ea_audio else [])],check=True)
     props=['-p:WebProfile=public',f'-p:EngineRoot={build_engine}{os.sep}',f'-p:ModRoot={mod}{os.sep}',f'-p:WebBuildRoot={out}{os.sep}']
     subprocess.run(['dotnet','build',str(ROOT/'sim/OpenRA.WebSim.Native/OpenRA.WebSim.Native.csproj'),'-c','Release','--nologo','-v:q',*props],check=True)
     runner=out/'bin/OpenRA.WebSim.Native-public/Release/net10.0/websim.dll'

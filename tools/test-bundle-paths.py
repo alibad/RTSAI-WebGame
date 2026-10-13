@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
-"""Exercise the real pack CLI under visible/hidden ancestors and with original-art fixtures (synthetic bytes, never
-real EA files): allowlist, hashes, placement under web/ea, ea-content.json and the manifest order."""
+"""Exercise the real pack CLI under visible/hidden ancestors and with original-art and original-voice fixtures
+(synthetic bytes, never real EA files): allowlists, hashes, placement under web/ea (clips in the audio pack under
+web/ea/audio), ea-content.json and the manifest order."""
 import argparse
 import hashlib
 import json
@@ -70,6 +71,7 @@ def original_art(websim):
         root = Path(tmp)
         manifest_yaml = ('LoadScreen: RTSAILoadScreen\nAssemblies: OpenRA.Mods.RTSAI.dll\n\nRules:\n\tra2|rules.yaml\n\n\tra2|campaigns/countries.yaml\n\n'
                          'Sequences:\n\tra2|seq.yaml\n\n\tra2|campaigns/country-sequences.yaml\n\nModelSequences:\n\tra2|voxels.yaml\n\n'
+                         'Weapons:\n\tra2|w.yaml\n\nVoices:\n\tra2|v.yaml\n\n'
                          'Notifications:\n\tra2|n.yaml\n\nMapFolders:\n\tra2|maps: System\n\n')
         files = {
             'engine/VERSION': b'test\n', 'engine/glsl/combined.vert': b'shader', 'engine/mods/common/rules.yaml': b'World:\n',
@@ -78,6 +80,8 @@ def original_art(websim):
             'mod/mods/rtsai/maps/blank-shellmap/map.bin': b'map', 'mod/mods/rtsai/maps/blank-shellmap/map.yaml': b'MapFormat: 12\n',
             'content/countries.yaml': b'', 'content/country-sequences.yaml': b'', 'content/country-notifications.yaml': b'',
             'content/ea-art.yaml': b'', 'content/ea-sequences.yaml': b'', 'content/ea-models.yaml': b'',
+            'content/ea-audio.yaml': b'', 'content/ea-voices.yaml': b'', 'content/ea-weapons.yaml': b'',
+            'mod/mods/rtsai/standalone/audio/voices/idogsela.wav': b'RIFF\x04\x00\x00\x00WAVEproject',
         }
         for rel, data in files.items():
             (root / rel).parent.mkdir(parents=True, exist_ok=True)
@@ -86,13 +90,25 @@ def original_art(websim):
         ea.mkdir()
         art = {'big.shp': b'S' * 40000, 'small.shp': b's' * 100, 'unit.vxl': b'v' * 50000, 'unit.hva': b'h' * 10, 'unittem.pal': b'p' * 768}
 
-        def write(art_files, drawn, extra=()):
+        def write(art_files, drawn, extra=(), clips=None, played=None):
             for name, data in art_files.items():
                 (ea / name).write_bytes(data)
             listed = [{'name': n, 'sha256': hashlib.sha256(d).hexdigest(), 'size': len(d), 'source': 'fixture'} for n, d in art_files.items()]
             listed += list(extra)
-            (ea / 'EA-INPUTS.json').write_text(json.dumps({'files': listed}))
+            value = {'files': listed}
+            if clips is not None:
+                (ea / 'audio').mkdir(exist_ok=True)
+                for name, data in clips.items():
+                    (ea / 'audio' / name).write_bytes(data)
+                value['audio'] = {'folder': 'audio', 'absent': [], 'files': [
+                    {'name': n, 'sha256': hashlib.sha256(d).hexdigest(), 'size': len(d), 'source': 'fixture'} for n, d in clips.items()]}
+            (ea / 'EA-INPUTS.json').write_text(json.dumps(value))
             (root / 'content/ea-files.json').write_text(json.dumps({'files': drawn}))
+            played_file = root / 'content/ea-audio.json'
+            if played is None:
+                played_file.unlink(missing_ok=True)
+            else:
+                played_file.write_text(json.dumps({'clips': played}))
 
         def pack(out, *extra):
             return subprocess.run(['dotnet', str(websim), 'pack', '--engine', str(root / 'engine'), '--mod', str(root / 'mod'),
@@ -122,6 +138,11 @@ def original_art(websim):
                     entries_in_section.append(line.strip())
             assert entries_in_section[-1] == last, (section, entries_in_section)
         assert manifest.index('ra2|campaigns/countries.yaml') < manifest.index('ra2|web/content/ea-art.yaml')
+        # Art only (the content plays no original clip): no original audio, no voice overlays.
+        assert 'ea-voices.yaml' not in manifest and 'ea-audio.yaml' not in manifest, manifest
+        assert record.get('audio') is None, record
+        audio = [f['path'] for f in json.loads((root / 'ok/web-audio.json').read_text())['files']]
+        assert audio == ['mods/rtsai/standalone/audio/voices/idogsela.wav'], audio
 
         # Audio, archives or anything outside the allowlist, a changed file, or art the content draws but the manifest
         # does not list: refused.
@@ -135,8 +156,58 @@ def original_art(websim):
         assert pack(root / 'unlisted').returncode != 0, 'unlisted drawn file accepted'
         write(art, sorted(art))
         assert pack(root / 'classic', '--game-mode', 'classic').returncode != 0, 'original art accepted in classic'
+
+        # Original voices: exactly the clips the content plays, in web-audio.pack under web/ea/audio, listed in ea-content.json.
+        def wave(n):
+            return b'RIFF' + (n - 8).to_bytes(4, 'little') + b'WAVE' + b'a' * (n - 12)
+        clips = {'idogsela.wav': wave(300), 'igisea.wav': wave(200)}
+        write(art, sorted(art), clips=clips, played=sorted(clips))
+        r = pack(root / 'voices')
+        assert r.returncode == 0, r.stderr
+        bundle = entries((root / 'voices/web-bundle.pack').read_bytes())
+        assert not [n for n in bundle if n.startswith('mods/rtsai/web/ea/audio/')], 'original clips in the core bundle'
+        index = json.loads((root / 'voices/web-audio.json').read_text())['files']
+        audio_pack = (root / 'voices/web-audio.pack').read_bytes()
+        by_path = {f['path']: audio_pack[f['offset']:f['offset'] + f['size']] for f in index}
+        assert sorted(by_path) == ['mods/rtsai/standalone/audio/voices/idogsela.wav', 'mods/rtsai/web/ea/audio/idogsela.wav',
+                                   'mods/rtsai/web/ea/audio/igisea.wav'], sorted(by_path)
+        assert by_path['mods/rtsai/web/ea/audio/igisea.wav'] == clips['igisea.wav']
+        record = json.loads(bundle['mods/rtsai/web/ea/ea-content.json'])
+        assert sorted(f['name'] for f in record['audio']) == sorted(clips), record
+        manifest = bundle['mods/rtsai/mod.yaml'].decode()
+        for section, last in (('Rules', 'ra2|web/content/ea-audio.yaml'), ('Voices', 'ra2|web/content/ea-voices.yaml'),
+                              ('Weapons', 'ra2|web/content/ea-weapons.yaml'), ('Sequences', 'ra2|web/content/ea-sequences.yaml')):
+            body = manifest.split('\n' + section + ':\n', 1)[1]
+            entries_in_section = []
+            for line in body.split('\n'):
+                if line and not line[0].isspace():
+                    break
+                if line.strip():
+                    entries_in_section.append(line.strip())
+            assert entries_in_section[-1] == last, (section, entries_in_section)
+        assert manifest.index('ra2|web/content/ea-art.yaml') < manifest.index('ra2|web/content/ea-audio.yaml')
+
+        # Refused: a played clip the manifest lacks, a listed clip nothing plays, a changed clip, not WAVE, too large, a
+        # name that is no unit voice (music, EVA), and played clips without an audio section.
+        write(art, sorted(art), clips=clips, played=sorted(clips) + ['igiseb.wav'])
+        assert pack(root / 'unplayed').returncode != 0, 'a played clip the manifest lacks accepted'
+        write(art, sorted(art), clips=clips, played=['igisea.wav'])
+        assert pack(root / 'extra').returncode != 0, 'a listed clip nothing plays accepted'
+        write(art, sorted(art), clips=clips, played=sorted(clips))
+        (ea / 'audio/igisea.wav').write_bytes(wave(201))
+        assert pack(root / 'changed-clip').returncode != 0, 'a changed clip accepted'
+        for name, data in (('igisea.wav', b'not a wave file'), ('igisea.wav', wave(512 * 1024 + 2)), ('grinder.aud', wave(100)),
+                           ('ceva001.wav', wave(100))):
+            for f in (ea / 'audio').iterdir():
+                f.unlink()
+            write(art, sorted(art), clips={name: data}, played=[name])
+            assert pack(root / ('bad-' + name)).returncode != 0, f'{name} ({len(data)} bytes) accepted'
+        write(art, sorted(art), played=sorted(clips))
+        assert pack(root / 'no-audio-section').returncode != 0, 'played clips without an audio section accepted'
     print('PASS: original art bundled under web/ea (large sprites range-read) with ea-content.json and the overlays last; '
-          'audio, changed, unlisted and classic-mode original art refused')
+          'original voices in web-audio.pack under web/ea/audio with the rules, voice and weapon overlays last; '
+          'audio in the art folder, changed, unlisted, unplayed, oversized, non-WAVE, music/EVA names and classic-mode '
+          'originals refused')
 
 
 if __name__ == '__main__':

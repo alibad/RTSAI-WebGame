@@ -1,6 +1,7 @@
 // Static production build of the public web game (the standalone mod: project art and audio; in isometric mode the
-// nine original countries may draw original Westwood art under EA's free, non-commercial modding guidelines, gated
-// by tools/ea-gate.mjs, with EA's notice in the page and in NOTICE) for a static host or CDN. No server APIs:
+// nine original countries may draw original Westwood art and speak with their original unit voices, and the Attack Dog
+// bark with its original clips, under EA's free, non-commercial modding guidelines (no C&C music), gated by
+// tools/ea-gate.mjs, with EA's notice in the page and in NOTICE) for a static host or CDN. No server APIs:
 // sign-in, events and feedback belong to the website (same origin at rtsai.net/play), and multiplayer matchmaking is
 // Firestore. No private content, no local companion, no native verify.
 //   node tools/build-public.mjs [--out build/public-web] [--quality 11]
@@ -56,7 +57,8 @@ if (inputs.standalone?.profile !== "standalone-main" || !inputs.inputs?.mod || !
 const classicData = path.resolve(repo, opt("classic-data", path.join(path.dirname(data), "public-classic")));
 const profiles = [{ id: "public", dir: data }, ...(argv.includes("--classic-data") || fs.existsSync(path.join(classicData,"web-bundle.pack")) ? [{ id: "public-classic", dir: classicData }] : [])];
 for (const profile of profiles) profile.bundle = verifySpriteBundle(profile);
-// Original art: only allowlisted art under web/ea, listed in ea-content.json, isometric only; never archives, video or audio.
+// Original content: only allowlisted art under web/ea and listed voice/sound clips under web/ea/audio (audio pack), each in
+// ea-content.json, isometric only; never archives, music, video or anything unlisted.
 for (const profile of profiles) profile.ea = checkProfile(profile);
 const framework = path.join(data, "wasm-aot", "wwwroot", "_framework");
 for (const f of ["web-bundle.pack", "web-audio.pack", "web-audio.json", "web-art.pack", "web-art.json", "sprites/index.json", "wasm-aot/wwwroot/_framework/dotnet.js"])
@@ -185,10 +187,10 @@ const headerFile = path.join(out, "_headers");
 const blocks = fs.readFileSync(headerFile,"utf8").split(/\n(?=\/)/);
 fs.writeFileSync(headerFile, blocks.flatMap(block => block.includes("(public|public-classic)") ? profiles.map(p => block.replaceAll("(public|public-classic)", p.id)) : [block]).join("\n"));
 
-// 5. Notices: EA's notice for the original art (also shown in the page), at the static root.
+// 5. Notices: EA's notice for the original art and voices (also shown in the page), at the static root.
 const eaSummary = profiles.find((p) => p.ea)?.ea ?? null;
 fs.writeFileSync(path.join(out, "NOTICE"), noticeText(eaSummary));
-checkOutput(out);
+checkOutput(out, eaSummary);
 
 // 6. What was built: sizes on disk (raw) and over the wire (as stored: brotli, or raw for the range-read packs).
 const files = [];
@@ -206,8 +208,10 @@ for (const f of files) {
 }
 const mb = (n) => (n / 1048576).toFixed(1);
 const eaInputs = path.join(data, "ea-inputs.json");
-const eaArt = eaSummary ? { ...eaSummary, profiles: profiles.filter((p) => p.ea).map((p) => p.id),
-  manifestSha256: fs.existsSync(eaInputs) ? JSON.parse(fs.readFileSync(eaInputs, "utf8")).sha256 : null } : null;
+const eaManifest = fs.existsSync(eaInputs) ? JSON.parse(fs.readFileSync(eaInputs, "utf8")) : null;
+const eaArt = eaSummary ? { files: eaSummary.files, bytes: eaSummary.bytes, notice: eaSummary.notice, profiles: profiles.filter((p) => p.ea).map((p) => p.id),
+  manifestSha256: eaManifest?.sha256 ?? null,
+  ...(eaSummary.audio.files ? { audio: { files: eaSummary.audio.files, bytes: eaSummary.audio.bytes, manifestSha256: eaManifest?.audio?.sha256 ?? null } } : {}) } : null;
 const build = { builtAt: new Date().toISOString(), standalone: inputs.inputs.mod, inputs, bundleId: profiles[0].bundle, modes: profiles.map(p => ({ profile: p.id, bundle: p.bundle })), rtRoot, dataRoot, brotliQuality: quality, eaArt, groups };
 fs.writeFileSync(path.join(out, "BUILD.json"), JSON.stringify(build, null, 2) + "\n");
 console.log(`\n${out}  (${rtRoot}, ${dataRoot})`);

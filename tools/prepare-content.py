@@ -25,7 +25,9 @@ ap.add_argument('--out', type=Path, default=ROOT / 'content')
 ap.add_argument('--scenarios-out', type=Path, default=ROOT / 'scenarios')
 ap.add_argument('--ea-art', type=Path, help='isometric: verified original-art directory (tools/prepare-ea-art.py); '
                 'draws the nine original countries with the original Westwood art')
-ap.add_argument('--ea-list', type=Path, help='isometric: write the original art files the generator needs and stop')
+ap.add_argument('--ea-list', type=Path, help='isometric: write the original art files and voice clips the generator needs and stop')
+ap.add_argument('--no-ea-audio', action='store_true', help='with --ea-art/--ea-list: original art only, without the original '
+                'unit voices and sounds the verified directory otherwise must carry (tools/ea_voices.py)')
 args = ap.parse_args()
 MOD = args.mod.resolve() / 'mods/rtsai'
 OUT = args.out.resolve()
@@ -344,14 +346,22 @@ def missions():
 
 def originals():
     """Original art for the nine original countries (isometric only): content/ea-art.yaml, ea-sequences.yaml,
-    ea-models.yaml and ea-files.json. Render-only; see tools/ea_originals.py."""
+    ea-models.yaml and ea-files.json. Render-only; see tools/ea_originals.py. Unless --no-ea-audio, also their original
+    unit voices and the Attack Dog's barks and bite for every faction: content/ea-audio.yaml (rules), ea-voices.yaml,
+    ea-weapons.yaml and ea-audio.json; see tools/ea_voices.py."""
     import ea_originals
+    import ea_voices
     generator = ea_originals.Generator(args.mod.resolve(), OUT).plan()
+    voices = None if args.no_ea_audio else ea_voices.VoiceGenerator(generator).plan()
     if args.ea_list:
         files = generator.needed_files()
         body = {'schema': 1, 'files': files, 'actors': sorted(generator.actors), 'images': len(generator.images),
                 'models': len(generator.models)}
         body['planSha256'] = hashlib.sha256(json.dumps(files).encode()).hexdigest()
+        if voices is not None:
+            body['audio'] = voices.needed_clips()
+            body['audioActors'] = sorted(voices.actors)
+            body['audioPlanSha256'] = ea_voices.plan_digest(body['audio'])
         args.ea_list.write_text(json.dumps(body, indent=1) + '\n')
         return None
     manifest = json.loads((args.ea_art / 'EA-INPUTS.json').read_text())
@@ -365,6 +375,20 @@ def originals():
             raise ValueError(f'original art {name} differs from EA-INPUTS.json')
     summary = generator.write(OUT)
     print(f"original art: {len(summary['actors'])} actors, {len(generator.seq_nodes)} images, {len(generator.model_nodes)} voxel models, {len(summary['files'])} files")
+    if voices is not None:
+        audio = manifest.get('audio')
+        if audio is None:
+            raise ValueError(f'{args.ea_art / "EA-INPUTS.json"} records no original voice clips: run tools/prepare-ea-art.py '
+                             'plan, extract and manifest again (or pass --no-ea-audio for original art only)')
+        folder = args.ea_art / audio['folder']
+        for f in audio['files']:
+            if hashlib.sha256((folder / f['name']).read_bytes()).hexdigest() != f['sha256']:
+                raise ValueError(f'original clip {f["name"]} differs from EA-INPUTS.json')
+        # Fails when a clip the rules name is neither extracted nor recorded as absent from RA2.
+        voices.generate([f['name'] for f in audio['files']], audio['absent'])
+        vs = voices.write(OUT)
+        print(f"original voices: {len(vs['actors'])} actors, {len(voices.voice_nodes)} voice sets, {len(vs['clips'])} clips, "
+              f"{len(vs['absent'])} absent from RA2 (project sound kept), weapons {', '.join(vs['weapons'])}")
     return manifest
 
 
@@ -382,7 +406,8 @@ if __name__ == '__main__':
     sources=[p for p in MISSIONS.rglob('*') if p.is_file() and p.suffix in {'.yaml','.bin','.md'}]
     sources += [CLASSIC/'mods/ra/tilesets/temperat.yaml',CLASSIC/'mods/ra/tilesets/desert.yaml',MOD/'standalone/maps/twin-fords/map.yaml',MOD/'standalone/maps/twin-fords/map.bin',MOD.parent/'rtsai-topdown/tileset.yaml']
     if ea_manifest: sources.append(args.ea_art/'EA-INPUTS.json')
+    ea_audio=ea_manifest is not None and not args.no_ea_audio
     receipt={'gameMode':args.game_mode,'modId':'rtsai-topdown' if CLASSIC_MODE else 'rtsai','gridType':'Rectangular' if CLASSIC_MODE else 'RectangularIsometric','compilerSha256':hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
-             'eaArt':({'manifestSha256':ea_manifest['sha256'],'files':len(ea_manifest['files']),'notice':ea_manifest['notice'],'generatorSha256':hashlib.sha256((Path(__file__).parent/'ea_originals.py').read_bytes()).hexdigest()} if ea_manifest else None),'sources':[{'path':str(p),'sha256':hashlib.sha256(p.read_bytes()).hexdigest()} for p in sorted(set(sources))],'outputs':[{'path':str(p.relative_to(OUT)),'sha256':hashlib.sha256(p.read_bytes()).hexdigest()} for p in sorted(OUT.rglob('*')) if p.is_file()]}
+             'eaArt':({'manifestSha256':ea_manifest['sha256'],'files':len(ea_manifest['files']),'notice':ea_manifest['notice'],'generatorSha256':hashlib.sha256((Path(__file__).parent/'ea_originals.py').read_bytes()).hexdigest()} if ea_manifest else None),'eaAudio':({'manifestSha256':ea_manifest['audio']['sha256'],'clips':len(ea_manifest['audio']['files']),'absent':len(ea_manifest['audio']['absent']),'generatorSha256':hashlib.sha256((Path(__file__).parent/'ea_voices.py').read_bytes()).hexdigest()} if ea_audio else None),'sources':[{'path':str(p),'sha256':hashlib.sha256(p.read_bytes()).hexdigest()} for p in sorted(set(sources))],'outputs':[{'path':str(p.relative_to(OUT)),'sha256':hashlib.sha256(p.read_bytes()).hexdigest()} for p in sorted(OUT.rglob('*')) if p.is_file()]}
     (OUT/'mode-provenance.json').write_text(json.dumps(receipt,indent=2)+'\n')
     print('prepared nine additional countries, five adapted missions and one original Hezbollah exercise')
