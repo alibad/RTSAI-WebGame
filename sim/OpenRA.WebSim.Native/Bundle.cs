@@ -53,6 +53,8 @@ static class Bundle
 		var modDir = Path.Combine(modRoot, "mods", "rtsai");
 		var classic = opts.TryGetValue("game-mode", out var gameMode) && gameMode == "classic";
 		if (gameMode != null && gameMode is not ("classic" or "isometric")) throw new ArgumentException("Unsupported game mode");
+		if (classic && opts.ContainsKey("ea"))
+			throw new ArgumentException("Original art is isometric only; Classic/top-down keeps the stand-ins");
 		var modId = classic ? "rtsai-topdown" : "rtsai";
 		var primaryDir = Path.Combine(modRoot, "mods", modId);
 
@@ -64,8 +66,6 @@ static class Bundle
 		var lazyArt = !opts.ContainsKey("no-lazy-art");
 		var art = new List<(string Path, string File)>();
 		var originals = opts.TryGetValue("ea", out var eaDir) ? OriginalArt(eaDir, opts.TryGetValue("content", out var eaContent) ? eaContent : "content") : null;
-		if (originals != null && classic)
-			throw new ArgumentException("Original art is isometric only; Classic/top-down keeps the stand-ins");
 		// The cursor art stays in the core bundle: the page draws the mod's cursors from the start of every game, and a
 		// host may serve web-art.pack late or not at all (it is a fallback for sprites the prebaked sheets lack).
 		var keepInCore = CursorSources(modDir);

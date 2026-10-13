@@ -1,4 +1,5 @@
 import { GameSelect } from "../components/ui/fields";
+import { EA_NOTICE } from "../legal";
 // Skirmish setup: pick a nation (flags), a map (its preview is the backdrop), opponents (nation, AI type,
 // colour) and the lobby options the mod offers, then start. The chosen map is prepared in the background while
 // the player decides, so starting only builds the world.
@@ -153,6 +154,7 @@ export function Setup({ game }: { game: Game }) {
               </button>
             </div>
           )}
+          <p data-testid="ea-notice" className="mt-auto text-[11px] leading-snug text-[var(--muted-foreground)]">{EA_NOTICE}</p>
         </section>
 
         {/* Battlefield and opponents */}

@@ -10,7 +10,7 @@ import type { AdviserCommand, AdviserObservation } from "../adviser";
 import { decodeAdviserObservation, decodeAdviserReceipt, decodeAdviserStatus, encodeAdviserActions, encodeAdviserStatus } from "./adviser-rpc";
 import { readVoiceLanguage, saveVoiceLanguage } from "../voice-language";
 import type { Renderer } from "../render/renderer";
-import { gunzipSheet } from "./spritecache";
+import { groupMembers, gunzipSheet } from "./spritecache";
 
 type Handler<T extends FromWorker["type"]> = (m: Extract<FromWorker, { type: T }>) => void;
 
@@ -179,7 +179,8 @@ export class SimClient {
   private sheetProgress() {
     // What a game waits for: shared sheets and its factions' (effects load meanwhile, never waited for).
     const gate = this.gate === null ? this.wanted : this.gate;
-    const wanted = this.sheetList.filter((s) => s.group !== "fx" && (s.group === "" || gate === null || gate.includes(s.group)));
+    // A group of several factions ("america+england+...") is waited for when any of them is.
+    const wanted = this.sheetList.filter((s) => s.group !== "fx" && (s.group === "" || gate === null || groupMembers(s.group).some((g) => gate.includes(g))));
     this.onSheets(wanted.filter((s) => this.renderer.hasTexture(s.id)).length, wanted.length);
   }
 

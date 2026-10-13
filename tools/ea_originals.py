@@ -670,9 +670,13 @@ class Generator:
         self.images = {}       # reference image -> names the EA twin must provide
         self.models = set()    # reference voxel images used
         for name in sorted(self.skirmish):
-            countries = sorted(self.skirmish[name] & set(COUNTRIES), key=COUNTRIES.index)
-            if not countries or name in FOOTPRINT_EXCLUDED or name not in self.cur or name not in self.ref:
+            if not self.skirmish[name] & set(COUNTRIES) or name in FOOTPRINT_EXCLUDED or name not in self.cur or name not in self.ref:
                 continue
+            # Every original country gets the original art of an actor any of them fields: a country that only rarely
+            # owns it (a captured or spawned actor keeps its builder's faction) still sees original art, and no
+            # stand-in image stays attached to an original country, so stand-in sprite sheets are not downloaded for
+            # original-country matches (PackGroups.cs groups a file by the factions whose images use it).
+            countries = list(COUNTRIES)
             if not self._original_art(name):
                 continue  # a modern-faction unit: its reference art is project art too
             cur, ref = self.cur[name], self.ref[name]
