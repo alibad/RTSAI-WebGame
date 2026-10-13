@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { EA_NOTICE } from "./legal";
 import { Game } from "./game";
 import { useStore } from "./store";
 import { Hud } from "./ui/Hud";
@@ -134,6 +135,7 @@ export default function App() {
             </div>
             <button type="button" className="hud-panel mt-4 w-full p-5 text-left" onClick={() => setPracticeOpen(true)}><h2 className="text-xl font-bold text-[var(--hud-gold)]">Scenario workshop</h2><p className="text-sm text-[var(--muted-foreground)]">Describe, preview and launch a repeatable practice battle.</p></button>
             {import.meta.env.VITE_STATIC_BUILD !== "1" && <button type="button" className="hud-panel mt-4 w-full p-5 text-left" onClick={() => setMapStudioOpen(true)}><h2 className="text-xl font-bold text-[var(--hud-gold)]">Map studio</h2><p className="text-sm text-[var(--muted-foreground)]">Explore the preserved map library, or turn a real place into a new battlefield.</p></button>}
+            <p data-testid="ea-notice" className="mt-6 text-[11px] leading-snug text-[var(--muted-foreground)]">{EA_NOTICE}</p>
           </div>
         </div> : <>
           {mode === "missions" ? <Missions game={game} /> : <Setup game={game} />}

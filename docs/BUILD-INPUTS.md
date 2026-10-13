@@ -12,6 +12,12 @@ python3 tools/public.py --inputs ../.session-artifacts/S02/inputs --out ../.sess
 python3 tools/public.py --inputs ../.session-artifacts/S02/inputs --out ../.session-artifacts/S02/public-build
 ```
 
+Original Westwood art for the isometric public game is a separate, explicit input that never enters a Git
+repository: `tools/prepare-ea-art.py plan|extract|manifest` lists the art files the generator draws (.shp, .vxl,
+.hva, .pal only), copies or extracts them from the player's own RA2 files into a directory outside every
+repository and records `EA-INPUTS.json` (name, sha256, source); `public.py --ea-art <dir>` verifies it and passes
+it to `prepare-content.py --ea-art` and `websim pack --ea`. See DEPLOY-PUBLIC.md.
+
 Existing destinations are refused. `prepare-inputs.py` exports the unchanged
 mod.config engine pin from OpenRA's object database, snapshots main Mod source,
 mission sources and historical Classic map terrain vocabulary. Historical

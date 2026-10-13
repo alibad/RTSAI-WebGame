@@ -23,6 +23,9 @@ ap.add_argument('--missions', type=Path, default=ROOT / '.inputs/missions/missio
 ap.add_argument('--classic-source', type=Path, default=ROOT / '.inputs/classic-map-source')
 ap.add_argument('--out', type=Path, default=ROOT / 'content')
 ap.add_argument('--scenarios-out', type=Path, default=ROOT / 'scenarios')
+ap.add_argument('--ea-art', type=Path, help='isometric: verified original-art directory (tools/prepare-ea-art.py); '
+                'draws the nine original countries with the original Westwood art')
+ap.add_argument('--ea-list', type=Path, help='isometric: write the original art files the generator needs and stop')
 args = ap.parse_args()
 MOD = args.mod.resolve() / 'mods/rtsai'
 OUT = args.out.resolve()
@@ -339,13 +342,47 @@ def missions():
     (SCENARIOS/('mission-'+hz['id']+'.json')).write_text(json.dumps(dict(map=hz['id'],mission=hz['id'],seed=2026,players=[dict(slot=hz['slot'],faction=hz['faction'],color='2A6FDB')],options={'startingcash':'10000','difficulty':'normal','fog':'True','explored':'False'}),indent=2)+'\n')
     (OUT/'missions.json').write_text(json.dumps(catalog,indent=2)+'\n',encoding='utf-8')
 
+def originals():
+    """Original art for the nine original countries (isometric only): content/ea-art.yaml, ea-sequences.yaml,
+    ea-models.yaml and ea-files.json. Render-only; see tools/ea_originals.py."""
+    import ea_originals
+    generator = ea_originals.Generator(args.mod.resolve(), OUT).plan()
+    if args.ea_list:
+        files = generator.needed_files()
+        body = {'schema': 1, 'files': files, 'actors': sorted(generator.actors), 'images': len(generator.images),
+                'models': len(generator.models)}
+        body['planSha256'] = hashlib.sha256(json.dumps(files).encode()).hexdigest()
+        args.ea_list.write_text(json.dumps(body, indent=1) + '\n')
+        return None
+    manifest = json.loads((args.ea_art / 'EA-INPUTS.json').read_text())
+    recorded = {f['name']: f for f in manifest['files']}
+    generator.generate()
+    for name in generator.ea_files:
+        f = recorded.get(name)
+        if f is None:
+            raise ValueError(f'original art {name} is not in {args.ea_art / "EA-INPUTS.json"}')
+        if hashlib.sha256((args.ea_art / name).read_bytes()).hexdigest() != f['sha256']:
+            raise ValueError(f'original art {name} differs from EA-INPUTS.json')
+    summary = generator.write(OUT)
+    print(f"original art: {len(summary['actors'])} actors, {len(generator.seq_nodes)} images, {len(generator.model_nodes)} voxel models, {len(summary['files'])} files")
+    return manifest
+
+
 if __name__ == '__main__':
     OUT.mkdir(parents=True, exist_ok=True)
     SCENARIOS.mkdir(parents=True, exist_ok=True)
+    if (args.ea_art or args.ea_list) and CLASSIC_MODE:
+        raise ValueError('original art is isometric only; Classic/top-down keeps the stand-ins')
     if not CLASSIC_MODE: countries()
     missions()
+    ea_manifest = originals() if (args.ea_art or args.ea_list) else None
+    if args.ea_list:
+        print(f'wrote {args.ea_list}')
+        raise SystemExit(0)
     sources=[p for p in MISSIONS.rglob('*') if p.is_file() and p.suffix in {'.yaml','.bin','.md'}]
     sources += [CLASSIC/'mods/ra/tilesets/temperat.yaml',CLASSIC/'mods/ra/tilesets/desert.yaml',MOD/'standalone/maps/twin-fords/map.yaml',MOD/'standalone/maps/twin-fords/map.bin',MOD.parent/'rtsai-topdown/tileset.yaml']
-    receipt={'gameMode':args.game_mode,'modId':'rtsai-topdown' if CLASSIC_MODE else 'rtsai','gridType':'Rectangular' if CLASSIC_MODE else 'RectangularIsometric','compilerSha256':hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),'sources':[{'path':str(p),'sha256':hashlib.sha256(p.read_bytes()).hexdigest()} for p in sorted(set(sources))],'outputs':[{'path':str(p.relative_to(OUT)),'sha256':hashlib.sha256(p.read_bytes()).hexdigest()} for p in sorted(OUT.rglob('*')) if p.is_file()]}
+    if ea_manifest: sources.append(args.ea_art/'EA-INPUTS.json')
+    receipt={'gameMode':args.game_mode,'modId':'rtsai-topdown' if CLASSIC_MODE else 'rtsai','gridType':'Rectangular' if CLASSIC_MODE else 'RectangularIsometric','compilerSha256':hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
+             'eaArt':({'manifestSha256':ea_manifest['sha256'],'files':len(ea_manifest['files']),'notice':ea_manifest['notice'],'generatorSha256':hashlib.sha256((Path(__file__).parent/'ea_originals.py').read_bytes()).hexdigest()} if ea_manifest else None),'sources':[{'path':str(p),'sha256':hashlib.sha256(p.read_bytes()).hexdigest()} for p in sorted(set(sources))],'outputs':[{'path':str(p.relative_to(OUT)),'sha256':hashlib.sha256(p.read_bytes()).hexdigest()} for p in sorted(OUT.rglob('*')) if p.is_file()]}
     (OUT/'mode-provenance.json').write_text(json.dumps(receipt,indent=2)+'\n')
     print('prepared nine additional countries, five adapted missions and one original Hezbollah exercise')

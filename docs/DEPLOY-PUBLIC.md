@@ -11,8 +11,12 @@ apply:
 
 ## What gets published
 
-`node tools/build-public.mjs` writes `build/public-web/`. This is the standalone game: project art and audio only,
-no EA content, no server APIs (accounts, events and matchmaking: below). Its exact standalone and engine inputs are recorded in the verified `build-inputs.json`; use `tools/pin-standalone.ps1` to prepare those inputs.
+`node tools/build-public.mjs` writes `build/public-web/`. This is the standalone game: project art and audio, no
+server APIs (accounts, events and matchmaking: below). Since 13 October the isometric mode also draws the nine
+original countries with the original Westwood art, under EA's free, non-commercial C&C modding guidelines: see
+[Original Westwood art](#original-westwood-art-isometric-mode). No EA audio, music or video is ever included. Its exact
+standalone and engine inputs are recorded in the verified `build-inputs.json`; use `tools/pin-standalone.ps1` to
+prepare those inputs.
 
 The static builder validates the actual ORAPACK1 `ora/BUNDLE_ID` against each supplied `sprites/index.json` before deleting output or running Vite. Missing, malformed, duplicate or mismatched IDs stop the build; rebuild the prebakes from the exact current pack. The builder never relabels a cache automatically. Run `node --test tools/public-sprite-inputs.test.mjs` to check this guard and output preservation.
 
@@ -48,6 +52,79 @@ The public game starts only for signed-in players (`VITE_REQUIRE_SIGNIN=1`, set 
 3. **Cleanup** is done by the clients: the host deletes each join offer once that guest is seated or turned away,
    and the match when it starts or closes. (Firestore TTL policies would need the paid Blaze plan; rtsai-net stays on
    the free Spark plan.)
+
+## Original Westwood art (isometric mode)
+
+**What.** America, Germany, England, France, Korea, Cuba, Libya, Iraq and Russia draw the original Red Alert 2 art for
+everything they field: infantry, vehicles, ships, aircraft, defences, the shared base buildings, MCVs, harvesters,
+walls, husks and death animations, with the original cameos. 84 actor types, 78 sprite images and 32 voxel models,
+333 files (18.0 MB raw). Exceptions:
+- the Soviet power plant, barracks, service depot, battle lab and nuclear reactor (`napowr`, `nahand`, `nadept`,
+  `natech`, `nanrct`) keep the project art: their standalone footprints differ from RA2's;
+- the ore purifier plug (`gapurifier`, a standalone-only actor) and support-power cameos stay project art;
+- harvesters show no unload animation (the original unload body is a dock client and could affect the simulation);
+- buildings keep the overlays the standalone kit has; the overlays the kit removed are restored only where the
+  trait can name the original image (air-force command, Soviet construction yard, war factories).
+The seven modern factions, the Classic/top-down mode and every sound are unchanged. Mission enemies whose faction is
+Russia (Orion Group in Straits Shield, Obsidian Directorate in Haitan Network) also show the original art: the art
+follows the faction.
+
+**Legal conditions** (EA's C&C Franchise Modding Guidelines: free, non-commercial):
+- the page shows "EA has not endorsed and does not support this product." on the main menu, the skirmish screen and
+  the campaign screen (`web/src/legal.ts`), and the static root carries `NOTICE`;
+- only art files (`.shp .vxl .hva .pal`); no `theme.mix`, EVA, voices or any other EA audio, music or video;
+- the extracted files live outside every Git repository; `EA-INPUTS.json` records each file's name, sha256 and
+  source, and the bundle carries `mods/rtsai/web/ea/ea-content.json`.
+
+**Build.**
+```sh
+python tools/prepare-ea-art.py plan --inputs <inputs> --out <plan.json>
+python tools/prepare-ea-art.py extract --plan <plan.json> --out <dir outside every repository>
+python tools/prepare-ea-art.py manifest --plan <plan.json> --dir <that dir> --inputs <inputs>
+python tools/public.py --inputs <inputs> --out <new isometric build> --ea-art <that dir>
+python tools/public.py --inputs <inputs> --out <new classic build> --game-mode classic
+```
+`extract` copies a file from the RTSAI-Web Studio cache (`.cache/ra2-originals`, extracted through `rtsai-classic`)
+when present, else runs the mod engine's `OpenRA.Utility rtsai-classic --extract` against the player's own
+`ra2.mix`/`language.mix` through a shim engine directory, and refuses files identical to the standalone stand-ins.
+Then publish the runtimes and run `build-public.mjs` as usual.
+
+**How.** `tools/ea_originals.py` (called by `prepare-content.py --ea-art`) reads two views of the frozen mod: the
+classic add-on's rules and sequences (the reference) and the current public isometric game. For every actor an
+original country fields it clones the reference image as `ea-<image>` with its temperate files rewritten to
+`ra2|web/ea/<file>`, aliases the sequence names only the stand-in offered (a transparent project pixel, or the
+closest original pose), and writes render-only rules (`content/ea-art.yaml`, loaded after every other rules file):
+`RenderSprites.FactionImages` for the nine countries, `WithFactionPalettes` (OpenRA.WebSim: a render modifier that
+swaps the actor's palettes for the original ones when its FactionInit is one of them, and for a spy only while it
+shows an original disguise), original voxel bodies behind a faction condition with the stand-in sprite bodies
+disabled for those countries, original-palette death animations, `IconPalette: eacameo`, five original palettes and
+a `SpriteGroupFactions` hint for the browser's sprite groups. It fails if an alias or palette does not resolve, if a
+trait would draw project art with a swapped palette, or if another owner's cameo depends on the icon palette.
+`websim pack --ea` bundles exactly the hashed `EA-INPUTS.json` files (large sprites in `web-art.pack`) and appends
+the three overlays at the very end of Rules, Sequences and ModelSequences.
+
+**Checks.** `tools/test-ea-art.py`, `tools/test-bundle-paths.py`, `node --test tools/ea-gate.test.mjs`;
+`websim contenttest --faction <each of 16> --baseline <dump>`: original palettes iff original images, no missing
+original file, modern factions identical to a dump of the same build without original art; `build-public.mjs`
+refuses MIX/BAG/IDX/VQA/BIK payloads, audio under `web/ea`, unlisted original files and original art in the Classic
+profile (`tools/ea-gate.mjs`); `tools/ea-art-browser-test.mjs` (notice, screenshots, no original audio requests,
+sheet groups). Parity on 13 October: 14 runs (isometric and Classic, AOT and interpreter, 1500 ticks each,
+including `skirmish-originals` and `battle-originals`) identical.
+
+**Sizes** (13 October build, brotli 11, compared with the same build without original art):
+
+| | Without | With original art |
+|---|---|---|
+| `web-bundle.pack` (always downloaded) | 5.3 MB | 6.3 MB (voxels and small sprites) |
+| isometric sprite sheets, all | 16.3 MB | 22.2 MB |
+| sheets before the world starts, Saudi Arabia vs Iran | 5.4 MB | 5.9 MB |
+| sheets before the world starts, America vs Russia | 4.8 MB | 5.6 MB (the other side's 5.1 MB right after) |
+| `web-art.pack` (range reads, normally never) | 108 MB | 123 MB |
+
+First visit on emulated 4G (9 Mbps, 170 ms, HTTP/1.1, standard AOT runtime, one run each): Saudi Arabia vs Iran
+world started at 28.7 s → 32.1 s (31.9 → 33.9 MB transferred); America vs Russia 28.9 s → 35.9 s (32.3 → 39.4 MB;
+the harness starts the match from a setup screen prepared for its default nations, so America's sheets download
+after Start). Return visits: 6.5–6.8 s → 7.2–7.3 s.
 
 ## Hard requirements on the host
 
@@ -140,7 +217,9 @@ The code paths those browsers would exercise:
 
 ## Not in the public build yet
 
-- **Co-commander.** It needs either the player's local companion or hosted mode (see `docs/CO-COMMANDER.md`, waiting
-  for the owner's environment variables).
+- **Original art for the Classic/top-down mode** (it keeps the stand-ins by decision).
+- **Conversational co-commander** (model chat and voice). It needs either the player's local companion or hosted mode
+  (see `docs/CO-COMMANDER.md`, waiting for the owner's environment variables); the strategy adviser ships
+  ([PUBLIC-CO-COMMANDER.md](PUBLIC-CO-COMMANDER.md)).
 - **Analytics and error reporting.**
 - **A credits/licenses page** for the project's audio.

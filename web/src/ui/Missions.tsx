@@ -6,6 +6,7 @@ import { Button } from "../components/ui/button";
 import { Flag } from "./Flag";
 import { cn } from "../lib/utils";
 import story from "../campaign-story";
+import { EA_NOTICE } from "../legal";
 
 function progress(): Record<string, string> {
   try { return JSON.parse(localStorage.getItem("rtsai.missions.completed") ?? "{}"); } catch { return {}; }
@@ -67,6 +68,7 @@ export function Missions({ game }: { game: Game }) {
           ))}
           {missions.filter((m) => !story.arcs.some((a) => a.missions.includes(m.id))).map((m) => <button key={m.id} className="mb-2 block text-sm" onClick={() => setSelected(m.id)}>{m.title}</button>)}
           {!missions.length && <p className="text-sm">This game profile has no compatible missions. Use the public RTS AI profile.</p>}
+          <p data-testid="ea-notice" className="mt-4 text-[11px] leading-snug text-[var(--muted-foreground)]">{EA_NOTICE}</p>
         </section>
         {mission && <section className="hud-panel p-5">
           <p className="mb-2 text-xs uppercase tracking-widest text-[var(--hud-gold-dim)]">{arc ? `${arc.title} / Chapter ${chapterNumber}` : mission.campaign}</p>

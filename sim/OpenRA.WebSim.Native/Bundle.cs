@@ -19,7 +19,11 @@ using OpenRA.WebSim;
 
 /// <summary>
 /// Builds web-bundle.pack: the engine's mods/common and the RTS AI mod's data with a web mod.yaml.
-/// Contains only project and OpenRA (GPL) files. EA content never enters this bundle; it is mounted privately.
+/// Contains project and OpenRA (GPL) files. With --ea (public isometric only) it also carries original Westwood art for
+/// the nine original countries, under EA's free, non-commercial C&amp;C modding guidelines ("EA has not endorsed and
+/// does not support this product."): only the art files listed and hashed in the directory's EA-INPUTS.json, only
+/// .shp/.vxl/.hva/.pal (never EA audio, music or video), under mods/rtsai/web/ea/ with ea-content.json beside them.
+/// The private RA2 content of the local profile still never enters a bundle; it is mounted privately.
 /// </summary>
 static class Bundle
 {
@@ -36,6 +40,11 @@ static class Bundle
 	static readonly HashSet<string> ArtExtensions = new(StringComparer.OrdinalIgnoreCase) { ".shp", ".png", ".tem", ".sno", ".urb" };
 	const int LazyArtMinBytes = 32 * 1024;
 
+	/// <summary>The only original (EA) files a bundle may carry: art. Never audio (.aud/.bag/.wav), music or video.</summary>
+	public static readonly HashSet<string> OriginalArtExtensions = new(StringComparer.OrdinalIgnoreCase) { ".shp", ".vxl", ".hva", ".pal" };
+	public const string OriginalArtDir = "mods/rtsai/web/ea/";
+	public const string OriginalArtNotice = "EA has not endorsed and does not support this product.";
+
 	public static int Build(Dictionary<string, string> opts)
 	{
 		var engine = opts["engine"];
@@ -44,6 +53,8 @@ static class Bundle
 		var modDir = Path.Combine(modRoot, "mods", "rtsai");
 		var classic = opts.TryGetValue("game-mode", out var gameMode) && gameMode == "classic";
 		if (gameMode != null && gameMode is not ("classic" or "isometric")) throw new ArgumentException("Unsupported game mode");
+		if (classic && opts.ContainsKey("ea"))
+			throw new ArgumentException("Original art is isometric only; Classic/top-down keeps the stand-ins");
 		var modId = classic ? "rtsai-topdown" : "rtsai";
 		var primaryDir = Path.Combine(modRoot, "mods", modId);
 
@@ -53,7 +64,8 @@ static class Bundle
 
 		Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(output)));
 		var lazyArt = !opts.ContainsKey("no-lazy-art");
-		var art = new List<string>();
+		var art = new List<(string Path, string File)>();
+		var originals = opts.TryGetValue("ea", out var eaDir) ? OriginalArt(eaDir, opts.TryGetValue("content", out var eaContent) ? eaContent : "content") : null;
 		// The cursor art stays in the core bundle: the page draws the mod's cursors from the start of every game, and a
 		// host may serve web-art.pack late or not at all (it is a fallback for sprites the prebaked sheets lack).
 		var keepInCore = CursorSources(modDir);
@@ -105,7 +117,7 @@ static class Bundle
 					// Part of the bundle's identity (sprites baked from it depend on it), stored in web-art.pack.
 					contentHash.AppendData(Encoding.UTF8.GetBytes($"mods/rtsai/{rel}|{bytes.Length}|"));
 					contentHash.AppendData(bytes);
-					art.Add(f);
+					art.Add(("mods/rtsai/" + rel, f));
 					continue;
 				}
 
@@ -117,7 +129,38 @@ static class Bundle
 			if (publicProfile && Directory.Exists(content))
 				foreach (var f in Files(content))
 					Add("mods/rtsai/web/content/" + Rel(content, f), File.ReadAllBytes(f));
-			Add("mods/rtsai/mod.yaml", Encoding.UTF8.GetBytes(WebModYaml(File.ReadAllText(Path.Combine(modDir, "mod.yaml")), !classic && publicProfile && Directory.Exists(content))));
+			if (originals != null)
+			{
+				if (!publicProfile || !Directory.Exists(content))
+					throw new ArgumentException("Original art needs the public profile and its generated content");
+
+				// Large sprites are read by byte range (web-art.pack) like the mod's own; voxels, palettes and small
+				// sprites (all needed while a world loads) stay in the core bundle. All of it is the bundle's identity.
+				foreach (var (name, file, _, _) in originals)
+				{
+					var bytes = File.ReadAllBytes(file);
+					var path = OriginalArtDir + name;
+					if (lazyArt && Path.GetExtension(name).Equals(".shp", StringComparison.OrdinalIgnoreCase) && bytes.Length >= LazyArtMinBytes)
+					{
+						contentHash.AppendData(Encoding.UTF8.GetBytes($"{path}|{bytes.Length}|"));
+						contentHash.AppendData(bytes);
+						art.Add((path, file));
+					}
+					else
+						Add(path, bytes);
+				}
+
+				var record = System.Text.Json.JsonSerializer.Serialize(new
+				{
+					notice = OriginalArtNotice,
+					guidelines = "EA's C&C Franchise Modding Guidelines (free, non-commercial)",
+					files = originals.Select(o => new { name = o.Name, sha256 = o.Sha256, source = o.Source }),
+				}, new System.Text.Json.JsonSerializerOptions { Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping });
+				Add(OriginalArtDir + "ea-content.json", Encoding.UTF8.GetBytes(record));
+				Console.WriteLine($"original art: {originals.Count} files ({originals.Sum(o => new FileInfo(o.File).Length) / 1048576.0:F1} MB)");
+			}
+
+			Add("mods/rtsai/mod.yaml", Encoding.UTF8.GetBytes(WebModYaml(File.ReadAllText(Path.Combine(modDir, "mod.yaml")), !classic && publicProfile && Directory.Exists(content), false, originals != null)));
 			if (classic)
 			{
 				foreach (var file in Files(primaryDir))
@@ -152,10 +195,43 @@ static class Bundle
 		// The mod's own (licensed) audio: a separate pack plus a JSON index of byte offsets for lazy range reads.
 		var audio = Directory.EnumerateFiles(modDir, "*", SearchOption.AllDirectories)
 			.Where(f => AudioExtensions.Contains(Path.GetExtension(f)) && !HiddenWithin(modDir, f))
-			.OrderBy(f => f, StringComparer.Ordinal);
-		WriteLazyPack(Path.Combine(outDir, "web-audio.pack"), modDir, audio);
-		WriteLazyPack(Path.Combine(outDir, "web-art.pack"), modDir, art);
+			.OrderBy(f => f, StringComparer.Ordinal)
+			.Select(f => ("mods/rtsai/" + Rel(modDir, f), f));
+		WriteLazyPack(Path.Combine(outDir, "web-audio.pack"), audio);
+		WriteLazyPack(Path.Combine(outDir, "web-art.pack"), art);
 		return 0;
+	}
+
+	/// <summary>
+	/// The original art files of a verified directory (tools/prepare-ea-art.py): every file of its EA-INPUTS.json,
+	/// allowlisted (.shp .vxl .hva .pal), hashed and present, and every file the generated content draws among them.
+	/// </summary>
+	static List<(string Name, string File, string Sha256, string Source)> OriginalArt(string dir, string content)
+	{
+		using var manifest = System.Text.Json.JsonDocument.Parse(File.ReadAllText(Path.Combine(dir, "EA-INPUTS.json")));
+		var result = new List<(string Name, string File, string Sha256, string Source)>();
+		foreach (var f in manifest.RootElement.GetProperty("files").EnumerateArray())
+		{
+			var name = f.GetProperty("name").GetString();
+			var sha = f.GetProperty("sha256").GetString();
+			if (name.Contains('/') || name.Contains('\\') || name.StartsWith('.') || !OriginalArtExtensions.Contains(Path.GetExtension(name)))
+				throw new InvalidDataException($"Original art {name}: only .shp, .vxl, .hva and .pal files may be bundled");
+
+			var file = Path.Combine(dir, name);
+			var actual = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(File.ReadAllBytes(file))).ToLowerInvariant();
+			if (actual != sha)
+				throw new InvalidDataException($"Original art {name} differs from EA-INPUTS.json");
+
+			result.Add((name, file, sha, f.GetProperty("source").GetString()));
+		}
+
+		using var drawn = System.Text.Json.JsonDocument.Parse(File.ReadAllText(Path.Combine(content, "ea-files.json")));
+		var names = result.Select(r => r.Name).ToHashSet(StringComparer.Ordinal);
+		foreach (var f in drawn.RootElement.GetProperty("files").EnumerateArray())
+			if (!names.Contains(f.GetString()))
+				throw new InvalidDataException($"Generated content draws {f.GetString()}, which EA-INPUTS.json does not list");
+
+		return result.OrderBy(r => r.Name, StringComparer.Ordinal).ToList();
 	}
 
 	/// <summary>
@@ -199,7 +275,7 @@ static class Bundle
 	}
 
 	/// <summary>A pack read by byte range (never downloaded whole), with a JSON index of each file's offset.</summary>
-	static void WriteLazyPack(string output, string modDir, IEnumerable<string> files)
+	static void WriteLazyPack(string output, IEnumerable<(string Path, string File)> files)
 	{
 		var index = new StringBuilder("{\"files\":[");
 		var count = 0;
@@ -207,9 +283,8 @@ static class Bundle
 		using (var fs = File.Create(output + ".tmp"))
 		using (var pack = new Pack.Writer(fs))
 		{
-			foreach (var f in files)
+			foreach (var (rel, f) in files)
 			{
-				var rel = "mods/rtsai/" + Rel(modDir, f);
 				var data = File.ReadAllBytes(f);
 				var offset = fs.Position + 2 + Encoding.UTF8.GetByteCount(rel) + 4;
 				pack.Add(rel, data);
@@ -245,7 +320,7 @@ static class Bundle
 	/// The web mod.yaml: identical to the mod's (the AI co-commander's CompanionBridge included; the page's host relays
 	/// its RPCs) plus a small overlay for what the embedded host needs. Everything that affects the simulation is unchanged.
 	/// </summary>
-	static string WebModYaml(string yaml, bool expansion, bool classic = false)
+	static string WebModYaml(string yaml, bool expansion, bool classic = false, bool originals = false)
 	{
 		yaml = yaml.Replace("\r\n", "\n");
 
@@ -277,6 +352,15 @@ static class Bundle
 			yaml = yaml.Insert(folders + "\nMapFolders:\n".Length, "\tra2|web/content/maps: System\n");
 		}
 
+		// Original art for the original countries: at the very END of each section, after the mod's own campaigns/country*
+		// files, so its FactionImages and render traits override the stand-ins those files assign.
+		if (originals)
+		{
+			yaml = AppendToSection(yaml, "Rules", "ra2|web/content/ea-art.yaml");
+			yaml = AppendToSection(yaml, "Sequences", "ra2|web/content/ea-sequences.yaml");
+			yaml = AppendToSection(yaml, "ModelSequences", "ra2|web/content/ea-models.yaml");
+		}
+
 		// Player-facing names (the standalone's), loaded last so they override the RA2 preview strings.
 		var fluent = yaml.IndexOf("\nFluentMessages:\n", StringComparison.Ordinal);
 		if (fluent >= 0)
@@ -286,6 +370,35 @@ static class Bundle
 		}
 
 		return yaml;
+	}
+
+	/// <summary>Appends an entry after the last entry of a top-level manifest list (before the next top-level key).</summary>
+	public static string AppendToSection(string yaml, string section, string entry)
+	{
+		var header = "\n" + section + ":\n";
+		var start = yaml.IndexOf(header, StringComparison.Ordinal);
+		if (start < 0)
+			throw new InvalidDataException($"mod.yaml has no {section} section");
+
+		var pos = start + header.Length;
+		var end = pos;
+		while (pos < yaml.Length)
+		{
+			var eol = yaml.IndexOf('\n', pos);
+			if (eol < 0)
+				eol = yaml.Length;
+
+			var line = yaml[pos..eol];
+			if (line.Length > 0 && !char.IsWhiteSpace(line[0]))
+				break;
+
+			if (line.Trim().Length > 0)
+				end = Math.Min(eol + 1, yaml.Length);
+
+			pos = eol + 1;
+		}
+
+		return yaml.Insert(end, "\t" + entry + "\n");
 	}
 
 	// UI text only (bot names as the standalone build shows them).

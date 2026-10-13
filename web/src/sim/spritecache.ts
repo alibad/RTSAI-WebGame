@@ -46,6 +46,9 @@ function sheetSizes(table: Uint8Array) {
 
 export interface BakeStats { restored: number; saved: number; bytes: number; ms: number }
 
+/** The factions of a sprite pack group: one faction, or several joined by "+" (sorted; see PackGroups.cs). */
+export function groupMembers(group: string): string[] { return group.split("+"); }
+
 /**
  * A packing baked ahead of time and shipped with the data (websim bake): its table, and where its sheets are. Each
  * sheet holds one pack group (a faction's sprites, or "" for shared ones) and only its used rows; indexed sheets are
@@ -185,11 +188,18 @@ export class SpriteBake {
   /** Sheets the page drew from but does not have (a faction outside the wanted groups appeared). */
   need(ids: number[]) { for (const id of ids) this.enqueue(id); }
 
-  /** Shared sheets, the wanted factions', and the effects ("fx": fetched right after, never waited for). */
-  private isWanted(group: string) { return group === "" || group === "fx" || this.wanted === null || this.wanted.has(group); }
+  /**
+   * Shared sheets, the wanted factions', and the effects ("fx": fetched right after, never waited for). A group of
+   * several factions ("america+england+...", PackGroups.cs) is wanted when any of them is.
+   */
+  private isWanted(group: string) {
+    return group === "" || group === "fx" || this.wanted === null || groupMembers(group).some((g) => this.wanted!.has(g));
+  }
 
   /** Fetch order: shared, the local player's faction, the other factions, then effects. */
-  private priority(group: string) { return group === "" ? 0 : this.first.has(group) ? 1 : group === "fx" ? 3 : 2; }
+  private priority(group: string) {
+    return group === "" ? 0 : groupMembers(group).some((g) => this.first.has(g)) ? 1 : group === "fx" ? 3 : 2;
+  }
 
   private enqueue(id: number) {
     const sheet = this.pendingSheets.get(id);
