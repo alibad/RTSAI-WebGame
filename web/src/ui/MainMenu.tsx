@@ -12,6 +12,11 @@ const VIEWS: View[] = [
   { id: "classic", name: "Classic / top-down", hint: "Square grid · the original Red Alert look", image: "menu/classic.webp" },
 ];
 
+// Top-down draws the same unit and building art as isometric (only the ground changes), so players saw two choices
+// that looked the same. The menu leaves it out until it has its own art; ?game=classic still opens it, and from there
+// the menu offers the way back.
+const IN_MENU: View["id"][] = ["isometric"];
+
 /** A static build only offers the modes it was built with (tools/build-public.mjs, VITE_GAME_MODES). */
 function offered(view: View) {
   if (import.meta.env.VITE_STATIC_BUILD !== "1") return true;
@@ -34,7 +39,7 @@ export function MainMenu({ onSkirmish, onCampaign, onWorkshop, onMapStudio }: { 
   const profile = useStore((s) => s.profile);
   const current = profile === "public-classic" ? "classic" : "isometric";
   const [switching, setSwitching] = useState<View["id"] | null>(null);
-  const views = VIEWS.filter(offered);
+  const views = VIEWS.filter((view) => offered(view) && (IN_MENU.includes(view.id) || view.id === current));
 
   // A different view is a different game profile: the page reloads into it.
   function choose(view: View) {
@@ -77,7 +82,7 @@ export function MainMenu({ onSkirmish, onCampaign, onWorkshop, onMapStudio }: { 
         </section>
         <div className="menu-row">
           <MenuCard wide title="Scenario workshop" text="Set up a practice battle, then play it." icon={<FlaskConical size={20} />} onClick={onWorkshop} />
-          {onMapStudio && <MenuCard wide title="Map studio" text="Browse the map library or make a battlefield from a real place." icon={<MapIcon size={20} />} onClick={onMapStudio} />}
+          {onMapStudio && <MenuCard wide title="Map studio" text={import.meta.env.VITE_STATIC_BUILD === "1" ? "Turn any real place into a battlefield, then play it here or with friends." : "Browse the map library or make a battlefield from a real place."} icon={<MapIcon size={20} />} onClick={onMapStudio} />}
         </div>
         <p data-testid="ea-notice" className="menu-notice">{EA_NOTICE}</p>
       </main>

@@ -6,7 +6,8 @@ import { TouchControls } from "./touch";
 import { CoCommander } from "./cocommander";
 import { Renderer, type Camera, type Overlay } from "./render/renderer";
 import { SimClient } from "./sim/client";
-import type { Actor, Snapshot, StartInfo, UiState } from "./sim/protocol";
+import { savedMapFiles, type SavedMap } from "./net/saved-maps";
+import type { Actor, SetupData, Snapshot, StartInfo, UiState } from "./sim/protocol";
 import type { IconSprite } from "./render/icons";
 import { store, type Perf } from "./store";
 import { cursorFor, loadModCursors } from "./ui/cursors";
@@ -104,6 +105,9 @@ export class Game {
     this.modState = this.mods(e);
     if (e.key.toLowerCase() === "v" && store.get().cc.listening) this.cc.stopListening();
   };
+  /** Saved maps on this page by engine id: their Firestore id and whether their files are mounted (ensureMap). */
+  private savedMaps = new Map<string, { saved: string; mounted: Promise<void> | null; ready: boolean }>();
+  private mountWaiters = new Map<string, { resolve: () => void; reject: (e: Error) => void }>();
   private onBlur = () => { this.keys.clear(); this.modState = 0; };
   private onMove = (e: MouseEvent) => this.mouseMove(e);
   private onUp = (e: MouseEvent) => this.mouseUp(e);
@@ -137,6 +141,11 @@ export class Game {
     c.on("preview", (m) => {
       const url = m.png.byteLength ? URL.createObjectURL(new Blob([m.png], { type: "image/png" })) : "";
       store.set({ previews: { ...store.get().previews, [m.map]: url } });
+    });
+    c.on("mapMounted", (m) => {
+      const waiter = this.mountWaiters.get(m.map);
+      this.mountWaiters.delete(m.map);
+      if (m.error) waiter?.reject(Error("Couldn't load this map.")); else waiter?.resolve();
     });
     c.on("started", (m) => this.started(m.info, m.radarTerrain, m.startMs));
     c.on("ui", (m) => this.onUi(JSON.parse(m.json) as UiState));
@@ -200,7 +209,54 @@ export class Game {
     const s = store.get();
     if (s.preparedMap === map || s.preparing === map) return;
     store.set({ preparing: map });
-    this.client.send({ type: "prepare", map });
+    if (!this.savedMaps.has(map)) { this.client.send({ type: "prepare", map }); return; }
+    // A saved map is fetched and mounted first (once); the player may have picked another map meanwhile.
+    void this.ensureMap(map).then(
+      () => { if (store.get().preparing === map) this.client.send({ type: "prepare", map }); },
+      () => { if (store.get().preparing === map) store.set({ preparing: null }); });
+  }
+
+  /**
+   * Players' saved maps join the map list (net/saved-maps.ts). They are isometric `rtsai` maps, so only the isometric
+   * game offers them. Their previews come with the list; the map files are fetched when a map is first used.
+   */
+  addSavedMaps(maps: SavedMap[]) {
+    const s = store.get();
+    if (!s.setup || s.profile !== "public" || !maps.length) return;
+    const known = new Set(s.setup.maps.map((m) => m.id)), previews = { ...s.previews };
+    const added: SetupData["maps"] = [];
+    for (const m of maps) {
+      if (!this.savedMaps.has(m.id)) this.savedMaps.set(m.id, { saved: m.saved, mounted: null, ready: false });
+      if (known.has(m.id)) continue;
+      known.add(m.id);
+      previews[m.id] = URL.createObjectURL(new Blob([m.preview.slice()], { type: "image/png" }));
+      added.push({ id: m.id, uid: m.id, title: m.title, players: m.players, tileset: "TEMPERATE", author: "", saved: m.saved, place: m.place,
+        slots: Array.from({ length: m.players }, (_, i) => `Multi${i}`) });
+    }
+    if (added.length) store.set({ setup: { ...s.setup, maps: [...s.setup.maps, ...added] }, previews });
+  }
+
+  /** Fetches a saved map's files and mounts them in the engine (once); rejects with a message for the player. */
+  ensureMap(map: string): Promise<void> {
+    const entry = this.savedMaps.get(map);
+    if (!entry) return Promise.resolve();
+    return entry.mounted ??= (async () => {
+      const files = await savedMapFiles(entry.saved, map);
+      const png = await (await fetch(store.get().previews[map])).arrayBuffer();
+      const bin = files.bin.slice().buffer;
+      await new Promise<void>((resolve, reject) => {
+        this.mountWaiters.set(map, { resolve, reject });
+        this.client.send({ type: "mountMap", map, yaml: files.yaml, bin, png });
+      });
+      entry.ready = true;
+      const { [map]: _, ...rest } = store.get().mapErrors;
+      store.set({ mapErrors: rest });
+    })().catch((e: unknown) => {
+      entry.mounted = null;
+      const error = e instanceof Error && e.message ? e.message : "Couldn't load this map. Check your connection and try again.";
+      store.set({ mapErrors: { ...store.get().mapErrors, [map]: error } });
+      throw Error(error);
+    });
   }
 
   preview(map: string) {
@@ -219,6 +275,19 @@ export class Game {
     this.ui = null;
     this.latency = [];
     store.set({ phase: "loading", stage: "Building the world", ui: null, catalog: [], verify: "", menuOpen: false, paused });
+    // A saved map not mounted yet (e.g. a guest's copy of the host's map) is fetched first.
+    const map = String(JSON.parse(scenarioJson).map ?? "");
+    if (this.savedMaps.has(map) && !this.savedMaps.get(map)!.ready) {
+      store.set({ stage: "Loading the map" });
+      void this.ensureMap(map).then(
+        () => { if (generation === this.launchGeneration) this.afterMap(scenarioJson, paused, generation); },
+        (e: Error) => { if (generation === this.launchGeneration) store.set({ phase: "error", error: e.message }); });
+      return;
+    }
+    this.afterMap(scenarioJson, paused, generation);
+  }
+
+  private afterMap(scenarioJson: string, paused: boolean, generation: number) {
     const sides = scenarioFactions(scenarioJson);
     this.wantFactions(sides?.all ?? null, sides?.local);
     // Prebaked sprite sheets still streaming in: the world starts once they are on the GPU (nothing drawn invisible).

@@ -37,8 +37,21 @@ WebSocket upgrades require Origin. API clients without Origin remain supported.
 `RTSAI_OPENRA_AI`, `RTSAI_COMPANION_PYTHON`, `RTSAI_MAP_MOD_ROOT`,
 `RTSAI_MAP_PYTHON`, `RTSAI_MAP_OUTPUT_ROOT`, data/scratch/cache paths and ports
 support isolated local copies. Static public builds omit local companion,
-Map Studio, room-server controls and verification APIs. Direct WebRTC remains
+the local Map Studio, room-server controls and verification APIs. Direct WebRTC remains
 available, with explicit invite/readiness and restart after disconnect/desync.
+
+The public build's main menu offers isometric only: top-down draws the same unit
+and building art, so the two looked identical; `?game=classic` still opens it.
+Its "Map studio" opens the website's Earth studio (RTSAI-Web `/studio`), which
+builds the same isometric `rtsai` maps in the browser (a byte-identical port of
+`tools/earth-battlefield.py`) and saves them to Firestore (`maps` + `mapData`).
+The game lists the player's saved maps in skirmish and the multiplayer lobby
+(`web/src/net/saved-maps.ts`); `?saved=<id>` opens skirmish on one. A saved
+map's files are fetched and mounted under `web/content/maps/<earth-id>/` when
+first used, after boot: `SimHost.MapPath` finds that folder before the MapCache,
+and a world starts from a map outside the cache. The lobby carries the map's
+Firestore id, so a guest fetches the host's map before it can be ready. Proof:
+`tools/saved-maps-browser-test.mjs` on `tools/local-site-server.mjs`.
 
 Local Map Studio preserves source indexing and both mode generation. Earth
 outputs go to an owned build directory; Classic adapts the same geometry to

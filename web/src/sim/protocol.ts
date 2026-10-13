@@ -223,7 +223,8 @@ export interface SetupData {
   missions?: MissionDefinition[];
   factions: { id: string; name: string; side: string; description: string; random: boolean }[];
   bots: { type: string; name: string }[];
-  maps: { id: string; uid: string; title: string; players: number; tileset: string; author: string; slots: string[] }[];
+  /** `saved`: a player's map from the Earth studio (its Firestore id), mounted when first used (net/saved-maps.ts). */
+  maps: { id: string; uid: string; title: string; players: number; tileset: string; author: string; slots: string[]; saved?: string; place?: string }[];
   options?: { id: string; name: string; default: string; values: { value: string; label: string }[] }[];
 }
 
@@ -310,6 +311,7 @@ export type ToWorker = (
   | { type: "peerStop"; error: string }
   | { type: "init"; runtime: string; base: string; sab: SharedArrayBuffer | null; privateContent: boolean; voiceLanguage: string; gcParams?: string; profile?: string; rtBase?: string; dataBase?: string }
   | { type: "prepare"; map: string }
+  | { type: "mountMap"; map: string; yaml: string; bin: ArrayBuffer; png: ArrayBuffer }
   | { type: "preview"; map: string }
   | { type: "start"; scenario: string; voiceLanguage: string; paused?: boolean; companion?: boolean | "browser" }
   /** The factions a game will show (null: unknown, all): their sprite sheets are fetched now. */
@@ -343,6 +345,7 @@ export type FromWorker = (
   | { type: "ready"; timings: Record<string, number>; runtimeMs: number; downloadBytes: Record<string, number>; setup: SetupData; privateContent: boolean }
   | { type: "prepared"; map: string; ms: number; timings: Record<string, number>; lazy?: LazyStats }
   | { type: "preview"; map: string; png: ArrayBuffer }
+  | { type: "mapMounted"; map: string; error?: string }
   | { type: "started"; info: StartInfo; terrain: ArrayBuffer; radarTerrain: ArrayBuffer; startMs: number; lazy?: LazyStats }
   | { type: "snapshot"; bytes: ArrayBuffer; seq: number } // postMessage fallback when SharedArrayBuffer is unavailable
   | { type: "texture"; id: number; version: number; width: number; height: number; kind: number; data: ArrayBuffer }

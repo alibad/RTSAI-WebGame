@@ -6,20 +6,24 @@ import { useStore } from './store';
 import { buildIdentity } from './sim/build-identity';
 import { answerJoin, closeMatch, createMatch, joinMatch, removeJoin, watchJoins } from './net/matchmaker';
 import { track } from './net/track';
+import { savedMap } from './net/saved-maps';
 import { DirectPeer, MAX_TEAM, PeerLockstep, peerColors, peerMap, peerOptions, validatePeerScenario, type PeerEvent, type PeerScenario } from './peer';
 
 export type Seat = { faction: string; team: number; ready: boolean };
 export type AiSeat = { faction: string; bot: string; team: number };
-export type Lobby = { revision: number; map: string; mapUid: string; players: Seat[]; ai: AiSeat[] };
+/** `saved`: the Firestore id when the map is a player's saved Earth map, so guests can fetch it (net/saved-maps.ts). */
+export type Lobby = { revision: number; map: string; mapUid: string; saved?: string; players: Seat[]; ai: AiSeat[] };
 export type ChatLine = { id: string; author: string; text: string };
 export type RemoteMedia = { id: string; label: string; stream: MediaStream };
 export type Stage = 'idle' | 'connecting' | 'lobby' | 'playing' | 'stopped';
 export type SessionView = {
   stage: Stage; host: boolean; room: string; you: number; lobby: Lobby | null; chat: ChatLine[];
   status: string; error: string; frame: number; camera: boolean; remote: RemoteMedia[];
+  /** A guest is fetching the host's saved map; Ready waits for it. */
+  mapLoading: boolean;
 };
 
-const idle: SessionView = { stage: 'idle', host: false, room: '', you: 0, lobby: null, chat: [], status: '', error: '', frame: 0, camera: false, remote: [] };
+const idle: SessionView = { stage: 'idle', host: false, room: '', you: 0, lobby: null, chat: [], status: '', error: '', frame: 0, camera: false, remote: [], mapLoading: false };
 const ANSWER_WAIT_MS = 45000, OPEN_WAIT_MS = 20000, HELLO_WAIT_MS = 20000;
 
 /** Accepts an invite link (…?join=CODE) or the bare code. */
@@ -205,8 +209,10 @@ export class MultiplayerSession {
     if (!this.view.host || !map || this.view.stage !== 'lobby') return;
     if (map.slots.length < this.seats.length) return this.set({ status: `${map.slots.length}-player map: too many commanders.` });
     const ai = this.view.lobby!.ai.slice(0, map.slots.length - this.seats.length);
-    this.set({ lobby: { ...this.view.lobby!, map: map.id, mapUid: map.uid, ai }, status: '' });
+    this.set({ lobby: { ...this.view.lobby!, map: map.id, mapUid: map.uid, saved: map.saved, ai }, status: '' });
     this.publish(true);
+    // A saved map loads now, so starting doesn't wait for it.
+    if (map.saved) this.game.ensureMap(map.id).catch(e => this.set({ status: message(e) }));
   }
   setAi(ai: AiSeat[]) {
     if (!this.view.host || this.view.stage !== 'lobby') return;
@@ -272,9 +278,12 @@ export class MultiplayerSession {
       if (this.view.stage !== 'connecting' && this.view.stage !== 'lobby') return;
       const lobby = m.lobby as Lobby, you = m.you as number;
       if (!lobby || !Array.isArray(lobby.players) || !Array.isArray(lobby.ai) || !Number.isInteger(you) || you < 2 || you > lobby.players.length) throw Error('Invalid lobby');
-      peerMap(this.setup, lobby.map, lobby.mapUid);
+      const known = this.setup.maps.some(m => m.id === lobby.map && m.uid === lobby.mapUid && m.slots.length >= 2);
+      if (!known && typeof lobby.saved !== 'string') peerMap(this.setup, lobby.map, lobby.mapUid);
+      const changed = lobby.map !== this.view.lobby?.map;
       if (this.view.stage === 'connecting') track('multiplayer_joined');
-      this.set({ stage: 'lobby', lobby, you, status: '' });
+      this.set({ stage: 'lobby', lobby, you, ...(changed ? { status: '', mapLoading: false } : {}) });
+      if (changed && typeof lobby.saved === 'string') void this.loadHostMap(lobby.saved, lobby.map);
     } else if (m.kind === 'chat') {
       this.addChat(`Player ${Number(m.client) | 0}`, this.chatText(m.text));
     } else if (m.kind === 'start') {
@@ -301,8 +310,26 @@ export class MultiplayerSession {
       this.publish(true);
     } else this.trySend(this.hostPeer!, { kind: 'seat', ...patch });
   }
+  /** Guest: the host's saved map, fetched from Firestore and mounted before this player can be ready. */
+  private async loadHostMap(saved: string, id: string) {
+    const turn = this.generation;
+    this.set({ mapLoading: true, status: 'Downloading your host’s map…' });
+    try {
+      if (!this.setup.maps.some(m => m.id === id)) {
+        const map = await savedMap(saved);
+        if (!map || map.id !== id) throw Error('Your host’s map isn’t available. Ask them to pick another map.');
+        this.game.addSavedMaps([map]);
+      }
+      await this.game.ensureMap(id);
+      if (turn === this.generation && this.view.lobby?.map === id) this.set({ mapLoading: false, status: '' });
+    } catch (e) {
+      if (turn === this.generation && this.view.lobby?.map === id) this.set({ mapLoading: false, status: message(e) });
+    }
+  }
+
   setReady(ready: boolean) {
     if (this.view.stage !== 'lobby' || this.view.host) return;
+    if (ready && (this.view.mapLoading || !this.setup.maps.some(m => m.id === this.view.lobby!.map))) return;
     this.trySend(this.hostPeer!, { kind: 'ready', ready, revision: this.view.lobby!.revision });
   }
 

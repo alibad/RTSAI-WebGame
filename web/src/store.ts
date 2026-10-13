@@ -40,6 +40,8 @@ export interface Store {
   setup: SetupData | null;
   preparedMap: string | null;
   preparing: string | null;
+  /** Why a saved map couldn't be loaded (shown on the setup screens), by engine map id. */
+  mapErrors: Record<string, string>;
   previews: Record<string, string>; // map id -> object URL of map.png
   icons: Record<string, string | null>; // actor -> object URL of its cameo (null: none)
   info: StartInfo | null;
@@ -85,6 +87,7 @@ export const useStore = create<Store>((set) => ({
   setup: null,
   preparedMap: null,
   preparing: null,
+  mapErrors: {},
   previews: {},
   icons: {},
   info: null,

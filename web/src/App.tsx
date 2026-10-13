@@ -17,6 +17,8 @@ import { installTelemetry } from "./net/telemetry";
 import { Feedback } from "./ui/Feedback";
 import { MainMenu } from "./ui/MainMenu";
 import { installUiFeel } from "./ui/feel";
+import { siteOrigin } from "./net/account";
+import { mySavedMaps, savedMap } from "./net/saved-maps";
 
 function Loading() {
   const stage = useStore((s) => s.stage);
@@ -52,6 +54,10 @@ function ErrorCard({ game }: { game: Game | null }) {
 }
 
 let autostarted = false;
+let savedMapsLoaded = false;
+
+// The Earth studio lives on the website (RTSAI-Web /studio); its "Play in browser" comes back here with ?saved=<id>.
+const studioUrl = `${siteOrigin}/studio`;
 
 export default function App() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -110,6 +116,20 @@ export default function App() {
     }
   }, [game, phase]);
 
+  // Players' saved Earth maps join the map lists once the engine is ready; ?saved=<id> opens skirmish on that map.
+  useEffect(() => {
+    if (!game || phase !== "setup" || savedMapsLoaded) return;
+    savedMapsLoaded = true;
+    void mySavedMaps().then((maps) => game.addSavedMaps(maps)).catch((e) => console.warn("saved maps:", e));
+    const saved = new URLSearchParams(location.search).get("saved");
+    if (saved) void savedMap(saved).then((map) => {
+      const url = new URL(location.href);
+      url.searchParams.delete("saved");
+      if (map) { game.addSavedMaps([map]); url.searchParams.set("map", map.id); url.searchParams.set("mode", "skirmish"); setMode("skirmish"); }
+      history.replaceState(null, "", url);
+    }).catch((e) => console.warn("saved map:", e));
+  }, [game, phase]);
+
   // The menus use the mod's cursors too: ask for them as soon as the mod is loaded.
   useEffect(() => { if (game && phase === "setup") game.requestCursors(); }, [game, phase]);
 
@@ -120,12 +140,12 @@ export default function App() {
       {game && playing && !uiHidden && !practiceOpen && (sandboxMode ? <SandboxHud game={game} /> : <Hud game={game} />)}
       {game && phase === "setup" && !sandboxMode && !mapStudioOpen && <>
         <div className="menu-utility" data-ui-sfx><MatchLibrary game={game} /><GameSettings game={game} /><Feedback game={game} /></div>
-        {mode === "home" ? <MainMenu onSkirmish={() => setMode("skirmish")} onCampaign={() => setMode("missions")} onWorkshop={() => setPracticeOpen(true)} onMapStudio={import.meta.env.VITE_STATIC_BUILD !== "1" ? () => setMapStudioOpen(true) : undefined} /> : <>
+        {mode === "home" ? <MainMenu onSkirmish={() => setMode("skirmish")} onCampaign={() => setMode("missions")} onWorkshop={() => setPracticeOpen(true)} onMapStudio={import.meta.env.VITE_STATIC_BUILD !== "1" ? () => setMapStudioOpen(true) : () => location.assign(studioUrl)} /> : <>
           {mode === "missions" ? <Missions game={game} /> : <Setup game={game} />}
           <nav className="menu-subnav" aria-label="Game modes" data-ui-sfx>
             <button type="button" onClick={() => setMode("home")} className="menu-subnav-back">← Main menu</button>
             <button type="button" onClick={() => setMode(mode === "missions" ? "skirmish" : "missions")}>{mode === "missions" ? "Skirmish" : "Campaign"}</button>
-            {import.meta.env.VITE_STATIC_BUILD !== "1" && <button type="button" onClick={() => setMapStudioOpen(true)}>Map studio</button>}
+            <button type="button" onClick={() => import.meta.env.VITE_STATIC_BUILD !== "1" ? setMapStudioOpen(true) : location.assign(studioUrl)}>Map studio</button>
           </nav>
         </>}
       </>}

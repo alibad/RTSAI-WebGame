@@ -72,7 +72,9 @@ export function Multiplayer({ game }: { game: Game }) {
   const lobby = view.lobby, map = setup.maps.find(m => m.id === lobby?.map), mine = lobby?.players[view.you - 1];
   const link = view.room && view.host ? inviteLink(view.room) : '';
   const teams: Option<number>[] = [0, 1, 2, 3, 4].map(t => ({ value: t, label: t ? `Team ${t}` : 'No team', leading: <Swatch color={TEAM_COLORS[t]} /> }));
-  const maps: Option<string>[] = setup.maps.filter(m => m.slots.length >= 2).map(m => ({ value: m.id, label: m.title, description: `Up to ${m.slots.length} players` }));
+  // Saved Earth maps first, as the player's own; guests get the host's from Firestore when the host picks one.
+  const maps: Option<string>[] = [...setup.maps.filter(m => m.saved), ...setup.maps.filter(m => !m.saved)].filter(m => m.slots.length >= 2)
+    .map(m => ({ value: m.id, label: m.title, description: `Up to ${m.slots.length} players`, group: setup.maps.some(x => x.saved) ? (m.saved ? 'Your maps' : 'Maps') : undefined }));
   const bots: Option<string>[] = setup.bots.map(b => ({ value: b.type, label: b.name }));
   const free = lobby && map ? map.slots.length - lobby.players.length - lobby.ai.length : 0;
   const everyoneReady = !!lobby && lobby.players.length >= 2 && lobby.players.every(p => p.ready);
@@ -119,7 +121,7 @@ export function Multiplayer({ game }: { game: Game }) {
       {tiles}
       <footer className="mp-footer"><p role="status">{hint}</p><div className="mp-actions">{view.host
         ? <Button size="lg" disabled={!everyoneReady} onClick={() => session.start()}>Start match</Button>
-        : <Button size="lg" variant={mine?.ready ? 'outline' : 'default'} onClick={() => session.setReady(!mine?.ready)}>{mine?.ready ? 'Not ready' : 'Ready'}</Button>}</div></footer>
+        : <Button size="lg" variant={mine?.ready ? 'outline' : 'default'} disabled={view.mapLoading && !mine?.ready} onClick={() => session.setReady(!mine?.ready)}>{mine?.ready ? 'Not ready' : 'Ready'}</Button>}</div></footer>
     </>}
   </section></div>;
 }

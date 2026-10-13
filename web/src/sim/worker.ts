@@ -29,6 +29,7 @@ let network: { generation: number; frame: number; stopped: boolean } | null = nu
 let runtimeApi: any = null;
 let base = "/";
 let lazy: LazyMount | null = null;
+const mountedMaps = new Set<string>();
 let ringHeader: Int32Array | null = null;
 let ringBytes: Uint8Array | null = null;
 let seq = 0;
@@ -454,6 +455,19 @@ self.onmessage = async (e: MessageEvent<ToWorker>) => {
         timings["sprites.restored"] = bake?.stats.restored ?? 0;
         timings["heap.prepared"] = (runtimeApi.Module.HEAPU8.length / 1048576) | 0;
         post({ type: "prepared", map: m.map, ms: performance.now() - t0, timings, lazy: lazy?.stats });
+        break;
+      }
+      case "mountMap": {
+        // A player's Earth map, added after boot: SimHost.MapPath finds web/content/maps/<id>/ before the MapCache,
+        // and a world starts from a map outside the cache. Ids are content hashes, so a mounted map never changes.
+        if (!/^earth-[a-f0-9]{16}$/.test(m.map) || !lazy) { post({ type: "mapMounted", map: m.map, error: "Invalid map" }); break; }
+        if (!mountedMaps.has(m.map)) {
+          const dir = `/vfs/mods/rtsai/web/content/maps/${m.map}`;
+          for (const [name, bytes] of [["map.yaml", new TextEncoder().encode(m.yaml)], ["map.bin", new Uint8Array(m.bin)], ["map.png", new Uint8Array(m.png)]] as const)
+            lazy.add(`${dir}/${name}`, bytes.length, (s, e) => bytes.subarray(s, e));
+          mountedMaps.add(m.map);
+        }
+        post({ type: "mapMounted", map: m.map });
         break;
       }
       case "preview": {

@@ -77,7 +77,10 @@ export function Setup({ game }: { game: Game }) {
     leading: <Flag id={f.id} className="h-[12px] w-[18px] rounded-[1px]" />,
   })), [factions]); // eslint-disable-line react-hooks/exhaustive-deps
   const botOptions: Option[] = setup.bots.map((b) => ({ value: b.type, label: b.name }));
-  const mapOptions: Option[] = setup.maps.map((m) => ({ value: m.id, label: m.title, description: `${m.players} players`, group: `${m.players} players` }));
+  // Saved Earth maps (net/saved-maps.ts) come first, as the player's own.
+  const mapOptions: Option[] = [...setup.maps.filter((m) => m.saved), ...setup.maps.filter((m) => !m.saved)].map((m) => ({ value: m.id, label: m.title,
+    description: m.saved ? [m.place, `${m.players} players`].filter(Boolean).join(" · ") : `${m.players} players`, group: m.saved ? "Your maps" : `${m.players} players` }));
+  const mapError = useStore((s) => (map ? s.mapErrors[map.id] : undefined));
 
   const start = () => {
     if (!map) return;
@@ -165,11 +168,12 @@ export function Setup({ game }: { game: Game }) {
                 : publicShot ? <div className="grid h-full place-items-center bg-[repeating-linear-gradient(45deg,#0c0f0c_0_10px,#101410_10px_20px)] text-[12px] text-[var(--muted-foreground)]">{map?.title}</div>
                 : <div className="grid h-full place-items-center"><div className="spinner" /></div>}
               <div className="absolute bottom-2 left-2 flex items-center gap-2 rounded-[3px] bg-black/70 px-2 py-1 text-[11px]">
-                {ready ? <span className="size-[7px] rounded-full bg-[var(--hud-green)]" /> : <div className="spinner !size-[10px] !border" />}
+                {ready ? <span className="size-[7px] rounded-full bg-[var(--hud-green)]" /> : mapError ? <span className="size-[7px] rounded-full bg-[var(--hud-red)]" /> : <div className="spinner !size-[10px] !border" />}
                 <span className="text-[var(--muted-foreground)]">
-                  {prepared === map?.id && sheets.uploaded < sheets.total
+                  {mapError ? mapError
+                    : prepared === map?.id && sheets.uploaded < sheets.total
                     ? `Loading art ${Math.round((100 * sheets.uploaded) / sheets.total)}%`
-                    : `${map?.players} players · ${map?.tileset.toLowerCase()}`}
+                    : map?.saved ? [map.place, `${map.players} players`].filter(Boolean).join(" · ") : `${map?.players} players · ${map?.tileset.toLowerCase()}`}
                 </span>
               </div>
             </div>
