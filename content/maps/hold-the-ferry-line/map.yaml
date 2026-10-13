@@ -1,0 +1,239 @@
+MapFormat: 12
+RequiresMod: rtsai
+Title: Hold the Ferry Line
+Author: RTS AI — Lines of Hope
+Tileset: TEMPERATE
+MapSize: 192,192
+Bounds: 16,16,160,160
+Visibility: MissionSelector
+Categories: Campaign
+LockPreview: True
+Players:
+	PlayerReference@Turkey:
+		Name: Turkey
+		AllowBots: False
+		Playable: True
+		Required: True
+		LockFaction: True
+		Faction: turkey
+		LockColor: True
+		Color: A73731
+		LockSpawn: True
+		LockTeam: True
+		Enemies: Orion Group
+	PlayerReference@Orion:
+		Name: Orion Group
+		Faction: russia
+		Color: 545D66
+		Enemies: Turkey
+	PlayerReference@Neutral:
+		Name: Neutral
+		OwnsWorld: True
+		NonCombatant: True
+		Faction: china
+Actors:
+	OrionWaveEntry: waypoint
+		Owner: Neutral
+		Location: 183,-89
+	NorthCheckpoint: caoutp
+		Owner: Turkey
+		Location: 121,-55
+	NorthCheckpointGun0: r2boran
+		Owner: Turkey
+		Location: 117,-53
+	NorthCheckpointGun1: r2hisar
+		Owner: Turkey
+		Location: 127,-60
+	NorthCheckpointGun2: r2hisar
+		Owner: Turkey
+		Location: 122,-50
+	EastCheckpoint: caoutp
+		Owner: Turkey
+		Location: 142,-66
+	EastCheckpointGun0: r2boran
+		Owner: Turkey
+		Location: 138,-64
+	EastCheckpointGun1: r2hisar
+		Owner: Turkey
+		Location: 148,-68
+	EastCheckpointGun2: r2hisar
+		Owner: Turkey
+		Location: 142,-60
+	SouthCheckpoint: caoutp
+		Owner: Turkey
+		Location: 145,-35
+	SouthCheckpointGun0: r2boran
+		Owner: Turkey
+		Location: 142,-35
+	SouthCheckpointGun1: r2hisar
+		Owner: Turkey
+		Location: 151,-39
+	SouthCheckpointGun2: r2hisar
+		Owner: Turkey
+		Location: 145,-30
+	TurkeyConyard: gacnst
+		Owner: Turkey
+		Location: 117,-29
+	TurkeyPowerOne: gapowr
+		Owner: Turkey
+		Location: 122,-36
+	TurkeyPowerTwo: gapowr
+		Owner: Turkey
+		Location: 127,-38
+	TurkeyPowerThree: gapowr
+		Owner: Turkey
+		Location: 125,-33
+	TurkeyBarracks: gapile
+		Owner: Turkey
+		Location: 100,-8
+	TurkeyFactory: gaweap
+		Owner: Turkey
+		Location: 107,-16
+	TurkeyRefinery: garefn
+		Owner: Turkey
+		Location: 123,-45
+	FerryPierNorth: caoutp
+		Owner: Turkey
+		Location: 107,-48
+	FerryPierSouth: caoutp
+		Owner: Turkey
+		Location: 110,-24
+	MissionSpawn: mpspawn
+		Owner: Neutral
+		Location: 122,-39
+	TurkeyHarvester: harv
+		Owner: Turkey
+		Location: 117,-35
+	Aydin0: r2trrifle
+		Owner: Turkey
+		Location: 135,-41
+	Aydin1: r2trrifle
+		Owner: Turkey
+		Location: 138,-43
+	Aydin2: r2trrifle
+		Owner: Turkey
+		Location: 139,-45
+	Aydin3: r2trrifle
+		Owner: Turkey
+		Location: 142,-47
+	Aydin4: r2trrifle
+		Owner: Turkey
+		Location: 143,-49
+	Aydin5: r2trrifle
+		Owner: Turkey
+		Location: 137,-40
+	Aydin6: r2trat
+		Owner: Turkey
+		Location: 138,-42
+	Aydin7: r2trat
+		Owner: Turkey
+		Location: 141,-44
+	Aydin8: r2trat
+		Owner: Turkey
+		Location: 142,-46
+	Aydin9: r2trat
+		Owner: Turkey
+		Location: 145,-48
+	Aydin10: r2bozkir
+		Owner: Turkey
+		Location: 137,-39
+	Aydin11: r2bozkir
+		Owner: Turkey
+		Location: 140,-41
+	Aydin12: r2aras
+		Owner: Turkey
+		Location: 141,-43
+	Aydin13: r2aras
+		Owner: Turkey
+		Location: 144,-45
+	Aydin14: r2gokkalkan
+		Owner: Turkey
+		Location: 145,-47
+	Ferry0Start: waypoint
+		Owner: Neutral
+		Location: 100,-37
+	Ferry0Way1: waypoint
+		Owner: Neutral
+		Location: 101,-31
+	Ferry0Way2: waypoint
+		Owner: Neutral
+		Location: 102,-25
+	Ferry0Way3: waypoint
+		Owner: Neutral
+		Location: 98,-16
+	Ferry0Way4: waypoint
+		Owner: Neutral
+		Location: 91,-7
+	Ferry0Shore: waypoint
+		Owner: Neutral
+		Location: 84,-1
+	Ferry1Start: waypoint
+		Owner: Neutral
+		Location: 102,-36
+	Ferry1Way1: waypoint
+		Owner: Neutral
+		Location: 104,-31
+	Ferry1Way2: waypoint
+		Owner: Neutral
+		Location: 102,-23
+	Ferry1Way3: waypoint
+		Owner: Neutral
+		Location: 96,-13
+	Ferry1Way4: waypoint
+		Owner: Neutral
+		Location: 88,-4
+	Ferry1Shore: waypoint
+		Owner: Neutral
+		Location: 85,-3
+	Ferry2Start: waypoint
+		Owner: Neutral
+		Location: 104,-20
+	Ferry2Way1: waypoint
+		Owner: Neutral
+		Location: 98,-13
+	Ferry2Way2: waypoint
+		Owner: Neutral
+		Location: 91,-6
+	Ferry2Shore: waypoint
+		Owner: Neutral
+		Location: 82,2
+	Ferry3Start: waypoint
+		Owner: Neutral
+		Location: 103,-17
+	Ferry3Way1: waypoint
+		Owner: Neutral
+		Location: 96,-10
+	Ferry3Way2: waypoint
+		Owner: Neutral
+		Location: 88,-2
+	Ferry3Shore: waypoint
+		Owner: Neutral
+		Location: 81,4
+	Ferry4Start: waypoint
+		Owner: Neutral
+		Location: 104,-22
+	Ferry4Way1: waypoint
+		Owner: Neutral
+		Location: 98,-15
+	Ferry4Way2: waypoint
+		Owner: Neutral
+		Location: 90,-7
+	Ferry4Shore: waypoint
+		Owner: Neutral
+		Location: 83,0
+	OrionBoatOne: hyd
+		Owner: Orion Group
+		Location: 93,-7
+	OrionBoatTwo: hyd
+		Owner: Orion Group
+		Location: 88,0
+	OrionSpotters: e2
+		Owner: Orion Group
+		Location: 93,-1
+Rules:
+	World:
+		-SpawnStartingUnits:
+		-CrateSpawner:
+		-StartGameNotification:
+	Player:
+		-ConquestVictoryConditions:

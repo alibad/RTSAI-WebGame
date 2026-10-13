@@ -1,0 +1,18 @@
+{
+  "map": "hold-the-ferry-line",
+  "mission": "hold-the-ferry-line",
+  "seed": 2026,
+  "players": [
+    {
+      "slot": "Turkey",
+      "faction": "turkey",
+      "color": "2A6FDB"
+    }
+  ],
+  "options": {
+    "startingcash": "10000",
+    "difficulty": "normal",
+    "fog": "True",
+    "explored": "False"
+  }
+}

@@ -1,0 +1,233 @@
+MapFormat: 12
+RequiresMod: rtsai
+Title: Lights in the Water
+Author: RTS AI — Lines of Hope
+Tileset: TEMPERATE
+MapSize: 96,96
+Bounds: 1,1,94,94
+Visibility: MissionSelector
+Categories: Campaign
+LockPreview: True
+Players:
+	PlayerReference@Yemen:
+		Name: Yemen
+		AllowBots: False
+		Playable: True
+		Required: True
+		LockFaction: True
+		Faction: yemen
+		LockColor: True
+		Color: 8F7A45
+		LockSpawn: True
+		LockTeam: True
+		Enemies: Orion Group
+	PlayerReference@Orion:
+		Name: Orion Group
+		Faction: russia
+		Color: 545D66
+		Enemies: Yemen
+	PlayerReference@Neutral:
+		Name: Neutral
+		OwnsWorld: True
+		NonCombatant: True
+		Faction: china
+Actors:
+	OrionWaveEntry: waypoint
+		Owner: Neutral
+		Location: 54,-51
+	WatchPost: caoutp
+		Owner: Yemen
+		Location: 52,-8
+	WatchMissiles: r2ycoastal
+		Owner: Yemen
+		Location: 48,-6
+	WatchBunker: r2ybunker
+		Owner: Yemen
+		Location: 60,-10
+	TownBunkerNorth: r2ybunker
+		Owner: Yemen
+		Location: 50,6
+	TownMissilesNorth: r2ycoastal
+		Owner: Yemen
+		Location: 57,1
+	TownBunkerEast: r2ybunker
+		Owner: Yemen
+		Location: 67,-1
+	TownMissilesEast: r2ycoastal
+		Owner: Yemen
+		Location: 68,4
+	TownClinic: cahosp
+		Owner: Yemen
+		Location: 48,16
+	TownPowerOne: napowr
+		Owner: Yemen
+		Location: 39,19
+	TownPowerTwo: napowr
+		Owner: Yemen
+		Location: 41,25
+	MissionSpawn: mpspawn
+		Owner: Neutral
+		Location: 64,12
+	Haidar0: r2technical
+		Owner: Yemen
+		Location: 58,14
+	Haidar1: r2technical
+		Owner: Yemen
+		Location: 61,12
+	Haidar2: r2technical
+		Owner: Yemen
+		Location: 62,10
+	Haidar3: r2ytechrr
+		Owner: Yemen
+		Location: 65,8
+	Haidar4: r2ytechrr
+		Owner: Yemen
+		Location: 66,6
+	Haidar5: r2ymlr
+		Owner: Yemen
+		Location: 69,4
+	Haidar6: r2ymr
+		Owner: Yemen
+		Location: 59,15
+	Haidar7: r2ymr
+		Owner: Yemen
+		Location: 62,13
+	Haidar8: r2ymr
+		Owner: Yemen
+		Location: 63,11
+	Haidar9: r2ymr
+		Owner: Yemen
+		Location: 66,9
+	Haidar10: r2ymr
+		Owner: Yemen
+		Location: 67,7
+	Haidar11: r2yrpg
+		Owner: Yemen
+		Location: 70,5
+	Haidar12: r2yrpg
+		Owner: Yemen
+		Location: 60,16
+	Haidar13: r2yrpg
+		Owner: Yemen
+		Location: 63,14
+	Haidar14: r2yrpg
+		Owner: Yemen
+		Location: 64,12
+	Haidar15: r2yspot
+		Owner: Yemen
+		Location: 67,10
+	SurvivorsCove: waypoint
+		Owner: Neutral
+		Location: 86,-3
+	SurvivorsCoveCivilian0: civ1
+		Owner: Neutral
+		Location: 83,-1
+	SurvivorsCoveCivilian1: civa
+		Owner: Neutral
+		Location: 85,-3
+	SurvivorsCoveCivilian2: civ2
+		Owner: Neutral
+		Location: 87,-5
+	SurvivorsJetty: waypoint
+		Owner: Neutral
+		Location: 105,-24
+	SurvivorsJettyCivilian0: civ1
+		Owner: Neutral
+		Location: 102,-22
+	SurvivorsJettyCivilian1: civa
+		Owner: Neutral
+		Location: 104,-24
+	SurvivorsJettyCivilian2: civ2
+		Owner: Neutral
+		Location: 106,-26
+	StrangerSite: waypoint
+		Owner: Neutral
+		Location: 126,-46
+	StrangerSiteCivilian0: civb
+		Owner: Neutral
+		Location: 124,-45
+	StrangerSiteCivilian1: civ3
+		Owner: Neutral
+		Location: 126,-47
+	Stranger: tany
+		Owner: Neutral
+		Location: 126,-48
+	SurvivorsCovePatrol0: e2
+		Owner: Orion Group
+		Location: 84,-10
+	SurvivorsCovePatrol1: e2
+		Owner: Orion Group
+		Location: 87,-12
+	SurvivorsCovePatrol2: htnk
+		Owner: Orion Group
+		Location: 85,-15
+	SurvivorsJettyPatrol0: e2
+		Owner: Orion Group
+		Location: 97,-25
+	SurvivorsJettyPatrol1: e2
+		Owner: Orion Group
+		Location: 104,-31
+	SurvivorsJettyPatrol2: e2
+		Owner: Orion Group
+		Location: 99,-29
+	SurvivorsJettyPatrol3: htnk
+		Owner: Orion Group
+		Location: 102,-34
+	StrangerSitePatrol0: e2
+		Owner: Orion Group
+		Location: 119,-45
+	StrangerSitePatrol1: e2
+		Owner: Orion Group
+		Location: 120,-48
+	StrangerSitePatrol2: e2
+		Owner: Orion Group
+		Location: 126,-53
+	StrangerSitePatrol3: e2
+		Owner: Orion Group
+		Location: 129,-54
+	StrangerSitePatrol4: htnk
+		Owner: Orion Group
+		Location: 119,-51
+	StrangerSitePatrol5: htnk
+		Owner: Orion Group
+		Location: 125,-56
+	RoadblockTank: htnk
+		Owner: Orion Group
+		Location: 86,-26
+	RoadblockRifles: e2
+		Owner: Orion Group
+		Location: 89,-27
+	ReefLanding: waypoint
+		Owner: Neutral
+		Location: 123,-45
+	ReefRoadEast: waypoint
+		Owner: Neutral
+		Location: 111,-34
+	ReefRoadMid: waypoint
+		Owner: Neutral
+		Location: 97,-20
+	ReefRoadWest: waypoint
+		Owner: Neutral
+		Location: 82,-6
+	TownGate: waypoint
+		Owner: Neutral
+		Location: 71,7
+	ClinicDoor: waypoint
+		Owner: Neutral
+		Location: 62,17
+Rules:
+	World:
+		-SpawnStartingUnits:
+		-CrateSpawner:
+		-StartGameNotification:
+	Player:
+		-ConquestVictoryConditions:
+	r2ycoastal:
+		-MustBeDestroyed:
+	r2ybunker:
+		-MustBeDestroyed:
+	napowr:
+		-MustBeDestroyed:
+	htnk:
+		Health:
+			HP: 260
