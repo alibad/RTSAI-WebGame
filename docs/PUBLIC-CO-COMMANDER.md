@@ -6,9 +6,12 @@ placement, power, the opening economy/production order, harvesters, radar, army 
 Names and build availability come from the game; compact role/queue metadata comes from the generated companion
 tech tree (`node tools/sync-adviser-tree.mjs`). There is no model API, companion server or additional model download.
 
-The adviser is on by default in public single-player games. Apply, G or J confirms the displayed proposal.
-Cancel dismisses it until the situation changes or the player asks for another suggestion. The feed explains
-the recommendation. The setup switch disables the adviser; that choice persists after reload.
+The adviser is on by default in public single-player games. Apply or J confirms the displayed proposal (G is
+RA2's Guard). Cancel dismisses it until the situation changes or the player asks for another suggestion. The feed
+explains the recommendation. Game settings → AI co-commander chooses Off, Suggest or Auto; the setup switch turns
+it off too, and the choice persists after reload. Off ends the adviser at once. Auto confirms each proposal as it
+is made, through the same path as Apply, and once more after a pause. Turning it back on mid-match works only in
+a match that started with it; otherwise it starts with the next match.
 
 Every confirmation re-observes the current world and recomputes the advice. Its decision key and complete
 command set must match the displayed proposal. The native executor then checks the player, ownership,

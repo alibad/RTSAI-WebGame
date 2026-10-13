@@ -24,9 +24,14 @@ const BTN_LEFT = 1, BTN_RIGHT = 2;
 // (ViewportEdgeScrollMargin), 30 view px per 25 ms (ViewportEdgeScrollStep), the same for the arrow keys.
 const EDGE_PX = 5;
 const SCROLL_PX_PER_MS = 30 / 25;
-// The production tabs' hotkeys (the mod's ProductionTypeButton keys, hotkeys.yaml): E R T Y U I.
-const TAB_KEYS: Record<string, string> = { KeyE: "Building", KeyR: "Support", KeyT: "Infantry", KeyY: "Vehicle", KeyU: "Aircraft", KeyI: "Ship" };
-// MapBookmarkSave/Restore 01-04: Q W E R with Ctrl / Alt.
+// The production tabs, as RA2's sidebar keys: Q structures, W armory (defenses), E infantry, R units. RA2's units tab
+// holds vehicles, aircraft and ships; here R moves through those three tabs.
+const TAB_KEYS: Record<string, string[]> = { KeyQ: ["Building"], KeyW: ["Support"], KeyE: ["Infantry"], KeyR: ["Vehicle", "Aircraft", "Ship"] };
+// Modes whose order generator confirms with the engine's action button (MouseActionType.ConfirmOrder: the right button
+// in the Modern mouse style the engine runs, where the left one cancels). The player clicks left, as in RA2; the click
+// goes to the engine as that button, else attack move and guard would cancel instead of ordering.
+const CONFIRM_MODES = new Set(["attackmove", "guard"]);
+// MapBookmarkSave/Restore 01-04: RA2's F1-F4 (Ctrl: save; browsers keep Ctrl+F4), and Q W E R with Ctrl / Alt.
 const BOOKMARK_KEYS: Record<string, number> = { KeyQ: 0, KeyW: 1, KeyE: 2, KeyR: 3 };
 
 /** Minimap data: terrain image, blips and shroud, with a version so the canvas redraws only on change. */
@@ -72,6 +77,8 @@ export class Game {
   private mouse = { x: 0, y: 0, wx: 0, wy: 0, inside: false, sx: 0, sy: 0 };
   private drag: { x0: number; y0: number; active: boolean; pan: boolean; cx: number; cy: number } | null = null;
   private keys = new Set<string>();
+  /** RA2's Follow (F): the actor the view stays on until the player moves the view. */
+  private follow: number | null = null;
   private cursorSeq = 0;
   private lastCursorKey = "";
   private cursorInFlight = false;
@@ -366,6 +373,23 @@ export class Game {
     this.client.wantGroups(factions, factions && local ? [local] : factions);
   }
 
+  /** Whether this match was launched with the co-commander's bridge (it can be turned back on within the match). */
+  private ccBridge = false;
+
+  /**
+   * Game settings: the co-commander on or off. Off ends it at once; on resumes it in a match launched with it, else it
+   * starts with the next match. Returns whether the change shows in the match now.
+   */
+  setCoCommander(enabled: boolean) {
+    const playing = store.get().phase === "playing";
+    if (enabled === store.get().cc.enabled) return true;
+    this.cc.setEnabled(enabled);
+    if (!enabled || !playing) return true;
+    if (!this.ccBridge) return false;
+    this.cc.matchStarted();
+    return true;
+  }
+
   cancelPendingStart() {
     this.cc.endMatch();
     this.launchGeneration++;
@@ -376,18 +400,20 @@ export class Game {
   private launch(scenarioJson: string, paused: boolean, generation: number) {
     if (generation !== this.launchGeneration) return;
     // The co-commander (skirmish only): the local companion is started first, then the match with its bridge on.
+    this.ccBridge = false;
     if (!store.get().cc.enabled || !store.get().ccAvailable || this.sandbox) {
       this.client.start(scenarioJson, paused);
       return;
     }
     if (store.get().cc.mode === "browser") {
+      this.ccBridge = true;
       this.cc.matchStarted();
       this.client.start(scenarioJson, paused, "browser");
       return;
     }
     store.set({ stage: "Starting the co-commander" });
     this.cc.ensureRunning()
-      .then(() => { if (generation !== this.launchGeneration) return; this.cc.matchStarted(); this.client.start(scenarioJson, paused, true); })
+      .then(() => { if (generation !== this.launchGeneration) return; this.ccBridge = true; this.cc.matchStarted(); this.client.start(scenarioJson, paused, true); })
       .catch((e) => {
         if (generation !== this.launchGeneration) return;
         store.set({ cc: { ...store.get().cc, error: String(e instanceof Error ? e.message : e) } });
@@ -547,6 +573,11 @@ export class Game {
     if (playing) this.scroll(dt);
     this.client.poll(performance.now());
     const cur = this.client.cur;
+    if (this.follow !== null && cur) {
+      const a = cur.actorById.get(this.follow);
+      if (!a || !playing) this.follow = null;
+      else if (a.sx !== this.cam.x || a.sy !== this.cam.y) { this.cam.x = a.sx; this.cam.y = a.sy; this.clampCam(); this.sendView(); }
+    }
     this.updateHover(cur);
     this.overlay.markers = this.sandboxMarkers();
     // Outside a match the canvas is hidden behind the menus (App.tsx): drawing it there was full-screen work every frame.
@@ -637,6 +668,7 @@ export class Game {
   }
 
   lookAt(x: number, y: number) {
+    this.follow = null;
     this.cam.x = x;
     this.cam.y = y;
     this.clampCam();
@@ -674,6 +706,7 @@ export class Game {
       if (this.mouse.sy >= r.bottom - EDGE_PX) uy = uy || 1;
     }
     if (ux || uy) {
+      this.follow = null;
       // Rate for a 25 ms step, diagonals no faster (UpdateCameraTick); view (CSS) px to world px.
       const step = (Math.min(dt, 25) * SCROLL_PX_PER_MS * preferences.scroll) / (this.cam.zoom * Math.max(1, Math.hypot(ux, uy)));
       this.cam.x += ux * step;
@@ -821,6 +854,8 @@ export class Game {
 
   private click(wx: number, wy: number, button: number, mods: number) {
     if (this.coach.review) return;
+    // RA2's way points (hold Z, click the points): each order joins the queue, as Shift does.
+    if (button === BTN_RIGHT && this.keys.has("z")) mods |= MOD_SHIFT;
     const t0 = performance.now();
     if (button === BTN_RIGHT && this.overlay.selected.size > 0) {
       this.pendingLatency = { t0, tick: 0 };
@@ -828,6 +863,11 @@ export class Game {
       this.overlay.orderFlash = { x: wx, y: wy, t: t0, color: attack ? [1, 0.25, 0.2] : [0.3, 1, 0.4] };
     }
     this.client.send({ type: "click", x: Math.round(wx), y: Math.round(wy), button, mods, t: t0 });
+  }
+
+  /** A click in an order mode (placement, sell, repair, beacon, attack move, guard), sent as the button it confirms with. */
+  private modeClick(wx: number, wy: number, mods: number) {
+    this.click(wx, wy, CONFIRM_MODES.has(this.ui?.mode ?? "") ? BTN_RIGHT : BTN_LEFT, mods);
   }
 
   /** Right-click order at a world position (minimap). */
@@ -972,6 +1012,7 @@ export class Game {
     const d = this.drag;
     if (!d) return;
     if (d.pan) {
+      this.follow = null;
       this.cam.x -= (e.clientX - d.cx) / this.cam.zoom;
       this.cam.y -= (e.clientY - d.cy) / this.cam.zoom;
       d.cx = e.clientX;
@@ -1008,11 +1049,12 @@ export class Game {
       mode: () => this.ui?.mode ?? "",
       select: (wx, wy) => { store.set({ menuOpen: false }); this.clickSelect(wx, wy, false); },
       order: (wx, wy) => this.click(wx, wy, BTN_RIGHT, 0),
-      modeClick: (wx, wy) => this.click(wx, wy, BTN_LEFT, 0),
+      modeClick: (wx, wy) => this.modeClick(wx, wy, 0),
       boxSelect: (x0, y0, x1, y1) => this.boxSelect(x0, y0, x1, y1, false),
       setBox: (box) => { this.overlay.dragBox = box; },
       clear: () => { if (this.ui?.mode) this.command({ cmd: "mode", mode: "none" }); else this.select([]); },
       pan: (dx, dy) => {
+        this.follow = null;
         this.cam.x -= dx / this.cam.zoom;
         this.cam.y -= dy / this.cam.zoom;
         this.clampCam();
@@ -1039,8 +1081,17 @@ export class Game {
       const [wx, wy] = this.toWorld(e.clientX, e.clientY);
       if (this.sandboxEdit(e, wx, wy)) { e.preventDefault(); return; }
       const mode = this.ui?.mode ?? "";
+      // RA2's attack move: Ctrl+Shift+click with units selected. The worker takes the mode, the click and the reset in
+      // order, so this is the A mode for one click.
+      if (!mode && (e.button === 0 || e.button === 2) && (e.ctrlKey || e.metaKey) && e.shiftKey && this.ui?.commands?.attackmove) {
+        void this.command({ cmd: "mode", mode: "attackmove" });
+        this.click(wx, wy, BTN_RIGHT, 0); // the attack-move generator's confirm button (CONFIRM_MODES)
+        void this.command({ cmd: "mode", mode: "none" });
+        e.preventDefault();
+        return;
+      }
       if (e.button === 1) this.drag = { x0: wx, y0: wy, active: true, pan: true, cx: e.clientX, cy: e.clientY };
-      else if (mode && e.button === 0) this.click(wx, wy, BTN_LEFT, this.mods(e)); // placement, sell, repair, attack-move, guard
+      else if (mode && e.button === 0) this.modeClick(wx, wy, this.mods(e)); // placement, sell, repair, attack-move, guard
       else if (mode && e.button === 2) this.command({ cmd: "mode", mode: "none" });
       else if (e.button === 0) this.drag = { x0: wx, y0: wy, active: false, pan: false, cx: e.clientX, cy: e.clientY };
       else if (e.button === 2) this.click(wx, wy, BTN_RIGHT, this.mods(e));
@@ -1073,8 +1124,9 @@ export class Game {
   }
 
   /**
-   * The desktop game's hotkeys, as the mod binds them (mods/common/hotkeys/*.yaml and the mod's hotkeys.yaml, wired by
-   * its ingame chrome), each doing what its widget logic does. ui/Hotkeys.tsx lists them.
+   * Red Alert 2's keyboard commands (the RA2 manual) for everything this game has, then the OpenRA chrome's keys that
+   * RA2 leaves free (stances, zoom, control-group variants), each doing what its widget logic does. ui/Hotkeys.tsx
+   * lists them.
    */
   private keyDown(e: KeyboardEvent) {
     if (this.coach.review && e.key !== "Escape" && !(e.target instanceof HTMLInputElement) && !(e.target instanceof HTMLTextAreaElement)) return;
@@ -1099,7 +1151,8 @@ export class Game {
       return done();
     }
     if (e.key === "?" || (e.key === "/" && shift)) { store.set({ keysOpen: !store.get().keysOpen }); return done(); }
-    if (e.key === "Pause" || (k === "p" && !ctrl && !alt)) { this.setPaused(!store.get().paused); return done(); }
+    // Pause: the Pause key (the Esc menu pauses too, as RA2's options menu does). RA2's P is Select all.
+    if (e.key === "Pause") { this.setPaused(!store.get().paused); return done(); }
 
     // Control groups (ControlGroupsWidget): N select (twice: jump), Ctrl+N create, Ctrl+Shift+N add to,
     // Shift+N combine with, Alt+N jump to.
@@ -1114,23 +1167,22 @@ export class Game {
       return done();
     }
 
-    // Production (ProductionPaletteWidget, HotkeyPrefix Production, HotkeyCount 24): F1-F12 the palette's icons,
-    // Ctrl+F1-F12 the 13th-24th; Shift builds five. A left click on the icon, as the desktop.
+    // RA2's bookmarks: F1-F4 jump to one, Ctrl+F1-F4 save it. F5-F10 are held too, so a stray F5 cannot reload the match.
     const fkey = /^F(\d{1,2})$/.exec(e.key);
-    if (fkey && !alt) {
-      const n = Number(fkey[1]) - 1 + (ctrl ? 12 : 0);
-      const tab = store.get().tab;
-      const item = store.get().catalog.find((c) => c.type === tab)?.items[n];
-      if (item) this.command({ cmd: "produce", queue: tab, item: item.name, count: shift ? 5 : 1, front: false });
+    if (fkey && !alt && Number(fkey[1]) <= 10) {
+      const i = Number(fkey[1]) - 1;
+      if (i < 4 && ctrl) this.bookmarks[i] = [this.cam.x, this.cam.y, this.cam.zoom];
+      else if (i < 4 && this.bookmarks[i]) { const [x, y, z] = this.bookmarks[i]!; this.cam.zoom = z; this.lookAt(x, y); }
       return done();
     }
-    // Production tabs (ProductionTypeButton): E R T Y U I.
+    // Production tabs, RA2's sidebar keys: Q structures, W armory, E infantry, R units (again: aircraft, ships).
     if (TAB_KEYS[code] && !ctrl && !alt) {
       // As its button: only when that production is available (ProductionTypeButton.IsDisabled).
-      const type = TAB_KEYS[code];
       const st = store.get();
-      const enabled = (st.ui?.queues?.find((q) => q.type === type)?.enabled ?? false) && !!st.catalog.find((c) => c.type === type)?.items.length;
-      if (enabled) store.set({ tab: type });
+      const enabled = (type: string) => (st.ui?.queues?.find((q) => q.type === type)?.enabled ?? false) && !!st.catalog.find((c) => c.type === type)?.items.length;
+      const types = TAB_KEYS[code], at = types.indexOf(st.tab);
+      const next = [...types.slice(at + 1), ...types.slice(0, at + 1)].find(enabled);
+      if (next) store.set({ tab: next });
       return done();
     }
 
@@ -1159,8 +1211,8 @@ export class Game {
     // DisableUserInterface (Shift+=) / DisableAllUserInterface (Alt+Shift+=): hide the HUD.
     if (code === "Equal" && shift) { store.set({ uiHidden: !store.get().uiHidden }); return done(); }
 
-    // Co-commander: G, or J, applies the displayed recommendation; modified shortcuts remain available.
-    if ((code === "KeyG" || code === "KeyJ") && !ctrl && !alt && !shift) {
+    // Co-commander: J applies the displayed recommendation (G is RA2's Guard); Ctrl+Enter / Ctrl+Backspace too.
+    if (code === "KeyJ" && !ctrl && !alt && !shift) {
       const p = this.cc.pending();
       if (p && !e.repeat) void this.cc.decide(p, true);
       return done();
@@ -1180,22 +1232,27 @@ export class Game {
       return;
     }
 
-    // Command bar: A attack move (also with Ctrl/Shift held), D guard, F deploy, Ctrl+X scatter, S stop; Shift queues.
+    // Command bar, RA2's keys (preferences.ts COMMAND_KEYS): D deploy, G guard, S stop, X scatter; attack move is
+    // Ctrl+Shift+click (mousedown) and A. Shift queues.
     if (code === "KeyA") { this.setMode("attackmove"); return done(); }
     if (code === "KeyX" && ctrl) { this.command({ cmd: "scatter", queued: shift }); return done(); }
     if (ctrl && code === "Tab") { this.cycle("cycleproduction"); return done(); }
     if (ctrl) return;
     switch (code) {
+      case "KeyD": this.command({ cmd: "deploy", queued: shift }); break;
+      case "KeyG": this.setMode("guard"); break;
       case "KeyS": this.command({ cmd: "stop" }); break;
-      case "KeyD": this.setMode("guard"); break;
-      case "KeyF": this.command({ cmd: "deploy", queued: shift }); break;
-      // Sidebar buttons: Z sell, C repair, B beacon.
-      case "KeyZ": this.setMode("sell"); break;
-      case "KeyC": this.setMode("repair"); break;
+      case "KeyX": this.command({ cmd: "scatter", queued: shift }); break;
+      // Sidebar buttons, RA2's: K repair, L sell; B beacon.
+      case "KeyK": this.setMode("repair"); break;
+      case "KeyL": this.setMode("sell"); break;
       case "KeyB": this.setMode("beacon"); break;
-      // WORLD_KEYHANDLER logics.
-      case "KeyQ": this.selectHotkey("selectall"); break;
-      case "KeyW": this.selectHotkey("selecttype"); break;
+      // RA2: P every unit on the battlefield, T the selected types on screen (again: the map), H the base, F follow the
+      // selected unit, Z held while clicking: way points (click()).
+      case "KeyP": this.selectHotkey("selectall", true); break;
+      case "KeyT": this.selectHotkey("selecttype"); break;
+      case "KeyF": this.toggleFollow(); break;
+      case "KeyZ": break;
       case "KeyH": this.cycle("cyclebase"); break;
       case "KeyN": this.cycle("cycleharvester"); break;
       case "Home": this.cycle("toselection"); break;
@@ -1209,11 +1266,23 @@ export class Game {
     done();
   }
 
-  /** SelectAllUnits (Q) / SelectUnitsByType (W): the units on screen, or across the map when that adds nothing. */
-  private async selectHotkey(cmd: "selectall" | "selecttype") {
-    const [x0, y0, x1, y1] = this.viewRect();
+  /**
+   * SelectAllUnits (P, RA2's Select all: the whole battlefield) / SelectUnitsByType (T): the units on screen, or across
+   * the map when that adds nothing.
+   */
+  private async selectHotkey(cmd: "selectall" | "selecttype", wholeMap = false) {
+    const b = this.info?.bounds;
+    const [x0, y0, x1, y1] = wholeMap && b ? [b[0] - 1000, b[1] - 1000, b[2] + 1000, b[3] + 1000] : this.viewRect();
     const r = await this.command<{ selection?: number[] }>({ cmd, x0: Math.floor(x0), y0: Math.floor(y0), x1: Math.ceil(x1), y1: Math.ceil(y1), mods: this.modState });
     if (r.selection) { this.overlay.selected = new Set(r.selection); this.lastCursorKey = ""; }
+  }
+
+  /** RA2's Follow (F): the view stays on the first selected unit until the player moves it; F again stops. */
+  private toggleFollow() {
+    if (this.follow !== null) { this.follow = null; return; }
+    const cur = this.client.cur;
+    const id = [...this.overlay.selected].find((i) => cur?.actorById.get(i)?.owner === cur?.header.localPlayer);
+    if (id !== undefined) this.follow = id;
   }
 
   /** Cycle base / harvesters / production buildings, jump to the selection or the last event. */

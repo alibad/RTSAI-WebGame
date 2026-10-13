@@ -45,9 +45,9 @@ function ProposalCard({ game, item }: { game: Game; item: FeedItem }) {
       <span className="cc-offer-text"><small>Recommended order</small><span>{item.text}</span></span>
       {item.state === "pending" ? (
         <span className="cc-offer-actions">
-          <button type="button" className="cc-apply" disabled={uncertain || paused} onClick={() => game.cc.decide(item, true)} title={shortcut ? "Apply recommendation (G or J)" : "Apply recommendation"}
-            aria-label={shortcut ? "Apply recommendation (G or J)" : "Apply recommendation"} aria-keyshortcuts={shortcut ? "g j" : undefined}>
-            <Check size={14} strokeWidth={3} />Apply{shortcut && <kbd>G / J</kbd>}
+          <button type="button" className="cc-apply" disabled={uncertain || paused} onClick={() => game.cc.decide(item, true)} title={shortcut ? "Apply recommendation (J)" : "Apply recommendation"}
+            aria-label={shortcut ? "Apply recommendation (J)" : "Apply recommendation"} aria-keyshortcuts={shortcut ? "j" : undefined}>
+            <Check size={14} strokeWidth={3} />Apply{shortcut && <kbd>J</kbd>}
           </button>
           <button type="button" className="cc-cancel" onClick={() => game.cc.decide(item, false)} title="Cancel" aria-label="Cancel"><X /></button>
         </span>

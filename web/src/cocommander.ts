@@ -34,8 +34,10 @@ export interface FeedItem {
 export interface PreviewCommand { action: string; actor_id?: number; target_actor_id?: number; target_x?: number; target_y?: number; item_type?: string }
 
 export interface CoCommanderState {
-  /** The player's choice (setup screen), kept between visits. */
+  /** The player's choice (setup screen, Game settings), kept between visits. */
   enabled: boolean;
+  /** Auto (Game settings): each recommendation is applied as it is made, through the same checks as Apply. */
+  auto: boolean;
   /** Browser: the existing state-based strategy adviser; local: models/voice; mock: local test stand-in. */
   mode: "mock" | "local" | "browser";
   running: boolean;
@@ -73,7 +75,7 @@ export function initialCoCommander(): CoCommanderState {
   let saved: Partial<CoCommanderState> & { browserVersion?: number } = {};
   try { saved = JSON.parse(localStorage.getItem("rtsai.cocommander") ?? "{}"); } catch { /* private mode */ }
   return {
-    enabled: import.meta.env.VITE_STATIC_BUILD === "1" && saved.browserVersion !== 1 ? true : saved.enabled ?? true, mode: import.meta.env.VITE_STATIC_BUILD === "1" ? "browser" : saved.mode === "mock" ? "mock" : saved.mode === "local" ? "local" : "browser", muted: saved.muted ?? false,
+    enabled: import.meta.env.VITE_STATIC_BUILD === "1" && saved.browserVersion !== 1 ? true : saved.enabled ?? true, mode: import.meta.env.VITE_STATIC_BUILD === "1" ? "browser" : saved.mode === "mock" ? "mock" : saved.mode === "local" ? "local" : "browser", muted: saved.muted ?? false, auto: saved.auto === true,
     running: false, linked: false, listening: false, thinking: false, open: false, feed: [], error: "",
     strategies: null, strategyOpen: false, strategyBusy: false, strategyError: "", offerSteps: true, uncertainProposalId: "", browserThreat: null,
   };
@@ -147,6 +149,9 @@ export class CoCommander {
     finally { clearTimeout(timer); this.requests.delete(controller); }
   }
 
+  /** The card the poll last applied for Auto (once each, so a card the adviser dropped cannot stall the poll). */
+  private autoRetried = -1;
+
   constructor(private audio: AudioEngine, private canIssue: () => boolean = () => true, private browser?: BrowserAdviser) {}
 
   private get s() { return store.get().cc; }
@@ -154,7 +159,7 @@ export class CoCommander {
   private set(p: Partial<CoCommanderState>) {
     const cc = { ...this.s, ...p };
     store.set({ cc });
-    try { localStorage.setItem("rtsai.cocommander", JSON.stringify({ enabled: cc.enabled, mode: cc.mode, muted: cc.muted, ...(cc.mode === "browser" ? { browserVersion: 1 } : {}) })); } catch { /* private mode */ }
+    try { localStorage.setItem("rtsai.cocommander", JSON.stringify({ enabled: cc.enabled, mode: cc.mode, muted: cc.muted, auto: cc.auto, ...(cc.mode === "browser" ? { browserVersion: 1 } : {}) })); } catch { /* private mode */ }
   }
 
   private push(kind: FeedKind, text: string, extra: Partial<FeedItem> = {}) {
@@ -167,8 +172,17 @@ export class CoCommander {
     this.set({ feed: this.s.feed.map((f) => (f.id === id ? { ...f, ...p } : f)) });
   }
 
+  /** A recommendation card. In Auto it is applied at once, as if the player pressed Apply. */
+  private offer(summary: string, extra: Partial<FeedItem>) {
+    const item = this.push("proposal", summary, extra);
+    if (this.s.auto) queueMicrotask(() => void this.decide(item, true));
+    return item;
+  }
+
   setEnabled(enabled: boolean) { if (!enabled) this.endMatch(); this.set({ enabled }); }
   setMode(mode: "mock" | "local" | "browser") { this.set({ mode }); }
+  /** Auto on: the recommendation waiting now is applied too. */
+  setAuto(auto: boolean) { this.set({ auto }); const p = auto ? this.pending() : undefined; if (p) void this.decide(p, true); }
   setOpen(open: boolean) { this.set({ open, ...(open ? { strategyOpen: false } : {}) }); }
   toggleMute() { this.set({ muted: !this.s.muted }); if (this.s.muted) this.audio.stopVoice(); }
 
@@ -204,6 +218,9 @@ export class CoCommander {
    * accepts them with a hotkey; here they become cards like any proposal.
    */
   private async offers() {
+    // Auto: a recommendation that could not be applied when made (paused, reviewing) is applied once it can be.
+    const waiting = this.s.auto && this.s.enabled && !store.get().paused && this.canIssue() ? this.pending() : undefined;
+    if (waiting && !this.browserDeciding && waiting.id !== this.autoRetried) { this.autoRetried = waiting.id; await this.decide(waiting, true); return; }
     if (this.s.mode === "browser") { await this.browserOffers(); return; }
     if (!this.s.enabled || !this.s.running || !this.s.linked || store.get().phase !== "playing" || this.polling) return;
     this.polling = true;
@@ -227,7 +244,7 @@ export class CoCommander {
       // New offers as cards, oldest first so the feed keeps their order.
       for (const p of [...held].reverse())
         if (!this.s.feed.some((f) => f.proposalId === p.proposal_id) && (!this.focus || this.focus.test(p.summary)))
-          this.push("proposal", p.summary, { proposalId: p.proposal_id, state: "pending", commands: p.commands });
+          this.offer(p.summary, { proposalId: p.proposal_id, state: "pending", commands: p.commands });
       for (const p of held) {
         const item = this.s.feed.find(f => f.proposalId === p.proposal_id);
         if (item && !item.commands && p.commands) this.update(item.id, { commands: p.commands });
@@ -275,7 +292,7 @@ export class CoCommander {
       const id = `browser-${crypto.randomUUID()}`;
       this.browserProposals.set(id, key);
       // IDs are immutable for the displayed command set. Only current-state revalidation can dispatch it.
-      this.push("proposal", advice.summary, { proposalId: id, state: "pending", commands: advice.commands });
+      this.offer(advice.summary, { proposalId: id, state: "pending", commands: advice.commands });
     } catch (error) {
       const text = error instanceof Error ? error.message : String(error);
       // The engine publishes its first observation a moment after the match starts, and none when the co-commander is
@@ -425,7 +442,7 @@ export class CoCommander {
     if (action?.state === "pending" && action.proposal_id) {
       const summary = action.summary || r.text;
       if (!this.s.feed.some((item) => item.proposalId === action.proposal_id))
-        this.push("proposal", summary, { proposalId: action.proposal_id, state: "pending" });
+        this.offer(summary, { proposalId: action.proposal_id, state: "pending" });
       // The card carries the order and its buttons; keep only what the reply adds (e.g. a note), not the boilerplate.
       const note = r.text.replace(action.summary ?? "", "").replace(/I prepared \d+ validated orders?\.?/i, "").replace(/Say confirm to execute, or cancel\.?/i, "")
         .replace(/^[\s.]*(Note:\s*)?/i, "").trim();

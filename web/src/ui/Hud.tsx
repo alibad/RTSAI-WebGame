@@ -15,7 +15,7 @@ import { AttackMoveIcon, DeployIcon, GuardIcon, ScatterIcon, StopIcon } from "./
 import { UnitPortrait } from "./UnitPortrait";
 import { MatchLibrary } from "./MatchLibrary";
 import { GameSettings } from "./GameSettings";
-import { preferences } from "../preferences";
+import { keyFor, type Command } from "../preferences";
 import { Feedback } from "./Feedback";
 import { GameButton, Kbd } from "./kit/game";
 import { Flag } from "./Flag";
@@ -95,21 +95,20 @@ export function CommandBar({ game }: { game: Game }) {
   const selection = useStore((s) => s.ui?.selection);
   const mode = useStore((s) => s.ui?.mode ?? "");
   if (!selection?.some((a) => a.own)) return null;
-  const key = (k: string) => preferences.bindings[k.toLowerCase()]?.toUpperCase() ?? k;
-  const btn = (title: string, k: string, active: boolean, onClick: () => void, Icon: (p: React.SVGProps<SVGSVGElement>) => React.JSX.Element) => (
-    <button type="button" className="hud-cmd" aria-label={title} aria-pressed={active} data-tip={`${title} · ${key(k)}`} data-tip-pos="top" onClick={onClick}>
+  const btn = (title: string, command: Command, active: boolean, onClick: () => void, Icon: (p: React.SVGProps<SVGSVGElement>) => React.JSX.Element, also = "") => (
+    <button type="button" className="hud-cmd" aria-label={title} aria-pressed={active} data-tip={`${title} · ${keyFor(command).toUpperCase()}${also}`} data-tip-pos="top" onClick={onClick}>
       <Icon width={19} height={19} />
-      <span className="hud-cmd-key">{key(k)}</span>
+      <span className="hud-cmd-key">{keyFor(command).toUpperCase()}</span>
     </button>
   );
   const one = selection.length === 1 ? selection[0] : null;
   return (
     <div className="hud-cmds">
-      {commands?.attackmove && btn("Attack move", "A", mode === "attackmove", () => game.setMode("attackmove"), AttackMoveIcon)}
-      {commands?.guard && btn("Guard", "D", mode === "guard", () => game.setMode("guard"), GuardIcon)}
-      {commands?.deploy && btn("Deploy", "F", false, () => game.command({ cmd: "deploy" }), DeployIcon)}
-      {commands?.scatter && btn("Scatter", "Ctrl+X", false, () => game.command({ cmd: "scatter" }), ScatterIcon)}
-      {commands?.stop && btn("Stop", "S", false, () => game.command({ cmd: "stop" }), StopIcon)}
+      {commands?.attackmove && btn("Attack move", "attackmove", mode === "attackmove", () => game.setMode("attackmove"), AttackMoveIcon, " or Ctrl+Shift+click")}
+      {commands?.guard && btn("Guard", "guard", mode === "guard", () => game.setMode("guard"), GuardIcon)}
+      {commands?.deploy && btn("Deploy", "deploy", false, () => game.command({ cmd: "deploy" }), DeployIcon)}
+      {commands?.scatter && btn("Scatter", "scatter", false, () => game.command({ cmd: "scatter" }), ScatterIcon)}
+      {commands?.stop && btn("Stop", "stop", false, () => game.command({ cmd: "stop" }), StopIcon)}
       {stances.length > 0 && <>
         <span className="hud-cmd-sep" aria-hidden="true" />
         <div className="hud-stances" role="group" aria-label="Unit stance">
@@ -319,7 +318,7 @@ function RotateHint() {
 }
 
 function PausedBanner() {
-  return <div className="hud-paused" aria-live="polite"><div><Pause />Paused<Kbd>P</Kbd></div></div>;
+  return <div className="hud-paused" aria-live="polite"><div><Pause />Paused<Kbd>Pause</Kbd></div></div>;
 }
 
 export function Hud({ game }: { game: Game }) {

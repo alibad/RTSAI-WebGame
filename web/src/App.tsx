@@ -22,7 +22,7 @@ import { mySavedMaps, savedMap } from "./net/saved-maps";
 import { ArrowLeft, Check, Copy, RotateCcw, TriangleAlert } from "lucide-react";
 import { GameButton, Kbd } from "./ui/kit/game";
 import { Brackets, Meter, ScreenBackdrop } from "./ui/screen-parts";
-import { preferences } from "./preferences";
+import { keyFor, type Command } from "./preferences";
 
 // What the engine is doing while it boots or builds a match (the worker's "progress" stages) as the player reads it,
 // and roughly how far along that is: the bar never goes back and creeps forward while a step runs.
@@ -39,13 +39,14 @@ const LOAD_STEPS: Record<string, [number, string]> = {
   "Loading art": [0.12, "Loading art"],
   "Starting the co-commander": [0.93, "Briefing your co-commander"],
 };
-const LOAD_TIPS: [string, string][] = [
-  ["a", "Attack-move: your units fight whatever they meet on the way."],
-  ["f", "Deploy: unpack your construction vehicle into a base."],
-  ["c", "Repair: click a damaged building to fix it."],
-  ["z", "Sell: click one of your buildings to turn it back into credits."],
-  ["d", "Guard: selected units follow and protect another unit."],
-  ["s", "Stop: selected units drop their current orders."],
+const LOAD_TIPS: [Command, string][] = [
+  ["deploy", "Deploy: unpack your construction vehicle into a base."],
+  ["guard", "Guard: selected units follow and protect another unit."],
+  ["attackmove", "Attack move (or Ctrl+Shift+click): your units fight whatever they meet on the way."],
+  ["repair", "Repair: click a damaged building to fix it."],
+  ["sell", "Sell: click one of your buildings to turn it back into credits."],
+  ["stop", "Stop: selected units drop their current orders."],
+  ["typeselect", "Type select: every unit of the selected types on screen; twice for the whole map."],
 ];
 
 function useLoadProgress(phase: string, stage: string, detail: string) {
@@ -105,7 +106,7 @@ function Loading({ game }: { game: Game | null }) {
         </div>}
         <div className="ld-status" aria-live="polite"><span>{label}</span><span className="digits">{Math.round(progress * 100)}%</span></div>
         <Meter value={progress} label="Loading" className="ld-meter" />
-        <p key={tip} className="ld-tip"><Kbd>{(preferences.bindings[key] ?? key).toUpperCase()}</Kbd><span>{text}</span></p>
+        <p key={tip} className="ld-tip"><Kbd>{keyFor(key).toUpperCase()}</Kbd><span>{text}</span></p>
       </div>
     </div>
   );

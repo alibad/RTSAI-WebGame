@@ -1,15 +1,18 @@
 import { useEffect, useRef, useState } from "react";
-import { Keyboard, Mic, RotateCcw, Settings as SettingsIcon, Volume2 } from "lucide-react";
+import { Keyboard, Mic, RotateCcw, Settings as SettingsIcon, Sparkles, Volume2 } from "lucide-react";
 import type { Game } from "../game";
-import { defaults, preferences, savePreferences, type Preferences } from "../preferences";
+import { COMMAND_KEYS, RESERVED_KEYS, defaults, preferences, savePreferences, type Command, type Preferences } from "../preferences";
 import { readVoiceLanguage, normalizeVoiceLanguage } from "../voice-language";
 import { useStore } from "../store";
 import { Button } from "../components/ui/button";
 import { GameButton, GameDialog, GameSection } from "./kit/game";
+import { Segmented } from "./screen-parts";
 
-const COMMANDS = [["a", "Attack move"], ["d", "Guard"], ["f", "Deploy"], ["s", "Stop"], ["c", "Repair"], ["z", "Sell"], ["p", "Pause"]] as const;
-/** Letters the HUD already uses for other commands. */
-const RESERVED = "ertyuibhqwg";
+/** The rebindable commands, with Red Alert 2's keys as defaults (preferences.ts). */
+const COMMANDS: [Command, string][] = [["deploy", "Deploy"], ["guard", "Guard"], ["stop", "Stop"], ["scatter", "Scatter"], ["attackmove", "Attack move"],
+  ["repair", "Repair"], ["sell", "Sell"], ["typeselect", "Type select"], ["selectall", "Select all"]];
+const ASSIST = [{ value: "off", label: "Off" }, { value: "suggest", label: "Suggest" }, { value: "auto", label: "Auto" }] as const;
+const ASSIST_HINT = { off: "No recommendations and no co-commander strip.", suggest: "Shows a recommended order; J or Apply carries it out.", auto: "Carries out each recommended order as soon as it is made." };
 
 function Slider({ label, value, min = 0, max = 1, onChange }: { label: string; value: number; min?: number; max?: number; onChange: (value: number) => void }) {
   const fill = ((value - min) / (max - min)) * 100;
@@ -27,6 +30,13 @@ export function GameSettings({ game }: { game: Game }) {
   const [error, setError] = useState("");
   const [language, setLanguage] = useState(readVoiceLanguage);
   const playing = useStore((s) => s.phase === "playing");
+  const assist = useStore((s) => (s.cc.enabled ? (s.cc.auto ? "auto" : "suggest") : "off"));
+  const [assistNote, setAssistNote] = useState("");
+  function setAssist(value: "off" | "suggest" | "auto") {
+    game.cc.setAuto(value === "auto");
+    const now = game.setCoCommander(value !== "off");
+    setAssistNote(now ? "" : "Starts with your next match.");
+  }
   const revision = useRef(0);
   useEffect(() => () => { revision.current++; }, []);
   async function updateLanguage(value: string) {
@@ -36,10 +46,10 @@ export function GameSettings({ game }: { game: Game }) {
     if (current === revision.current) setError(result.error ?? "");
   }
   function update(next: Partial<Preferences>) { savePreferences(next); setValues({ ...preferences }); game.audio.applyVolumes(); }
-  function bind(command: string, letter: string) {
+  function bind(command: Command, letter: string) {
     const next = letter.toLowerCase();
     if (!/^[a-z]$/.test(next)) return;
-    const taken = COMMANDS.some(([other]) => other !== command && (values.bindings[other] ?? other) === next) || RESERVED.includes(next);
+    const taken = COMMANDS.some(([other]) => other !== command && (values.bindings[other] ?? COMMAND_KEYS[other]) === next) || RESERVED_KEYS.includes(next);
     if (taken) { setError(`“${next.toUpperCase()}” is already used. Choose another key.`); return; }
     setError(""); update({ bindings: { ...values.bindings, [command]: next } });
   }
@@ -49,7 +59,7 @@ export function GameSettings({ game }: { game: Game }) {
   return <>
     <Button size="sm" variant="outline" aria-label="Settings" onClick={() => setOpen(true)}><SettingsIcon size={14} aria-hidden="true" />Settings</Button>
     {open && <GameDialog eyebrow="Settings" title="Game settings" onClose={close} footer={<>
-      <GameButton variant="ghost" size="sm" icon={<RotateCcw size={14} />} onClick={() => { update({ ...defaults, bindings: {} }); void updateLanguage("faction"); setError(""); }}>Reset settings</GameButton>
+      <GameButton variant="ghost" size="sm" icon={<RotateCcw size={14} />} onClick={() => { update({ ...defaults, bindings: {} }); void updateLanguage("faction"); setAssist("suggest"); setError(""); }}>Reset settings</GameButton>
       <GameButton variant="primary" onClick={close}>Done</GameButton>
     </>}>
         <GameSection icon={<Volume2 size={15} />} title="Sound">
@@ -70,12 +80,18 @@ export function GameSettings({ game }: { game: Game }) {
             {COMMANDS.map(([key, label]) => (
               <label key={key} className="settings-key">
                 <span>{label}</span>
-                <input aria-label={`${label} key`} className="keycap" value={(values.bindings[key] ?? key).toUpperCase()} maxLength={1} readOnly
+                <input aria-label={`${label} key`} className="keycap" value={(values.bindings[key] ?? COMMAND_KEYS[key]).toUpperCase()} maxLength={1} readOnly
                   onKeyDown={(e) => { if (e.key.length === 1) { e.preventDefault(); bind(key, e.key); } }} onFocus={(e) => e.currentTarget.select()} />
               </label>
             ))}
           </div>
-          <p className="settings-hint">Click a key, then press the letter you want.</p>
+          <p className="settings-hint">Red Alert 2's keys. Click a key, then press the letter you want. Attack move is also Ctrl+Shift+click.</p>
+        </GameSection>
+        <GameSection icon={<Sparkles size={15} />} title="AI co-commander">
+          <div className="settings-row">
+            <span>Recommendations<small>{assistNote || ASSIST_HINT[assist]}</small></span>
+            <Segmented label="AI co-commander recommendations" value={assist} options={ASSIST} onChange={setAssist} />
+          </div>
         </GameSection>
         {error && <p role="status" className="settings-error">{error}</p>}
     </GameDialog>}

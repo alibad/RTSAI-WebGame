@@ -1,65 +1,69 @@
 // Hotkey sheet (? or the ? button): every key the page binds, grouped, with the same icons as the buttons. These are
-// the desktop game's keys (mods/common/hotkeys and the mod's hotkeys.yaml, as its ingame chrome binds them), doing what
-// its widgets do (game.ts keyDown); a key the browser keeps for itself (Ctrl+W, Ctrl+Tab in a tab, F11, F12) is not
-// listed.
+// Red Alert 2's keyboard commands (the RA2 manual) for everything this game has, plus the OpenRA chrome's keys RA2
+// leaves free (game.ts keyDown); a key the browser keeps for itself (Ctrl+W, Ctrl+F4, Ctrl+Tab in a tab, F11, F12) is
+// not listed. A row whose keys are a command shows the player's own binding (Game settings).
 
 import { CircleHelp, Crosshair, Hammer, Layers, Monitor, MousePointer2, Gamepad2 } from "lucide-react";
 import { useStore } from "../store";
-import { preferences } from "../preferences";
+import { keyFor, type Command } from "../preferences";
 import { GameDialog, GameSection, Kbd } from "./kit/game";
 import { AttackMoveIcon, DeployIcon, GuardIcon, RepairIcon, ScatterIcon, SellIcon, StopIcon } from "./icons";
 
-type Row = [keys: string[], label: string, Icon?: (p: React.SVGProps<SVGSVGElement>) => React.JSX.Element];
+type Row = [keys: string[] | Command, label: string, Icon?: (p: React.SVGProps<SVGSVGElement>) => React.JSX.Element];
 
 const GROUPS: [string, React.ReactNode, Row[]][] = [
   ["Units", <Crosshair size={14} />, [
-    [["A"], "Attack move", AttackMoveIcon],
-    [["D"], "Guard", GuardIcon],
-    [["F"], "Deploy", DeployIcon],
-    [["Ctrl", "X"], "Scatter", ScatterIcon],
-    [["S"], "Stop", StopIcon],
-    [["⇧", "click"], "Queue orders (⇧F, ⇧Ctrl+X too)"],
+    ["deploy", "Deploy (also: leave a building or transport)", DeployIcon],
+    ["guard", "Guard", GuardIcon],
+    ["stop", "Stop", StopIcon],
+    ["scatter", "Scatter", ScatterIcon],
+    [["Ctrl", "⇧", "click"], "Attack move", AttackMoveIcon],
+    ["attackmove", "Attack move, then click", AttackMoveIcon],
+    [["Ctrl", "click"], "Force fire"],
+    [["Alt", "click"], "Force move"],
+    [["Z", "hold"], "Way points: hold Z and right-click each point"],
+    [["⇧", "click"], "Queue orders (⇧D, ⇧X too)"],
     [["Alt", "A S D F"], "Stance: attack · defend · return fire · hold"],
   ]],
   ["Select", <MousePointer2 size={14} />, [
-    [["Q"], "All units on screen (again: map)"],
-    [["W"], "Same type on screen (again: map)"],
-    [["H"], "Next base"],
+    ["selectall", "Every unit on the battlefield"],
+    ["typeselect", "Same type on screen (twice: the whole map)"],
+    [["⇧", "click"], "Add or remove a unit"],
+    [["F"], "Follow the selected unit (F again: stop)"],
+    [["H"], "Centre on your base"],
     [["N"], "Next harvester"],
     [["Home"], "Jump to selection"],
-    [["Space"], "Jump to last event"],
+    [["Space"], "Jump to the latest radar event"],
   ]],
-  ["Groups", <Layers size={14} />, [
-    [["1–0"], "Select (twice: jump)"],
-    [["Ctrl", "1–0"], "Create"],
+  ["Teams", <Layers size={14} />, [
+    [["1–0"], "Select team (twice: jump)"],
+    [["Ctrl", "1–0"], "Create team"],
     [["Ctrl", "⇧", "1–0"], "Add selection"],
     [["⇧", "1–0"], "Combine with selection"],
     [["Alt", "1–0"], "Jump to"],
   ]],
   ["Build", <Hammer size={14} />, [
-    [["E R T Y U I"], "Building · defense · infantry · vehicle · air · naval"],
-    [["F1–F10"], "Build the 1st–10th icon (⇧: five)"],
-    [["Ctrl", "F1–F10"], "Build the 13th–22nd icon (not F4)"],
-    [["Z"], "Sell", SellIcon],
-    [["C"], "Repair", RepairIcon],
+    [["Q W E R"], "Structures · armory · infantry · units (R again: aircraft, ships)"],
+    ["repair", "Repair", RepairIcon],
+    ["sell", "Sell", SellIcon],
     [["B"], "Place a beacon"],
     [["RMB"], "Hold, then cancel"],
   ]],
   ["View", <Monitor size={14} />, [
     [["↑ ↓ ← →"], "Scroll (Alt: to the map edge)"],
+    [["F1–F4"], "Go to bookmark"],
+    [["Ctrl", "F1–F3"], "Save bookmark (or Ctrl+Q E R; Alt+Q W E R goes back)"],
     [["[", "]"], "Zoom out · in"],
     [["."], "Reset zoom"],
-    [["Ctrl", "Q E R"], "Save view 1 · 3 · 4"],
-    [["Alt", "Q W E R"], "Back to a saved view"],
     [[","], "Health bars: selected · damaged · all"],
     [["⇧", "="], "Hide the interface"],
   ]],
   ["Game", <Gamepad2 size={14} />, [
-    [["Esc"], "Menu (first: cancel a mode)"],
-    [["P"], "Pause (or Pause key)"],
+    [["Esc"], "Options menu, pauses (first: cancel a mode)"],
+    [["Pause"], "Pause"],
     [["M"], "Mute"],
     [["?"], "This sheet"],
-    [["G", "or", "J"], "Apply displayed recommendation (Ctrl+⌫ reject)"],
+    [["J"], "Apply the co-commander's recommendation (Ctrl+⌫ reject)"],
     ...(import.meta.env.VITE_STATIC_BUILD !== "1" ? [
     [["V"], "Co-commander: hold to talk"],
     [["Ctrl", "Space"], "Co-commander: type"],
@@ -78,7 +82,7 @@ export function HotkeySheet() {
           <GameSection key={title} icon={icon} title={title}>
             {rows.map(([keys, label, Icon]) => (
               <div key={label} className="hk-row">
-                <span className="hk-keys">{keys.map((k) => k === "or" ? <i key={k}>or</i> : <Kbd key={k}>{keys.length === 1 ? (preferences.bindings[k.toLowerCase()] ?? k).toUpperCase() : k}</Kbd>)}</span>
+                <span className="hk-keys">{typeof keys === "string" ? <Kbd>{keyFor(keys).toUpperCase()}</Kbd> : keys.map((k) => k === "or" ? <i key={k}>or</i> : <Kbd key={k}>{k}</Kbd>)}</span>
                 <span className="hk-icon">{Icon && <Icon width={15} height={15} />}</span>
                 <span>{label}</span>
               </div>

@@ -150,7 +150,7 @@ export function Practice({ game, close }: { game: Game; close: () => void }) {
     return () => window.removeEventListener("resize", refit);
   }, [ready]);
 
-  // The paused preview takes no game hotkeys (P would unpause it, arrows would scroll it). Pickers still get their keys.
+  // The paused preview takes no game hotkeys (Pause would unpause it, arrows would scroll it). Pickers still get their keys.
   useEffect(() => {
     const stop = (e: KeyboardEvent) => e.stopPropagation();
     document.addEventListener("keydown", stop);

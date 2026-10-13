@@ -51,18 +51,18 @@ try {
   const before = await page.evaluate(() => ({ active: window.store.getState().cc.strategies.active.id,
     proposal: window.game.cc.pending().text, tick: window.store.getState().ui.tick }));
   console.log("selected strategy proposal", before);
-  await page.getByRole("button", { name: "Apply recommendation (G)", exact: true }).first().waitFor();
+  await page.getByRole("button", { name: "Apply recommendation (J)", exact: true }).first().waitFor();
   const proposalId = await page.evaluate(() => window.game.cc.pending().id);
-  await page.evaluate(() => window.dispatchEvent(new KeyboardEvent("keydown", { key: "g", code: "KeyG", repeat: true, bubbles: true })));
+  await page.evaluate(() => window.dispatchEvent(new KeyboardEvent("keydown", { key: "j", code: "KeyJ", repeat: true, bubbles: true })));
   assert.equal(await page.evaluate(() => window.game.cc.pending().id), proposalId);
   await page.evaluate(() => window.game.cc.setOpen(true));
-  await page.getByLabel("Ask the co-commander").fill("g");
-  await page.keyboard.press("g");
+  await page.getByLabel("Ask the co-commander").fill("j");
+  await page.keyboard.press("j");
   assert.equal(await page.evaluate(() => window.game.cc.pending().id), proposalId);
   await page.evaluate(() => { window.game.cc.setOpen(false); window.game.cc.setStrategyOpen(true); });
   await page.locator("canvas.stage").focus();
   await page.screenshot({ path: path.join(out, "recommendation-shortcut.png") });
-  await page.keyboard.press("g");
+  await page.keyboard.press("j");
   await page.waitForFunction(() => window.store.getState().cc.feed.some((item) => item.kind === "done"), null, { timeout: 30000 });
 
   await page.getByRole("button", { name: "All strategies", exact: true }).click();
