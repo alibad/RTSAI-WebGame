@@ -4,7 +4,10 @@
 apply:
 - standard build machine;
 - no manual `vercel deploy` unless asked;
-- `vercel usage --scope alibads-projects` before a manual production deploy.
+- `vercel usage --scope alibads-projects` before a manual production deploy;
+- pushes never deploy: the Vercel project `rtsai-play` is linked to this repository, but the repository holds no
+  built site (the game is built locally from the pinned inputs), so the root `vercel.json` turns Git deployments off.
+  A Git deployment on 13 October served the raw repository and had to be rolled back.
 
 ## What gets published
 
