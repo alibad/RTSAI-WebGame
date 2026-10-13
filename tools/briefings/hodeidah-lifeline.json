@@ -1,0 +1,50 @@
+{
+  "mission": "hodeidah-lifeline",
+  "chapter": "The Lifeline · Chapter 2",
+  "title": "The Return Journey",
+  "style": "Cinematic painted key art for a modern real-time strategy game, the look of classic Command and Conquer box art: dramatic light, rich colour, crisp detail, wide 16:9 composition, no text, no logos, no letters, no flags, no insignia.",
+  "music": {
+    "caption": "urgent cinematic underscore, driving low strings and ticking percussion, distant oud and frame drum, a sense of a clock running, warm rising brass at the end, no vocals",
+    "seconds": 60
+  },
+  "shots": [
+    {
+      "id": "warehouse",
+      "prompt": "A busy relief warehouse at the edge of a coastal town in Yemen in the morning: pallets of food sacks and water, volunteers loading plain white trucks, dust in shafts of sunlight through the open doors, hopeful but tense.",
+      "line": "The supplies have reached the coast. Now they must reach the people inland.",
+      "motion": "push-in"
+    },
+    {
+      "id": "briefing-table",
+      "reference": "map",
+      "prompt": "Turn this top-down game map into a glowing holographic tactical map projected on a dark command table, seen at a slight angle. Keep the terrain layout, coastline and roads of the reference. Add a wide pulsing red surveillance sweep zone, a gold dashed convoy route inland and back, small blue truck icons, amber light, a hand holding a pencil at the edge.",
+      "line": "A surveillance sweep is closing on the corridor. Anything still inside the zone when it arrives will be found.",
+      "motion": "pan-right"
+    },
+    {
+      "id": "sweep",
+      "prompt": "A wide valley road seen from a hilltop at midday, a fan of scanning red light from distant radar masts sweeping across a dry riverbed, a small convoy of trucks raising dust below, ominous clouds.",
+      "line": "Get your mobile force out early, and keep a reserve on the road home.",
+      "motion": "pan-left"
+    },
+    {
+      "id": "commander",
+      "prompt": "Portrait of a fictional Yemeni army captain in his thirties, short black beard, olive field uniform and a scarf around the neck, radio handset in hand, standing beside a dusty pickup at a roadside post, focused and resolute, looking at the viewer, cinematic rim light, painted portrait.",
+      "line": "Commander. Protect the deliveries, then bring the evacuation convoy home.",
+      "motion": "push-in-slow"
+    },
+    {
+      "id": "evacuation",
+      "prompt": "An evacuation convoy of buses and white trucks moving down a mountain road at golden hour, families as small silhouettes at the windows, escort vehicles at the front and back, long shadows, determined mood.",
+      "line": "Every vehicle that comes back is a family that made it out.",
+      "motion": "pan-right"
+    },
+    {
+      "id": "home-road",
+      "prompt": "The coast road at dusk seen from behind the last truck of a convoy, tail lights glowing, the sea and the lights of the port ahead, calm after danger.",
+      "line": "Keep the return route open.",
+      "motion": "push-in",
+      "title": true
+    }
+  ]
+}
