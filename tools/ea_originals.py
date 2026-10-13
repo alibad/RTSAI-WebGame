@@ -779,10 +779,20 @@ class Generator:
         bad = [f for f in self.ea_files if Path(f).suffix.lower() not in ALLOWED_EXTENSIONS]
         if bad:
             raise GenerationError(f'not art files: {bad}')
-        self.rules_nodes = [self._palettes()] + [self._actor(name) for name in sorted(self.actors)]
+        self.rules_nodes = [self._palettes()] + [self._actor(name) for name in sorted(self.actors)] + self._kept()
         if validate:
             self._validate()
         return self
+
+    def _kept(self):
+        """The footprint-excluded Soviet buildings keep their stand-ins; they get only the sprite-group ownership hint,
+        so the stand-in an Allied country would show there (it never fields them) is not grouped with that country."""
+        out = []
+        for name in FOOTPRINT_EXCLUDED:
+            if name in self.cur and self.cur[name].get('RenderSprites') is not None:
+                owners = [f for f in COUNTRIES + MODERN if f in self.owners.get(name, set())]
+                out.append(Node(self.cur[name].key, None, [Node('SpriteGroupFactions@ea', None, [Node('Factions', ', '.join(owners))])]))
+        return out
 
     def _palettes(self):
         return Node('^Palettes', None, [
@@ -954,6 +964,10 @@ class Generator:
                          Node('RequiresCondition', both(CONDITION, t.val('RequiresCondition')))]
                 add('WithDeathAnimation@ea-' + (t.key.split('@')[1] if '@' in t.key else 'default'), twin)
                 condition(t.key, both('!' + CONDITION, t.val('RequiresCondition')))
+            # Which factions field the actor (skirmish reachability and mission placements): the browser groups sprite
+            # sheets by the factions whose images use them (PackGroups.cs), so a match fetches its own side's art only.
+            owners = [f for f in COUNTRIES + MODERN if f in self.owners.get(name, set())]
+            add('SpriteGroupFactions@ea', [Node('Factions', ', '.join(owners))])
             ints = [Node('Factions', ', '.join(countries))]
             if player:
                 ints.append(Node('PlayerPalettes', None, [Node(k, v) for k, v in sorted(player.items())]))

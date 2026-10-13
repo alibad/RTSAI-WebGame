@@ -142,8 +142,21 @@ class Generated(unittest.TestCase):
         self.assertGreater(checked, 40)
 
     def test_footprint_exclusions(self):
-        for name in E.FOOTPRINT_EXCLUDED:
-            self.assertNotIn(name, {k.lower() for k in self.rules})
+        # The five Soviet buildings keep their stand-ins: at most the sprite-group ownership hint, never original art.
+        for key, actor in self.rules.items():
+            if key.lower() in E.FOOTPRINT_EXCLUDED:
+                self.assertEqual([c.key for c in actor.children], ['SpriteGroupFactions@ea'], key)
+        for name in self.files['actors']:
+            self.assertNotIn(name, E.FOOTPRINT_EXCLUDED)
+
+    def test_sprite_group_hints(self):
+        for key, actor in self.rules.items():
+            hint = actor.get('SpriteGroupFactions@ea')
+            if actor.get('RenderSprites') is not None:
+                self.assertIsNotNone(hint, key)
+            if hint is not None:
+                factions = E.split_list(hint.val('Factions'))
+                self.assertTrue(factions and set(factions) <= set(E.COUNTRIES + E.MODERN), key)
 
     def test_palettes(self):
         palettes = {c.key for c in self.rules['^Palettes'].children}

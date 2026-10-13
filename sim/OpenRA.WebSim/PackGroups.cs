@@ -46,6 +46,8 @@ namespace OpenRA.WebSim
 				set.Add(faction ?? "");
 			}
 
+			// Images of factions an ownership hint says never field the actor: counted only if nothing else uses them.
+			var unfielded = new List<(string Image, string Faction)>();
 			foreach (var actor in rules.Actors.Values)
 			{
 				if (actor.Name.StartsWith('^'))
@@ -54,6 +56,24 @@ namespace OpenRA.WebSim
 				var rs = actor.TraitInfoOrDefault<RenderSpritesInfo>();
 				if (rs == null)
 					continue;
+
+				// An ownership hint (SpriteGroupFactions, generated with the original art): only these factions field the
+				// actor, so each counts its own image; the image another faction would show there does not put it in that
+				// faction's group (a sprite such an owner shows is fetched on demand).
+				var hint = actor.TraitInfoOrDefault<SpriteGroupFactionsInfo>();
+				if (hint != null)
+				{
+					foreach (var faction in factions.OrderBy(f => f, StringComparer.Ordinal))
+					{
+						var image = rs.GetImage(actor, faction);
+						if (hint.Factions.Contains(faction))
+							Use(image, faction);
+						else
+							unfielded.Add((image, faction));
+					}
+
+					continue;
+				}
 
 				var owner = ActorFaction(actor, factions);
 
@@ -66,6 +86,12 @@ namespace OpenRA.WebSim
 					foreach (var (faction, image) in rs.FactionImages)
 						Use(image.ToLowerInvariant(), factions.Contains(faction) ? faction : null);
 			}
+
+			// An image only unfielded factions name stays in their groups (otherwise it would count as shared).
+			var fielded = imageUsers.Keys.ToHashSet();
+			foreach (var (image, faction) in unfielded)
+				if (!fielded.Contains(image))
+					Use(image, faction);
 
 			// Images named by weapons (projectile and warhead fields): explosions, missiles, trails, debris.
 			var sequences = map.Sequences;
@@ -170,6 +196,9 @@ namespace OpenRA.WebSim
 
 		static readonly HashSet<string> DeathUsers = ["fx"];
 
+		/// <summary>Placeholder runtime object of <see cref="SpriteGroupFactionsInfo"/> (it has no behaviour).</summary>
+		public sealed class SpriteGroupFactions { }
+
 		static readonly Dictionary<Type, FieldInfo> ReservationFields = [];
 
 		/// <summary>The reservation tokens of a sprite sequence (DefaultSpriteSequence keeps them in spritesToLoad).</summary>
@@ -193,5 +222,17 @@ namespace OpenRA.WebSim
 					yield return t;
 			}
 		}
+	}
+
+	/// <summary>
+	/// Render-side hint for the browser's sprite pack groups (PackGroups.For): the factions that field this actor. Without
+	/// it, an actor whose faction images do not list every faction counts its default image as shared. Generated with the
+	/// original art (tools/ea_originals.py), so that each side's original art and each faction's stand-ins sit in groups of
+	/// the factions that use them. No simulation or rendering effect.
+	/// </summary>
+	[Desc("Browser sprite pack groups: the factions that field this actor (render-side hint only).")]
+	public sealed class SpriteGroupFactionsInfo : TraitInfo<PackGroups.SpriteGroupFactions>
+	{
+		public readonly System.Collections.Frozen.FrozenSet<string> Factions = System.Collections.Frozen.FrozenSet<string>.Empty;
 	}
 }
