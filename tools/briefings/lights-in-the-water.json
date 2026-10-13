@@ -16,9 +16,10 @@
     },
     {
       "id": "patrol",
-      "prompt": "Night-vision view from high above: dark patrol boats with no markings sweeping across black water in a search pattern, white searchlight beams, the reef line and breaking surf below, green monochrome surveillance look.",
+      "prompt": "Seen from high above at night through a green night-vision camera: three dark patrol boats with no markings in a line, bright white searchlight beams sweeping the black water, white surf breaking on a reef line below, clear and detailed, green monochrome surveillance look.",
       "line": "Patrol boats with no flag are already searching the water. They are looking for someone.",
-      "motion": "pan-right"
+      "motion": "pan-right",
+      "seed": 1
     },
     {
       "id": "commander",
@@ -29,16 +30,18 @@
     },
     {
       "id": "stranger",
-      "prompt": "Fishermen on a stranded boat at night pulling a woman out of the sea: she wears a soaked 1950s military uniform and webbing, dark hair plastered to her face, gasping, lit by a hand torch, the fishermen astonished, waves breaking on the reef.",
+      "prompt": "Two fishermen in plain civilian work clothes and knitted caps, on a small wooden fishing boat stranded on a reef at night, pulling a young woman out of the sea: she wears a soaked 1950s military uniform and webbing, dark hair plastered to her face, gasping, lit by a hand torch, waves breaking behind them.",
       "line": "On the third boat, the crew has pulled someone out of the water who should not be there.",
       "motion": "push-in-slow",
-      "action": "The fishermen haul her over the side as a wave breaks behind them."
+      "action": "The fishermen haul her over the side as a wave breaks behind them.",
+      "seed": 1
     },
     {
       "id": "clinic",
-      "prompt": "A small town clinic at the edge of a fishing harbour just before dawn, warm light in its windows, an ambulance and a pickup outside, people wrapped in blankets being helped through the door, the first light on the horizon over the sea.",
+      "prompt": "Inside a small town clinic just before dawn: survivors wrapped in grey blankets sitting on simple cots, a nurse handing out cups of tea, fishermen in knitted caps, warm lamp light, the first pale light of dawn over the sea through a large window, calm and safe after danger.",
       "line": "Find all three crews. Bring every survivor to the clinic.",
-      "motion": "push-in"
+      "motion": "push-in",
+      "seed": 2
     }
   ]
 }
