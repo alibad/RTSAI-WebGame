@@ -1,8 +1,8 @@
 // In-game feedback (ui/Feedback.tsx), end to end in a real browser with a running match: the battlefield screenshot
-// taken when Feedback opens (checked for real pixels), the annotator, a voice note, a file and the send. The website's
-// /api/feedback, its /api/feedback/upload token route and Vercel Blob are mocked here, so nothing leaves the machine;
-// the payload is checked for the uploaded files' links.
-//   firebase emulators:start --only auth --project demo-rtsai          (in RTSAI-Web)
+// taken when Feedback opens (checked for real pixels), the annotator, a voice note, a file and the send. The files go
+// into the Firestore emulator under RTSAI-Web's firestore.rules and are read back from it byte for byte; the website's
+// /api/feedback is mocked (it only receives the report id and the files' names). Nothing leaves the machine.
+//   firebase emulators:start --only auth,firestore --project demo-rtsai          (in RTSAI-Web; Java 11+)
 //   a game build with VITE_FIREBASE_EMULATORS=1 and VITE_FIREBASE_* demo values, served by server/serve.mjs
 //   RTSAI_TEST_URL=http://127.0.0.1:3594/ node tools/feedback-browser-test.mjs
 import fs from 'node:fs';
@@ -14,7 +14,9 @@ import { chromium } from '../web/node_modules/playwright-core/index.mjs';
 const base = process.env.RTSAI_TEST_URL || 'http://127.0.0.1:3594/';
 const out = process.env.RTSAI_TEST_OUT || 'artifacts/feedback';
 fs.mkdirSync(out, { recursive: true });
-const store = 'teststore123';
+const firestoreDocs = 'http://127.0.0.1:8085/v1/projects/demo-rtsai/databases/(default)/documents';
+// The emulator's owner token reads past the rules (only team admins can read feedback files in production).
+const readDoc = path => fetch(`${firestoreDocs}/${path}`, { headers: { Authorization: 'Bearer owner' } }).then(r => r.json());
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 
 const browser = await chromium.launch({
@@ -26,30 +28,14 @@ const browser = await chromium.launch({
 const context = await browser.newContext({ viewport: { width: 1600, height: 900 }, permissions: ['microphone'] });
 const page = await context.newPage();
 page.setDefaultTimeout(60000);
-const errors = [], tokenRequests = [], blobPuts = [], feedbackPosts = [];
+const errors = [], feedbackPosts = [];
 page.on('pageerror', e => errors.push(String(e)));
 const shot = async name => { const file = path.join(out, name); await page.screenshot({ path: file }); console.log('wrote', file); };
-const cors = { 'access-control-allow-origin': '*', 'access-control-allow-methods': 'GET,POST,PUT,OPTIONS', 'access-control-allow-headers': '*', 'access-control-expose-headers': '*' };
 
-// The site's upload token route: records what the game asks for and answers like handleUpload does.
-await page.route(url => url.pathname.endsWith('/api/feedback/upload'), async route => {
-  const request = route.request(), body = request.postDataJSON();
-  tokenRequests.push({ authorization: request.headers().authorization ?? '', body });
-  const claims = Buffer.from(JSON.stringify({ pathname: body.payload.pathname, validUntil: Date.now() + 600000 })).toString('base64');
-  await route.fulfill({ json: { type: 'blob.generate-client-token', clientToken: `vercel_blob_client_${store}_${Buffer.from(`mocksignature.${claims}`).toString('base64')}` } });
-});
-// Vercel Blob itself: the client upload PUTs the file to vercel.com/api/blob; answer with the stored blob's URL.
-await page.route(url => url.hostname === 'vercel.com' && url.pathname.startsWith('/api/blob'), async route => {
-  const request = route.request();
-  if (request.method() === 'OPTIONS') return route.fulfill({ status: 204, headers: cors });
-  const pathname = new URL(request.url()).searchParams.get('pathname');
-  const stored = pathname.replace(/(\.[a-z0-9]+)$/i, '-Mock7RandomSuffix0123456789ab$1');
-  blobPuts.push({ method: request.method(), pathname, contentType: request.headers()['x-content-type'], bytes: request.postDataBuffer()?.length ?? 0, authorization: request.headers().authorization ?? '' });
-  const url = `https://${store}.public.blob.vercel-storage.com/${stored}`;
-  await route.fulfill({ headers: cors, json: { url, downloadUrl: `${url}?download=1`, pathname: stored, contentType: request.headers()['x-content-type'], contentDisposition: 'inline' } });
-});
 await page.route(url => url.pathname.endsWith('/api/feedback'), async route => {
-  feedbackPosts.push({ authorization: route.request().headers().authorization ?? '', body: route.request().postDataJSON() });
+  const authorization = route.request().headers().authorization ?? '';
+  const claims = JSON.parse(Buffer.from(authorization.split('.')[1] ?? '', 'base64url').toString() || '{}');
+  feedbackPosts.push({ authorization, uid: claims.user_id ?? claims.sub, body: route.request().postDataJSON() });
   await route.fulfill({ json: { success: true, issueNumber: 101, issueUrl: 'https://github.com/example/private/issues/101', receipt: 'RTS-#101', notificationQueued: true } });
 });
 
@@ -154,10 +140,14 @@ try {
   receipt.checks.voiceNote = true;
   const note = path.resolve(out, 'match-notes.txt');
   fs.writeFileSync(note, 'Tick 1840: harvester idle at refinery\n');
+  // A 2 MB log goes in three Firestore chunks of at most 900 KiB.
+  const big = path.resolve(out, 'engine-log.txt'), bigText = Array.from({ length: 30000 }, (_, i) => `tick ${i} order queue ok\n`).join('').padEnd(2_100_000, '.');
+  fs.writeFileSync(big, bigText);
   const chooser = page.waitForEvent('filechooser');
   await page.getByRole('button', { name: /Drop or paste files/ }).click();
-  await (await chooser).setFiles(note);
+  await (await chooser).setFiles([note, big]);
   await page.getByText('match-notes.txt').waitFor();
+  await page.getByText('engine-log.txt').waitFor();
   await page.getByRole('radio', { name: '4 of 5' }).click();
   await shot('7-ready.png');
 
@@ -166,34 +156,45 @@ try {
   await shot('8-sent.png');
 
   // What went over the wire.
-  assert.equal(tokenRequests.length, 3, 'one upload token per file');
-  assert.equal(blobPuts.length, 3, 'three client uploads to Vercel Blob');
   assert.equal(feedbackPosts.length, 1);
   const sent = feedbackPosts[0].body;
   assert.match(sent.clientSubmissionId, uuid);
-  for (const t of tokenRequests) {
-    assert.match(t.authorization, /^Bearer ey/, 'token requests carry the player\'s Firebase ID token');
-    assert.equal(t.body.type, 'blob.generate-client-token');
-    assert.ok(t.body.payload.pathname.startsWith(`feedback/${sent.clientSubmissionId}/`), t.body.payload.pathname);
-  }
-  const kinds = tokenRequests.map(t => JSON.parse(t.body.payload.clientPayload));
-  assert.deepEqual(kinds.map(k => k.kind), ['screenshot', 'voice', 'file']);
-  assert.deepEqual(kinds.map(k => k.contentType), ['image/jpeg', 'audio/webm', 'text/plain']);
-  assert.deepEqual(blobPuts.map(p => p.pathname), tokenRequests.map(t => t.body.payload.pathname));
-  assert.ok(blobPuts.every(p => p.method === 'PUT' && p.bytes > 0 && p.authorization.startsWith('Bearer vercel_blob_client_')));
   assert.equal(sent.source, 'game');
   assert.equal(sent.category, 'Gameplay');
   assert.equal(sent.rating, 4);
-  assert.match(sent.captures[0].screenshot.url, new RegExp(`^https://${store}\\.public\\.blob\\.vercel-storage\\.com/feedback/${sent.clientSubmissionId}/screenshot-1-Mock7`));
-  assert.equal(sent.captures[0].screenshot.contentType, 'image/jpeg');
-  const voice = sent.attachments.find(a => a.kind === 'voice'), file = sent.attachments.find(a => a.kind === 'file');
-  assert.match(voice.url, /\/voice-note-Mock7RandomSuffix0123456789ab\.webm$/);
+  assert.doesNotMatch(JSON.stringify(sent), /data:|base64|https?:/, 'the request names the files; no bytes, no links');
+  const shotRef = sent.captures[0].screenshot, voice = sent.attachments.find(a => a.kind === 'voice'), file = sent.attachments.find(a => a.name === 'match-notes.txt'), log = sent.attachments.find(a => a.name === 'engine-log.txt');
+  for (const ref of [shotRef, voice, file, log]) assert.match(ref.id, /^[a-z0-9]{16}$/);
+  assert.deepEqual([shotRef.name, shotRef.contentType], ['screenshot-1.jpg', 'image/jpeg']);
+  assert.deepEqual([voice.name, voice.contentType], ['voice-note.webm', 'audio/webm']);
   assert.ok(voice.durationSeconds >= 2);
-  assert.match(file.url, /\/match-notes-Mock7RandomSuffix0123456789ab\.txt$/);
-  assert.equal(file.name, 'match-notes.txt');
+  assert.deepEqual([file.name, file.contentType, file.size], ['match-notes.txt', 'text/plain', 38]);
   assert.deepEqual(sent.context.map(c => c.label), ['Mode', 'Match', 'Tick']);
-  assert.doesNotMatch(JSON.stringify(sent), /data:image|base64/);
-  receipt.checks.payload = { captures: sent.captures, attachments: sent.attachments, context: sent.context, uploadPaths: tokenRequests.map(t => t.body.payload.pathname) };
+
+  // The same report in Firestore: owner, its three file records, and every file's bytes from its chunks.
+  const R = `feedbackReports/${sent.clientSubmissionId}`, report = await readDoc(R);
+  assert.equal(report.fields.source.stringValue, 'game');
+  assert.equal(report.fields.owner.stringValue, feedbackPosts[0].uid);
+  const records = (await readDoc(`${R}/files`)).documents;
+  assert.equal(records.length, 4);
+  const stored = {};
+  for (const record of records) {
+    const id = record.name.split('/').pop(), f = record.fields, chunks = Number(f.chunks.integerValue);
+    const parts = await Promise.all(Array.from({ length: chunks }, (_, i) => readDoc(`${R}/chunks/${id}_${i}`)));
+    const bytes = Buffer.concat(parts.map(part => Buffer.from(part.fields.data.bytesValue, 'base64')));
+    assert.equal(bytes.length, Number(f.bytes.integerValue));
+    stored[id] = { kind: f.kind.stringValue, name: f.name.stringValue, contentType: f.contentType.stringValue, size: bytes.length, chunks, bytes };
+  }
+  assert.deepEqual(Object.keys(stored).sort(), [shotRef.id, voice.id, file.id, log.id].sort());
+  assert.equal(stored[log.id].chunks, 3);
+  assert.ok(stored[log.id].bytes.equals(Buffer.from(bigText)), 'the 2 MB log comes back byte for byte from its three chunks');
+  assert.equal(stored[file.id].bytes.toString(), 'Tick 1840: harvester idle at refinery\n', 'the attached file comes back byte for byte');
+  assert.deepEqual([...stored[shotRef.id].bytes.subarray(0, 3)], [0xff, 0xd8, 0xff], 'the screenshot is a JPEG');
+  assert.equal(stored[shotRef.id].size, shotRef.size);
+  assert.deepEqual([...stored[voice.id].bytes.subarray(0, 4)], [0x1a, 0x45, 0xdf, 0xa3], 'the voice note is WebM');
+  fs.writeFileSync(path.join(out, 'stored-screenshot.jpg'), stored[shotRef.id].bytes);
+  receipt.checks.firestore = Object.fromEntries(Object.entries(stored).map(([id, f]) => [id, { kind: f.kind, name: f.name, contentType: f.contentType, size: f.size, chunks: f.chunks }]));
+  receipt.checks.payload = { reportId: sent.clientSubmissionId, captures: sent.captures, attachments: sent.attachments, context: sent.context };
 
   // Full screen (the browser's tab capture, HUD included), when the browser allows it without a picker.
   await page.getByRole('button', { name: 'Back to the game' }).click();

@@ -63,7 +63,7 @@ export function RecordingBar({ remaining, onStop }: { remaining: number; onStop:
 }
 
 /** A compact player for the recorded note (recordings carry no duration header, so the recorded length is shown). */
-export function VoicePlayer({ url, seconds, onRemove }: { url: string; seconds: number; onRemove: () => void }) {
+export function VoicePlayer({ url, seconds, onRemove }: { url: string; seconds: number; onRemove?: () => void }) {
   const audio = useRef<HTMLAudioElement | null>(null);
   const [playing, setPlaying] = useState(false);
   const [position, setPosition] = useState(0);
@@ -99,7 +99,7 @@ export function VoicePlayer({ url, seconds, onRemove }: { url: string; seconds: 
       <button type="button" className="fbk-voice-play" onClick={toggle} aria-label={playing ? "Pause voice note" : "Play voice note"}>{playing ? <Pause size={15} fill="currentColor" /> : <Play size={15} fill="currentColor" />}</button>
       <span className="fbk-voice-wave" aria-hidden="true"><span style={{ width: `${Math.min(100, (position / Math.max(1, seconds)) * 100)}%` }} /></span>
       <span className="fbk-voice-time">{formatClock(playing || position ? position : seconds)}</span>
-      {confirming ? (
+      {!onRemove ? null : confirming ? (
         <span className="fbk-confirm" role="group" aria-label="Delete voice note?">
           <span>Delete?</span>
           <button type="button" onClick={onRemove} aria-label="Delete voice note"><Check size={14} /></button>

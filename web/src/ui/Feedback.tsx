@@ -5,22 +5,23 @@ import { useStore } from "../store";
 import { Button } from "../components/ui/button";
 import { OptionSelect, type Option } from "../components/ui/fields";
 import { kitPopupOpen } from "../components/ui/layers";
-import { accountsConfigured, currentUser, onAccountChange, signInUrl, siteApi, siteOrigin } from "../net/account";
+import { accountsConfigured, currentUser, firestore, onAccountChange, signInUrl, siteApi } from "../net/account";
 import { track } from "../net/track";
 import { useFeedbackDraft } from "./feedback/draft";
 import { DropZone, FileChips, RecordingBar, ShotStrip, usePastedFiles, VoicePlayer } from "./feedback/FeedbackMedia";
 import {
   ATTACH_ACCEPT, canCaptureTab, canRecordVoice, captureTab, checkAttachment, FEEDBACK_ROOT_ID, isCoarsePointer,
-  MAX_FILES, MAX_SCREENSHOTS, toJpeg, uploadFeedbackFile, useVoiceRecorder, withWidgetHidden,
+  MAX_FILES, MAX_SCREENSHOTS, toJpeg, useVoiceRecorder, withWidgetHidden,
 } from "./feedback/media";
+import { createFeedbackReport, FEEDBACK_REPORT_REUSE_MS, storeFeedbackFile, type FeedbackFileKind } from "./feedback/report-files";
 import { ScreenshotAnnotator } from "./feedback/ScreenshotAnnotator";
 import { DictationButton, useFeedbackDictation } from "./feedback/useFeedbackDictation";
 import "./feedback/feedback-game.css";
 
 // The website's feedback flow (RTSAI-Web app/components/FeedbackPanel.tsx, the feedback skill's Full mode) in the
 // game's HUD: a screenshot of the battlefield to mark up, dictation, a voice note and files, sent with the player's
-// account to the site's /api/feedback (same origin at rtsai.net/play). Files upload first, straight to the feedback
-// Blob store, through the site's /api/feedback/upload token route; the private issue links them.
+// account to the site's /api/feedback (same origin at rtsai.net/play). The files go first, straight into Firestore
+// (feedbackReports/<id>, readable only by the team; see feedback/report-files.ts); the private issue links them.
 const CATEGORIES: Option<string>[] = ["Bug", "Gameplay", "UI/UX", "Feature Request", "AI Companion", "General"].map(c => ({ value: c, label: c }));
 const SCREENSHOT_TYPES = ["image/png", "image/jpeg", "image/webp"];
 
@@ -138,25 +139,39 @@ export function Feedback({ game, compact = false }: { game: Game; compact?: bool
     }
   }
 
-  async function uploadDraft(idToken: string, submissionId: string) {
-    const handleUploadUrl = `${siteOrigin}/api/feedback/upload`;
-    const upload = (blob: Blob, name: string, contentType: string, kind: "screenshot" | "voice" | "file") => uploadFeedbackFile({ blob, name, contentType, kind, submissionId, idToken, handleUploadUrl });
-    const s = useFeedbackDraft.getState();
-    const pending = [
-      ...s.shots.filter((shot) => !shot.uploaded).map((shot, i) => ({ label: "screenshot", run: async () => s.markUploaded({ shot: shot.id }, await upload(shot.blob, `screenshot-${i + 1}.jpg`, "image/jpeg", "screenshot")) })),
-      ...(s.voice && !s.voice.uploaded ? [{ label: "voice note", run: async () => { const note = useFeedbackDraft.getState().voice!; s.markUploaded("voice", await upload(note.blob, `voice-note.${note.contentType === "audio/mp4" ? "m4a" : note.contentType === "audio/ogg" ? "ogg" : "webm"}`, note.contentType, "voice")); } }] : []),
-      ...s.files.filter((file) => !file.uploaded).map((file) => ({ label: `“${file.name}”`, run: async () => s.markUploaded({ file: file.id }, await upload(file.blob, file.name, file.contentType, "file")) })),
-    ];
-    for (const [i, item] of pending.entries()) {
-      setProgress(`Uploading ${i + 1} of ${pending.length}…`);
-      try { await item.run(); } catch { throw new Error(`Couldn't upload the ${item.label}. Check your connection and try again, or remove it.`); }
+  /** Stores what the draft hasn't stored yet in Firestore; returns the report id and the payload parts naming the files. */
+  async function storeDraft(uid: string) {
+    let s = useFeedbackDraft.getState();
+    const hasFiles = s.shots.length > 0 || !!s.voice || s.files.length > 0;
+    // The rules take a report's files for 30 minutes; an older draft starts over with a new report.
+    const stale = s.reportCreatedAt !== null && Date.now() - s.reportCreatedAt > FEEDBACK_REPORT_REUSE_MS;
+    const reportId = !s.submissionId || stale ? s.startReport() : s.submissionId;
+    if (hasFiles) {
+      const db = await firestore();
+      if (useFeedbackDraft.getState().reportCreatedAt === null) {
+        setProgress("Preparing…");
+        try { await createFeedbackReport(db, { reportId, owner: uid, source: "game" }); s.markReportCreated(); }
+        catch { s.startReport(); throw new Error("Your files couldn't be sent. Check your connection and try again."); }
+      }
+      const store = (blob: Blob, name: string, contentType: string, kind: FeedbackFileKind, durationSeconds?: number) => storeFeedbackFile(db, { reportId, blob, name, contentType, kind, durationSeconds });
+      s = useFeedbackDraft.getState();
+      const pending = [
+        ...s.shots.filter((shot) => !shot.uploaded).map((shot, i) => ({ label: "screenshot", run: async () => s.markUploaded({ shot: shot.id }, await store(shot.blob, `screenshot-${i + 1}.jpg`, "image/jpeg", "screenshot")) })),
+        ...(s.voice && !s.voice.uploaded ? [{ label: "voice note", run: async () => { const note = useFeedbackDraft.getState().voice!; s.markUploaded("voice", await store(note.blob, `voice-note.${note.contentType === "audio/mp4" ? "m4a" : note.contentType === "audio/ogg" ? "ogg" : "webm"}`, note.contentType, "voice", note.seconds)); } }] : []),
+        ...s.files.filter((file) => !file.uploaded).map((file) => ({ label: `“${file.name}”`, run: async () => s.markUploaded({ file: file.id }, await store(file.blob, file.name, file.contentType, "file")) })),
+      ];
+      for (const [i, item] of pending.entries()) {
+        setProgress(`Sending file ${i + 1} of ${pending.length}…`);
+        try { await item.run(); } catch { throw new Error(`Couldn't send the ${item.label}. Check your connection and try again, or remove it.`); }
+      }
     }
     const done = useFeedbackDraft.getState();
     return {
+      reportId,
       captures: done.shots.map((shot) => ({ id: shot.id, screenshot: shot.uploaded })),
       attachments: [
-        ...(done.voice?.uploaded ? [{ kind: "voice", ...done.voice.uploaded, durationSeconds: done.voice.seconds }] : []),
-        ...done.files.flatMap((file) => (file.uploaded ? [{ kind: "file", ...file.uploaded, name: file.name }] : [])),
+        ...(done.voice?.uploaded ? [{ ...done.voice.uploaded, kind: "voice" }] : []),
+        ...done.files.flatMap((file) => (file.uploaded ? [{ ...file.uploaded, kind: "file" }] : [])),
       ],
     };
   }
@@ -168,12 +183,11 @@ export function Feedback({ game, compact = false }: { game: Game; compact?: bool
     try {
       const user = await currentUser();
       if (!user) throw new Error("Sign in to send feedback.");
-      const submissionId = s.ensureSubmissionId();
-      const uploads = await uploadDraft(await user.getIdToken(), submissionId);
+      const { reportId, ...files } = await storeDraft(user.uid);
       setProgress("Sending…");
       const response = await siteApi("/api/feedback", {
         category: s.category || "General", title: "", description: s.text.trim(), rating: s.rating || null,
-        clientSubmissionId: submissionId, pagePath: "/play/", source: "game", context: gameContext(game), ...uploads,
+        clientSubmissionId: reportId, pagePath: "/play/", source: "game", context: gameContext(game), ...files,
         diagnostics: { metadata: { viewport: { width: innerWidth, height: innerHeight }, screen: { width: screen.width, height: screen.height }, devicePixelRatio, language: navigator.language, platform: navigator.platform, onLine: navigator.onLine } },
       });
       const body = await response?.json().catch(() => null) as { receipt?: string; error?: string } | null;

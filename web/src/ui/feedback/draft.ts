@@ -1,7 +1,10 @@
 // The player's unsent feedback. Module state (not component state): the HUD and the menus each mount their own
 // Feedback button, and hiding the HUD unmounts it, so the draft lives here until it is sent or discarded.
 import { create } from "zustand";
-import type { UploadedFile } from "./media";
+import type { StoredFile } from "./report-files";
+
+/** A file of this draft already stored in Firestore (kept so a retry never stores it twice). */
+export type UploadedFile = StoredFile;
 
 export type DraftShot = { id: string; blob: Blob; previewUrl: string; uploaded?: UploadedFile };
 export type DraftVoice = { blob: Blob; contentType: string; seconds: number; previewUrl: string; uploaded?: UploadedFile };
@@ -14,8 +17,10 @@ type Draft = {
   shots: DraftShot[];
   voice: DraftVoice | null;
   files: DraftFile[];
-  /** Fixed at the first send so a retry reuses its uploads; the files live under feedback/<id>/. */
+  /** The report's id (feedbackReports/<id> in Firestore), fixed at the first send so a retry reuses its files. */
   submissionId: string | null;
+  /** When this browser created the report document; null until it has files to store. */
+  reportCreatedAt: number | null;
   set: (patch: Partial<Pick<Draft, "text" | "category" | "rating">>) => void;
   addShot: (blob: Blob) => string;
   replaceShot: (id: string, blob: Blob) => void;
@@ -24,7 +29,9 @@ type Draft = {
   addFile: (file: { blob: Blob; name: string; contentType: string }) => void;
   removeFile: (id: string) => void;
   markUploaded: (target: { shot: string } | { file: string } | "voice", uploaded: UploadedFile) => void;
-  ensureSubmissionId: () => string;
+  /** A fresh report id: nothing of the draft counts as stored any more. */
+  startReport: () => string;
+  markReportCreated: () => void;
   reset: () => void;
 };
 
@@ -40,6 +47,7 @@ export const useFeedbackDraft = create<Draft>((set, get) => ({
   voice: null,
   files: [],
   submissionId: null,
+  reportCreatedAt: null,
   set: (patch) => set(patch),
   addShot: (blob) => {
     const id = nextId("shot");
@@ -73,18 +81,23 @@ export const useFeedbackDraft = create<Draft>((set, get) => ({
     if ("shot" in target) return { shots: s.shots.map((shot) => (shot.id === target.shot ? { ...shot, uploaded } : shot)) };
     return { files: s.files.map((file) => (file.id === target.file ? { ...file, uploaded } : file)) };
   }),
-  ensureSubmissionId: () => {
-    const existing = get().submissionId;
-    if (existing) return existing;
+  startReport: () => {
     const id = crypto.randomUUID();
-    set({ submissionId: id });
+    set((s) => ({
+      submissionId: id,
+      reportCreatedAt: null,
+      shots: s.shots.map((shot) => ({ ...shot, uploaded: undefined })),
+      voice: s.voice ? { ...s.voice, uploaded: undefined } : null,
+      files: s.files.map((file) => ({ ...file, uploaded: undefined })),
+    }));
     return id;
   },
+  markReportCreated: () => set({ reportCreatedAt: Date.now() }),
   reset: () => {
     const s = get();
     s.shots.forEach((shot) => revoke(shot.previewUrl));
     revoke(s.voice?.previewUrl);
     s.files.forEach((file) => revoke(file.previewUrl));
-    set({ text: "", category: "", rating: 0, shots: [], voice: null, files: [], submissionId: null });
+    set({ text: "", category: "", rating: 0, shots: [], voice: null, files: [], submissionId: null, reportCreatedAt: null });
   },
 }));

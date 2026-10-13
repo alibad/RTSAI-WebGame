@@ -1,8 +1,8 @@
 "use client";
 
 // Feedback media, shared verbatim by RTSAI-Web (app/components/feedback) and RTSAI-WebGame (web/src/ui/feedback):
-// screenshots, JPEG compression, voice notes, attachment checks and client uploads to the feedback Blob store.
-// Keep the two copies identical; the server (RTSAI-Web lib/feedback.ts) checks everything again.
+// screenshots, JPEG compression, voice notes and attachment checks. Files are stored with report-files.ts.
+// Keep the two copies identical; firestore.rules and the server (RTSAI-Web lib/feedback.ts) check everything again.
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
@@ -12,7 +12,7 @@ export const MAX_VOICE_SECONDS = 600;
 export const MAX_FILES = 6;
 export const MAX_SCREENSHOTS = 4;
 
-/** Content type → allowed extensions. Mirrors feedbackUploadTypes in RTSAI-Web lib/feedback.ts. */
+/** Content type → allowed extensions. Mirrors feedbackFileTypes in RTSAI-Web lib/feedback.ts and firestore.rules. */
 const UPLOAD_TYPES: Readonly<Record<string, readonly string[]>> = {
   "image/png": ["png"], "image/jpeg": ["jpg", "jpeg"], "image/webp": ["webp"], "image/gif": ["gif"],
   "video/webm": ["webm"], "video/mp4": ["mp4", "m4v"], "video/quicktime": ["mov"],
@@ -23,8 +23,6 @@ const UPLOAD_TYPES: Readonly<Record<string, readonly string[]>> = {
 
 export const ATTACH_ACCEPT = [...Object.keys(UPLOAD_TYPES), ...[...new Set(Object.values(UPLOAD_TYPES).flat())].map((ext) => `.${ext}`)].join(",");
 
-export type UploadKind = "screenshot" | "voice" | "file";
-export type UploadedFile = { url: string; name: string; contentType: string; size: number };
 
 function extension(name: string) {
   const dot = name.lastIndexOf(".");
@@ -59,15 +57,6 @@ export function checkAttachment(file: File): { ok: true; contentType: string } |
   if (file.size > MAX_UPLOAD_BYTES) return { ok: false, error: `“${file.name}” is over 10 MB.` };
   if (file.size === 0) return { ok: false, error: `“${file.name}” is empty.` };
   return { ok: true, contentType };
-}
-
-/** A name the store accepts (letters, digits, dot, dash, underscore) with the extension of its content type. */
-export function storageName(name: string, contentType: string) {
-  const ext = extension(name);
-  const extensions = UPLOAD_TYPES[contentType] ?? ["bin"];
-  const stem = (ext ? name.slice(0, -(ext.length + 1)) : name)
-    .normalize("NFKD").replace(/[^A-Za-z0-9._-]+/g, "-").replace(/-{2,}/g, "-").replace(/^[^A-Za-z0-9]+/, "").replace(/[.-]+$/, "").slice(0, 60);
-  return `${stem || "file"}.${extensions.includes(ext) ? ext : extensions[0]}`;
 }
 
 export function formatBytes(bytes: number) {
@@ -216,31 +205,4 @@ export function useVoiceRecorder(onRecorded: (note: VoiceNote) => void, onError:
   }, []);
 
   return { recording, seconds, remaining: MAX_VOICE_SECONDS - seconds, start, stop };
-}
-
-// ---------------------------------------------------------------- uploads
-
-/**
- * Uploads one file straight to the feedback Blob store (a Vercel Blob client upload). The site's token route checks
- * the player's sign-in and the file, then issues a token for exactly this path, type and size limit.
- */
-export async function uploadFeedbackFile(input: {
-  blob: Blob;
-  name: string;
-  contentType: string;
-  kind: UploadKind;
-  submissionId: string;
-  idToken: string;
-  handleUploadUrl: string;
-}): Promise<UploadedFile> {
-  const { upload } = await import("@vercel/blob/client");
-  const name = storageName(input.name, input.contentType);
-  const result = await upload(`feedback/${input.submissionId}/${name}`, input.blob, {
-    access: "public",
-    handleUploadUrl: input.handleUploadUrl,
-    contentType: input.contentType,
-    headers: { Authorization: `Bearer ${input.idToken}` },
-    clientPayload: JSON.stringify({ kind: input.kind, contentType: input.contentType, size: input.blob.size }),
-  });
-  return { url: result.url, name, contentType: input.contentType, size: input.blob.size };
 }
