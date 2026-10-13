@@ -1,71 +1,240 @@
-import { GameSelect } from "../components/ui/fields";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { Game } from "../game";
 import { useStore } from "../store";
-import { planFromText, practiceScenario, validatePlan, type PracticePlan, type UnitOption } from "../ai-lab";
+import { GameSelect, SearchSelect, type Option } from "../components/ui/fields";
+import { Flag } from "./Flag";
+import {
+  factionUnits, interpret, loadPracticeCatalog, MAX_FORCE, nativeIssues, pickUnit, practiceScenario, probeRoster, unitClass, validatePlan, waitForArt, waitForWorld,
+  type PlanField, type PlanIssue, type PracticePlan, type Rosters, type UnitOption,
+} from "../ai-lab";
 
+/** The battle's player colours (practiceScenario): you blue, the opponent red. */
+const SIDE_COLOR = ["#2A6FDB", "#D83A2E"] as const;
+const DEFAULT_REQUEST = "Defend with 6 tanks against 8 units for 2 minutes";
+const message = (e: unknown) => e instanceof Error ? e.message : String(e);
+
+/** Units the player did not pick follow their side's faction: a sensible combat unit of the same kind from its roster. */
+function followFaction(p: PracticePlan, units: UnitOption[], rosters: Rosters, pinned: { unit: boolean; enemyUnit: boolean }): PracticePlan {
+  let q = p;
+  for (const [unit, faction] of [["unit", "faction"], ["enemyUnit", "enemy"]] as const) {
+    if (pinned[unit] || factionUnits(p[faction], units, rosters).some(u => u.name === p[unit])) continue;
+    q = { ...q, [unit]: pickUnit(unitClass(units.find(u => u.name === p[unit])), p[faction], units, rosters) };
+  }
+  return q;
+}
+
+/**
+ * Scenario workshop: describe a battle, adjust both sides, start it. Every change rebuilds the battle paused on the
+ * map behind the panel and has the engine check it; "Start battle" unpauses that same world and hands you command.
+ */
 export function Practice({ game, close }: { game: Game; close: () => void }) {
   const setup = useStore(s => s.setup);
-  const factions = setup?.factions.filter(f => !f.random) ?? [];
+  const icons = useStore(s => s.icons);
+  const factions = useMemo(() => setup?.factions.filter(f => !f.random) ?? [], [setup]);
+  const factionIds = useMemo(() => factions.map(f => f.id), [factions]);
+  const factionNames = useMemo(() => Object.fromEntries(factions.map(f => [f.id, f.name])), [factions]);
+  const [request, setRequest] = useState(() => new URLSearchParams(location.search).get("prompt") ?? DEFAULT_REQUEST);
   const [units, setUnits] = useState<UnitOption[]>([]);
+  const [rosters, setRosters] = useState<Rosters>({});
   const [plan, setPlan] = useState<PracticePlan | null>(null);
-  const [request, setRequest] = useState(new URLSearchParams(location.search).get("prompt") ?? "Defend with 6 tanks against 8 units for 2 minutes");
-  const [busy, setBusy] = useState(false);
-  const [validated, setValidated] = useState("");
-  const [errors, setErrors] = useState<string[]>([]);
-  const wait = () => new Promise<void>((resolve, reject) => {
-    const started = Date.now();
-    const timer = setInterval(() => { const s = useStore.getState(); if (s.phase === "playing") { clearInterval(timer); resolve(); } else if (s.phase === "error" || Date.now() - started > 120000) { clearInterval(timer); reject(new Error(s.error || "Preview timed out.")); } }, 100);
-  });
-  useEffect(() => {
-    let alive = true;
-    setBusy(true);
-    const empty = { map: "web-arena", seed: 42, sandbox: true, players: [{ slot: "Multi0", faction: "saudi", bot: "webidle" }, { slot: "Multi1", faction: "iran", bot: "webidle" }], options: { explored: "True", fog: "False", shortgame: "False" } };
-    game.start(JSON.stringify(empty), true);
-    wait().then(() => game.command<{ units: UnitOption[] }>({ cmd: "units" })).then(r => {
-      if (!alive) return;
-      const catalog = r.units.filter(u => !["Ship"].includes(u.queue));
-      setUnits(catalog); setPlan(planFromText(request, catalog, factions.map(f => f.id)));
-    }).catch(e => alive && setErrors([String(e)])).finally(() => alive && setBusy(false));
-    return () => { alive = false; };
-  }, [game]);
-  const patch = (p: Partial<PracticePlan>) => { setPlan(old => old ? { ...old, ...p } : null); setValidated(""); setErrors([]); };
-  const frame = () => {
-    const info = game.info; if (!info) return;
-    const [ox, oy] = info.cellOrigin, [tw, th] = info.tileSize;
-    game.cam.zoom = Math.max(.35, Math.min(1.5, game.canvas.width / (31 * tw + 500), game.canvas.height / 550));
-    game.lookAt(ox + 125 * tw / 2, oy + 64 * th / 2);
+  const [pinned, setPinned] = useState({ unit: false, enemyUnit: false });
+  const [busy, setBusy] = useState(true);
+  const [ready, setReady] = useState(""); // the plan (JSON) whose paused battle is on the map and passed the engine's check
+  const [engineIssues, setEngineIssues] = useState<PlanIssue[]>([]);
+  const [failure, setFailure] = useState("");
+  const [tags, setTags] = useState<{ side: 0 | 1; x: number; y: number }[]>([]);
+  const [area, setArea] = useState<{ left: number; right: number; top: number } | null>(null);
+  const panel = useRef<HTMLElement>(null);
+  const alive = useRef(true);
+  const live = useRef({ units, rosters, pinned });
+  live.current = { units, rosters, pinned };
+  const wanted = useRef(""); // the plan (JSON) the map should show next
+  const pumping = useRef(false);
+
+  /** Camera on both forces, centred in the map area the panel leaves free; name tags above each force. */
+  const frame = (p: PracticePlan, besidePanel: boolean) => {
+    const info = game.info;
+    const rect = game.canvas.getBoundingClientRect();
+    if (!info || !rect.width) return;
+    const [ox, oy] = info.cellOrigin, [tw, th] = info.tileSize, us = live.current.units;
+    const boxes = practiceScenario(p, us).placements.map(a => {
+      const [w, h] = us.find(u => u.name === a.id)?.size ?? [72, 60];
+      const x = ox + (2 * a.u + (a.v & 1)) * tw / 2, y = oy + a.v * th / 2;
+      return { side: a.side, x0: x - w / 2, x1: x + w / 2, y0: y - h, y1: y + h / 2 };
+    });
+    if (!boxes.length) return;
+    const span = (list: typeof boxes) => ({ x0: Math.min(...list.map(b => b.x0)), x1: Math.max(...list.map(b => b.x1)), y0: Math.min(...list.map(b => b.y0)), y1: Math.max(...list.map(b => b.y1)) });
+    const all = span(boxes), scale = game.canvas.width / rect.width;
+    const edge = besidePanel && panel.current ? Math.min(rect.right, panel.current.getBoundingClientRect().left) : rect.right;
+    const free = { left: rect.left + 24, right: Math.max(rect.left + 160, edge - 24), top: rect.top + 72, bottom: rect.bottom - 32 };
+    const zoom = Math.max(0.35, Math.min(1.5, (free.right - free.left) * scale / (all.x1 - all.x0), (free.bottom - free.top) * scale / (all.y1 - all.y0)));
+    game.cam.zoom = zoom;
+    game.lookAt((all.x0 + all.x1) / 2 - ((free.left + free.right) / 2 - (rect.left + rect.width / 2)) * scale / zoom,
+      (all.y0 + all.y1) / 2 - ((free.top + free.bottom) / 2 - (rect.top + rect.height / 2)) * scale / zoom);
+    const css = (wx: number, wy: number) => ({ x: rect.left + rect.width / 2 + (wx - game.cam.x) * game.cam.zoom / scale, y: rect.top + rect.height / 2 + (wy - game.cam.y) * game.cam.zoom / scale });
+    setArea({ left: free.left, right: free.right, top: rect.top });
+    setTags(([0, 1] as const).map(side => { const b = span(boxes.filter(x => x.side === side)); return { side, ...css((b.x0 + b.x1) / 2, b.y0) }; }));
   };
-  const preview = async () => {
-    if (!plan) return;
-    const problems = validatePlan(plan, units, factions.map(f => f.id)); setErrors(problems); setValidated("");
-    if (problems.length) return;
+
+  /** Builds the wanted plan's battle (paused) and has the engine check it; repeats while the plan keeps changing. */
+  const pump = async () => {
+    if (pumping.current) return;
+    pumping.current = true;
     setBusy(true);
+    const isAlive = () => alive.current;
     try {
-      game.start(JSON.stringify(practiceScenario(plan, false)), true); await wait();
-      const check = await game.command<{ valid: boolean; errors: string[] }>({ cmd: "validate-practice" });
-      if (!check.valid) setErrors(check.errors);
-      else { setValidated(JSON.stringify(plan)); frame(); }
-    } catch (e) { setErrors([String(e)]); } finally { setBusy(false); }
+      while (alive.current && wanted.current) {
+        const key = wanted.current, p: PracticePlan = JSON.parse(key);
+        for (const f of [p.faction, p.enemy]) if (!(f in live.current.rosters)) {
+          const roster = await probeRoster(game, f, f === p.faction ? p.enemy : p.faction, isAlive);
+          live.current.rosters = { ...live.current.rosters, [f]: roster };
+          setRosters(live.current.rosters);
+        }
+        const fixed = followFaction(p, live.current.units, live.current.rosters, live.current.pinned);
+        if (JSON.stringify(fixed) !== key) { wanted.current = JSON.stringify(fixed); setPlan(fixed); continue; }
+        setReady(""); setEngineIssues([]); setTags([]);
+        game.start(JSON.stringify(practiceScenario(p, live.current.units)), true);
+        await waitForWorld(isAlive);
+        // What you can see is first worked out on a tick: one tick (40 ms of game time) shows the opponent too.
+        game.client.send({ type: "step" });
+        const check = await game.command<{ valid?: boolean; errors?: string[]; routes?: string }>({ cmd: "validate-practice" });
+        await waitForArt();
+        if (wanted.current !== key) continue;
+        wanted.current = "";
+        const problems = check.valid ? [] : nativeIssues(check.errors?.length ? check.errors : ["The engine rejected this battle."], p, live.current.units, check.routes === "terrain");
+        if (!problems.length) { setReady(key); frame(p, true); }
+        else setEngineIssues(problems);
+      }
+    } catch (e) {
+      if (alive.current) setFailure(message(e));
+    } finally {
+      pumping.current = false;
+      if (alive.current) setBusy(false);
+    }
   };
-  return <section data-practice className="absolute inset-y-4 right-4 z-50 w-[420px] max-w-[calc(100%-32px)] overflow-auto hud-panel p-5 text-sm" onKeyDown={e => e.stopPropagation()}>
-    <div className="flex items-center justify-between"><h2 className="text-xl font-bold text-[var(--hud-gold)]">Scenario workshop</h2><button onClick={() => { game.quit(); close(); }}>✕</button></div>
-    <p className="my-3 text-[var(--muted-foreground)]">Describe a short battle, refine the plan, then preview it. Uses the engine’s unit catalog and a flat practice arena. Original fictional exercises; no model connection required.</p>
-    <form onSubmit={e => { e.preventDefault(); if (plan) { setPlan(planFromText(request, units, factions.map(f => f.id), plan)); setValidated(""); } }}>
-      <textarea aria-label="Scenario request" value={request} onChange={e => setRequest(e.target.value)} className="w-full bg-black/60 p-2" rows={3} />
-      <button disabled={busy || !plan} className="my-2 text-[var(--hud-gold)]">Interpret request</button>
-    </form>
-    {plan && <div className="grid grid-cols-2 gap-3">
-      {([['faction', 'Your faction'], ['enemy', 'Opponent faction']] as const).map(([key, label]) => <label key={key}>{label}<GameSelect aria-label={label} value={plan[key]} onChange={e => patch({ [key]: e.target.value })} className="block w-full bg-black p-2">{factions.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}</GameSelect></label>)}
-      {([['unit', 'Your unit'], ['enemyUnit', 'Opponent unit']] as const).map(([key, label]) => <label key={key}>{label}<GameSelect aria-label={label} value={plan[key]} onChange={e => patch({ [key]: e.target.value })} className="block w-full bg-black p-2">{units.map(u => <option key={u.name} value={u.name}>{u.label}</option>)}</GameSelect></label>)}
-      {([['count', 'Your force'], ['enemyCount', 'Opponent force'], ['duration', 'Duration seconds'], ['seed', 'Seed']] as const).map(([key, label]) => <label key={key}>{label}<input aria-label={label} type="number" min={key === "duration" ? 30 : key === "seed" ? 0 : 1} max={key === "duration" ? 600 : key === "seed" ? 2147483647 : 24} value={plan[key]} onChange={e => patch({ [key]: Number(e.target.value) })} className="block w-full bg-black p-2" /></label>)}
-      <label>Objective<GameSelect aria-label="Practice objective" className="block w-full bg-black p-2" value={plan.objective} onChange={e => patch({ objective: e.target.value as PracticePlan['objective'] })}><option value="survive">Keep one combat unit alive</option><option value="eliminate">Eliminate opposing combat units</option></GameSelect></label>
-      <label>Opponent orders<GameSelect aria-label="Opponent orders" className="block w-full bg-black p-2" value={plan.enemyOrder} onChange={e => patch({ enemyOrder: e.target.value as PracticePlan['enemyOrder'] })}><option value="engage">Engage</option><option value="hold">Hold position</option></GameSelect></label>
-      <p className="col-span-2 text-[var(--muted-foreground)]">{plan.count} vs {plan.enemyCount} · {plan.duration}s · seed {plan.seed}. You control your force. Victory is measured in native simulation time.</p>
-      <button disabled={busy} onClick={preview} className="bg-white/10 p-2">{busy ? "Checking…" : "Preview & validate routes"}</button>
-      <button disabled={busy || validated !== JSON.stringify(plan)} onClick={async () => { setBusy(true); try { game.start(JSON.stringify(practiceScenario(plan, true))); await wait(); frame(); close(); } catch (e) { setErrors([String(e)]); setBusy(false); } }} className="bg-[var(--hud-gold)] p-2 font-bold text-black disabled:opacity-30">Launch practice</button>
-    </div>}
-    {validated && <p className="my-3 text-[var(--hud-green)]">✓ Both forces and ground routes validated by OpenRA.</p>}
-    {errors.map((e, i) => <p key={i} role="alert" className="my-2 text-[var(--hud-red)]">{e}</p>)}
-  </section>;
+
+  // The engine's unit catalog (combat units only, with their sizes) and both factions' rosters, then the request.
+  useEffect(() => {
+    alive.current = true;
+    const first = interpret(request, [], factionIds, undefined, {}, factionNames).plan;
+    loadPracticeCatalog(game, first.faction, [first.enemy], () => alive.current).then(c => {
+      if (!alive.current) return;
+      game.requestIcons(c.units.map(u => u.name));
+      const r = interpret(request, c.units, factionIds, undefined, c.rosters, factionNames);
+      setUnits(c.units); setRosters(c.rosters); setPinned(r.named); setPlan(r.plan);
+    }).catch(e => { if (alive.current) { setFailure(message(e)); setBusy(false); } });
+    return () => { alive.current = false; };
+  }, [game]);
+
+  // Every valid change previews automatically (after a short pause in typing).
+  useEffect(() => {
+    if (!plan || !units.length) return;
+    const key = JSON.stringify(plan);
+    if (validatePlan(plan, units, factionIds).length || key === ready) {
+      wanted.current = "";
+      if (!pumping.current) setBusy(false);
+      return;
+    }
+    wanted.current = key;
+    const timer = setTimeout(pump, !ready && busy ? 0 : 450);
+    return () => clearTimeout(timer);
+  }, [plan, units, ready]);
+
+  useEffect(() => {
+    if (!ready) return;
+    const refit = () => frame(JSON.parse(ready), true);
+    window.addEventListener("resize", refit);
+    return () => window.removeEventListener("resize", refit);
+  }, [ready]);
+
+  // The paused preview takes no game hotkeys (P would unpause it, arrows would scroll it). Pickers still get their keys.
+  useEffect(() => {
+    const stop = (e: KeyboardEvent) => e.stopPropagation();
+    document.addEventListener("keydown", stop);
+    return () => document.removeEventListener("keydown", stop);
+  }, []);
+
+  const patch = (p: Partial<PracticePlan>) => setPlan(old => old ? followFaction({ ...old, ...p }, live.current.units, live.current.rosters, live.current.pinned) : old);
+  const reinterpret = () => {
+    if (!units.length) return;
+    const r = interpret(request, units, factionIds, plan ?? undefined, rosters, factionNames);
+    live.current.pinned = r.named;
+    setPinned(r.named); setPlan(r.plan);
+  };
+  const start = () => {
+    if (!canStart || !plan) return;
+    frame(plan, false);
+    game.setPaused(false);
+    close();
+  };
+
+  const issues = plan && units.length ? [...validatePlan(plan, units, factionIds), ...engineIssues] : [];
+  const issue = (field: PlanField) => issues.find(i => i.field === field)?.message;
+  const canStart = !!plan && !busy && ready === JSON.stringify(plan) && issues.length === 0;
+  const stale = !!plan && ready !== JSON.stringify(plan);
+  const nations: Option[] = factions.map(f => ({ value: f.id, label: f.name, leading: <Flag id={f.id} className="h-[12px] w-[18px] rounded-[1px]" /> }));
+  const cameo = (name: string, className: string) => icons[name] ? <img src={icons[name]!} alt="" className={className} style={{ imageRendering: "pixelated" }} /> : null;
+  const unitOptions = (faction: string): Option[] => {
+    const roster = rosters[faction], own = roster?.length ? factionUnits(faction, units, rosters) : [];
+    const ownNames = new Set(own.map(u => u.name));
+    const rest = units.filter(u => u.combat !== false && !ownNames.has(u.name))
+      .sort((a, b) => (Number(b.modern) - Number(a.modern)) * (roster && !roster.length ? -1 : 1) || a.label.localeCompare(b.label));
+    const option = (u: UnitOption, group?: string): Option => ({ value: u.name, label: u.label, group, leading: cameo(u.name, "h-[16px] w-[20px] shrink-0 object-contain") });
+    return own.length ? [...own.map(u => option(u, factionNames[faction] ?? faction)), ...rest.map(u => option(u, "Other units"))] : rest.map(u => option(u));
+  };
+  const FieldIssue = ({ field }: { field: PlanField }) => issue(field) ? <p id={`practice-${field}-issue`} role="alert" className="text-[12px] leading-snug text-[var(--hud-red)]">{issue(field)}</p> : null;
+  const sides = [
+    { side: 0, title: "You", faction: "faction", unit: "unit", count: "count", labels: ["Your faction", "Your unit", "Your force"] },
+    { side: 1, title: "Opponent", faction: "enemy", unit: "enemyUnit", count: "enemyCount", labels: ["Opponent faction", "Opponent unit", "Opponent force"] },
+  ] as const;
+  const inputClass = "block h-8 w-full rounded-md border border-input bg-black px-2 text-[13px] aria-[invalid=true]:border-[var(--hud-red)]";
+
+  return <>
+    {/* The map behind the panel: a paused preview you look at, not a game you play (yet). */}
+    <div data-practice-map className="fixed inset-0 z-40" onMouseDown={e => e.preventDefault()} onContextMenu={e => e.preventDefault()}>
+      {busy || !plan ? <div className="absolute inset-0 grid place-items-center bg-[radial-gradient(ellipse_at_40%_40%,#1a2219,#070907_75%)]" style={{ paddingRight: (panel.current?.offsetWidth ?? 420) + 32 }}>
+        <div className="flex items-center gap-3 text-[13px]"><div className="spinner" /><span>{units.length ? "Setting up the battle" : "Reading the arsenal"}</span></div>
+      </div> : <>
+        {stale && <div className="absolute inset-0 bg-black/55" />}
+        {area && !stale && <span className="absolute -translate-x-1/2 rounded-full bg-black/75 px-3 py-1 text-[12px] tracking-wide text-[var(--hud-gold)]" style={{ left: (area.left + area.right) / 2, top: area.top + 16 }}>Paused preview</span>}
+        {!stale && tags.map(t => <span key={t.side} data-side-tag={t.side} className="absolute -translate-x-1/2 -translate-y-full rounded px-2 py-0.5 text-[12px] font-bold text-white shadow" style={{ left: t.x, top: t.y - 8, background: SIDE_COLOR[t.side] }}>{t.side ? "Opponent" : "You"}</span>)}
+      </>}
+    </div>
+    <section ref={panel} data-practice className="absolute inset-y-4 right-4 z-50 flex w-[420px] max-w-[calc(100%-32px)] flex-col gap-3 overflow-auto hud-panel p-4 text-sm" onKeyDown={e => e.stopPropagation()}>
+      <div className="flex items-center justify-between"><h2 className="text-xl font-bold text-[var(--hud-gold)]">Scenario workshop</h2><button type="button" aria-label="Close workshop" onClick={() => { game.quit(); close(); }}>✕</button></div>
+      <form onSubmit={e => { e.preventDefault(); reinterpret(); }}>
+        <textarea aria-label="Scenario request" placeholder={DEFAULT_REQUEST} value={request} rows={2} onChange={e => setRequest(e.target.value)}
+          onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); reinterpret(); } }} className="w-full resize-none rounded-md bg-black/60 p-2" />
+        <button disabled={!units.length} className="text-[var(--hud-gold)] disabled:opacity-40">Interpret request</button>
+      </form>
+      {plan && <>
+        <div className="grid grid-cols-2 gap-2">
+          {sides.map(s => {
+            const unit = units.find(u => u.name === plan[s.unit]);
+            return <section key={s.side} aria-label={s.title} className="hud-inset flex min-w-0 flex-col gap-1.5 p-2" style={{ boxShadow: `inset 0 3px 0 ${SIDE_COLOR[s.side]}` }}>
+              <b className="text-[13px]" style={{ color: SIDE_COLOR[s.side] }}>{s.title}</b>
+              <SearchSelect size="sm" aria-label={s.labels[0]} value={plan[s.faction]} options={nations} onValueChange={v => patch({ [s.faction]: v })} />
+              <FieldIssue field={s.faction} />
+              <div className="mx-auto grid aspect-[60/48] w-[104px] place-items-center overflow-hidden bg-black">{cameo(plan[s.unit], "h-full w-full object-contain") ?? <span className="px-1 text-center text-[10px] text-[var(--muted-foreground)]">{unit?.label}</span>}</div>
+              <SearchSelect size="sm" aria-label={s.labels[1]} value={plan[s.unit]} options={unitOptions(plan[s.faction])} placeholder="Find a unit…"
+                onValueChange={v => { live.current.pinned = { ...live.current.pinned, [s.unit]: true }; setPinned(live.current.pinned); patch({ [s.unit]: v }); }} />
+              <FieldIssue field={s.unit} />
+              <label className="flex items-center gap-2"><span aria-hidden="true" className="text-[var(--muted-foreground)]">×</span>
+                <input aria-label={s.labels[2]} type="number" min={1} max={MAX_FORCE} value={Number.isFinite(plan[s.count]) ? plan[s.count] : ""} aria-invalid={!!issue(s.count)} aria-describedby={issue(s.count) ? `practice-${s.count}-issue` : undefined}
+                  onChange={e => patch({ [s.count]: e.target.value === "" ? NaN : Number(e.target.value) })} className={inputClass} /></label>
+              <FieldIssue field={s.count} />
+            </section>;
+          })}
+        </div>
+        <div className="grid grid-cols-2 gap-x-2 gap-y-1.5 text-[12px] text-[var(--muted-foreground)]">
+          <label>Goal<GameSelect aria-label="Practice objective" className="w-full" value={plan.objective} onChange={e => patch({ objective: e.target.value as PracticePlan["objective"] })}><option value="survive">Survive</option><option value="eliminate">Eliminate them</option></GameSelect></label>
+          <label>Orders<GameSelect aria-label="Opponent orders" className="w-full" value={plan.enemyOrder} onChange={e => patch({ enemyOrder: e.target.value as PracticePlan["enemyOrder"] })}><option value="engage">Engage</option><option value="hold">Hold position</option></GameSelect></label>
+          <label>Seconds<input aria-label="Duration seconds" type="number" min={30} max={600} value={Number.isFinite(plan.duration) ? plan.duration : ""} aria-invalid={!!issue("duration")} onChange={e => patch({ duration: e.target.value === "" ? NaN : Number(e.target.value) })} className={inputClass} /><FieldIssue field="duration" /></label>
+          <label>Seed<input aria-label="Seed" type="number" min={0} max={2147483647} value={Number.isFinite(plan.seed) ? plan.seed : ""} aria-invalid={!!issue("seed")} onChange={e => patch({ seed: e.target.value === "" ? NaN : Number(e.target.value) })} className={inputClass} /><FieldIssue field="seed" /></label>
+        </div>
+        <button type="button" disabled={!canStart} onClick={start} className="w-full rounded-md bg-[var(--hud-gold)] p-3 text-base font-bold text-black disabled:opacity-30"><span aria-hidden="true">▶ </span>Start battle</button>
+      </>}
+      {[...issues.filter(i => !i.field).map(i => i.message), ...(failure ? [failure] : [])].map((m, i) => <p key={i} role="alert" className="text-[var(--hud-red)]">{m}</p>)}
+    </section>
+  </>;
 }

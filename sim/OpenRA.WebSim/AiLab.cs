@@ -101,11 +101,14 @@ namespace OpenRA.WebSim
 				var mobile = a.TraitOrDefault<Mobile>();
 				if (mobile == null) continue;
 				if (!mobile.CanEnterCell(a.Location, a, BlockedByActor.Immovable)) errors.Add(a.Info.Name + ": invalid terrain.");
+				// Ground connectivity is a terrain question: the target cell itself holds an enemy, which blocks every
+				// vehicle (only allied movers step aside), so actors must not count here or no armour ever validates.
 				var target = actors.FirstOrDefault(b => b.Owner != a.Owner);
-				if (target != null && world.WorldActor.Trait<PathFinder>().FindPathToTargetCell(a, new[] { a.Location }, target.Location, BlockedByActor.Immovable).Count == 0)
+				if (target != null && world.WorldActor.Trait<PathFinder>().FindPathToTargetCell(a, new[] { a.Location }, target.Location, BlockedByActor.None).Count == 0)
 					errors.Add(a.Info.Name + ": no ground route to opposing force.");
 			}
-			return JsonSerializer.Serialize(new { valid = errors.Count == 0, errors, units = actors.Length });
+			// routes = "terrain": tells the page this runtime checks routes over terrain (older ones blocked on the target).
+			return JsonSerializer.Serialize(new { valid = errors.Count == 0, errors, units = actors.Length, routes = "terrain" });
 		}
 		public static string CoachJson(World world, Player player) => JsonSerializer.Serialize(new {
 			earned = player.PlayerActor.TraitOrDefault<PlayerResources>()?.Earned ?? 0,

@@ -10,7 +10,7 @@ Open `http://127.0.0.1:3490/?profile=public` with the local server running (`nod
 | Battlefield communication | A pending co-commander proposal | Owned-unit rings, intent arrows, focus and dismiss; remembered visible contacts are uncertain. |
 | Coaching & practice | Battlefield review | Timestamped native evidence; pause/seek/return live, drill links, exported scenario/evidence. |
 | Opponent personalities | Skirmish → Tactical personality | Standard, Raider, Sentinel, Adaptive; separate from difficulty and native economy/production. |
-| Scenario workshop | Main menu → Scenario workshop | Interpret a request, edit the plan, validate a paused preview, launch a deterministic combat drill. |
+| Scenario workshop | Main menu → Scenario workshop | Interpret a request, adjust both sides (combat units only, each faction's own roster first), see the battle paused behind the panel, then Start battle to command it. |
 
 Practice objectives use native simulation time and record measured survivors, shots and damage at completion. Repeat same seed & forces compares with the preceding identical exercise. Changing the seed, forces or objective intentionally starts a new comparison. Local storage holds only the latest practice result.
 

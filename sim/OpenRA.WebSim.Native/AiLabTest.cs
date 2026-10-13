@@ -49,6 +49,15 @@ static class AiLabTest
 			if (data.RootElement.GetProperty("doctrines")[0].GetProperty("decisions").EnumerateArray().Any(d => d.GetProperty("units").GetInt32() > 8)) throw new Exception("Director exceeded tactical bound.");
 			results.Add(new { map, seed = 4242, doctrine = "adaptive", passed = true });
 		}
+		// Armour validates like infantry (the route check once pathed into the enemy's own, occupied cell, which no
+		// vehicle may enter), and a side of non-combat actors (construction vehicles) does not count as a force.
+		var armour = Scenario("standard", false, "saudi", 42);
+		foreach (var spawn in armour.Spawns) spawn.Type = spawn.Player == 0 ? "r2m1a2s" : "r2karrar";
+		SimHost.Start(armour);
+		using (var data = JsonDocument.Parse(AiLab.Validate(SimHost.World))) if (!data.RootElement.GetProperty("valid").GetBoolean()) throw new Exception("Armour: " + data.RootElement);
+		foreach (var spawn in armour.Spawns.Where(s => s.Player == 1)) spawn.Type = "amcv";
+		SimHost.Start(armour);
+		using (var data = JsonDocument.Parse(AiLab.Validate(SimHost.World))) if (data.RootElement.GetProperty("valid").GetBoolean()) throw new Exception("Construction vehicles passed as a combat force.");
 		SimHost.Start(Scenario("standard", false, "saudi", 42));
 		using (var data = JsonDocument.Parse(AiLab.Validate(SimHost.World))) if (!data.RootElement.GetProperty("valid").GetBoolean()) throw new Exception(data.RootElement.ToString());
 		for (var t = 0; t < 780; t++) SimHost.Tick();
@@ -65,7 +74,7 @@ static class AiLabTest
 		foreach (var a in SimHost.World.Actors.Where(a => a.Owner.InternalName == "Multi0" && a.OccupiesSpace != null).ToArray()) a.Kill(a);
 		for (var t = 0; t < 130; t++) SimHost.Tick();
 		using (var data = JsonDocument.Parse(AiLab.StateJson())) if (data.RootElement.GetProperty("status").GetString() != "failed") throw new Exception("Loss of own force did not fail objective.");
-		Console.WriteLine(JsonSerializer.Serialize(new { passed = true, evaluations = results, fogRespect = true, routes = true, survival = true, elimination = true, failure = true }));
+		Console.WriteLine(JsonSerializer.Serialize(new { passed = true, evaluations = results, fogRespect = true, routes = true, armour = true, survival = true, elimination = true, failure = true }));
 		return 0;
 	}
 }
