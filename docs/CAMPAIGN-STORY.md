@@ -20,6 +20,8 @@ Run `node tools/campaign-story-test.mjs` against the local game server (default 
 
 ## Further campaign work
 
+`RTSAI-Mod/docs/story-bible.md` defines the story that joins the two arcs and the five Act III chapters to come: the recurring cast, the fictional antagonist, the content rules, and the clue lines for the built debriefs. New chapters, films and radio lines follow it.
+
 The preserved map library has 453 indexed entries; most are marked review-required. An indexed map is not a playable campaign mission. Additional ports must review each source's provenance, replace dependencies on owned-game content, translate actors/terrain, implement and validate timed events and all objectives in the browser's deterministic host, and test every success/failure path. Keep unresolved originals archived and indexed. Start with a compact scout-and-rescue mission, then a timed defense, then an infiltration/extraction operation; author new dialogue rather than copying historical campaign scripts or cinematics. Do not advertise these proposed chapters as built.
 
 This delivery stays local. Publishing the website or rebuilding the Windows release is separate work.
