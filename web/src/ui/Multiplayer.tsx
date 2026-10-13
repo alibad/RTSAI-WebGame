@@ -4,7 +4,7 @@ import { useStore } from '../store';
 import { Flag } from './Flag';
 import { OptionSelect, SearchSelect, Swatch, type Option } from '../components/ui/fields';
 import { MatchChat } from './MatchChat';
-import { Check, ChevronDown, Copy, Crown, LogIn, Map as MapIcon, MessageSquare, Plus, Radio, TriangleAlert, Users, Video, VideoOff, X } from 'lucide-react';
+import { Check, ChevronDown, Copy, Crown, Dices, LogIn, Map as MapIcon, MessageSquare, Plus, Radio, TriangleAlert, Users, Video, VideoOff, X } from 'lucide-react';
 import { MultiplayerSession, inviteLink, type RemoteMedia, type SessionView } from '../multiplayer';
 import { GameButton } from './kit/game';
 import { Brackets } from './screen-parts';
@@ -95,12 +95,17 @@ export function Multiplayer({ game }: { game: Game }) {
     <Users size={15} aria-hidden="true" /><span>{view.stage === 'lobby' ? 'Match lobby' : 'Multiplayer'}</span>
   </button>;
 
-  const lobby = view.lobby, map = setup.maps.find(m => m.id === lobby?.map), mine = lobby?.players[view.you - 1];
+  const lobby = view.lobby, mine = lobby?.players[view.you - 1];
+  // A guest's copy of the host's random map is still being made: the lobby shows it from the host's description.
+  const map = setup.maps.find(m => m.id === lobby?.map) ?? (lobby?.generated ? { id: lobby.map, uid: lobby.mapUid, title: lobby.generated.title,
+    players: lobby.generated.slots, tileset: 'TEMPERATE', author: '', slots: Array.from({ length: lobby.generated.slots }, (_, i) => `Multi${i}`) } : undefined);
   const link = view.room && view.host ? inviteLink(view.room) : '';
   const teams: Option<number>[] = [0, 1, 2, 3, 4].map(t => ({ value: t, label: t ? `Team ${t}` : 'No team', leading: <Swatch color={TEAM_COLORS[t]} /> }));
-  // Saved Earth maps first, as the player's own; guests get the host's from Firestore when the host picks one.
-  const maps: Option<string>[] = [...setup.maps.filter(m => m.saved), ...setup.maps.filter(m => !m.saved)].filter(m => m.slots.length >= 2)
-    .map(m => ({ value: m.id, label: m.title, description: `Up to ${m.slots.length} players`, group: setup.maps.some(x => x.saved) ? (m.saved ? 'Your maps' : 'Maps') : undefined }));
+  // Random maps made here first, then saved Earth maps, as the player's own. Guests make the host's random map in their
+  // own browser and get a saved one from Firestore.
+  const ownGroups = setup.maps.some(x => x.saved || x.generated);
+  const maps: Option<string>[] = [...setup.maps.filter(m => m.generated), ...setup.maps.filter(m => m.saved), ...setup.maps.filter(m => !m.saved && !m.generated)].filter(m => m.slots.length >= 2)
+    .map(m => ({ value: m.id, label: m.title, description: `Up to ${m.slots.length} players`, group: ownGroups ? (m.generated ? 'Random maps' : m.saved ? 'Your maps' : 'Maps') : undefined }));
   const bots: Option<string>[] = setup.bots.map(b => ({ value: b.type, label: b.name }));
   const free = lobby && map ? map.slots.length - lobby.players.length - lobby.ai.length : 0;
   const everyoneReady = !!lobby && lobby.players.length >= 2 && lobby.players.every(p => p.ready);
@@ -181,7 +186,10 @@ export function Multiplayer({ game }: { game: Game }) {
                 <Brackets className="always" />
                 <span className="mp-map-caption"><b>{map.title}</b><small>{map.slots.length} players</small></span>
               </div>
-              {view.host ? <label className="mp-field"><span>Map</span><OptionSelect aria-label="Multiplayer map" className="mp-picker" value={lobby.map} options={maps} onValueChange={id => session.setMap(id)} /></label>
+              {view.host ? <div className="mp-map-pick">
+                <label className="mp-field"><span>Map</span><OptionSelect aria-label="Multiplayer map" className="mp-picker" value={lobby.map} options={maps} onValueChange={id => session.setMap(id)} /></label>
+                <GameButton size="sm" icon={<Dices size={14} aria-hidden="true" />} disabled={view.mapLoading} onClick={() => void session.newRandomMap()} data-testid="mp-random-map">{view.mapLoading ? 'Making a map…' : 'New random map'}</GameButton>
+              </div>
                 : <p className="mp-note">The host chooses the map and AI opponents.</p>}
             </section>
 
