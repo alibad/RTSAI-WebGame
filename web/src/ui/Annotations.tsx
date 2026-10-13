@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from "react";
+import { Crosshair, Route, X } from "lucide-react";
 import type { Game } from "../game";
 import { useStore } from "../store";
 
 /** Read-only proposal overlay. Contact memory stores only positions that were actually visible. */
 export function Annotations({ game }: { game: Game }) {
   const feed = useStore(s => s.cc.feed);
+  const mission = useStore(s => !!s.ui?.mission);
   const panelOpen = useStore(s => s.cc.strategyOpen || s.cc.open);
   const [dismissed, setDismissed] = useState(0);
   const [, update] = useState(0);
@@ -47,10 +49,14 @@ export function Annotations({ game }: { game: Game }) {
       const a = project(p.from.x, p.from.y), b = project(p.to.x, p.to.y);
       return <g key={i} opacity={p.uncertain ? .55 : .9}><circle cx={a.x} cy={a.y} r={16} fill="none" stroke="#efd28b" strokeWidth="2" /><line x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke="#efd28b" strokeWidth="2" strokeDasharray="7 5" markerEnd="url(#ai-arrow)" /><circle cx={b.x} cy={b.y} r="7" fill="none" stroke="#efd28b" strokeDasharray={p.uncertain ? "3 3" : undefined} /></g>;
     })}</svg>
-    {!panelOpen && <div className="pointer-events-auto absolute left-3 top-[65px] max-w-[260px] rounded bg-black/85 p-2 text-xs">
-      <button className="text-left text-[var(--hud-gold)]" onClick={() => game.lookAt(paths[0].from.x, paths[0].from.y)}>Preview · {paths[0].action.replaceAll('_', ' ')} · focus units</button>
-      <p className="my-1 text-[var(--muted-foreground)]">Dashed lines show intent, not a computed route. {paths.some(p => p.uncertain) ? "Faded contact: last seen within 30s." : "Orders await your acceptance."}</p>
-      <button className="underline" onClick={() => setDismissed(offer.id)}>Dismiss preview</button>
+    {!panelOpen && <div className={`an-card hud-card pointer-events-auto${mission ? " has-mission" : ""}`}>
+      <div className="an-head">
+        <Route />
+        <b>Preview · {paths[0].action.replaceAll('_', ' ')}</b>
+        <button type="button" className="cc-icon" aria-label="Focus units" data-tip="Show the units" onClick={() => game.lookAt(paths[0].from.x, paths[0].from.y)}><Crosshair /></button>
+        <button type="button" className="cc-icon" aria-label="Dismiss preview" data-tip="Hide the preview" onClick={() => setDismissed(offer.id)}><X /></button>
+      </div>
+      <p>Dashed lines show the intent, not the route. {paths.some(p => p.uncertain) ? "Faded: last seen within 30 s." : "Apply or cancel the order above."}</p>
     </div>}
   </div>;
 }

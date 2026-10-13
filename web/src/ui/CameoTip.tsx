@@ -3,6 +3,7 @@
 
 import type { CatalogItem } from "../sim/protocol";
 import { PowerIcon } from "./icons";
+import { Kbd as GameKbd } from "./kit/game";
 
 const TICK_S = 0.04;
 
@@ -29,7 +30,7 @@ export function parseDescription(desc: string | undefined) {
 }
 
 function Stat({ children, className }: { children: React.ReactNode; className?: string }) {
-  return <span className={`digits inline-flex items-center gap-1 rounded-[2px] bg-black/50 px-1.5 py-[1px] ${className ?? ""}`}>{children}</span>;
+  return <span className={`ct-stat ${className ?? ""}`}>{children}</span>;
 }
 
 function Clock() {
@@ -43,16 +44,12 @@ function Clock() {
 export function CameoTip({ item, top }: { item: CatalogItem; top: number }) {
   const { role, strong, weak } = parseDescription(item.desc);
   const seconds = Math.round(item.time * TICK_S);
-  const height = 150 + 17 * Math.max(0, role.split("\n").length - 1);
-  const y = Math.max(8, Math.min(top, window.innerHeight - height - 8));
+  const height = 160 + 17 * Math.max(0, role.split("\n").length - 1) + 18 * (strong.length + weak.length);
+  const y = Math.max(8, Math.min(top - 6, window.innerHeight - height - 8));
   return (
-    <div
-      className="hud-panel pointer-events-none fixed z-30 w-[248px] px-3 py-2.5 text-[12px] leading-snug shadow-[0_8px_24px_rgba(0,0,0,0.6)]"
-      style={{ top: y, right: "calc(var(--sidebar-w) + 6px)" }}
-      role="tooltip"
-    >
-      <div className="text-[14px] font-bold text-[var(--hud-gold)]">{item.label}</div>
-      <div className="mt-1.5 flex flex-wrap gap-1 text-[12px]">
+    <div className="ct-tip" style={{ top: y, right: "calc(var(--sidebar-w) + 10px)" }} role="tooltip">
+      <div className="ct-name">{item.label}</div>
+      <div className="ct-stats">
         <Stat className="text-[var(--hud-gold)]">${item.cost.toLocaleString("en-US")}</Stat>
         <Stat><Clock />{seconds}s</Stat>
         {item.power !== 0 && (
@@ -61,29 +58,30 @@ export function CameoTip({ item, top }: { item: CatalogItem; top: number }) {
           </Stat>
         )}
       </div>
-      {role && <p className="mt-1.5 whitespace-pre-line text-[var(--muted-foreground)]">{role}</p>}
+      {role && <p className="ct-role">{role}</p>}
       {(strong.length > 0 || weak.length > 0) && (
-        <div className="mt-1.5 grid gap-[2px]">
+        <div className="ct-vs">
           {strong.map((s) => (
-            <div key={`s${s}`} className="flex gap-1.5"><span className="text-[var(--hud-green)]" aria-label="Strong against">▲</span><span>{s}</span></div>
+            <div key={`s${s}`}><span className="text-[var(--hud-green)]" aria-label="Strong against">▲</span><span>{s}</span></div>
           ))}
           {weak.map((s) => (
-            <div key={`w${s}`} className="flex gap-1.5"><span className="text-[var(--hud-red)]" aria-label="Weak against">▼</span><span className="text-[var(--muted-foreground)]">{s}</span></div>
+            <div key={`w${s}`}><span className="text-[var(--hud-red)]" aria-label="Weak against">▼</span><span className="text-[#a9b19f]">{s}</span></div>
           ))}
         </div>
       )}
       {!item.buildable && item.requires?.length ? (
-        <p className="mt-1.5 text-[var(--hud-yellow)]">Needs {item.requires.join(", ")}</p>
+        <p className="ct-needs">Needs {item.requires.join(", ")}</p>
       ) : null}
-      <div className="mt-2 flex gap-2 border-t border-white/10 pt-1.5 text-[10px] text-[var(--hud-gold-dim)]">
-        <span><Kbd>LMB</Kbd> build</span>
-        <span><Kbd>⇧</Kbd> ×5</span>
-        <span><Kbd>RMB</Kbd> hold · cancel</span>
+      <div className="ct-hints">
+        <span><GameKbd>LMB</GameKbd>build</span>
+        <span><GameKbd>⇧</GameKbd>×5</span>
+        <span><GameKbd>RMB</GameKbd>hold · cancel</span>
       </div>
     </div>
   );
 }
 
+/** A small key hint (kept for older imports; new code uses Kbd from the kit). */
 export function Kbd({ children }: { children: React.ReactNode }) {
   return <kbd className="digits rounded-[2px] border border-white/15 bg-black/60 px-1 text-[9px] text-[var(--foreground)]">{children}</kbd>;
 }

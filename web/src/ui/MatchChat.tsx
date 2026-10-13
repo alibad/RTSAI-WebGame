@@ -1,6 +1,9 @@
+// Match chat in the corner: Enter to write, Esc back to the battle. New messages show for 15 s, then fade; the open
+// chat keeps the last hundred.
+
 import { useEffect, useRef, useState } from 'react';
-import { MessageSquare, X } from 'lucide-react';
-import { Button } from '../components/ui/button';
+import { MessageSquare, Send, X } from 'lucide-react';
+import { GameButton, Kbd } from './kit/game';
 export type ChatMessage = { id: string; author: string; text: string };
 export function MatchChat({ messages, send, inputLabel = 'Room chat message' }: {
  messages: ChatMessage[]; send: (text: string) => Promise<void>; inputLabel?: string;
@@ -26,9 +29,12 @@ export function MatchChat({ messages, send, inputLabel = 'Room chat message' }: 
  },[open]);
  async function submit(){const text=draft.trim();if(!text||pending.current)return;pending.current=true;setSending(true);setError('');try{await send(text);setDraft('');close();}catch(e){setError(e instanceof Error?e.message:'Message could not be sent. Try again.');input.current?.focus();}finally{pending.current=false;setSending(false);}}
  const visible=open?messages.slice(-100):messages.filter(m=>now-(arrivals.current.get(m.id)??0)<15000).slice(-4);
- return <section aria-label="Match chat" className={`mp-corner-chat ${open?'is-open hud-panel':''}`}>
-  <div className="mp-corner-chat-heading"><Button variant="ghost" size="sm" aria-expanded={open} onClick={()=>open?close():compose()}><MessageSquare size={14}/>Chat<kbd>Enter</kbd></Button>{open&&<Button variant="ghost" size="sm" aria-label="Close room chat" onClick={close}><X size={14}/></Button>}</div>
+ return <section aria-label="Match chat" className={`mp-corner-chat mc-chat ${open?'is-open hud-card':''}`} data-ui-sfx>
+  <div className="mc-head">
+   <button type="button" className="mc-open" aria-label="Chat" aria-expanded={open} onClick={()=>open?close():compose()}><MessageSquare/>Chat{!open&&<Kbd>Enter</Kbd>}</button>
+   {open&&<button type="button" className="mc-close" aria-label="Close room chat" onClick={close}><X size={15}/></button>}
+  </div>
   <div ref={log} role="log" aria-label="Chat messages" aria-live="polite" aria-relevant="additions" className="mp-corner-chat-feed">{visible.map(m=><p key={m.id}><strong>{m.author}</strong><span>{m.text}</span></p>)}{open&&!messages.length&&<p className="mp-chat-empty">Coordinate with your commanders here.</p>}</div>
-  {open&&<form onSubmit={e=>{e.preventDefault();void submit();}}><input ref={input} aria-label={inputLabel} placeholder="Message your commanders..." maxLength={500} value={draft} onChange={e=>setDraft(e.target.value)} onKeyDown={e=>{if(!e.nativeEvent.isComposing)e.stopPropagation();}}/><Button size="sm" type="submit" disabled={sending||!draft.trim()}>{sending?'Sending...':'Send'}</Button><small>Enter to send <span>Esc to return to game</span></small>{error&&<p role="alert" className="mp-chat-send-error">{error}</p>}</form>}
+  {open&&<form onSubmit={e=>{e.preventDefault();void submit();}}><input ref={input} aria-label={inputLabel} placeholder="Message your commanders…" maxLength={500} value={draft} onChange={e=>setDraft(e.target.value)} onKeyDown={e=>{if(!e.nativeEvent.isComposing)e.stopPropagation();}}/><GameButton size="sm" variant="primary" type="submit" icon={<Send size={13}/>} disabled={sending||!draft.trim()}>{sending?'Sending…':'Send'}</GameButton><small><span><Kbd>Enter</Kbd> send</span><span><Kbd>Esc</Kbd> back to the battle</span></small>{error&&<p role="alert" className="mp-chat-send-error">{error}</p>}</form>}
  </section>;
 }

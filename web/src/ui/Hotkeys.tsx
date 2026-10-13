@@ -3,15 +3,16 @@
 // its widgets do (game.ts keyDown); a key the browser keeps for itself (Ctrl+W, Ctrl+Tab in a tab, F11, F12) is not
 // listed.
 
+import { CircleHelp, Crosshair, Hammer, Layers, Monitor, MousePointer2, Gamepad2 } from "lucide-react";
 import { useStore } from "../store";
 import { preferences } from "../preferences";
-import { Kbd } from "./CameoTip";
+import { GameDialog, GameSection, Kbd } from "./kit/game";
 import { AttackMoveIcon, DeployIcon, GuardIcon, RepairIcon, ScatterIcon, SellIcon, StopIcon } from "./icons";
 
 type Row = [keys: string[], label: string, Icon?: (p: React.SVGProps<SVGSVGElement>) => React.JSX.Element];
 
-const GROUPS: [string, Row[]][] = [
-  ["Units", [
+const GROUPS: [string, React.ReactNode, Row[]][] = [
+  ["Units", <Crosshair size={14} />, [
     [["A"], "Attack move", AttackMoveIcon],
     [["D"], "Guard", GuardIcon],
     [["F"], "Deploy", DeployIcon],
@@ -20,7 +21,7 @@ const GROUPS: [string, Row[]][] = [
     [["⇧", "click"], "Queue orders (⇧F, ⇧Ctrl+X too)"],
     [["Alt", "A S D F"], "Stance: attack · defend · return fire · hold"],
   ]],
-  ["Select", [
+  ["Select", <MousePointer2 size={14} />, [
     [["Q"], "All units on screen (again: map)"],
     [["W"], "Same type on screen (again: map)"],
     [["H"], "Next base"],
@@ -28,14 +29,14 @@ const GROUPS: [string, Row[]][] = [
     [["Home"], "Jump to selection"],
     [["Space"], "Jump to last event"],
   ]],
-  ["Groups", [
+  ["Groups", <Layers size={14} />, [
     [["1–0"], "Select (twice: jump)"],
     [["Ctrl", "1–0"], "Create"],
     [["Ctrl", "⇧", "1–0"], "Add selection"],
     [["⇧", "1–0"], "Combine with selection"],
     [["Alt", "1–0"], "Jump to"],
   ]],
-  ["Build", [
+  ["Build", <Hammer size={14} />, [
     [["E R T Y U I"], "Building · defense · infantry · vehicle · air · naval"],
     [["F1–F10"], "Build the 1st–10th icon (⇧: five)"],
     [["Ctrl", "F1–F10"], "Build the 13th–22nd icon (not F4)"],
@@ -44,7 +45,7 @@ const GROUPS: [string, Row[]][] = [
     [["B"], "Place a beacon"],
     [["RMB"], "Hold, then cancel"],
   ]],
-  ["View", [
+  ["View", <Monitor size={14} />, [
     [["↑ ↓ ← →"], "Scroll (Alt: to the map edge)"],
     [["[", "]"], "Zoom out · in"],
     [["."], "Reset zoom"],
@@ -53,7 +54,7 @@ const GROUPS: [string, Row[]][] = [
     [[","], "Health bars: selected · damaged · all"],
     [["⇧", "="], "Hide the interface"],
   ]],
-  ["Game", [
+  ["Game", <Gamepad2 size={14} />, [
     [["Esc"], "Menu (first: cancel a mode)"],
     [["P"], "Pause (or Pause key)"],
     [["M"], "Mute"],
@@ -71,24 +72,21 @@ export function HotkeySheet() {
   const set = useStore((s) => s.set);
   if (!open) return null;
   return (
-    <div className="absolute inset-0 z-20 grid place-items-center bg-black/40" style={{ right: "var(--sidebar-w)" }} onMouseDown={() => set({ keysOpen: false })}>
-      <div className="hud-panel grid grid-cols-3 gap-x-8 gap-y-4 px-6 py-5 text-[12px]" onMouseDown={(e) => e.stopPropagation()}>
-        {GROUPS.map(([title, rows]) => (
-          <section key={title} className="min-w-[200px]">
-            <h3 className="mb-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--hud-gold-dim)]">{title}</h3>
-            <div className="grid gap-[5px]">
-              {rows.map(([keys, label, Icon]) => (
-                <div key={label} className="flex items-center gap-2">
-                  <span className="flex w-[96px] shrink-0 flex-wrap gap-[3px]">{keys.map((k) => <Kbd key={k}>{keys.length === 1 ? (preferences.bindings[k.toLowerCase()] ?? k).toUpperCase() : k}</Kbd>)}</span>
-                  <span className="grid w-[16px] place-items-center text-[var(--hud-gold)]">{Icon && <Icon width={14} height={14} />}</span>
-                  <span className="text-[var(--foreground)]">{label}</span>
-                </div>
-              ))}
-            </div>
-          </section>
+    <GameDialog eyebrow="Help" title="Controls" size="xl" onClose={() => set({ keysOpen: false })}>
+      <div className="hk-grid">
+        {GROUPS.map(([title, icon, rows]) => (
+          <GameSection key={title} icon={icon} title={title}>
+            {rows.map(([keys, label, Icon]) => (
+              <div key={label} className="hk-row">
+                <span className="hk-keys">{keys.map((k) => k === "or" ? <i key={k}>or</i> : <Kbd key={k}>{keys.length === 1 ? (preferences.bindings[k.toLowerCase()] ?? k).toUpperCase() : k}</Kbd>)}</span>
+                <span className="hk-icon">{Icon && <Icon width={15} height={15} />}</span>
+                <span>{label}</span>
+              </div>
+            ))}
+          </GameSection>
         ))}
       </div>
-    </div>
+    </GameDialog>
   );
 }
 
@@ -96,9 +94,8 @@ export function HotkeyButton() {
   const open = useStore((s) => s.keysOpen);
   const set = useStore((s) => s.set);
   return (
-    <button type="button" title="Hotkeys (?)" aria-label="Hotkeys" onClick={() => set({ keysOpen: !open })}
-      className="hud-panel grid size-[32px] place-items-center rounded-[3px] text-[14px] font-bold text-[var(--muted-foreground)] hover:text-[var(--hud-gold)]">
-      ?
+    <button type="button" className="hud-tool" aria-label="Hotkeys" aria-pressed={open} data-tip="Controls · ?" onClick={() => set({ keysOpen: !open })}>
+      <CircleHelp />
     </button>
   );
 }

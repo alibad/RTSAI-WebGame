@@ -1,80 +1,264 @@
+// Saves & replays: local matches saved on this device (up to ten), each a card with its battlefield, sides, date and
+// length, to resume or watch back; export, import and delete. A save is the match's scenario plus the engine's
+// recorded order packets (MatchRestore.cs rebuilds the world from them), the selection, groups and the view.
+
+import { useEffect, useState, useSyncExternalStore } from "react";
+import { AlertTriangle, Check, Clock, Download, Film, Map as MapIcon, Play, Save, Swords, Trash2, Upload } from "lucide-react";
 import { buildIdentity } from "../sim/build-identity";
-import { GameSelect } from "../components/ui/fields";
-import { useState } from "react";
 import type { Game } from "../game";
 import { useStore } from "../store";
 import { Button } from "../components/ui/button";
+import { EmptyState, FilePickButton, GameButton, GameDialog } from "./kit/game";
+import { Flag } from "./Flag";
+import { clock, matchKind, matchSides, matchTitle, parseScenario, type ScenarioLike } from "./match-info";
+import { replayOf, setReplaySpeed } from "./Replay";
 
-interface MatchRecord { id: string; date: string; scenario: Record<string, unknown>; tick: number; log: unknown; profile: string; identity?: string; selection?: number[]; groups?: number[][]; view?: ReturnType<Game["captureUi"]> }
+export interface MatchRecord {
+  id: string; date: string; scenario: Record<string, unknown>; tick: number; log: unknown; profile: string; identity?: string;
+  selection?: number[]; groups?: number[][]; view?: ReturnType<Game["captureUi"]>;
+  /** A small picture of the battlefield when it was saved (JPEG data URL). */
+  thumb?: string;
+}
+
 const KEY = "rtsai.local-matches.v1";
-function read(): MatchRecord[] { try { return JSON.parse(localStorage.getItem(KEY) ?? "[]"); } catch { return []; } }
+const LIMIT = 10;
 
-export function MatchLibrary({ game }: { game: Game }) {
-  const [open, setOpen] = useState(false);
-  const [records, setRecords] = useState(read);
-  const [message, setMessage] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [seek, setSeek] = useState<number | null>(null);
+// ---------------------------------------------------------------- the saved list, shared by every view of it
+
+let records: MatchRecord[] | null = null;
+const subs = new Set<() => void>();
+function load(): MatchRecord[] {
+  if (records) return records;
+  try { records = JSON.parse(localStorage.getItem(KEY) ?? "[]"); } catch { records = []; }
+  if (!Array.isArray(records)) records = [];
+  return records!;
+}
+function store(next: MatchRecord[]) {
+  localStorage.setItem(KEY, JSON.stringify(next));
+  records = next;
+  subs.forEach((f) => f());
+}
+function useRecords() {
+  return useSyncExternalStore((f) => { subs.add(f); return () => { subs.delete(f); }; }, load);
+}
+
+const runtime = () => new URLSearchParams(location.search).get("runtime") || "aot";
+
+/** A picture of the battlefield (16:9, 320 px wide) for the save's card. */
+export async function captureThumb(game: Game) {
+  try {
+    const frame = await game.captureFrame(800);
+    const w = 320, h = 180;
+    const canvas = document.createElement("canvas");
+    canvas.width = w; canvas.height = h;
+    const scale = Math.max(w / frame.width, h / frame.height);
+    const sw = w / scale, sh = h / scale;
+    canvas.getContext("2d")!.drawImage(frame, (frame.width - sw) / 2, (frame.height - sh) / 2, sw, sh, 0, 0, w, h);
+    return canvas.toDataURL("image/jpeg", 0.72);
+  } catch { return ""; }
+}
+
+/** The running match as a save (its scenario, the recorded orders, the selection, groups and view). */
+export async function recordMatch(game: Game): Promise<MatchRecord> {
+  const recording = await game.client.request<{ log: unknown; tick: number; selection: number[]; groups: number[][] }>({ type: "record" });
+  const scenario = JSON.parse(game.scenarioJson); delete scenario.webReplay;
+  const profile = useStore.getState().profile;
+  const thumb = await captureThumb(game);
+  return { id: crypto.randomUUID(), date: new Date().toISOString(), scenario, ...recording, profile, identity: await buildIdentity(profile, runtime()), view: game.captureUi(), ...(thumb ? { thumb } : {}) };
+}
+
+/** Keeps a save on this device (the newest ten). Without room for its picture, it is kept without one. */
+export function keepRecord(record: MatchRecord) {
+  const list = load();
+  try { store([record, ...list].slice(0, LIMIT)); }
+  catch {
+    const plain = { ...record };
+    delete plain.thumb;
+    try { store([plain, ...list].slice(0, LIMIT)); }
+    catch { throw new Error("This device is out of space for saves. Delete an old save and try again."); }
+  }
+}
+
+/** Starts a save: resumed where it was saved, or (readonly) its replay from the start. Returns why it cannot. */
+export async function startRecord(game: Game, record: MatchRecord, readonly: boolean): Promise<string> {
+  const profile = useStore.getState().profile;
+  if (record.profile !== profile) return "Switch to this save's content profile before loading it.";
+  if (!record.identity || record.identity !== await buildIdentity(profile, runtime())) return "This save requires its original simulator and content build.";
+  setReplaySpeed(game, 1);
+  const position = readonly ? 0 : record.tick;
+  game.start(JSON.stringify({ ...record.scenario, webReplay: { log: record.log, tick: position, readonly, end: record.tick, groups: record.groups, selection: record.selection, view: record.view } }), readonly);
+  return "";
+}
+
+function exportRecord(record: MatchRecord) {
+  const url = URL.createObjectURL(new Blob([JSON.stringify(record)], { type: "application/json" }));
+  const link = document.createElement("a"); link.href = url; link.download = `rtsai-match-${record.id}.json`; link.click(); URL.revokeObjectURL(url);
+}
+
+/** The other battlefield view is another game profile: the page reloads into it (as the main menu's view tiles do). */
+function switchView(profile: string) {
+  const url = new URL(location.href);
+  url.searchParams.set("game", profile === "public-classic" ? "classic" : "isometric");
+  url.searchParams.set("profile", profile);
+  location.assign(url);
+}
+
+function when(iso: string) {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  const time = d.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+  const days = Math.round((new Date().setHours(0, 0, 0, 0) - new Date(d).setHours(0, 0, 0, 0)) / 86400000);
+  if (days === 0) return `Today ${time}`;
+  if (days === 1) return `Yesterday ${time}`;
+  return `${d.toLocaleDateString(undefined, { day: "numeric", month: "short", ...(d.getFullYear() !== new Date().getFullYear() ? { year: "numeric" } : {}) })} ${time}`;
+}
+
+// ---------------------------------------------------------------- one save
+
+function SaveCard({ game, record, fresh, onStart }: { game: Game; record: MatchRecord; fresh: boolean; onStart: () => void }) {
+  const setup = useStore((s) => s.setup);
   const profile = useStore((s) => s.profile);
   const phase = useStore((s) => s.phase);
-  const paused = useStore((s) => s.paused);
-  const tick = useStore((s) => s.ui?.tick ?? 0);
-  const replay = JSON.parse(game.scenarioJson || "{}").webReplay;
+  const scenario = record.scenario as ScenarioLike;
+  const mapId = typeof scenario.map === "string" ? scenario.map : "";
+  const preview = useStore((s) => (record.thumb ? undefined : s.previews[mapId]));
+  const [confirming, setConfirming] = useState(false);
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+  const title = matchTitle(scenario, setup);
+  const sides = matchSides(scenario, setup);
+  // A save without its own picture shows the map, when this game has it (the menu asks the engine for previews).
+  useEffect(() => {
+    if (!record.thumb && phase === "setup" && record.profile === profile && setup?.maps.some((m) => m.id === mapId)) game.preview(mapId);
+  }, [game, record.thumb, phase, record.profile, profile, setup, mapId]);
+  async function start(readonly: boolean) {
+    setBusy(true); setError("");
+    const why = await startRecord(game, record, readonly);
+    setBusy(false);
+    if (why) setError(why); else onStart();
+  }
+  const view = record.profile === "public-classic" ? "Classic" : record.profile === "public" ? "Isometric" : "";
+  // A static build offers only the views it was built with (tools/build-public.mjs, VITE_GAME_MODES).
+  const offered = import.meta.env.VITE_STATIC_BUILD !== "1" || (import.meta.env.VITE_GAME_MODES ?? "public").split(",").includes(record.profile);
+  return (
+    <li className={`lib-card${fresh ? " is-new" : ""}`}>
+      <button type="button" className="lib-thumb" aria-label={`Watch the replay of ${title}`} data-sfx-hover disabled={busy} onClick={() => void start(true)}>
+        {record.thumb ? <img src={record.thumb} alt="" draggable={false} />
+          : preview ? <img className="is-map" src={preview} alt="" draggable={false} />
+            : <span className="lib-thumb-empty"><MapIcon size={34} /><b>{title}</b></span>}
+        <span className="lib-chip lib-kind">{matchKind(scenario)}</span>
+        <span className="lib-chip lib-len"><Clock />{clock(record.tick)}</span>
+        <span className="lib-play"><Play /></span>
+      </button>
+      <div className="lib-body">
+        <div className="lib-title"><b>{title}</b><small>{when(record.date)}</small></div>
+        <div className="lib-sides">
+          {sides.map((s, i) => <span key={i} className="lib-side">{i > 0 && <span className="lib-vs">VS</span>}<Flag id={s.faction} /><span>{s.you ? <em>You</em> : s.nation}</span></span>)}
+          {view && profile !== record.profile && <span className="lib-tag">{view}</span>}
+        </div>
+        <div className="lib-actions">
+          {confirming ? (
+            <div className="lib-confirm" role="group" aria-label="Delete this save?">
+              <span>Delete this save?</span>
+              <GameButton size="sm" variant="ghost" onClick={() => setConfirming(false)}>Keep</GameButton>
+              <GameButton size="sm" variant="danger" icon={<Trash2 size={14} />} onClick={() => store(load().filter((x) => x.id !== record.id))}>Delete</GameButton>
+            </div>
+          ) : <>
+            <GameButton size="sm" icon={<Swords size={14} />} disabled={busy} onClick={() => void start(false)}>Resume</GameButton>
+            <GameButton size="sm" icon={<Film size={14} />} disabled={busy} onClick={() => void start(true)}>Replay</GameButton>
+            <button type="button" className="lib-icon" aria-label="Export" data-tip="Export file" data-tip-pos="top" onClick={() => exportRecord(record)}><Download /></button>
+            <button type="button" className="lib-icon is-danger" aria-label="Delete" data-tip="Delete" data-tip-pos="top" onClick={() => setConfirming(true)}><Trash2 /></button>
+          </>}
+        </div>
+        {error && <div className="lib-error-row">
+          <p role="alert" className="lib-error"><AlertTriangle size={14} />{error}</p>
+          {view && offered && profile !== record.profile && <GameButton size="sm" variant="ghost" onClick={() => switchView(record.profile)}>Open the {view.toLowerCase()} view</GameButton>}
+        </div>}
+      </div>
+    </li>
+  );
+}
+
+// ---------------------------------------------------------------- the dialog
+
+/**
+ * The Saves & replays button and its dialog. `variant`: "menu" (the main menu's utility row, the default), "hud" (an
+ * icon in the in-match top bar) or "item" (a row of the game menu, named "Save or load").
+ */
+export function MatchLibrary({ game, variant = "menu" }: { game: Game; variant?: "menu" | "hud" | "item" }) {
+  const [open, setOpen] = useState(false);
+  const list = useRecords();
+  const [message, setMessage] = useState("");
+  const [saveError, setSaveError] = useState("");
+  const [importError, setImportError] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [fresh, setFresh] = useState("");
+  const [live, setLive] = useState("");
+  const phase = useStore((s) => s.phase);
+  const setup = useStore((s) => s.setup);
+  const tick = useStore((s) => (open ? s.ui?.tick ?? 0 : 0));
+  const replaying = phase === "playing" && !!replayOf(game);
+  const canSave = phase === "playing" && !game.multiplayer && !replaying && !!game.scenarioJson;
+  useEffect(() => { if (open && canSave) void captureThumb(game).then(setLive); }, [open, canSave, game]);
+
+  function close() { setOpen(false); setMessage(""); setSaveError(""); setImportError(""); setFresh(""); }
   async function save() {
-    setBusy(true);
+    setBusy(true); setSaveError(""); setMessage("");
     try {
-      const recording = await game.client.request<{ log: unknown; tick: number; selection: number[]; groups: number[][] }>({ type: "record" });
-      const scenario = JSON.parse(game.scenarioJson); delete scenario.webReplay;
-      const record: MatchRecord = { id: crypto.randomUUID(), date: new Date().toISOString(), scenario, ...recording, profile, identity: await buildIdentity(profile, new URLSearchParams(location.search).get("runtime") || "aot"), view: game.captureUi() };
-      const next = [record, ...records].slice(0, 10);
-      localStorage.setItem(KEY, JSON.stringify(next)); setRecords(next); setMessage("Match saved on this device.");
-    } catch (error) { setMessage(`Save failed: ${String(error)}`); }
+      const record = await recordMatch(game);
+      keepRecord(record);
+      setFresh(record.id);
+      setMessage("Match saved on this device.");
+    } catch (error) { setSaveError(error instanceof Error && error.message.startsWith("This device") ? error.message : `Save failed: ${String(error)}`); }
     finally { setBusy(false); }
   }
-  async function load(record: MatchRecord, readonly: boolean, position = readonly ? 0 : record.tick) {
-    if (record.profile !== profile) { setMessage("Switch to this save's content profile before loading it."); return; }
-    if (!record.identity || record.identity !== await buildIdentity(profile, new URLSearchParams(location.search).get("runtime") || "aot")) { setMessage("This save requires its original simulator and content build."); return; }
-    game.start(JSON.stringify({ ...record.scenario, webReplay: { log: record.log, tick: position, readonly, end: record.tick, groups: record.groups, selection: record.selection, view: record.view } }), readonly);
-    setOpen(false);
+  async function importFile(file: File) {
+    setImportError("");
+    try {
+      const r = JSON.parse(await file.text()) as MatchRecord;
+      if (!r.scenario || !Number.isInteger(r.tick) || r.tick < 0 || r.tick > 2000000 || !r.log || typeof r.profile !== "string" || typeof r.date !== "string") throw new Error();
+      const { thumb, ...rest } = r;
+      const record: MatchRecord = { ...rest, id: crypto.randomUUID(), ...(typeof thumb === "string" && thumb.startsWith("data:image/") ? { thumb } : {}) };
+      keepRecord(record);
+      setFresh(record.id);
+    } catch (error) { setImportError(error instanceof Error && error.message ? error.message : "That file is not a saved match."); }
   }
-  function exportRecord(record: MatchRecord) {
-    const url = URL.createObjectURL(new Blob([JSON.stringify(record)], { type: "application/json" }));
-    const link = document.createElement("a"); link.href = url; link.download = `rtsai-match-${record.id}.json`; link.click(); URL.revokeObjectURL(url);
-  }
+
+  const scenario = parseScenario(game.scenarioJson);
+  const trigger = variant === "hud"
+    ? <button type="button" className="hud-tool" aria-label="Saves & replays" data-tip="Saves & replays" onClick={() => setOpen(true)}><Film /></button>
+    : variant === "item"
+      ? <button type="button" className="pm-item" data-sfx-hover onClick={() => setOpen(true)}><Save />Save or load</button>
+      : <Button size="sm" variant="outline" onClick={() => setOpen(true)}><Film size={14} aria-hidden="true" />Saves & replays</Button>;
+
   return <>
-    <Button size="sm" variant="outline" onClick={() => setOpen(true)}>Saves & replays</Button>
-    {replay?.readonly && <div className="hud-panel flex items-center gap-2 px-2 text-xs">
-      <span>{tick >= replay.end ? "Replay finished" : "Replay"} {Math.floor(tick / 25)} / {Math.floor(replay.end / 25)}s</span>
-      <Button size="sm" onClick={() => tick >= replay.end
-        ? game.start(JSON.stringify({ ...JSON.parse(game.scenarioJson), webReplay: { ...replay, tick: 0 } }), false)
-        : game.setPaused(!paused)}>{tick >= replay.end ? "Restart" : paused ? "Play" : "Pause"}</Button>
-      <GameSelect aria-label="Replay speed" onChange={(e) => game.client.send({ type: "speed", speed: Number(e.target.value) })} defaultValue="1">
-        {[0.25, 0.5, 1, 2, 4, 8].map((v) => <option key={v} value={v}>{v}×</option>)}
-      </GameSelect>
-      <input type="range" aria-label="Replay position" min="0" max={replay.end} value={seek ?? tick}
-        onChange={(e) => setSeek(Number(e.target.value))}
-        onPointerUp={(e) => { game.start(JSON.stringify({ ...JSON.parse(game.scenarioJson), webReplay: { ...replay, tick: Number(e.currentTarget.value) } }), true); setSeek(null); }}
-        onKeyUp={(e) => { if (["ArrowLeft", "ArrowRight", "Home", "End"].includes(e.key)) { game.start(JSON.stringify({ ...JSON.parse(game.scenarioJson), webReplay: { ...replay, tick: Number(e.currentTarget.value) } }), true); setSeek(null); } }} />
-    </div>}
-    {open && <div className="fixed inset-0 z-50 grid place-items-center bg-black/70" role="dialog" aria-modal="true" aria-label="Local saves and replays">
-      <div className="hud-panel max-h-[85vh] w-[min(600px,95vw)] overflow-auto p-4">
-        <div className="flex justify-between"><strong>Local saves & replays</strong><Button size="sm" onClick={() => setOpen(false)}>Close</Button></div>
-        <p className="my-3 text-xs">Save a local match, resume it, or watch its recorded orders. Saves use the current game content.</p>
-        <Button disabled={busy || phase !== "playing" || game.multiplayer || !!replay?.readonly || !game.scenarioJson} onClick={() => void save()}>{busy ? "Saving…" : "Save current match"}</Button>
-        <label className="ml-3 text-xs">Import<input type="file" accept="application/json,.json" className="block max-w-full" onChange={async (e) => {
-          try { const file = e.target.files?.[0]; if (!file) return; const r = JSON.parse(await file.text()) as MatchRecord;
-            if (!r.scenario || !Number.isInteger(r.tick) || r.tick < 0 || r.tick > 2000000 || !r.log || typeof r.profile !== "string" || typeof r.date !== "string") throw new Error("Invalid match file");
-            const next = [{ ...r, id: crypto.randomUUID() }, ...records].slice(0, 10); localStorage.setItem(KEY, JSON.stringify(next)); setRecords(next);
-          } catch (error) { setMessage(String(error)); }
-        }} /></label>
-        {message && <p role="status" className="my-2 text-xs">{message}</p>}
-        {records.map((r) => <div key={r.id} className="mt-3 border-t border-white/20 pt-2 text-xs">
-          <div>{String(r.scenario.map)} · {new Date(r.date).toLocaleString()} · {Math.floor(r.tick / 25)}s</div>
-          <div className="mt-2 flex gap-2"><Button size="sm" onClick={() => load(r, false)}>Resume</Button><Button size="sm" onClick={() => load(r, true)}>Replay</Button>
-            <Button size="sm" onClick={() => exportRecord(r)}>Export</Button><Button size="sm" onClick={() => { const next = records.filter((x) => x.id !== r.id); localStorage.setItem(KEY, JSON.stringify(next)); setRecords(next); }}>Delete</Button></div>
-        </div>)}
-        {!records.length && <p className="mt-3 text-xs">No saved matches yet.</p>}
+    {trigger}
+    {open && <GameDialog eyebrow="This device" title="Saves & replays" size="lg" onClose={close} footer={<>
+      <span className="lib-foot-note">{list.length} of {LIMIT} saves</span>
+      <div className="lib-import">
+        {importError && <p role="alert" className="lib-error"><AlertTriangle size={14} />{importError}</p>}
+        <FilePickButton accept="application/json,.json" variant="ghost" size="sm" icon={<Upload size={14} />} onFile={(f) => void importFile(f)}>Import</FilePickButton>
       </div>
-    </div>}
+    </>}>
+      {canSave && <section className="lib-current" aria-label="Current match">
+        <div className="lib-current-thumb">
+          {live ? <img src={live} alt="" /> : <Swords size={26} />}
+          <span className="lib-live"><i />LIVE</span>
+        </div>
+        <div className="lib-current-info">
+          <span className="menu-eyebrow">Current match</span>
+          <b>{matchTitle(scenario, setup)}</b>
+          <small>{matchKind(scenario)} · {clock(tick)}</small>
+        </div>
+        <div className="lib-current-act">
+          <GameButton variant="primary" icon={<Save size={16} />} disabled={busy} onClick={() => void save()}>{busy ? "Saving…" : "Save current match"}</GameButton>
+          {message && <p role="status" className="lib-ok"><Check size={14} />{message}</p>}
+          {saveError && <p role="alert" className="lib-error"><AlertTriangle size={14} />{saveError}</p>}
+        </div>
+      </section>}
+      {list.length
+        ? <ul className="lib-grid" aria-label="Saved matches">{list.map((r) => <SaveCard key={r.id} game={game} record={r} fresh={r.id === fresh} onStart={close} />)}</ul>
+        : <EmptyState icon={<Film size={22} />} title="No saved matches yet">{canSave ? "Save this match to resume it later or watch it back." : "Save during a match to resume it later or watch it back."}</EmptyState>}
+    </GameDialog>}
   </>;
 }

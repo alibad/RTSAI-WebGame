@@ -12,6 +12,7 @@ import { cn } from "../lib/utils";
 import { CameoTip } from "./CameoTip";
 import { PowerMeter } from "./PowerMeter";
 import { UnitPortrait } from "./UnitPortrait";
+import { ReplaySidePanel, replayOf } from "./Replay";
 
 function SupportPowers({ game }: { game: Game }) {
   const powers = useStore((s) => s.ui?.supportPowers) ?? [];
@@ -233,13 +234,14 @@ function Palette({ game, height }: { game: Game; height: number }) {
   );
 }
 
-function ModeButton({ active, title, hotkey, onClick, children }: { active: boolean; title: string; hotkey: string; onClick: () => void; children: React.ReactNode }) {
+function ModeButton({ active, title, hotkey, onClick, children, disabled }: { active: boolean; title: string; hotkey: string; onClick: () => void; children: React.ReactNode; disabled?: boolean }) {
   return (
     <button
       type="button"
       title={`${title} (${hotkey})`}
+      disabled={disabled}
       onClick={onClick}
-      className={cn("hud-inset relative grid size-[30px] place-items-center text-[var(--muted-foreground)] hover:text-[var(--foreground)]",
+      className={cn("hud-inset relative grid size-[30px] place-items-center text-[var(--muted-foreground)] hover:text-[var(--foreground)] disabled:opacity-35",
         active && "text-[var(--hud-gold)] shadow-[inset_0_0_0_1px_var(--hud-gold),inset_0_0_10px_rgba(241,210,139,0.35)]")}
     >
       {children}
@@ -250,6 +252,8 @@ function ModeButton({ active, title, hotkey, onClick, children }: { active: bool
 
 export function Sidebar({ game }: { game: Game }) {
   const mode = useStore((s) => s.ui?.mode ?? "");
+  // Watching a replay: nothing to build or order; the sidebar shows the sides instead (Replay.tsx).
+  const replay = !!replayOf(game);
   const paletteSpace = useRef<HTMLDivElement>(null);
   const [availableHeight, setAvailableHeight] = useState(0);
   useEffect(() => {
@@ -273,19 +277,21 @@ export function Sidebar({ game }: { game: Game }) {
       <div className="flex items-center justify-between gap-2 px-[2px]">
         <Credits />
         <div className="flex gap-[3px]">
-          <ModeButton active={mode === "repair"} title="Repair" hotkey="C" onClick={() => game.setMode("repair")}><RepairIcon width={18} height={18} /></ModeButton>
-          <ModeButton active={mode === "sell"} title="Sell" hotkey="Z" onClick={() => game.setMode("sell")}><SellIcon width={18} height={18} /></ModeButton>
+          <ModeButton active={mode === "repair"} title="Repair" hotkey="C" disabled={replay} onClick={() => game.setMode("repair")}><RepairIcon width={18} height={18} /></ModeButton>
+          <ModeButton active={mode === "sell"} title="Sell" hotkey="Z" disabled={replay} onClick={() => game.setMode("sell")}><SellIcon width={18} height={18} /></ModeButton>
         </div>
       </div>
-      <Tabs />
-      <SupportPowers game={game} />
-      <div ref={paletteSpace} className="flex min-h-0 flex-1 gap-[5px]">
-        <div className="flex flex-col items-center gap-1">
-          <PowerIcon width={12} height={12} className="text-[var(--hud-power)]" />
-          <PowerMeter height={paletteH - 16} pitch={compact ? 3 : 5} />
+      {replay ? <ReplaySidePanel game={game} /> : <>
+        <Tabs />
+        <SupportPowers game={game} />
+        <div ref={paletteSpace} className="flex min-h-0 flex-1 gap-[5px]">
+          <div className="flex flex-col items-center gap-1">
+            <PowerIcon width={12} height={12} className="text-[var(--hud-power)]" />
+            <PowerMeter height={paletteH - 16} pitch={compact ? 3 : 5} />
+          </div>
+          <div className="min-w-0 flex-1"><Palette game={game} height={paletteH} /></div>
         </div>
-        <div className="min-w-0 flex-1"><Palette game={game} height={paletteH} /></div>
-      </div>
+      </>}
     </aside>
   );
 }

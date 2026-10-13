@@ -1,36 +1,56 @@
-// Victory / defeat screen: the result, the game time, and per side what it destroyed, lost and earned, with the
-// army value over time (the engine's own player statistics, sampled every 30 s of game time).
+// Victory / defeat: the moment itself, then what the match came to (the engine's own player statistics: what each side
+// destroyed, lost and earned, and the army value over time, sampled every 30 s of game time), then what to do next:
+// continue, watch the match back, or keep its replay.
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { Building2, Check, Clock, Coins, Crosshair, Film, Save, Skull, Star, Trophy } from "lucide-react";
 import type { Game } from "../game";
 import type { GameStats } from "../sim/protocol";
 import { useStore } from "../store";
-import { Button } from "../components/ui/button";
 import { Flag, factionIdentity } from "./Flag";
-import { cn } from "../lib/utils";
-
-function clock(seconds: number) {
-  const m = Math.floor(seconds / 60), s = Math.floor(seconds % 60);
-  return `${m}:${String(s).padStart(2, "0")}`;
-}
+import { GameButton } from "./kit/game";
+import { keepRecord, recordMatch, startRecord } from "./MatchLibrary";
+import { clock, matchKind, matchTitle, parseScenario, TICKS_PER_SECOND } from "./match-info";
 
 const money = (v: number) => (v >= 10000 ? `${(v / 1000).toFixed(1)}k` : v.toLocaleString("en-US"));
 
+/** A number that rolls up to its value, as score screens do. */
+function useCountUp(value: number, delay: number) {
+  const [shown, setShown] = useState(0);
+  useEffect(() => {
+    let raf = 0;
+    const t0 = performance.now() + delay;
+    const step = (now: number) => {
+      const f = Math.max(0, Math.min(1, (now - t0) / 900));
+      setShown(Math.round(value * (1 - Math.pow(1 - f, 3))));
+      if (f < 1) raf = requestAnimationFrame(step);
+    };
+    raf = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(raf);
+  }, [value, delay]);
+  return shown;
+}
+
+function Tile({ icon, label, value, sub, money: isMoney, delay }: { icon: React.ReactNode; label: string; value: number; sub?: string; money?: boolean; delay: number }) {
+  const shown = useCountUp(value, delay);
+  return <div className="oc-tile"><span>{icon}{label}</span><b>{isMoney ? `$${money(shown)}` : shown.toLocaleString("en-US")}</b>{sub && <small>{sub}</small>}</div>;
+}
+
 /** Army value over time, one line per side in its colour. */
-function ArmyChart({ stats, width, height }: { stats: GameStats; width: number; height: number }) {
+function ArmyChart({ stats }: { stats: GameStats }) {
+  const width = 600, height = 84;
   const n = Math.max(2, ...stats.players.map((p) => p.army.length));
   const max = Math.max(1, ...stats.players.flatMap((p) => p.army));
-  const x = (i: number) => (i / (n - 1)) * (width - 2) + 1;
-  const y = (v: number) => height - 2 - (v / max) * (height - 6);
+  const x = (i: number) => (i / (n - 1)) * (width - 8) + 4;
+  const y = (v: number) => height - 6 - (v / max) * (height - 14);
   return (
-    <svg width={width} height={height} className="block" aria-label="Army value over time">
-      {[0.25, 0.5, 0.75].map((f) => <line key={f} x1={0} x2={width} y1={y(max * f)} y2={y(max * f)} stroke="rgba(255,255,255,0.06)" />)}
+    <svg viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none" aria-label="Army value over time">
+      {[0.25, 0.5, 0.75].map((f) => <line key={f} x1={0} x2={width} y1={y(max * f)} y2={y(max * f)} stroke="rgba(255,255,255,0.06)" vectorEffect="non-scaling-stroke" />)}
       {stats.players.map((p) => {
         const pts = p.army.map((v, i) => `${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(" ");
         return (
           <g key={p.name}>
-            <polyline points={pts} fill="none" stroke={`#${p.color}`} strokeWidth={2} strokeLinejoin="round" style={{ filter: `drop-shadow(0 0 3px #${p.color}88)` }} />
-            {p.army.length > 0 && <circle cx={x(p.army.length - 1)} cy={y(p.army[p.army.length - 1])} r={3} fill={`#${p.color}`} />}
+            <polyline points={pts} fill="none" stroke={`#${p.color}`} strokeWidth={2.2} strokeLinejoin="round" vectorEffect="non-scaling-stroke" style={{ filter: `drop-shadow(0 0 3px #${p.color}88)` }} />
           </g>
         );
       })}
@@ -38,84 +58,109 @@ function ArmyChart({ stats, width, height }: { stats: GameStats; width: number; 
   );
 }
 
-function Cell({ value, lost, title }: { value: string | number; lost?: string | number; title: string }) {
-  return (
-    <td className="digits px-2 py-1.5 text-right" title={title}>
-      <span className="text-[var(--foreground)]">{value}</span>
-      {lost !== undefined && <span className="text-[var(--muted-foreground)]"> / {lost}</span>}
-    </td>
-  );
-}
-
-function Head({ children, title }: { children: React.ReactNode; title: string }) {
-  return <th className="px-2 pb-1 text-right text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--hud-gold-dim)]" title={title}>{children}</th>;
-}
-
 export function Outcome({ game }: { game: Game }) {
   const win = useStore((s) => s.ui?.win ?? "Undefined");
+  // A campaign operation has its own debrief and next chapter (Missions.tsx): its button leads, ours steps back.
+  const mission = useStore((s) => !!s.ui?.mission);
+  const setup = useStore((s) => s.setup);
   const [stats, setStats] = useState<GameStats | null>(null);
+  const [saved, setSaved] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const actions = useRef<HTMLDivElement>(null);
   const over = win === "Won" || win === "Lost";
   useEffect(() => {
-    if (!over) { setStats(null); return; }
+    if (!over) { setStats(null); setSaved(""); setError(""); return; }
     game.command<GameStats>({ cmd: "stats" }).then(setStats).catch(() => setStats(null));
   }, [over, game]);
+  useEffect(() => {
+    if (!over) return;
+    const t = setTimeout(() => actions.current?.querySelector<HTMLButtonElement>(".gbtn-primary")?.focus({ preventScroll: true }), 1200);
+    return () => clearTimeout(t);
+  }, [over]);
   if (!over) return null;
 
   const won = win === "Won";
-  const seconds = stats ? (stats.tick * stats.timestep) / 1000 : 0;
+  const scenario = parseScenario(game.scenarioJson);
   const players = stats ? [...stats.players].sort((a, b) => Number(b.local) - Number(a.local)) : [];
+  const me = players.find((p) => p.local);
+  const ticks = stats ? (stats.tick * stats.timestep) / 1000 * TICKS_PER_SECOND : 0;
+  const canKeep = !game.multiplayer && !!game.scenarioJson;
+  async function watch() {
+    setBusy(true); setError("");
+    try {
+      const why = await startRecord(game, await recordMatch(game), true);
+      if (why) setError(why);
+    } catch (e) { setError(`The replay could not start: ${String(e)}`); }
+    finally { setBusy(false); }
+  }
+  async function keep() {
+    setBusy(true); setError("");
+    try { keepRecord(await recordMatch(game)); setSaved("Saved to Saves & replays"); }
+    catch (e) { setError(e instanceof Error ? e.message : String(e)); }
+    finally { setBusy(false); }
+  }
+
   return (
-    <div className="absolute inset-0 grid place-items-center bg-black/55 backdrop-blur-[2px]" style={{ right: "var(--sidebar-w)" }}>
-      <div className="hud-panel flex w-[560px] max-w-[calc(100%-32px)] flex-col items-center gap-4 px-8 py-6">
-        <div className="flex flex-col items-center gap-1">
-          <div className={cn("text-[44px] font-black uppercase leading-none tracking-[0.22em] drop-shadow-[0_2px_12px_rgba(0,0,0,0.8)]", won ? "text-[var(--hud-gold)]" : "text-[var(--hud-red)]")}>
-            {won ? "Victory" : "Defeat"}
+    <div className={`oc-root ${won ? "is-won" : "is-lost"}${mission ? " has-mission" : ""}`} role="dialog" aria-label={won ? "Victory" : "Defeat"} data-ui-sfx>
+      <div className="oc-backdrop" />
+      <div className="oc-rays" />
+      <div className="oc-stage">
+        <div className="oc-emblem" aria-hidden="true">{won ? <Trophy /> : <Skull />}</div>
+        <div className="oc-head">
+          <span className="menu-eyebrow">{matchKind(scenario)} · {matchTitle(scenario, setup)}</span>
+          <h1 className="oc-title">{won ? "Victory" : "Defeat"}</h1>
+          <div className="oc-meta">
+            {me && <span><Flag id={me.faction} />{factionIdentity(me.faction)?.title ?? setup?.factions.find((f) => f.id === me.faction)?.name ?? ""}</span>}
+            {stats && <span><Clock />{clock(ticks)}</span>}
           </div>
-          {stats && <div className="digits text-[13px] text-[var(--muted-foreground)]">{clock(seconds)}</div>}
         </div>
 
-        {stats && (
-          <>
-            <table className="w-full border-collapse text-[13px]">
+        {stats && me ? <>
+          <div className="oc-tiles">
+            <Tile icon={<Crosshair />} label="Units killed" value={me.unitsKilled} sub={`${me.unitsDead} lost`} delay={450} />
+            <Tile icon={<Building2 />} label="Buildings razed" value={me.buildingsKilled} sub={`${me.buildingsDead} lost`} delay={520} />
+            <Tile icon={<Skull />} label="Value destroyed" value={me.killsCost} money sub={`$${money(me.deathsCost)} lost`} delay={590} />
+            <Tile icon={<Coins />} label="Credits earned" value={me.earned} money delay={660} />
+          </div>
+          <div className="oc-board hud-card">
+            <table className="oc-table">
               <thead>
-                <tr>
-                  <th />
-                  <Head title="Units destroyed / lost">Units</Head>
-                  <Head title="Buildings destroyed / lost">Buildings</Head>
-                  <Head title="Value destroyed / lost">Value</Head>
-                  <Head title="Credits earned">Earned</Head>
-                </tr>
+                <tr><th>Side</th><th title="Units destroyed / lost">Units</th><th title="Buildings destroyed / lost">Buildings</th><th title="Value destroyed / lost">Value</th><th className="oc-earned" title="Credits earned">Earned</th></tr>
               </thead>
               <tbody>
                 {players.map((p) => (
-                  <tr key={p.name} className={cn("border-t border-white/5", p.local && "bg-white/[0.03]")}>
-                    <td className="py-1.5 pr-2">
-                      <div className="flex items-center gap-2">
-                        <span className="h-[18px] w-[3px] rounded-full" style={{ background: `#${p.color}` }} />
-                        <Flag id={p.faction} className="h-[16px] w-[26px] rounded-[1px]" />
-                        <span className={cn("truncate", p.local ? "text-[var(--hud-gold)]" : "text-[var(--foreground)]")}>
-                          {p.local ? "You" : p.name}
-                        </span>
-                        {p.win === "Won" && <span className="text-[11px] text-[var(--hud-gold)]" title="Winner">★</span>}
+                  <tr key={p.name} className={p.local ? "is-you" : undefined}>
+                    <td>
+                      <div className={`oc-player${p.local ? " is-you" : ""}`}>
+                        <i style={{ background: `#${p.color}` }} />
+                        <Flag id={p.faction} />
+                        <div>
+                          <b>{p.local ? "You" : p.name}{p.win === "Won" && <span className="oc-winner" aria-label="Winner"><Star fill="currentColor" /></span>}</b>
+                          {factionIdentity(p.faction) && <small>{factionIdentity(p.faction)!.title}</small>}
+                        </div>
                       </div>
-                      {factionIdentity(p.faction) && <div className="pl-[41px] text-[10px] text-[var(--muted-foreground)]">{factionIdentity(p.faction)!.title}</div>}
                     </td>
-                    <Cell value={p.unitsKilled} lost={p.unitsDead} title="Units destroyed / lost" />
-                    <Cell value={p.buildingsKilled} lost={p.buildingsDead} title="Buildings destroyed / lost" />
-                    <Cell value={`$${money(p.killsCost)}`} lost={`$${money(p.deathsCost)}`} title="Value destroyed / lost" />
-                    <Cell value={`$${money(p.earned)}`} title="Credits earned" />
+                    <td>{p.unitsKilled} <small>/ {p.unitsDead}</small></td>
+                    <td>{p.buildingsKilled} <small>/ {p.buildingsDead}</small></td>
+                    <td>${money(p.killsCost)} <small>/ ${money(p.deathsCost)}</small></td>
+                    <td className="oc-earned">${money(p.earned)}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
-            <div className="w-full">
-              <div className="mb-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--hud-gold-dim)]">Army value</div>
-              <div className="hud-inset p-1"><ArmyChart stats={stats} width={490} height={84} /></div>
-            </div>
-          </>
-        )}
+            <div className="oc-chart"><span>Army value</span><ArmyChart stats={stats} /></div>
+          </div>
+        </> : <div className="oc-skeleton" />}
 
-        <Button onClick={() => game.quit()} className="min-w-[160px]">Return</Button>
+        <div ref={actions} className="oc-actions">
+          {canKeep && <GameButton icon={<Film size={16} />} disabled={busy} onClick={() => void watch()} data-sfx-hover>Watch replay</GameButton>}
+          {canKeep && <GameButton variant="ghost" icon={saved ? <Check size={16} /> : <Save size={16} />} disabled={busy || !!saved} onClick={() => void keep()}>{saved || "Save replay"}</GameButton>}
+          {mission
+            ? <GameButton onClick={() => game.quit()}>Campaign menu</GameButton>
+            : <GameButton variant="primary" size="lg" onClick={() => game.quit()} data-sfx-hover>Continue</GameButton>}
+        </div>
+        {error && <p role="alert" className="lib-error">{error}</p>}
       </div>
     </div>
   );

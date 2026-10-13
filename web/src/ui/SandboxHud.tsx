@@ -3,14 +3,15 @@
 // (scrub, play, step, speed), back to edit, rerun, verify natively.
 
 import { useMemo, useState } from "react";
+import { Eraser, MousePointerClick, Pause, Play, Radio, RotateCcw, ShieldCheck, SkipBack, StepForward, Swords, Trash2, Undo2 } from "lucide-react";
 import type { Game } from "../game";
 import type { Sandbox, SandboxOrder } from "../sandbox";
 import { useStore } from "../store";
-import { Button } from "../components/ui/button";
 import { SearchSelect, type Option } from "../components/ui/fields";
 import { cn } from "../lib/utils";
 import { CommandBar, GameMenu, SelectionPanel } from "./Hud";
 import { Flag } from "./Flag";
+import { GameButton } from "./kit/game";
 
 const SIDE_COLORS = ["#2A6FDB", "#D83A2E"];
 
@@ -96,13 +97,10 @@ function EditPanel({ game, sandbox }: { game: Game; sandbox: Sandbox }) {
         ))}
       </div>
       <div className="grid grid-cols-2 gap-2">
-        <Button variant="outline" size="sm" onClick={() => sandbox.clearSide(side)}>Clear side</Button>
-        <Button variant="outline" size="sm" onClick={() => sandbox.clearSide(-1)}>Clear all</Button>
+        <GameButton size="sm" icon={<Eraser size={14} />} onClick={() => sandbox.clearSide(side)}>Clear side</GameButton>
+        <GameButton size="sm" variant="ghost" icon={<Trash2 size={14} />} onClick={() => sandbox.clearSide(-1)}>Clear all</GameButton>
       </div>
-      <Button size="lg" onClick={() => sandbox.run()}
-        className="h-[42px] rounded-[3px] bg-[linear-gradient(180deg,#f6dc9c,#c9a253)] text-[15px] font-bold uppercase tracking-[0.18em] text-[#1a160c] hover:brightness-110">
-        Fight
-      </Button>
+      <GameButton variant="primary" size="lg" className="sb-fight" icon={<Swords size={18} />} onClick={() => sandbox.run()}>Fight</GameButton>
     </div>
   );
 }
@@ -154,9 +152,9 @@ function Results({ game, sandbox }: { game: Game; sandbox: Sandbox }) {
         </table>
       </div>
       <div className="grid grid-cols-3 gap-1">
-        <Button size="sm" variant="outline" onClick={() => sandbox.backToEdit()}>Edit</Button>
-        <Button size="sm" variant="outline" onClick={() => sandbox.run()}>Rerun</Button>
-        <Button size="sm" variant="outline" title="Replay this run headless in the native engine and compare SyncHash" onClick={() => game.requestVerify()}>Verify</Button>
+        <GameButton size="sm" icon={<Undo2 size={14} />} onClick={() => sandbox.backToEdit()}>Edit</GameButton>
+        <GameButton size="sm" variant="primary" icon={<RotateCcw size={14} />} onClick={() => sandbox.run()}>Rerun</GameButton>
+        <GameButton size="sm" icon={<ShieldCheck size={14} />} title="Replay this run headless in the native engine and compare SyncHash" onClick={() => game.requestVerify()}>Verify</GameButton>
       </div>
       {verify && <p className={cn("m-0 text-[11px]", verify.startsWith("Identical") ? "text-[var(--hud-green)]" : "text-[var(--muted-foreground)]")}>{verify}</p>}
     </div>
@@ -169,25 +167,30 @@ function Timeline({ sandbox }: { sandbox: Sandbox }) {
   const len = st.recordLen;
   const pos = st.replay ?? Math.max(0, len - 1);
   const t = (i: number) => (i * 0.04).toFixed(1) + "s";
-  const icon = (d: string) => <svg viewBox="0 0 24 24" width={16} height={16} fill="currentColor"><path d={d} /></svg>;
   const live = st.replay === null;
   const running = live ? !st.paused : st.playing;
+  const pct = len > 1 ? (pos / (len - 1)) * 100 : 100;
   return (
-    <div className="hud-panel absolute bottom-3 left-1/2 flex w-[min(720px,calc(100vw-var(--sidebar-w)-280px))] -translate-x-1/2 items-center gap-2 px-3 py-2" style={{ marginLeft: "calc(var(--sidebar-w) / -2)" }}>
-      <Button size="icon-sm" variant="ghost" title="Start" onClick={() => sandbox.scrub(0)}>{icon("M6 5h2v14H6Zm3 7 9-7v14Z")}</Button>
-      <Button size="icon-sm" variant="ghost" title={running ? "Pause" : "Play"} onClick={() => (live ? sandbox.setPaused(!st.paused) : st.playing ? sandbox.stopPlayback() : sandbox.playReplay())}>
-        {running ? icon("M7 5h4v14H7Zm6 0h4v14h-4Z") : icon("M7 5v14l11-7Z")}
-      </Button>
-      <Button size="icon-sm" variant="ghost" title="Step one tick" onClick={() => sandbox.step()}>{icon("M6 5v14l9-7Zm10 0h2v14h-2Z")}</Button>
-      <input type="range" min={0} max={Math.max(0, len - 1)} value={pos} onChange={(e) => sandbox.scrub(Number(e.target.value))}
-        className="h-1 flex-1 cursor-pointer accent-[var(--hud-gold)]" aria-label="Replay position" />
-      <span className="digits w-[92px] text-right text-[11px] text-[var(--muted-foreground)]">{t(pos)} / {t(len)}</span>
-      <div className="hud-inset flex p-[2px]">
-        {[1, 2, 4].map((s) => (
-          <button key={s} type="button" onClick={() => sandbox.setSpeed(s)} className={cn("h-[22px] px-1.5 text-[11px] text-[var(--muted-foreground)]", st.speed === s && "text-[var(--hud-gold)]")}>{s}×</button>
-        ))}
+    <div className="rp-dock">
+      <div className="rp-bar" role="group" aria-label="Battle timeline" data-ui-sfx>
+        <button type="button" className="rp-btn" aria-label="Start" data-tip="Start" data-tip-pos="top" onClick={() => sandbox.scrub(0)}><SkipBack /></button>
+        <button type="button" className={cn("rp-play", !running && "is-play")} aria-label={running ? "Pause" : "Play"} onClick={() => (live ? sandbox.setPaused(!st.paused) : st.playing ? sandbox.stopPlayback() : sandbox.playReplay())}>
+          {running ? <Pause /> : <Play />}
+        </button>
+        <button type="button" className="rp-btn" aria-label="Step one tick" data-tip="Step one tick" data-tip-pos="top" onClick={() => sandbox.step()}><StepForward /></button>
+        <div className="rp-track">
+          <div className="rp-rail"><div className="rp-fill" style={{ width: `${pct}%` }} /></div>
+          <input className="rp-range" type="range" min={0} max={Math.max(0, len - 1)} value={pos} onChange={(e) => sandbox.scrub(Number(e.target.value))} aria-label="Replay position" />
+          <div className="rp-knob" style={{ left: `${pct}%` }} />
+        </div>
+        <span className="rp-time is-total" style={{ minWidth: 92 }}>{t(pos)} / {t(len)}</span>
+        <div className="rp-speeds" role="radiogroup" aria-label="Playback speed">
+          {[1, 2, 4].map((s) => (
+            <button key={s} type="button" role="radio" aria-checked={st.speed === s} className="rp-speed" onClick={() => sandbox.setSpeed(s)}>{s}×</button>
+          ))}
+        </div>
+        <GameButton size="sm" variant={live ? "primary" : "secondary"} icon={<Radio size={13} />} onClick={() => sandbox.goLive()} title={`Tick ${tick}`}>Live</GameButton>
       </div>
-      <Button size="xs" variant={live ? "secondary" : "outline"} onClick={() => sandbox.goLive()} title={`Tick ${tick}`}>Live</Button>
     </div>
   );
 }
@@ -198,23 +201,25 @@ export function SandboxHud({ game }: { game: Game }) {
   if (!st || !sandbox) return null;
   return (
     <>
-      <div className="absolute left-3 top-3 flex items-center gap-2"><GameMenu game={game} /></div>
+      <nav className="hud-bar" aria-label="Game controls" data-ui-sfx><GameMenu game={game} /></nav>
       {st.mode === "run" && (
-        <div className="pointer-events-none absolute bottom-[64px] left-3 flex items-end gap-2 [&>*]:pointer-events-auto">
-          <SelectionPanel game={game} />
-          <CommandBar game={game} />
+        <div className="hud-console" style={{ bottom: 92 }}>
+          <div className="hud-console-row">
+            <SelectionPanel game={game} />
+            <CommandBar game={game} />
+          </div>
         </div>
       )}
       {st.mode === "run" && <Timeline sandbox={sandbox} />}
       {st.mode === "edit" && (
-        <div className="hud-panel pointer-events-none absolute left-1/2 top-3 -translate-x-1/2 px-3 py-1.5 text-[12px] text-[var(--muted-foreground)]" style={{ marginLeft: "calc(var(--sidebar-w) / -2)" }}>
-          {st.pickDestination !== null ? "Click the battlefield to set the destination" : st.brush ? "Click to place · right-click a unit to remove" : "Drag units onto the battlefield · right-click removes"}
-        </div>
+        <div className="sb-hint"><div className="hud-card">
+          <MousePointerClick />{st.pickDestination !== null ? "Click the battlefield to set the destination" : st.brush ? "Click to place · right-click a unit to remove" : "Drag units onto the battlefield · right-click removes"}
+        </div></div>
       )}
-      <aside className="hud-panel absolute right-0 top-0 flex h-full flex-col gap-2 p-[10px]" style={{ width: "var(--sidebar-w)" }} onContextMenu={(e) => e.preventDefault()}>
-        <div className="flex items-baseline justify-between">
-          <span className="text-[15px] font-black tracking-wide text-[var(--hud-gold)]">Battle sandbox</span>
-          <span className="text-[10px] uppercase tracking-widest text-[var(--muted-foreground)]">{st.mode === "edit" ? "Setup" : "Live sim"}</span>
+      <aside className={cn("hud-panel sb-side", st.mode === "run" && "is-run")} style={{ width: "var(--sidebar-w)" }} onContextMenu={(e) => e.preventDefault()}>
+        <div className="sb-side-head">
+          <b>Battle sandbox</b>
+          <span className="menu-eyebrow">{st.mode === "edit" ? "Setup" : "Live sim"}</span>
         </div>
         {st.mode === "edit" ? <EditPanel game={game} sandbox={sandbox} /> : <Results game={game} sandbox={sandbox} />}
       </aside>
