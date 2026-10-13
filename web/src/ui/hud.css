@@ -578,7 +578,9 @@
 .an-head > svg { width: 18px; height: 18px; flex: none; color: var(--hud-gold); }
 .an-head b { min-width: 0; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; color: #f2ecdc; text-transform: capitalize; }
 .an-card p { font-size: 11px; line-height: 1.4; color: #98a28e; }
-@media (max-width: 899px), (max-height: 599px) { .an-card { left: 8px; top: auto; bottom: calc(var(--hud-console-h, 0px) + 56px); width: min(250px, calc(100% - 16px)); } }
+/* Below 1320 px the co-commander's centred column (470 px between the left edge and the sidebar) reaches the top-left
+   corner, so the card waits bottom left instead. */
+@media (max-width: 1319px), (max-height: 599px) { .an-card { left: 8px; top: auto; bottom: calc(var(--hud-console-h, 0px) + 56px); width: min(250px, calc(100% - 16px)); } }
 
 /* ------------------------------------------------------------------ match chat */
 .mp-corner-chat.mc-chat { top: 64px; left: 12px; width: min(360px, calc(100vw - var(--sidebar-w) - 24px)); font-size: 12px; }
