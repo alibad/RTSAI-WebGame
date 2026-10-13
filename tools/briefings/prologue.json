@@ -1,0 +1,50 @@
+{
+  "mission": "prologue",
+  "chapter": "Lines of Hope · Prologue",
+  "title": "1953",
+  "style": "Cinematic painted key art in an archival 1950s film look for a real-time strategy game: soft film grain, silver and warm tungsten light, deep shadows, pale blue electric light, rich detail, wide 16:9 composition, no text, no logos, no letters, no flags, no insignia.",
+  "music": {
+    "caption": "slow melancholic brass waltz under old film crackle, low strings, a fragile music box motif, the distant hum of a giant machine, swelling to one sustained chord at the end, no vocals",
+    "seconds": 60
+  },
+  "shots": [
+    {
+      "id": "chamber",
+      "prompt": "A vast underground machine hall under a mountain in 1953: a huge spherical time machine of brass rings and glass coils on a raised platform, crackling with pale blue electric arcs, thick cables across a concrete floor. An elderly scientist with wild white hair and a white moustache, in a grey cardigan, stands alone at a long control desk of dials and levers, small against the machine.",
+      "line": "Nineteen fifty-three. The war is over, and Albert Einstein has one task left: switch off the machine that started it.",
+      "motion": "push-in-slow"
+    },
+    {
+      "id": "photograph",
+      "prompt": "A formal black-and-white 1950s photograph lying on a wooden desk under a lamp: a grand state room with heavy curtains, a row of stern officials in dark suits and uniforms, and in the middle of the row a crisp man-shaped blank gap cut out of the print, white paper showing through where a man once stood.",
+      "line": "In every photograph of the old court, one place is empty. His name was Arkady Orlov.",
+      "motion": "push-in-slow"
+    },
+    {
+      "id": "corridor",
+      "prompt": "A young woman commando in 1950s fatigues and webbing, dark hair tied back, sleeves rolled, pistol in hand, running hard down a long concrete bunker corridor lit by red alarm lamps, steam from the pipes, seen from the front at a low angle, fierce and fast.",
+      "line": "The Allies sent their best commando to bring him in.",
+      "motion": "static",
+      "action": "She runs toward the camera; the alarm lamps pulse and steam drifts."
+    },
+    {
+      "id": "platform",
+      "prompt": "The time machine firing: a blinding white and pale blue core of light on the brass platform, a man in a long dark overcoat seen only as a black silhouette stepping into the light, and a woman commando leaping from the metal stairs to grab his coat, sparks and rings of energy around them.",
+      "line": "He reached the machine first. She reached him.",
+      "motion": "static",
+      "action": "The core of light flares brighter and the rings of energy spin."
+    },
+    {
+      "id": "silence",
+      "prompt": "The same underground machine hall moments later, empty: the brass platform smoking, the last blue arcs dying along the rings, the elderly white-haired scientist at the control desk looking up at the machine, a radio set on the desk with its needle still swinging.",
+      "line": "The Chronosphere fell silent. Its echo did not.",
+      "motion": "push-in-slow"
+    },
+    {
+      "id": "coast-2026",
+      "prompt": "Dawn in the present day over a Red Sea coast: a modern coastal radar on a rocky hill has just stopped turning, its warning light going out, a coastal highway below in blue morning mist, and a faint ghostly flicker in the air like an old film frame.",
+      "line": "Seventy-three years later, on a coast at dawn, a radar goes quiet.",
+      "motion": "push-in"
+    }
+  ]
+}

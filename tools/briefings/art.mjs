@@ -1,6 +1,7 @@
 // Briefing art for a mission from its shot list (tools/briefings/<mission>.json), drawn locally by Qwen-Image 2.1 in
 // ComfyUI (the graph of Comfy-Org's image_qwen_image_2_1 templates, as the betenshi console builds it). A shot with
-// "reference": "map" is an edit of the mission's own map preview, so the briefing table shows the real battlefield.
+// "reference": "map" is an edit of the mission's own map preview, so the briefing table shows the real battlefield;
+// "reference": "<mission>/<shot id>" is an edit of an earlier still, so a returning commander keeps the same face.
 // Images are cached by prompt: a shot is drawn again only when its prompt, reference or seed changes.
 //   node tools/briefings/art.mjs <mission> [--out D:/rtsai-ea-build/briefings] [--force]
 // Needs ComfyUI running on :8188 (betenshi service "comfyui"); check AI\logs\gpu-claim.txt first.
@@ -71,7 +72,9 @@ for (const shot of spec.shots) {
   const stamp = `${file}.key`;
   if (!force && fs.existsSync(file) && fs.existsSync(stamp) && fs.readFileSync(stamp, "utf8") === key) { console.log("cached", shot.id); manifest.shots.push({ id: shot.id, seed, key }); continue; }
   const t0 = Date.now();
-  const reference = shot.reference === "map" ? await upload(mapPreview) : null;
+  // "map": the mission's own map preview; "<mission>/<shot id>": an earlier still (a returning commander's portrait).
+  const refFile = shot.reference === "map" ? mapPreview : shot.reference ? path.join(path.dirname(outDir), `${shot.reference}.png`) : null;
+  const reference = refFile ? await upload(refFile) : null;
   fs.writeFileSync(file, await run(graph(prompt, seed, reference)));
   fs.writeFileSync(stamp, key);
   manifest.shots.push({ id: shot.id, seed, key, reference: shot.reference ?? null });

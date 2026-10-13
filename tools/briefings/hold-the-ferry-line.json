@@ -1,0 +1,43 @@
+{
+  "mission": "hold-the-ferry-line",
+  "chapter": "The Missing Man · Chapter 2",
+  "title": "Hold the Ferry Line",
+  "style": "Cinematic painted key art for a modern real-time strategy game, the look of classic Command and Conquer box art: dramatic light, rich colour, crisp detail, wide 16:9 composition, no text, no logos, no letters, no flags, no insignia.",
+  "music": {
+    "caption": "driving cinematic underscore, ticking percussion like a clock, low brass and pulsing strings, a heroic horn theme rising, steady and relentless, no vocals",
+    "seconds": 60
+  },
+  "shots": [
+    {
+      "id": "quay",
+      "prompt": "A port town on a narrow sea strait at dusk: families with bags waiting on a long quay as two white passenger ferries load, cars queued, gulls overhead, hills on the far shore, warm but anxious light.",
+      "line": "A whole town is waiting on the quay.",
+      "motion": "push-in"
+    },
+    {
+      "id": "three-roads",
+      "prompt": "Three roads winding down through dry hills toward a port town at dusk, a dust cloud of an approaching armoured column on each road, dark vehicles with no markings, menacing, wide view from a hilltop.",
+      "line": "Orion Group is coming down all three roads to take the strait back.",
+      "motion": "pan-right"
+    },
+    {
+      "id": "commander",
+      "reference": "straits-shield/commander",
+      "prompt": "Keep this man's face, hair, moustache and uniform exactly. Move him to a harbour wall at dusk with white ferries loading behind him, wind in the air, resolute, looking at the viewer.",
+      "line": "Colonel Kemal Aydın has twelve minutes and three roads to hold.",
+      "motion": "push-in-slow"
+    },
+    {
+      "id": "voice",
+      "prompt": "A young woman commando in 1950s fatigues, dark hair tied back, listening intently to a modern military radio handset in a harbour command post at dusk, glowing screens around her, her face tense with recognition.",
+      "line": "On the radio, a calm voice makes an offer. Tanya knows that voice.",
+      "motion": "push-in-slow"
+    },
+    {
+      "id": "crossing",
+      "prompt": "Two white ferries crossing a narrow strait at night, their lights reflected on the dark water, a grey warship escorting them, the port town glowing behind, hopeful.",
+      "line": "Twelve minutes. Every ferry.",
+      "motion": "push-in"
+    }
+  ]
+}

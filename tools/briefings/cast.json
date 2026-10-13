@@ -1,0 +1,24 @@
+{
+  "mission": "cast",
+  "chapter": "Lines of Hope · Cast",
+  "title": "Cast",
+  "style": "Cinematic painted portrait for a real-time strategy game, the look of classic Command and Conquer character art: dramatic rim light, rich colour, crisp detail, the face in the centre of a wide 16:9 frame with space on both sides, no text, no logos, no letters, no flags, no insignia.",
+  "shots": [
+    {
+      "id": "lantern",
+      "prompt": "Portrait of a fictional East African woman scientist in her forties, plain shirt and a grey cardigan, glasses pushed up into her hair, sitting in a small operations room full of glowing screens at night, lit by one warm amber desk lamp, thoughtful and kind, looking at the viewer."
+    },
+    {
+      "id": "tanya",
+      "prompt": "Portrait of a fictional young woman commando from 1953 in her late twenties, dark hair tied back, 1950s fatigues and canvas webbing, rolled sleeves, a pistol holster, a confident half smile, standing in a concrete bunker lit by tungsten light, looking at the viewer."
+    },
+    {
+      "id": "einstein",
+      "prompt": "Archival-style painted portrait of an elderly physicist in 1953 with wild white hair and a white moustache, grey cardigan, standing before a huge brass time machine glowing pale blue, gentle and worried, soft film grain, looking at the viewer."
+    },
+    {
+      "id": "orlov",
+      "prompt": "A black-and-white 1950s formal portrait photograph in an ornate dark frame, where the man has been cut out of the print: a crisp man-shaped blank gap in the outline of a dark suit, only his gloved hands resting on a chair, the frame reflected in polished black glass, mysterious, no face visible."
+    }
+  ]
+}
