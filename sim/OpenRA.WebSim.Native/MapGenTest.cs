@@ -52,6 +52,7 @@ static class MapGenTest
 
 			var id = doc.RootElement.GetProperty("id").GetString();
 			var genMs = doc.RootElement.GetProperty("ms").GetDouble();
+			var attempts = doc.RootElement.GetProperty("attempts").GetInt32();
 			var landscape = doc.RootElement.GetProperty("landscape").GetString();
 			var size = doc.RootElement.GetProperty("size").GetInt32();
 			var dir = Path.Combine(root, "mods", "rtsai", "web", "content", "maps", id);
@@ -100,7 +101,7 @@ static class MapGenTest
 			var earned = bot.PlayerActor.Trait<PlayerResources>().Earned;
 			var pass = buildings >= 4 && earned > 0;
 			if (!pass) failures++;
-			Console.WriteLine($"seed {seed}: {id} {landscape} {size}x{size} generated in {genMs:F0} ms, world in {startMs:F0} ms, {ticks} ticks in {tickMs:F0} ms; " +
+			Console.WriteLine($"seed {seed}: {id} {landscape} {size}x{size} generated in {genMs:F0} ms ({attempts} attempts), world in {startMs:F0} ms, {ticks} ticks in {tickMs:F0} ms; " +
 				$"{waterCells} water, {cliffCells} cliff, {oreCells} ore cells, {drills} ore mines, {trees} trees; bot {buildings} buildings, {units} units, earned {earned} (started {cashAtStart}) " +
 				(pass ? "PASS" : "FAIL"));
 			SimHost.EndGame();
