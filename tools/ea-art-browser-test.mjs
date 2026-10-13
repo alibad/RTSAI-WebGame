@@ -31,7 +31,7 @@ const showcase = {
     ...grid(["gacnst", "gapowr", "garefn", "gapile", "gaweap", "gaairc", "gadept", "gatech", "gacsph", "gapill", "nasam", "atesla"], 0, 14, 40, 6, 12, 4),
     ...grid(["mtnk", "fv", "sref", "mgtk", "amcv", "cmin", "e1", "e1", "engineer", "dog", "spy", "tany", "jumpjet", "cleg", "shad", "orca"], 0, 16, 84, 2, 4, 8),
     ...grid(["nacnst", "narefn", "naweap", "naradr", "nairon", "nayard", "tesla", "nalasr", "naflak", "napowr", "nahand", "natech"], 1, 86, 40, 6, 12, 4),
-    ...grid(["htnk", "apoc", "ttnk", "htk", "smcv", "harv", "sapc", "dron", "e2", "e2", "flakt", "shk", "ivan", "yuri", "terror", "zep"], 1, 88, 84, 2, 4, 8),
+    ...grid(["htnk", "apoc", "ttnk", "htk", "smcv", "harv", "sapc", "dron", "e2", "e2", "flakt", "shk", "ivan", "yuri", "dog", "zep"], 1, 88, 84, 2, 4, 8),
   ],
 };
 

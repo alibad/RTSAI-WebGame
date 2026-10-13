@@ -49,7 +49,8 @@ for (const name of profiles) {
     const setup = (Date.now() - t0) / 1000;
     const phase = await page.evaluate(() => window.store.getState().phase);
     if (phase === "error") { console.log("error", await page.evaluate(() => window.store.getState().error)); break; }
-    // The setup screen prepares the selected map by itself (Twin Fords by default).
+    // The main menu comes first; the skirmish screen prepares the selected map by itself (Twin Fords by default).
+    await page.getByRole("button", { name: "Skirmish", exact: false }).first().click().catch(() => {});
     // ... and streams its prebaked sprite sheets to the GPU (the world waits for them).
     await page.waitForFunction(() => { const s = window.store.getState(); return !!s.preparedMap && s.sheets.uploaded >= s.sheets.total; }, null, { timeout: 900000, polling: 100 });
     const prepared = (Date.now() - t0) / 1000;
