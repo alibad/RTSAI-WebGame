@@ -10,6 +10,7 @@ fs.mkdirSync(out, { recursive: true });
 const browser = await chromium.launch({ executablePath: browserExecutable(), headless: true, args: browserArgs() });
 const receipt = { modes: [], deniedLocalRoutes: [], scope: 'Fresh local static production artifact; no external publication or analytics' };
 try {
+  receipt.noticeFile = (await (await fetch(new URL('NOTICE', base))).text()).split(/\r?\n/).find(l => l.includes('EA has not endorsed')); assert.ok(receipt.noticeFile, 'static NOTICE lacks EA notice');
   for (const endpoint of ['api/companion/status', 'api/companion/start', 'api/maps/library', 'api/multiplayer', 'companion/api/v1/state', 'private/ra2-all.pack']) {
     const response = await fetch(new URL(endpoint, base)); assert.equal(response.status, 404, endpoint); receipt.deniedLocalRoutes.push(endpoint);
   }
@@ -21,6 +22,8 @@ try {
     await page.waitForFunction(() => ['setup', 'error'].includes(window.store?.getState().phase), null, { timeout: 240000 });
     const setup = await page.evaluate(() => ({ phase: window.store.getState().phase, error: window.store.getState().error, isolated: crossOriginIsolated, ccAvailable: window.store.getState().ccAvailable, factions: window.store.getState().setup?.factions.filter(f => !f.random).length, missions: window.store.getState().setup?.missions.length }));
     assert.equal(setup.phase, 'setup', setup.error); assert.equal(setup.isolated, true); assert.equal(setup.ccAvailable, true); assert.equal(setup.factions, 16); assert.equal(setup.missions, 6);
+    // EA's notice for the original art: on the first screen of both modes and in the static root's NOTICE.
+    setup.notice = await page.getByTestId('ea-notice').first().textContent({ timeout: 30000 }); assert.ok(setup.notice.includes('EA has not endorsed and does not support this product.'), setup.notice);
     assert.equal(await page.getByRole('button', { name: 'Map studio', exact: false }).count(), 0);
     assert.equal(await page.getByRole('button', { name: 'Private multiplayer', exact: true }).count(), 0);
     assert.ok(await page.getByRole('button', { name: 'Direct peer-to-peer', exact:true }).count());
