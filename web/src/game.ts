@@ -291,12 +291,14 @@ export class Game {
   }
 
   private cursorsRequested = false;
+  /** The mod's cursors, asked once: by the menu as soon as the mod is loaded (ui/feel.ts), else by the first match. */
+  requestCursors() { if (!this.cursorsRequested) { this.cursorsRequested = true; this.client.send({ type: "cursorset" }); } }
 
   captureUi() {
     return { cam: { ...this.cam }, bookmarks: this.bookmarks.map((b) => b ? [...b] : null), tab: store.get().tab };
   }
   private started(info: StartInfo, radarTerrain: ArrayBuffer, startMs: number) {
-    if (!this.cursorsRequested) { this.cursorsRequested = true; this.client.send({ type: "cursorset" }); }
+    this.requestCursors();
     // The sandbox keeps its camera between editing and running (it frames the placements itself).
     if (!this.sandbox || !this.info) this.cam = { x: info.start[0], y: info.start[1], zoom: 1 };
     this.info = info;

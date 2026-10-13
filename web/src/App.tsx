@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from "react";
-import { EA_NOTICE } from "./legal";
 import { Game } from "./game";
 import { useStore } from "./store";
 import { Hud } from "./ui/Hud";
@@ -16,6 +15,8 @@ import { CoachPanel } from "./ui/Coach";
 import { Annotations } from "./ui/Annotations";
 import { installTelemetry } from "./net/telemetry";
 import { Feedback } from "./ui/Feedback";
+import { MainMenu } from "./ui/MainMenu";
+import { installUiFeel } from "./ui/feel";
 
 function Loading() {
   const stage = useStore((s) => s.stage);
@@ -72,6 +73,7 @@ export default function App() {
     if (only) g.renderer.actorFilter = (t) => g.client.str(t).startsWith(only);
     setGame(g);
     installTelemetry(g);
+    const uninstallFeel = installUiFeel();
     // AOT by default; ?runtime=interp is the developer fallback. ?private=0 runs without the player's own files.
     // A static public build (tools/build-public.mjs) defaults to the standalone game, and so does the installed app
 
@@ -86,7 +88,7 @@ export default function App() {
         if (!local) g.cc.setMode("browser");
       }).catch(() => g.cc.setMode("browser"));
     g.boot(params.get("runtime") ?? "aot", params.get("private") !== "0", profile);
-    return () => g.dispose();
+    return () => { uninstallFeel(); g.dispose(); };
   }, []);
 
   // ?mode=sandbox: the battle sandbox instead of a skirmish (the Studio's Encounter opens it with placements).
@@ -108,39 +110,20 @@ export default function App() {
     }
   }, [game, phase]);
 
+  // The menus use the mod's cursors too: ask for them as soon as the mod is loaded.
+  useEffect(() => { if (game && phase === "setup") game.requestCursors(); }, [game, phase]);
+
   const playing = phase === "playing";
   return (
     <div className="fixed inset-0" style={sandboxMode ? ({ "--sidebar-w": "300px" } as React.CSSProperties) : undefined}>
       <canvas ref={canvasRef} className="stage" tabIndex={0} style={{ right: playing ? "var(--sidebar-w)" : 0, width: playing ? "calc(100% - var(--sidebar-w))" : "100%", visibility: playing ? "visible" : "hidden" }} />
       {game && playing && !uiHidden && !practiceOpen && (sandboxMode ? <SandboxHud game={game} /> : <Hud game={game} />)}
       {game && phase === "setup" && !sandboxMode && !mapStudioOpen && <>
-        <div className="absolute bottom-4 left-4 z-20 flex gap-2"><MatchLibrary game={game} /><GameSettings game={game} /><Feedback game={game} /></div>
-        {mode === "home" ? <div className="absolute inset-0 grid place-items-center overflow-auto bg-[radial-gradient(ellipse_at_40%_30%,#24301b,#070907_75%)] p-6">
-          <div className="w-[min(760px,100%)]">
-            <h1 className="mb-3 text-5xl font-black tracking-wide text-[var(--hud-gold)]">RTS AI</h1>
-            <p className="mb-8 text-[var(--muted-foreground)]">Choose your command.</p>
-            <div className="mb-6 flex flex-wrap items-center gap-3" aria-label="Gameplay mode">
-              <span className="text-sm">Gameplay mode</span>
-              {[{ id: "isometric", name: "Isometric" }, { id: "classic", name: "Classic / top-down" }].filter(item => import.meta.env.VITE_STATIC_BUILD !== "1" || (import.meta.env.VITE_GAME_MODES ?? "public").split(",").includes(item.id === "classic" ? "public-classic" : "public")).map(item => <button key={item.id} type="button" aria-pressed={(useStore.getState().profile === "public-classic" ? "classic" : "isometric") === item.id} className="rounded border border-white/20 px-4 py-2" onClick={() => { const url = new URL(location.href); url.searchParams.set("game", item.id); url.searchParams.set("profile", item.id === "classic" ? "public-classic" : "public"); location.assign(url); }}>{item.name}</button>)}
-            </div>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <button type="button" className="hud-panel p-7 text-left hover:bg-white/5" onClick={() => setMode("skirmish")}>
-                <h2 className="mb-2 text-2xl font-bold text-[var(--hud-gold)]">Skirmish</h2>
-                <p className="text-sm text-[var(--muted-foreground)]">Choose a faction, build your base, and fight AI opponents.</p>
-              </button>
-              <button type="button" className="hud-panel p-7 text-left hover:bg-white/5" onClick={() => setMode("missions")}>
-                <h2 className="mb-2 text-2xl font-bold text-[var(--hud-gold)]">Campaign</h2>
-                <p className="text-sm text-[var(--muted-foreground)]">Lines of Hope: two story arcs, six operations, and narrated introductions.</p>
-              </button>
-            </div>
-            <button type="button" className="hud-panel mt-4 w-full p-5 text-left" onClick={() => setPracticeOpen(true)}><h2 className="text-xl font-bold text-[var(--hud-gold)]">Scenario workshop</h2><p className="text-sm text-[var(--muted-foreground)]">Describe, preview and launch a repeatable practice battle.</p></button>
-            {import.meta.env.VITE_STATIC_BUILD !== "1" && <button type="button" className="hud-panel mt-4 w-full p-5 text-left" onClick={() => setMapStudioOpen(true)}><h2 className="text-xl font-bold text-[var(--hud-gold)]">Map studio</h2><p className="text-sm text-[var(--muted-foreground)]">Explore the preserved map library, or turn a real place into a new battlefield.</p></button>}
-            <p data-testid="ea-notice" className="mt-6 text-[11px] leading-snug text-[var(--muted-foreground)]">{EA_NOTICE}</p>
-          </div>
-        </div> : <>
+        <div className="menu-utility" data-ui-sfx><MatchLibrary game={game} /><GameSettings game={game} /><Feedback game={game} /></div>
+        {mode === "home" ? <MainMenu onSkirmish={() => setMode("skirmish")} onCampaign={() => setMode("missions")} onWorkshop={() => setPracticeOpen(true)} onMapStudio={import.meta.env.VITE_STATIC_BUILD !== "1" ? () => setMapStudioOpen(true) : undefined} /> : <>
           {mode === "missions" ? <Missions game={game} /> : <Setup game={game} />}
-          <nav className="absolute left-4 top-3 z-20 flex gap-3 rounded bg-black/80 p-2 text-sm" aria-label="Game modes">
-            <button type="button" onClick={() => setMode("home")} className="text-[var(--hud-gold)]">← Main menu</button>
+          <nav className="menu-subnav" aria-label="Game modes" data-ui-sfx>
+            <button type="button" onClick={() => setMode("home")} className="menu-subnav-back">← Main menu</button>
             <button type="button" onClick={() => setMode(mode === "missions" ? "skirmish" : "missions")}>{mode === "missions" ? "Skirmish" : "Campaign"}</button>
             {import.meta.env.VITE_STATIC_BUILD !== "1" && <button type="button" onClick={() => setMapStudioOpen(true)}>Map studio</button>}
           </nav>

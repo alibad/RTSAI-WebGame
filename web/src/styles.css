@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @import "./components/ui/kit.css";
+@import "./ui/menu.css";
 
 /* Private room setup shares the game's panel, gold accent, flags and button kit. */
 .mp-match { position: fixed; top: 12px; left: 50%; transform: translateX(-50%); z-index: 100; width: max-content; max-width: calc(100vw - 24px); font-size: 12px; }
@@ -131,11 +132,11 @@ html, body, #root {
 
 /* A cameo always keeps the art's 60x48 shape and scales as a whole (its name bar is part of the art): never cropped,
    whatever the sidebar width, and never squeezed by a short palette (the palette scrolls instead). */
-.cameo { position: relative; aspect-ratio: 60 / 48; height: auto; align-self: start; overflow: hidden; cursor: pointer; background: #000; }
+.cameo { position: relative; aspect-ratio: 60 / 48; height: auto; align-self: start; overflow: hidden; cursor: var(--cursor-pointer, pointer); background: #000; }
 .cameo img, .cameo canvas { width: 100%; height: auto; aspect-ratio: 60 / 48; object-fit: contain; display: block; image-rendering: pixelated; }
 .cameo .wipe { position: absolute; inset: 0; pointer-events: none; }
 .cameo:hover { outline: 1px solid var(--hud-gold); outline-offset: -1px; }
-.cameo[data-disabled="true"] { cursor: not-allowed; filter: grayscale(1) brightness(0.45); }
+.cameo[data-disabled="true"] { cursor: var(--cursor-blocked, not-allowed); filter: grayscale(1) brightness(0.45); }
 
 /* Production palette overlays as the mod's ProductionPalette draws them, measured in the cameo's native pixels
    (60 across, so one is 100cqw / 60) to keep the desktop proportions at every sidebar size.

@@ -101,7 +101,7 @@ export function Setup({ game }: { game: Game }) {
       {backdrop && <img src={backdrop} alt="" className="absolute inset-0 h-full w-full scale-110 object-cover opacity-45 blur-[14px]" />}
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_30%_20%,transparent,rgba(5,7,5,0.85)_70%)]" />
 
-      <div className="relative mx-auto grid h-full max-w-[1240px] grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)] gap-6 overflow-y-auto p-8 max-[900px]:grid-cols-1">
+      <div className="relative mx-auto grid h-full max-w-[1240px] grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)] gap-6 overflow-y-auto px-8 pt-[68px] pb-[76px] max-[900px]:grid-cols-1">
         {/* Nation */}
         <section className="flex min-w-0 flex-col gap-4">
           <header className="flex items-baseline gap-3">

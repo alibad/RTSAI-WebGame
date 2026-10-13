@@ -2,7 +2,6 @@ import { GameSelect } from "../components/ui/fields";
 import { useEffect, useState } from "react";
 import type { Game } from "../game";
 import { useStore } from "../store";
-import { Button } from "../components/ui/button";
 import { Flag } from "./Flag";
 import { cn } from "../lib/utils";
 import story from "../campaign-story";
@@ -47,7 +46,7 @@ export function Missions({ game }: { game: Game }) {
     }));
   };
   return (
-    <div className="absolute inset-x-0 bottom-0 top-[64px] overflow-y-auto bg-[#070907] p-6">
+    <div className="absolute inset-x-0 bottom-0 top-[64px] overflow-y-auto bg-[#070907] px-6 pt-6 pb-[76px]">
       <div className="mx-auto grid max-w-[1200px] grid-cols-[minmax(260px,0.8fr)_minmax(0,1.4fr)] gap-5 max-[800px]:grid-cols-1">
         <section className="hud-panel p-4">
           <h1 className="mb-2 text-[25px] font-black text-[var(--hud-gold)]">{story.title}</h1>
@@ -98,8 +97,8 @@ export function Missions({ game }: { game: Game }) {
             <GameSelect id="mission-difficulty" value={difficulty} onChange={(e) => setDifficulty(e.target.value)} className="hud-inset rounded p-2">
               <option value="easy">Easy</option><option value="normal">Normal</option><option value="hard">Hard</option>
             </GameSelect>
-            <Button disabled={!ready} onClick={deploy}>{ready ? "Start mission" : "Preparing mission…"}</Button>
-            {chapter && <Button disabled={!ready} onClick={() => { setFilmError(false); setDeployAfterFilm(true); setShowFilm(true); }}>Play briefing & deploy</Button>}
+            <button type="button" className="cta-start" disabled={!ready} onClick={deploy}>{ready ? "Start mission" : "Preparing mission…"}</button>
+            {chapter && <button type="button" className="cta-secondary" disabled={!ready} onClick={() => { setFilmError(false); setDeployAfterFilm(true); setShowFilm(true); }}>Play briefing & deploy</button>}
           </div>
           <p className="text-xs text-[var(--muted-foreground)]">{mission.adaptation}</p>
           <p className="mt-2 text-xs text-[var(--muted-foreground)]">Original fictional story. Campaign arcs connect perspectives and exercises; they do not transfer armies or resources between missions.</p>
