@@ -4,6 +4,8 @@
 
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { Bot, Brain, Check, ChevronDown, Dices, Map as MapIcon, Plus, SlidersHorizontal, Swords, Users, X } from "lucide-react";
+import { MODERN_NATIONS as MODERN, PLAYER_COLORS as COLORS, SIDE_NAME, nationGroup } from "../sides";
+import { MapStrip, orderMaps } from "./MapStrip";
 import type { Game } from "../game";
 import { useStore } from "../store";
 import { GameSelect, OptionSelect, SearchSelect, type Option } from "../components/ui/fields";
@@ -15,11 +17,6 @@ import { Brackets, ScreenBackdrop, Toggle } from "./screen-parts";
 // The options most players change; the rest stay one click away.
 const KEY_OPTIONS = ["startingcash", "startingunits", "fog", "explored", "crates", "techlevel"];
 
-const COLORS = ["2A6FDB", "D83A2E", "3FAE49", "E7B42F", "E8702A", "25A6A6", "8E4FD1", "E05A9C"];
-
-const MODERN = new Set(["saudi", "iran", "china", "turkey", "israel", "yemen", "hezbollah"]);
-/** What the classic sides are called in the game's own random picks ("Random Coalition Country"). */
-const SIDE_NAME: Record<string, string> = { Allies: "Coalition", Soviets: "Union" };
 /** A few of each modern nation's own units (their roster files, modern-factions/<nation>*.yaml), as their portraits. */
 const SIGNATURE: Record<string, string[]> = {
   saudi: ["r2m1a2s", "r2ah64sa", "r2f15sa", "r2sang"],
@@ -77,7 +74,6 @@ export function Setup({ game }: { game: Game }) {
 
   // Previews for the map picker; prepare the chosen map once the choice settles.
   useEffect(() => { if (map) game.preview(map.id); }, [game, map]);
-  useEffect(() => { for (const m of setup.maps.slice(0, 12)) game.preview(m.id); }, [game, setup.maps]);
   // The sides chosen so far: their sprite sheets load while the player is still on this screen.
   useEffect(() => {
     const chosen = [faction, ...opponents.map((o) => o.faction)];
@@ -93,29 +89,16 @@ export function Setup({ game }: { game: Game }) {
   useEffect(() => { if (opponents.length > maxOpponents) setOpponents(opponents.slice(0, maxOpponents)); }, [maxOpponents, opponents]);
 
   const factionOptions: Option[] = useMemo(() => factions.map((f) => ({
-    value: f.id, label: f.name, group: MODERN.has(f.id) ? "Modern" : SIDE_NAME[f.side] ?? f.side,
+    value: f.id, label: f.name, group: nationGroup(f),
     leading: <Flag id={f.id} className="h-[12px] w-[18px] rounded-[1px]" />,
   })), [factions]); // eslint-disable-line react-hooks/exhaustive-deps
   const botOptions: Option[] = setup.bots.map((b) => ({ value: b.type, label: b.name }));
   // Maps made here by the generator first (newest first), then saved Earth maps (net/saved-maps.ts), as the player's own.
-  const orderedMaps = [...setup.maps.filter((m) => m.generated), ...setup.maps.filter((m) => m.saved), ...setup.maps.filter((m) => !m.saved && !m.generated)];
+  const orderedMaps = orderMaps(setup.maps);
   const mapOptions: Option[] = orderedMaps.map((m) => ({ value: m.id, label: m.title,
     description: m.saved ? [m.place, `${m.players} players`].filter(Boolean).join(" · ") : `${m.players} players`,
     group: m.generated ? "Random maps" : m.saved ? "Your maps" : `${m.players} players` }));
   const mapError = useStore((s) => (map ? s.mapErrors[map.id] : undefined));
-  // A new random map from the engine's own map generator, made in this browser (game.generateMap): a landscape picked
-  // at random, sized for everyone in the match.
-  const [making, setMaking] = useState(false);
-  const [makeError, setMakeError] = useState("");
-  const makeMap = () => {
-    if (making) return;
-    setMaking(true);
-    setMakeError("");
-    game.generateMap({ seed: Math.floor(Math.random() * 1e9), players: Math.max(2, opponents.length + 1), terrain: "random" })
-      .then((id) => setMapId(id), (e: Error) => setMakeError(e.message))
-      .finally(() => setMaking(false));
-  };
-
   const start = () => {
     if (!map) return;
     const slots = map.slots;
@@ -225,20 +208,7 @@ export function Setup({ game }: { game: Game }) {
                 {mapError ? <><i className="scr-dot" /> {mapError}</> : ready ? <><i className="scr-dot" /> Ready</> : <><span className="spinner" />{loadingArt ? `Loading art ${Math.round((100 * sheets.uploaded) / Math.max(1, sheets.total))}%` : "Preparing"}</>}
               </span>
             </div>
-            <div className="sk-maps" role="group" aria-label="Maps">
-              <button type="button" className="sk-map-thumb sk-map-random" data-sfx-hover onClick={makeMap} aria-busy={making} data-testid="random-map">
-                <span className="sk-map-thumb-art">{making ? <span className="spinner" /> : <Dices size={24} strokeWidth={1.4} aria-hidden="true" />}</span>
-                <span className="sk-map-thumb-name">{making ? "Making a map…" : "New random map"}</span>
-                <small>{makeError || "Lakes, forests, cliffs"}</small>
-              </button>
-              {orderedMaps.map((m) => (
-                <button key={m.id} type="button" className="sk-map-thumb" aria-pressed={m.id === map.id} data-sfx-hover onClick={() => setMapId(m.id)}>
-                  <span className="sk-map-thumb-art">{preview(m.id) ? <img src={preview(m.id)} alt="" draggable={false} /> : <MapIcon size={22} strokeWidth={1.4} aria-hidden="true" />}</span>
-                  <span className="sk-map-thumb-name">{m.title}</span>
-                  <small>{m.players} players</small>
-                </button>
-              ))}
-            </div>
+            <MapStrip game={game} value={map.id} onChange={setMapId} players={opponents.length + 1} />
             {setup.maps.length > 8 && <SearchSelect value={mapId} onValueChange={setMapId} options={mapOptions} aria-label="Map" placeholder="Find a map…" className="sk-map-search" />}
           </div>}
 

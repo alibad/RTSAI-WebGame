@@ -14,7 +14,8 @@ import { cursorFor, loadModCursors } from "./ui/cursors";
 import { MouseLock } from "./pointer";
 import { AudioEngine } from "./audio";
 import { preferences } from "./preferences";
-import { Sandbox, worldToCell } from "./sandbox";
+import { Sandbox, type SimUnit } from "./sandbox";
+import type { EditorController } from "./editor";
 import { Coach } from "./ai-lab";
 import { generatedMapName } from "./map-names";
 import { drawsActor, pictureKey } from "./ui/actor-display";
@@ -75,6 +76,8 @@ export class Game {
   ui: UiState | null = null;
   scenarioJson = "";
   sandbox: Sandbox | null = null;
+  editor: EditorController | null = null;
+  private editorDown = false;
   private raf = 0;
   private mouse = { x: 0, y: 0, wx: 0, wy: 0, inside: false, sx: 0, sy: 0 };
   private drag: { x0: number; y0: number; active: boolean; pan: boolean; cx: number; cy: number } | null = null;
@@ -193,6 +196,7 @@ export class Game {
       waiter?.resolve(m.map);
     });
     c.on("started", (m) => this.started(m.info, m.radarTerrain, m.startMs));
+    c.on("terrainRows", (m) => this.renderer.updateTerrainRows(m.first, m.data));
     c.on("ui", (m) => this.onUi(JSON.parse(m.json) as UiState));
     c.on("shroud", (m) => {
       const cells = new Uint8Array(m.cells);
@@ -321,6 +325,13 @@ export class Game {
     const result = this.generating.then(run, run);
     this.generating = result.catch(() => undefined);
     return result;
+  }
+
+  private catalogPromise: Promise<{ units: SimUnit[]; rosters: Record<string, string[]> }> | null = null;
+  /** Everything buildable and each faction's roster, read once from the rules (the simulator, the missions). */
+  catalog() {
+    return this.catalogPromise ??= this.client.catalog<{ units: SimUnit[]; rosters: Record<string, string[]> }>()
+      .then((c) => ({ units: c.units ?? [], rosters: c.rosters ?? {} }));
   }
 
   preview(map: string) {
@@ -1032,11 +1043,15 @@ export class Game {
     if (!sb || sb.state.mode !== "edit" || !this.info) return false;
     const st = sb.state;
     if (e.button === 0 && st.pickDestination !== null) {
-      const cell = worldToCell(wx, wy, this.info.cellOrigin, this.info.tileSize);
-      const sides = [...st.sides] as typeof st.sides;
-      sides[st.pickDestination] = { ...sides[st.pickDestination], order: "move", destination: cell };
-      store.set({ sandbox: { ...st, sides, pickDestination: null } });
-      this.overlay.orderFlash = { x: wx, y: wy, t: performance.now(), color: st.pickDestination === 0 ? [0.3, 0.55, 1] : [1, 0.35, 0.3] };
+      const side = st.pickDestination;
+      this.overlay.orderFlash = { x: wx, y: wy, t: performance.now(), color: side === 0 ? [0.3, 0.55, 1] : [1, 0.35, 0.3] };
+      // The engine's cell under the click (terrain height included), on any map.
+      void sb.cellAt(wx, wy).then((cell) => {
+        const now = sb.state;
+        const sides = [...now.sides] as typeof now.sides;
+        sides[side] = { ...sides[side], order: "move", destination: cell };
+        store.set({ sandbox: { ...now, sides, pickDestination: null } });
+      });
       return true;
     }
     if (e.button === 0 && st.brush) {
@@ -1056,6 +1071,7 @@ export class Game {
     const [wx, wy] = this.toWorld(e.clientX, e.clientY);
     Object.assign(this.mouse, { x: e.clientX, y: e.clientY, wx, wy, sx: e.clientX, sy: e.clientY });
     const d = this.drag;
+    if (this.editor?.active && !d?.pan && (this.mouse.inside || this.editorDown)) this.editor.pointer("move", wx, wy, 0, this.mods(e));
     if (!d) return;
     if (d.pan) {
       this.follow = null;
@@ -1072,6 +1088,12 @@ export class Game {
   }
 
   private mouseUp(e: MouseEvent) {
+    if (this.editorDown) {
+      this.editorDown = false;
+      const [wx, wy] = this.toWorld(e.clientX, e.clientY);
+      this.editor?.pointer("up", wx, wy, e.button === 2 ? BTN_RIGHT : BTN_LEFT, this.mods(e));
+      return;
+    }
     const d = this.drag;
     if (!d) return;
     this.drag = null;
@@ -1125,6 +1147,13 @@ export class Game {
       c.focus();
       store.set({ menuOpen: false });
       const [wx, wy] = this.toWorld(e.clientX, e.clientY);
+      // The map editor: the engine's editor brushes take the mouse; the middle button still pans.
+      if (this.editor?.active && e.button !== 1) {
+        this.editor.pointer("down", wx, wy, e.button === 2 ? BTN_RIGHT : BTN_LEFT, this.mods(e));
+        this.editorDown = true;
+        e.preventDefault();
+        return;
+      }
       if (this.sandboxEdit(e, wx, wy)) { e.preventDefault(); return; }
       const mode = this.ui?.mode ?? "";
       // RA2's attack move: Ctrl+Shift+click with units selected. The worker takes the mode, the click and the reset in
@@ -1185,6 +1214,13 @@ export class Game {
     const ctrl = e.ctrlKey || e.metaKey, alt = e.altKey, shift = e.shiftKey;
     const done = () => e.preventDefault();
 
+    // The map editor's keys: Delete removes the selection, Ctrl+Z / Ctrl+Y undo and redo, Esc drops the brush.
+    if (this.editor?.active) {
+      if (e.key === "Delete" || e.key === "Backspace") { this.editor.deleteSelection(); return done(); }
+      if (ctrl && k === "z" && !shift) { this.editor.undo(); return done(); }
+      if (ctrl && (k === "y" || (k === "z" && shift))) { this.editor.redo(); return done(); }
+      if (e.key === "Escape") { this.editor.setTool("select"); return done(); }
+    }
     if (e.key === "Escape") {
       if (this.coach.review) { this.coach.live(); return done(); }
       // The Esc that released the mouse lock is the browser's, not the game's.

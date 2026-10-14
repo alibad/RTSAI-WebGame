@@ -44,9 +44,11 @@ available, with explicit invite/readiness and restart after disconnect/desync.
 
 The public build's main menu offers isometric only: top-down draws the same unit
 and building art, so the two looked identical; `?game=classic` still opens it.
-Its "Map studio" opens the website's Earth studio (RTSAI-Web `/studio`), which
-builds the same isometric `rtsai` maps in the browser (a byte-identical port of
-`tools/earth-battlefield.py`) and saves them to Firestore (`maps` + `mapData`).
+Its "Map editor" is the engine's own editor world in the browser
+([EDITOR-SIMULATOR.md](EDITOR-SIMULATOR.md)); "From a real place" runs the
+website's Earth compiler (RTSAI-Web `lib/earth-battlefield.ts`, a byte-identical
+port of `tools/earth-battlefield.py`) in the page. The website's Earth studio
+(`/studio`) saves the same maps to Firestore (`maps` + `mapData`).
 The game lists the player's saved maps in skirmish and the multiplayer lobby
 (`web/src/net/saved-maps.ts`); `?saved=<id>` opens skirmish on one. A saved
 map's files are fetched and mounted under `web/content/maps/<earth-id>/` when

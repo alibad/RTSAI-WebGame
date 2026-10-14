@@ -26,6 +26,41 @@ const HOST = "127.0.0.1";
 const repo = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const mapWorkshop = createMapWorkshop(repo);
 const dist = path.resolve(process.env.RTSAI_WEB_DIST ?? path.join(repo, "web", "dist"));
+// The website's published art (RTSAI-Web public: /art-lab, /faction-art, /faction-audio), which the Faction viewer
+// components on the simulator's unit cards load. On rtsai.net the game shares the site's origin; locally this serves
+// the sibling checkout's copy.
+// The map editor's Earth studio asks OpenStreetMap's Overpass mirrors for a place's geography and sites. Locally the
+// answers are kept on disk by query, so a place opened twice (a demo, a test) does not depend on a busy mirror.
+const OVERPASS = ["https://overpass-api.de/api/interpreter", "https://maps.mail.ru/osm/tools/overpass/api/interpreter", "https://overpass.kumi.systems/api/interpreter", "https://overpass.private.coffee/api/interpreter"];
+async function overpassRelay(req, res) {
+  const chunks = [];
+  for await (const c of req) chunks.push(c);
+  const body = Buffer.concat(chunks).toString("utf8");
+  if (body.length > 20000) return res.writeHead(413).end();
+  const dir = path.join(scratch, "overpass");
+  fs.mkdirSync(dir, { recursive: true });
+  const file = path.join(dir, crypto.createHash("sha1").update(body).digest("hex") + ".json");
+  if (fs.existsSync(file)) { res.writeHead(200, { "Content-Type": "application/json" }); return res.end(fs.readFileSync(file)); }
+  for (let round = 0; round < 2; round++) {
+    for (const url of OVERPASS) {
+      try {
+        // overpass-api.de refuses requests without an identifying User-Agent (HTTP 406).
+        const r = await fetch(url, { method: "POST", body, headers: { "Content-Type": "application/x-www-form-urlencoded", "User-Agent": "RTSAI-WebGame/1.0 (local map editor relay)" }, signal: AbortSignal.timeout(40000) });
+        if (!r.ok) continue;
+        const buf = Buffer.from(await r.arrayBuffer());
+        JSON.parse(buf.toString("utf8"));
+        fs.writeFileSync(file, buf);
+        res.writeHead(200, { "Content-Type": "application/json" });
+        return res.end(buf);
+      } catch { /* the next mirror */ }
+    }
+    await new Promise((r) => setTimeout(r, 1500));
+  }
+  res.writeHead(504, { "Content-Type": "application/json" });
+  res.end('{"error":"OpenStreetMap did not answer"}');
+}
+
+const sitePublic = path.resolve(process.env.RTSAI_SITE_PUBLIC ?? path.join(repo, "..", "RTSAI-Web", "public"));
 const data = path.resolve(process.env.RTSAI_WEB_DATA ?? path.join(repo, "data"));
 const appData = path.join(process.env.LOCALAPPDATA ?? os.homedir(), "RTSAI-WebGame");
 const privateDir = path.join(appData, "private");
@@ -278,6 +313,7 @@ const server = http.createServer(async (req, res) => {
       return await mapWorkshop(req, res, url);
     }
     if (p === "/api/verify" && req.method === "POST") return await verify(req, res);
+    if (p === "/api/overpass" && req.method === "POST") return await overpassRelay(req, res);
     if (p === "/api/health") {
       return json(res, {
         ok: true, private: fs.existsSync(privateFiles), runtimes: Object.keys(runtimes).filter((k) => fs.existsSync(runtimes[k])),
@@ -320,6 +356,11 @@ const server = http.createServer(async (req, res) => {
         return f ? sendFile(req, res, f, { compress: false }) : res.writeHead(400).end();
       }
       return res.writeHead(404).end();
+    }
+    const siteArt = p.match(/^\/(art-lab|faction-art|faction-audio)\/(.*)$/);
+    if (siteArt) {
+      const f = safeJoin(path.join(sitePublic, siteArt[1]), siteArt[2]);
+      return f && fs.existsSync(f) ? sendFile(req, res, f, { immutable: true }) : res.writeHead(404).end();
     }
     if (p.startsWith("/scenarios/")) {
       const f = safeJoin(path.join(repo, "scenarios"), p.slice(11));
