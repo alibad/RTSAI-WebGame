@@ -466,6 +466,12 @@ async function vercelPreview(rel, pageDir, production) {
       if (g.ok && sha("sha1", buf) === s) sizes[s] = buf.length;
     }
   }));
+  // Files the site does not serve (vercel.json, .vercelignore): their contents from the deployment itself.
+  for (const [, s] of [...liveFiles].filter(([, s]) => !(s in sizes))) {
+    const file = await vercel(`/v8/deployments/${production}/files/${s}`).catch(() => null);
+    const buf = file?.data != null ? Buffer.from(file.data, "base64") : null;
+    if (buf && sha("sha1", buf) === s) sizes[s] = buf.length;
+  }
   fs.writeFileSync(cacheFile, JSON.stringify(sizes));
   const unsized = [...liveFiles].filter(([, s]) => !(s in sizes)).map(([p]) => p);
   if (unsized.length) refuse(`no size for ${unsized.length} live Vercel file(s), e.g. ${unsized.slice(0, 3).join(", ")}: pass --sizes <dir with copies>`);
