@@ -76,10 +76,13 @@ try {
 
   // The prologue plays the way chapter films do: inline, captioned.
   await prologue.scrollIntoViewIfNeeded();
+  // The film is fetched whole (briefings.ts useWholeFile) and plays from memory, so its source is a blob: URL.
+  const fetched = page.waitForResponse((r) => /prologue\/briefing\.mp4$/.test(r.url()) && r.ok(), { timeout: 60000 });
   await prologue.click();
+  await fetched;
   await page.waitForFunction(() => document.querySelector("video")?.readyState >= 2, null, { timeout: 60000 });
   const film = await page.locator("video").evaluate(async (v) => { v.muted = true; await v.play(); await new Promise((r) => setTimeout(r, 1500)); return { time: v.currentTime, src: v.currentSrc }; });
-  assert(film.time > 0 && /prologue\/briefing\.mp4$/.test(film.src), JSON.stringify(film));
+  assert(film.time > 0 && /^blob:|prologue\/briefing\.mp4$/.test(film.src), JSON.stringify(film));
   await shot("prologue-desktop");
   await page.locator("video").evaluate((v) => v.pause());
   await page.getByRole("button", { name: /^Begin / }).click();
