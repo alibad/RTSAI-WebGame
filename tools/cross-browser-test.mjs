@@ -35,7 +35,9 @@ for (const [name, browserType, options, contextOptions] of [
       await page.goto(target.href);
       await page.waitForFunction(() => ["setup", "error"].includes(window.store?.getState().phase), null, { timeout: 120000 });
       const ready = await page.evaluate(() => ({ phase: window.store.getState().phase, error: window.store.getState().error,
+        webAudioSupported: typeof window.AudioContext === "function" || typeof window.webkitAudioContext === "function",
         isolated: crossOriginIsolated, sharedMemory: typeof SharedArrayBuffer !== "undefined" }));
+      row.webAudioSupported = ready.webAudioSupported;
       assert.equal(ready.phase, "setup", ready.error);
       assert.ok(ready.isolated && ready.sharedMemory, "Shared-memory isolation required");
       if (profile === "public") {
