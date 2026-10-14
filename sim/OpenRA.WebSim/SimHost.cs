@@ -353,6 +353,7 @@ namespace OpenRA.WebSim
 			Snapshot.Reset();
 			Sandbox.Forget();
 			AiLab.Forget();
+			EditorHost.Forget();
 			RetainedAfterEndMB = GC.GetTotalMemory(true) / 1048576.0;
 		}
 
