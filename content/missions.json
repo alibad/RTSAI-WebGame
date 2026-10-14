@@ -478,7 +478,7 @@
       "FerryPierNorth",
       "FerryPierSouth"
     ],
-    "briefing": "Colonel Kemal Ayd\u0131n. The port on the far side of the strait is the last ferry line out, and Orion Group wants it closed. The town is loading five ferries for the far shore.\n\nHold the port for twelve minutes. Orion columns will come down the north road, then the east road, then the south road; each checkpoint you keep standing buys the town time. When loading is done the ferries sail through the channel, where an Orion boat picket is waiting. At least four must reach the far shore.\n\nIf either ferry pier falls, the line is broken.",
+    "briefing": "Colonel Kemal Ayd\u0131n. The port on the far side of the strait is the last ferry line out, and Orion Group wants it closed. The town is loading four ferries for the far shore.\n\nHold the port for twelve minutes. Orion columns will come down the north road, then the east road, then the south road; each checkpoint you keep standing buys the town time. When loading is done the ferries sail through the channel, where an Orion boat picket is waiting. Every one must reach the far shore.\n\nIf either ferry pier falls, the line is broken.",
     "adaptation": "An original RTS AI chapter on the terrain of Straits Shield, with new actors.",
     "objectives": [
       {
@@ -488,7 +488,7 @@
         "seconds": 360
       },
       {
-        "text": "Get at least four of the five ferries across to the far shore.",
+        "text": "Get all four ferries across to the far shore.",
         "kind": "shipping",
         "targets": [],
         "count": 4,
@@ -523,12 +523,6 @@
             "Ferry3Way1",
             "Ferry3Way2",
             "Ferry3Shore"
-          ],
-          [
-            "Ferry4Start",
-            "Ferry4Way1",
-            "Ferry4Way2",
-            "Ferry4Shore"
           ]
         ]
       },

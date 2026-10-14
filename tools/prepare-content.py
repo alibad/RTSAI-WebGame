@@ -350,12 +350,16 @@ TILE = dict(water=1 if CLASSIC_MODE else 1015, rough=2 if CLASSIC_MODE else 1047
             road=3 if CLASSIC_MODE else 1031, beach=0 if CLASSIC_MODE else 1063, clear=0)
 MAP_RULES = 'World:\n\t-SpawnStartingUnits:\n\t-CrateSpawner:\n\t-StartGameNotification:\nPlayer:\n\t-ConquestVictoryConditions:\n'
 
-def chapter_players(slot, faction, color):
+def chapter_players(slot, faction, color, extra=''):
     return parse(f'PlayerReference@{slot}:\n\tName: {slot}\n\tAllowBots: False\n\tPlayable: True\n\tRequired: True\n'
                  f'\tLockFaction: True\n\tFaction: {faction}\n\tLockColor: True\n\tColor: {color}\n\tLockSpawn: True\n'
                  f'\tLockTeam: True\n\tEnemies: Orion Group\n'
                  'PlayerReference@Orion:\n\tName: Orion Group\n\tFaction: russia\n\tColor: 545D66\n\tEnemies: '+slot+'\n'
-                 'PlayerReference@Neutral:\n\tName: Neutral\n\tOwnsWorld: True\n\tNonCombatant: True\n\tFaction: china\n')
+                 'PlayerReference@Neutral:\n\tName: Neutral\n\tOwnsWorld: True\n\tNonCombatant: True\n\tFaction: china\n'+extra)
+
+# Stranded crews and the stranger: a non-combatant side nobody is hostile to. Its faction (one of the original
+# countries) only gives the stranger the original 1950s commando art in the isometric mode.
+SURVIVORS = 'PlayerReference@Survivors:\n\tName: Survivors\n\tNonCombatant: True\n\tFaction: america\n\tColor: D8D2C4\n'
 
 class ChapterMap:
     """A converted base map's terrain plus new actors; validates every placement against the terrain."""
@@ -430,11 +434,11 @@ class ChapterMap:
                     seen.add(n); todo.append(n)
         return False
 
-    def write(self, title, slot, faction, color, extra_rules=''):
+    def write(self, title, slot, faction, color, extra_rules='', extra_players=''):
         m = self.yaml
         m['Title'] = node(title); m['Author'] = node('RTS AI — Lines of Hope')
         m['Visibility'] = node('MissionSelector'); m['Categories'] = node('Campaign')
-        m['Players'] = node(children=chapter_players(slot, faction, color))
+        m['Players'] = node(children=chapter_players(slot, faction, color, extra_players))
         m['Actors'] = node(children=self.actors)
         m['Rules'] = node(children=parse(MAP_RULES+extra_rules))
         d = OUT/'maps'/self.id; d.mkdir(parents=True, exist_ok=True)
@@ -502,8 +506,8 @@ def lights_in_the_water():
         v = coast[u]-3
         m.add(name, 'waypoint', 'Neutral', u, v)
         for k, kind in enumerate(['civ1', 'civa', 'civ2'] if name != 'StrangerSite' else ['civb', 'civ3']):
-            m.add(f'{name}Civilian{k}', kind, 'Neutral', u-2+k*2, v-1)
-    m.add('Stranger', 'tany', 'Neutral', 87, coast[87]-5)
+            m.add(f'{name}Civilian{k}', kind, 'Survivors', u-2+k*2, v-1)
+    m.add('Stranger', 'tany', 'Survivors', 87, coast[87]-5)
     # Orion patrols have reached each group: heavier the further east (the stranger is what Orion wants).
     patrols = {'SurvivorsCove': [('e2', -3, -2), ('e2', 3, -2), ('e2', 0, -5), ('deso', 5, -4), ('ttnk', 2, -7)],
                'SurvivorsJetty': [('e2', -3, -2), ('e2', 3, -2), ('e2', -2, -5), ('deso', 4, -5), ('ttnk', 0, -8), ('ttnk', 5, -8)],
@@ -522,7 +526,7 @@ def lights_in_the_water():
         if not m.reachable(a, b): raise ValueError(f'{m.id}: no land route {a} -> {b}')
     # Mission rules: the town's defences and generators are not part of the force (losing every unit loses the
     # mission), and Orion's patrol tanks are lighter export hulls so a force without a base can hold the town.
-    m.write('Lights in the Water', 'Yemen', 'yemen', '8F7A45', extra_rules=(
+    m.write('Lights in the Water', 'Yemen', 'yemen', '8F7A45', extra_players=SURVIVORS, extra_rules=(
         'r2ycoastal:\n\t-MustBeDestroyed:\nr2ybunker:\n\t-MustBeDestroyed:\nnapowr:\n\t-MustBeDestroyed:\n'
         'htnk:\n\tHealth:\n\t\tHP: 260\nsapc:\n\tMobile:\n\t\tSpeed: 50\n'))
     types = [k for k, _ in force]
@@ -568,17 +572,17 @@ def hold_the_ferry_line():
         m.add(name, kind, 'Turkey', u, v)
     m.add('MissionSpawn', 'mpspawn', 'Neutral', 80, 83)
     m.add('TurkeyHarvester', 'harv', 'Turkey', 76, 82)
+    m.add('Tanya', 'tany', 'Turkey', 78, 84)
     force = [('r2trrifle', 6), ('r2trat', 4), ('r2bozkir', 2), ('r2aras', 2), ('r2gokkalkan', 1)]
     i = 0
     for kind, count in force:
         for _ in range(count):
             m.add(f'Aydin{i}', kind, 'Turkey', 86+i % 5*2, 99+i//5*2 + (i % 2)); i += 1
-    # Five ferries cross the strait to the far shore once loading is done; an Orion boat picket waits in the channel.
+    # Four ferries cross the strait to the far shore once loading is done; an Orion boat picket waits in the channel.
     lanes = [[(68, 63), (66, 70), (63, 77), (57, 82), (49, 84), (42, 83)],
              [(69, 66), (67, 73), (62, 79), (54, 83), (46, 84), (44, 82)],
              [(62, 84), (55, 85), (48, 85), (40, 84)],
-             [(60, 86), (53, 86), (45, 86), (38, 85)],
-             [(63, 82), (56, 83), (48, 83), (41, 83)]]
+             [(60, 86), (53, 86), (45, 86), (38, 85)]]
     names = []
     for k, lane in enumerate(lanes):
         names.append([])
@@ -595,15 +599,15 @@ def hold_the_ferry_line():
     mission = dict(id=m.id, map=m, title='Hold the Ferry Line', faction='turkey', campaign='Lines of Hope', slot='Turkey',
         enemy='Orion Group', protect=['FerryPierNorth', 'FerryPierSouth'],
         briefing=('Colonel Kemal Aydın. The port on the far side of the strait is the last ferry line out, and Orion '
-                  'Group wants it closed. The town is loading five ferries for the far shore.\n\nHold the port for '
+                  'Group wants it closed. The town is loading four ferries for the far shore.\n\nHold the port for '
                   'twelve minutes. Orion columns will come down the north road, then the east road, then the south '
                   'road; each checkpoint you keep standing buys the town time. When loading is done the ferries sail '
-                  'through the channel, where an Orion boat picket is waiting. At least four must reach the far '
+                  'through the channel, where an Orion boat picket is waiting. Every one must reach the far '
                   'shore.\n\nIf either ferry pier falls, the line is broken.'),
         adaptation='An original RTS AI chapter on the terrain of Straits Shield, with new actors.')
     return chapter_entry(mission, [
         objective('Hold until the ferries finish loading.', 'survive', seconds=360),
-        objective('Get at least four of the five ferries across to the far shore.', 'shipping', count=4, requires=[0], lanes=names),
+        objective('Get all four ferries across to the far shore.', 'shipping', count=4, requires=[0], lanes=names),
         objective('Hold the ferry line for 12 minutes.', 'survive', seconds=720),
         objective('Keep both ferry piers standing.', 'protect', ['FerryPierNorth', 'FerryPierSouth'])])
 
