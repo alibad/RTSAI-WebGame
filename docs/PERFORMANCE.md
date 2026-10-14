@@ -69,3 +69,50 @@ The rest is the garbage collector's normal working size: with `soft-heap-limit=2
 grow to about 200 MB of objects between full collections during play, and long runs of 200-unit battles still reach
 476 MB. A lower limit (128m) kept skirmishes at 331 MB but made the battle's ticks about 40% slower, so the default
 stays. `?gc=` overrides it.
+
+## Garbage per tick
+
+Every byte a tick allocates is collected later. In the worker that collection pauses the tick. So the less garbage a
+tick makes, the fewer and shorter those pauses are, and the less CPU the tab burns while the game plays. On 14 October a
+native twin of the worker measured each phase of a tick, exactly as `worker.ts` runs them. It found that most of a
+skirmish's garbage came from our own code, not the engine:
+
+| MB per tick (native, 25 ticks a second) | Before | After |
+|---|---|---|
+| Skirmish, the human idle | 0.297 (7.4 MB/s) | 0.040 (1.0 MB/s) |
+| Skirmish, both sides building | 0.431 (10.8 MB/s) | 0.087 (2.2 MB/s) |
+| Original-art battle | 0.356 (8.9 MB/s) | about 0.22 with the engine change |
+
+In the browser, `tools/release-smoke.mjs` measured 20 seconds of each match with the camera on the player's units.
+Both runs used the same page and data; only the runtime differed:
+
+| Garbage per second in the browser | Live runtime `rt-e41b29d7a092` | With these changes |
+|---|---|---|
+| Skirmish | 11.2 MB/s | 5.0 MB/s |
+| Original-art battle | 15 MB/s | 13 MB/s |
+
+The browser makes more garbage than the native measurement, above all in battles. That remainder was not profiled
+yet; sound playback and JavaScript interop are the parts the native twin leaves out.
+
+- **Ground layers (`Capture.AddQuads`).** Every terrain overlay layer of the whole map, ore and smudges included, comes
+  through the ground pass every tick. It used to build a list and an array per layer: 60–86% of a skirmish's garbage.
+  The visible quads now go straight into the capture buffer.
+- **The production catalog (`Ui.State`).** It was rebuilt every tick, Fluent lookups included, only to be compared
+  with the last one. The text that never changes during a game is cached per actor type (and dropped at `EndGame` and
+  `Resync`). The catalog is written into a reused builder, compared in place, and turned into a string only when it
+  changed.
+- **Smaller items, each reused instead of made every tick:**
+  - the state builder, the coach JSON (written straight into it) and the command flags;
+  - the finalized-renderable list and the palette copy;
+  - the ground-layer reflection and the sampler names;
+  - the shader uniform arrays (`Capture.AddModelDraw` copies them at draw time);
+  - the music chunk buffer (`worker.ts` copies the view).
+- **Engine (`alibad/OpenRA` `85bb656374`, on `rtsai/engine`).**
+  - Voxel bounding boxes (`Util.MatrixAABBMultiply`, render side, for every model on every tick) no longer allocate
+    corner tables and vectors.
+  - The frozen actor layer's shroud callback (synced, for every changed cell of every player) loops over its bin
+    instead of an iterator, visiting the same items in the same order. Battle sync hashes are unchanged.
+
+What is left is mostly the engine's own: the rest of the voxel matrix math (`float[16]` per operation) and combat and
+bot LINQ in the synced tick. `tools/release-smoke.mjs` reports each match's garbage per second, from the worker's
+`totalAllocatedMB`.

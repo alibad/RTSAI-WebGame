@@ -391,13 +391,26 @@ namespace OpenRA.WebSim
 		public float[] Vec(string name) => vecs.TryGetValue(name, out var v) ? v : null;
 		public float[] Matrix(string name) => matrices.TryGetValue(name, out var m) ? m : null;
 
-		public void SetBool(string name, bool value) => vecs[name] = [value ? 1 : 0];
-		public void SetVec(string name, float x) => vecs[name] = [x];
-		public void SetVec(string name, float x, float y) => vecs[name] = [x, y];
-		public void SetVec(string name, float x, float y, float z) => vecs[name] = [x, y, z];
-		public void SetVec(string name, ReadOnlyMemory<float> vec, int length) => vecs[name] = vec.Span[..Math.Min(length, vec.Length)].ToArray();
+		// Uniforms are copied into one reused array per name: Capture.AddModelDraw copies the values at draw time.
+		static float[] Slot(Dictionary<string, float[]> d, string name, int length)
+		{
+			if (!d.TryGetValue(name, out var a) || a.Length != length)
+				d[name] = a = new float[length];
+			return a;
+		}
+
+		public void SetBool(string name, bool value) => Slot(vecs, name, 1)[0] = value ? 1 : 0;
+		public void SetVec(string name, float x) => Slot(vecs, name, 1)[0] = x;
+		public void SetVec(string name, float x, float y) { var a = Slot(vecs, name, 2); a[0] = x; a[1] = y; }
+		public void SetVec(string name, float x, float y, float z) { var a = Slot(vecs, name, 3); a[0] = x; a[1] = y; a[2] = z; }
+		public void SetVec(string name, ReadOnlyMemory<float> vec, int length)
+		{
+			var src = vec.Span[..Math.Min(length, vec.Length)];
+			src.CopyTo(Slot(vecs, name, src.Length));
+		}
+
 		public void SetTexture(string param, ITexture texture) => textures[param] = texture;
-		public void SetMatrix(string param, float[] mtx) => matrices[param] = (float[])mtx.Clone();
+		public void SetMatrix(string param, float[] mtx) => mtx.AsSpan().CopyTo(Slot(matrices, param, mtx.Length));
 		public void PrepareRender() { }
 		public void Bind() => WebGraphicsContext.CurrentShader = this;
 	}
@@ -497,7 +510,11 @@ namespace OpenRA.WebSim
 				if (s.SentSeconds - s.Elapsed > 3.0)
 					continue;
 
-				var buffer = new byte[bytesPerSecond * 3 / 2 / 4 * 4];
+				// One chunk buffer per stream (1.5 s of PCM, about 264 KB): the page copies the view (worker.ts soundStream).
+				var size = bytesPerSecond * 3 / 2 / 4 * 4;
+				if (s.Chunk == null || s.Chunk.Length != size)
+					s.Chunk = new byte[size];
+				var buffer = s.Chunk;
 				var n = 0;
 				for (int r; n < buffer.Length && (r = s.Stream.Read(buffer, n, buffer.Length - n)) > 0;)
 					n += r;
@@ -573,6 +590,7 @@ namespace OpenRA.WebSim
 		public Stream Stream;
 		public int Channels, Bits, Rate;
 		public double SentSeconds;
+		public byte[] Chunk;
 
 		public WebSound(int id, double duration)
 		{

@@ -114,13 +114,27 @@ namespace OpenRA.WebSim
 			// routes = "terrain": tells the page this runtime checks routes over terrain (older ones blocked on the target).
 			return JsonSerializer.Serialize(new { valid = errors.Count == 0, errors, units = actors.Length, routes = "terrain" });
 		}
-		public static string CoachJson(World world, Player player) => JsonSerializer.Serialize(new {
-			earned = player.PlayerActor.TraitOrDefault<PlayerResources>()?.Earned ?? 0,
-			losses = player.PlayerActor.TraitOrDefault<PlayerStatistics>()?.UnitsDead ?? 0,
-			actors = world.Actors.Where(a => a.Owner == player && Alive(a) && a.OccupiesSpace != null).Select(a => {
+
+		/// <summary>The co-commander's view of the player's side, written straight into Ui.State's builder every tick.</summary>
+		public static void WriteCoachJson(System.Text.StringBuilder sb, World world, Player player)
+		{
+			sb.Append("{\"earned\":").Append(player.PlayerActor.TraitOrDefault<PlayerResources>()?.Earned ?? 0)
+				.Append(",\"losses\":").Append(player.PlayerActor.TraitOrDefault<PlayerStatistics>()?.UnitsDead ?? 0)
+				.Append(",\"actors\":[");
+			var first = true;
+			foreach (var a in world.Actors)
+			{
+				if (a.Owner != player || !Alive(a) || a.OccupiesSpace == null)
+					continue;
 				var px = SimHost.WorldRenderer.ScreenPxPosition(a.CenterPosition);
-				return new { id = a.ActorID, building = a.Info.HasTraitInfo<BuildingInfo>(), x = px.X, y = px.Y };
-			})
-		});
+				if (!first)
+					sb.Append(',');
+				first = false;
+				sb.Append("{\"id\":").Append(a.ActorID).Append(",\"building\":").Append(a.Info.HasTraitInfo<BuildingInfo>() ? "true" : "false")
+					.Append(",\"x\":").Append(px.X).Append(",\"y\":").Append(px.Y).Append('}');
+			}
+
+			sb.Append("]}");
+		}
 	}
 }
