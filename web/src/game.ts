@@ -146,7 +146,12 @@ export class Game {
     this.client.onSnapshot = (s) => this.onSnapshot(s);
     this.client.onSheets = (uploaded, total) => store.set({ sheets: { uploaded, total } });
     this.renderer.onMissingTexture = (id) => this.client.needSheet(id);
-    this.lock = new MouseLock(canvas, () => { this.lastCursorKey = ""; });
+    this.lock = new MouseLock(canvas, () => {
+      this.lastCursorKey = "";
+      // The browser keeps Esc while the mouse is locked: the Esc that releases the lock is the player's "cancel" too, so
+      // repair, sell, placement and the other modes end with it (a lock lost with the window's focus keeps the mode).
+      if (!this.lock.locked && document.hasFocus() && this.ui?.mode) void this.command({ cmd: "mode", mode: "none" });
+    });
     this.wire();
     this.bind();
     // A lost WebGL context (a phone dropping a background tab's GPU memory, a GPU reset): the battlefield is rebuilt
