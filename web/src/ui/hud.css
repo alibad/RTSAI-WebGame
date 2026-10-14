@@ -682,3 +682,10 @@
   .hud-sel-many { grid-template-columns: repeat(auto-fill, 52px); width: calc(100vw - var(--sidebar-w) - 16px); }
   .hud-sel-many .cameo { width: 52px; }
 }
+
+/* The WebGL context is lost (GraphicsState.tsx): the battlefield waits behind this until it is rebuilt. */
+.gx-restoring { position: fixed; inset: 0; z-index: 95; display: grid; place-items: center; padding: 20px; background: rgba(7, 9, 7, .74); }
+.gx-restoring > div { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 22px 28px; border: 1px solid var(--hud-edge-hi); border-radius: 12px; background: linear-gradient(180deg, rgba(29, 35, 25, .97), rgba(12, 15, 11, .98)); color: #dfe3d4; text-align: center; box-shadow: 0 20px 50px rgba(0, 0, 0, .55); }
+.gx-restoring svg { color: var(--hud-gold); }
+.gx-restoring b { font-size: 16px; font-weight: 800; color: #f4ecd6; }
+.gx-restoring span { max-width: 32ch; font-size: 13px; line-height: 1.45; color: #b9c0ad; }

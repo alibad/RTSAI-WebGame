@@ -106,6 +106,8 @@ export class SpriteBake {
   /** Groups fetched before the other wanted ones (the local player's faction: the game waits for it). */
   private first = new Set<string>();
   private pendingSheets = new Map<number, ShippedSheet>();
+  /** Every shipped sheet handed out, by texture id (to send again when the page loses its WebGL context). */
+  private shippedById = new Map<number, ShippedSheet>();
   private queue: { id: number; sheet: ShippedSheet }[] = [];
   private lanes = 0;
   private capture: Map<number, Promise<Blob>> | null = null;
@@ -188,6 +190,16 @@ export class SpriteBake {
   /** Sheets the page drew from but does not have (a faction outside the wanted groups appeared). */
   need(ids: number[]) { for (const id of ids) this.enqueue(id); }
 
+  /** The page lost its WebGL context: these sheets again, even those already sent. */
+  resend(ids: number[]) {
+    for (const id of ids) {
+      const sheet = this.shippedById.get(id);
+      if (!sheet || this.dead.has(id)) continue;
+      this.pendingSheets.set(id, sheet);
+      this.enqueue(id);
+    }
+  }
+
   /** Sheets whose map was disposed: never fetched or handed to the page again (texture ids are never reused). */
   private dead = new Set<number>();
 
@@ -195,6 +207,7 @@ export class SpriteBake {
   forget(id: number) {
     this.dead.add(id);
     this.pendingSheets.delete(id);
+    this.shippedById.delete(id);
     this.queue = this.queue.filter((q) => q.id !== id);
   }
 
@@ -291,7 +304,7 @@ export class SpriteBake {
       // sheet's group; the shared ones and those of the wanted groups are fetched now, the rest when needed.
       this.stats.restored++;
       this.onSheetList(ids.map((id, i) => ({ id, group: shipped.sheets[i].group })));
-      ids.forEach((id, i) => this.pendingSheets.set(id, shipped.sheets[i]));
+      ids.forEach((id, i) => { this.pendingSheets.set(id, shipped.sheets[i]); this.shippedById.set(id, shipped.sheets[i]); });
       for (let i = 0; i < ids.length; i++) if (this.isWanted(shipped.sheets[i].group)) this.enqueue(ids[i]);
       return;
     }
@@ -321,6 +334,11 @@ export class SpriteBake {
 /** Page side: inflates a cached sheet. */
 export async function gunzipSheet(blob: Blob) {
   return gunzip(blob);
+}
+
+/** Page side: a sheet's pixels compressed (kept to rebuild the GPU copy after a lost WebGL context). */
+export async function gzipSheet(data: Uint8Array) {
+  return gzip(data);
 }
 
 /** A short stable hash (FNV-1a 32) of a string, for cache versions. */

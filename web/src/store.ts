@@ -76,6 +76,8 @@ export interface Store {
   sandbox: SandboxState | null;
   /** ?shot=1: project art only (screenshots that may leave this machine): no terrain, map previews or EA cameos. */
   publicShot: boolean;
+  /** The WebGL context: ok; lost (waiting for the browser); restoring (rebuilding, sheets on their way); failed. */
+  graphics: "ok" | "lost" | "restoring" | "failed";
   set: (p: Partial<Store>) => void;
 }
 
@@ -118,6 +120,7 @@ export const useStore = create<Store>((set) => ({
   verify: "",
   sandbox: null,
   publicShot: new URLSearchParams(typeof location !== "undefined" ? location.search : "").get("shot") === "1",
+  graphics: "ok",
   set: (p) => set(p),
 }));
 

@@ -40,6 +40,12 @@ function store(next: MatchRecord[]) {
   records = next;
   subs.forEach((f) => f());
 }
+/** A save by id (the one to resume after a reload, GraphicsState.tsx). */
+export function savedRecord(id: string) { return load().find((r) => r.id === id) ?? null; }
+
+/** sessionStorage: a save to resume as soon as the page has reloaded (the graphics were reset mid-match). */
+export const RESUME_AFTER_RELOAD = "rtsai.resumeAfterReload";
+
 function useRecords() {
   return useSyncExternalStore((f) => { subs.add(f); return () => { subs.delete(f); }; }, load);
 }
