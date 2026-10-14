@@ -99,7 +99,9 @@ clips = []
 for i, s in enumerate(segs):
     clip = work / f'seg{i:02d}.mp4'
     stretch = min(1.35, max(1.0, s['D'] / max(s['srcLen'], 0.1)))
+    zoom = float(s.get('zoom', 1.0))  # punch in on the centre (game footage is 1080p, so up to 1.5 costs no detail at 720p)
     vf = [f"trim=start={float(s.get('in', 0)):.3f}", 'setpts=PTS-STARTPTS', f'setpts={stretch:.4f}*PTS',
+          f'crop=iw/{zoom:.3f}:ih/{zoom:.3f}',
           f'scale={W}:{H}:force_original_aspect_ratio=increase:flags=lanczos', f'crop={W}:{H}', f'fps={FPS}',
           f"tpad=stop_mode=clone:stop_duration={s['D']:.3f}", f"trim=duration={s['D']:.3f}", 'format=yuv420p']
     if s.get('kind') == 'game':

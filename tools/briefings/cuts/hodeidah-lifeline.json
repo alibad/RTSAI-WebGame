@@ -1,0 +1,94 @@
+{
+  "mission": "hodeidah-lifeline",
+  "chapter": "The Lifeline · Chapter 2",
+  "title": "The Return Journey",
+  "music": "C:/Users/Admin/Code/hq/montage/out/reels/films/story-mv77pjgg/music.mp3",
+  "musicVolume": 0.55,
+  "segments": [
+    {
+      "src": "C:/Users/Admin/Code/hq/montage/out/reels/films/story-mv77pjgg/s01.mp4",
+      "kind": "cinema",
+      "voice": "C:/Users/Admin/Code/hq/montage/out/reels/films/story-mv77pjgg/n01.wav",
+      "line": "The supplies have reached the coast. Now they must reach the people inland.",
+      "poster": true
+    },
+    {
+      "src": "D:/rtsai-campaign/footage-out/hodeidah-lifeline/establishing.mp4",
+      "kind": "game",
+      "voice": "C:/Users/Admin/Code/hq/montage/out/reels/films/story-mv77pjgg/n02.wav",
+      "line": "A surveillance sweep is closing on the corridor. Anything still inside the zone when it arrives will be found.",
+      "zoom": 1.1
+    },
+    {
+      "src": "C:/Users/Admin/Code/hq/montage/out/reels/films/story-mv77pjgg/s03.mp4",
+      "kind": "cinema",
+      "voice": "C:/Users/Admin/Code/hq/montage/out/reels/films/story-mv77pjgg/n03.wav",
+      "line": "Get your mobile force out early, and keep a reserve on the road home."
+    },
+    {
+      "src": "C:/Users/Admin/Code/hq/montage/out/reels/films/story-mv77pjgg/s04.mp4",
+      "kind": "cinema",
+      "voice": "C:/Users/Admin/Code/hq/montage/out/reels/films/story-mv77pjgg/n04.wav",
+      "line": "Commander. Protect the deliveries, then bring the evacuation convoy home."
+    },
+    {
+      "src": "D:/rtsai-campaign/footage-out/hodeidah-lifeline/objective-1.mp4",
+      "kind": "game",
+      "dur": 4.2,
+      "zoom": 1.1,
+      "card": {
+        "kicker": "Objective 1",
+        "text": "Deliver relief supplies inland."
+      }
+    },
+    {
+      "src": "D:/rtsai-campaign/footage-out/hodeidah-lifeline/objective-2.mp4",
+      "kind": "game",
+      "dur": 4.2,
+      "zoom": 1.1,
+      "card": {
+        "kicker": "Objective 2",
+        "text": "Move the mobile force out of the marked surveillance zone before the sweep."
+      }
+    },
+    {
+      "src": "D:/rtsai-campaign/footage-out/hodeidah-lifeline/objective-3.mp4",
+      "kind": "game",
+      "dur": 4.2,
+      "zoom": 1.1,
+      "card": {
+        "kicker": "Objective 3",
+        "text": "Protect the evacuation convoy on its return to port."
+      }
+    },
+    {
+      "src": "D:/rtsai-campaign/footage-out/hodeidah-lifeline/objective-4.mp4",
+      "kind": "game",
+      "dur": 4.2,
+      "zoom": 1.1,
+      "card": {
+        "kicker": "Objective 4",
+        "text": "Keep lifeline infrastructure intact."
+      }
+    },
+    {
+      "src": "C:/Users/Admin/Code/hq/montage/out/reels/films/story-mv77pjgg/s05.mp4",
+      "kind": "cinema",
+      "voice": "C:/Users/Admin/Code/hq/montage/out/reels/films/story-mv77pjgg/n05.wav",
+      "line": "Every vehicle that comes back is a family that made it out."
+    },
+    {
+      "src": "D:/rtsai-campaign/footage-out/hodeidah-lifeline/battle.mp4",
+      "kind": "game",
+      "in": 1.5,
+      "dur": 10,
+      "zoom": 1.25
+    },
+    {
+      "src": "C:/Users/Admin/Code/hq/montage/out/reels/films/story-mv77pjgg/s06.mp4",
+      "kind": "cinema",
+      "voice": "C:/Users/Admin/Code/hq/montage/out/reels/films/story-mv77pjgg/n06.wav",
+      "line": "Keep the return route open."
+    }
+  ]
+}

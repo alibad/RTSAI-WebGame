@@ -1,0 +1,94 @@
+{
+  "mission": "bab-al-mandab-passage",
+  "chapter": "The Lifeline · Chapter 3",
+  "title": "Four Ships at First Light",
+  "music": "C:/Users/Admin/Code/hq/montage/out/reels/films/story-mv77pjov/music.mp3",
+  "musicVolume": 0.55,
+  "segments": [
+    {
+      "src": "C:/Users/Admin/Code/hq/montage/out/reels/films/story-mv77pjov/s01.mp4",
+      "kind": "cinema",
+      "voice": "C:/Users/Admin/Code/hq/montage/out/reels/films/story-mv77pjov/n01.wav",
+      "line": "Four merchant vessels are approaching the strait.",
+      "poster": true
+    },
+    {
+      "src": "D:/rtsai-campaign/footage-out/bab-al-mandab-passage/establishing.mp4",
+      "kind": "game",
+      "voice": "C:/Users/Admin/Code/hq/montage/out/reels/films/story-mv77pjov/n02.wav",
+      "line": "Their crews see the shipping lanes. Your command sees the gaps in the coastal picture.",
+      "zoom": 1.1
+    },
+    {
+      "src": "C:/Users/Admin/Code/hq/montage/out/reels/films/story-mv77pjov/s03.mp4",
+      "kind": "cinema",
+      "voice": "C:/Users/Admin/Code/hq/montage/out/reels/films/story-mv77pjov/n03.wav",
+      "line": "Build the radar and technology network, and survey every sector."
+    },
+    {
+      "src": "C:/Users/Admin/Code/hq/montage/out/reels/films/story-mv77pjov/s04.mp4",
+      "kind": "cinema",
+      "voice": "C:/Users/Admin/Code/hq/montage/out/reels/films/story-mv77pjov/n04.wav",
+      "line": "Mobile launchers are hiding along the shore. Find them before the ships arrive."
+    },
+    {
+      "src": "C:/Users/Admin/Code/hq/montage/out/reels/films/story-mv77pjov/s05.mp4",
+      "kind": "cinema",
+      "voice": "C:/Users/Admin/Code/hq/montage/out/reels/films/story-mv77pjov/n05.wav",
+      "line": "Hold Passage Control until the last vessel is through."
+    },
+    {
+      "src": "D:/rtsai-campaign/footage-out/bab-al-mandab-passage/objective-1.mp4",
+      "kind": "game",
+      "dur": 4.2,
+      "zoom": 1.1,
+      "card": {
+        "kicker": "Objective 1",
+        "text": "Build radar and a technology center."
+      }
+    },
+    {
+      "src": "D:/rtsai-campaign/footage-out/bab-al-mandab-passage/objective-2.mp4",
+      "kind": "game",
+      "dur": 4.2,
+      "zoom": 1.1,
+      "card": {
+        "kicker": "Objective 2",
+        "text": "Reconnoiter the three coastal sectors."
+      }
+    },
+    {
+      "src": "D:/rtsai-campaign/footage-out/bab-al-mandab-passage/objective-3.mp4",
+      "kind": "game",
+      "dur": 4.2,
+      "zoom": 1.1,
+      "card": {
+        "kicker": "Objective 3",
+        "text": "Neutralize the mobile launchers."
+      }
+    },
+    {
+      "src": "D:/rtsai-campaign/footage-out/bab-al-mandab-passage/objective-4.mp4",
+      "kind": "game",
+      "dur": 4.2,
+      "zoom": 1.1,
+      "card": {
+        "kicker": "Objective 4",
+        "text": "Protect four merchant vessels through the strait."
+      }
+    },
+    {
+      "src": "D:/rtsai-campaign/footage-out/bab-al-mandab-passage/battle.mp4",
+      "kind": "game",
+      "in": 1.5,
+      "dur": 10,
+      "zoom": 1.25
+    },
+    {
+      "src": "C:/Users/Admin/Code/hq/montage/out/reels/films/story-mv77pjov/s06.mp4",
+      "kind": "cinema",
+      "voice": "C:/Users/Admin/Code/hq/montage/out/reels/films/story-mv77pjov/n06.wav",
+      "line": "The lifeline ends where the open sea begins."
+    }
+  ]
+}
