@@ -86,24 +86,33 @@ namespace OpenRA.WebSim
 
 			if (GroundPass)
 			{
-				// Terrain layers submit complete rows, including thousands of empty cells.
-				// Send only non-degenerate quads through the shared snapshot ring.
-				var visible = new List<Vertex>();
+				// Terrain layers submit complete rows, including thousands of empty cells. Send only non-degenerate
+				// quads through the shared snapshot ring, copied straight into the capture buffer: every layer of the
+				// whole map comes through here every tick (a list and an array per layer were 60-86% of a skirmish's
+				// garbage).
+				var visible = 0;
+				for (var q = first; q + 3 < first + count; q += 4)
+					if (source[q].X != source[q + 2].X || source[q].Y != source[q + 2].Y)
+						visible += 4;
+				if (visible == 0) return;
+				Ensure(ref vertices, (vertexCount + visible) * VertexBytes);
+				var o = vertexCount * VertexBytes;
 				for (var q = first; q + 3 < first + count; q += 4)
 				{
 					if (source[q].X == source[q + 2].X && source[q].Y == source[q + 2].Y)
 						continue;
-					for (var k = 0; k < 4; k++) visible.Add(source[q + k]);
+					MemoryMarshal.AsBytes(source.AsSpan(q, 4)).CopyTo(vertices.AsSpan(o));
+					o += 4 * VertexBytes;
 				}
-				if (visible.Count == 0) return;
-				source = visible.ToArray();
-				first = 0;
-				count = source.Length;
+
+				count = visible;
+			}
+			else
+			{
+				Ensure(ref vertices, (vertexCount + count) * VertexBytes);
+				MemoryMarshal.AsBytes(source.AsSpan(first, count)).CopyTo(vertices.AsSpan(vertexCount * VertexBytes));
 			}
 
-			Ensure(ref vertices, (vertexCount + count) * VertexBytes);
-			var span = MemoryMarshal.AsBytes(source.AsSpan(first, count));
-			span.CopyTo(vertices.AsSpan(vertexCount * VertexBytes));
 			if (shader.UiSpace)
 			{
 				for (var i = 0; i < count; i++)
@@ -127,7 +136,7 @@ namespace OpenRA.WebSim
 			b[11] = (byte)(AboveShroud ? 1 : 0);
 			for (var i = 0; i < 8; i++)
 			{
-				var id = shader.TextureId("Texture" + i);
+				var id = shader.TextureId(TextureNames[i]);
 				Snapshot.MarkTexture(id);
 				BinaryPrimitives.WriteInt32LittleEndian(b[(12 + 4 * i)..], id);
 			}
@@ -135,6 +144,9 @@ namespace OpenRA.WebSim
 			vertexCount += count;
 			batchCount++;
 		}
+
+		/// <summary>The sampler names of a quad batch (no string concatenation per batch).</summary>
+		public static readonly string[] TextureNames = ["Texture0", "Texture1", "Texture2", "Texture3", "Texture4", "Texture5", "Texture6", "Texture7"];
 
 		const int CmdBeginTarget = 1, CmdDraw = 2, CmdEndTarget = 3;
 

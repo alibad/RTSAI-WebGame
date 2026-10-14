@@ -60,9 +60,11 @@ namespace OpenRA.WebSim
 			if (world == null || p == null)
 				return "{}";
 
-			var sb = new StringBuilder(1024);
+			// One builder for every tick: the returned string is the only per-tick copy.
+			var sb = StateBuilder.Clear();
 			sb.Append("{\"tick\":").Append(world.WorldTick);
-			sb.Append(",\"coach\":").Append(AiLab.CoachJson(world, p));
+			sb.Append(",\"coach\":");
+			AiLab.WriteCoachJson(sb, world, p);
 
 			var res = p.PlayerActor.TraitOrDefault<PlayerResources>();
 			if (res != null)
@@ -80,15 +82,13 @@ namespace OpenRA.WebSim
 			sb.Append(",\"mode\":").Append(J(ModeName(world.OrderGenerator)));
 
 			var selected = OwnSelection(world);
-			var capabilities = new Dictionary<string, bool>
-			{
-				["attackmove"] = selected.Any(a => a.Info.HasTraitInfo<AttackMoveInfo>() && a.Info.HasTraitInfo<AutoTargetInfo>()),
-				["guard"] = selected.Any(a => a.Info.HasTraitInfo<GuardInfo>() && a.Info.HasTraitInfo<AutoTargetInfo>()),
-				["scatter"] = selected.Any(a => a.Info.HasTraitInfo<IMoveInfo>()),
-				["deploy"] = selected.Any(a => a.TraitsImplementing<IIssueDeployOrder>().Any(d => d.CanIssueDeployOrder(a, false))),
-				["stop"] = selected.Any(a => a.Info.TraitInfoOrDefault<CommandBarBlacklistInfo>()?.DisableStop != true),
-			};
-			sb.Append(",\"commands\":{").Append(string.Join(",", capabilities.Select(k => J(k.Key) + ":" + (k.Value ? "true" : "false")))).Append('}');
+			// The five command flags, in this order.
+			sb.Append(",\"commands\":{\"attackmove\":").Append(selected.Any(a => a.Info.HasTraitInfo<AttackMoveInfo>() && a.Info.HasTraitInfo<AutoTargetInfo>()) ? "true" : "false")
+				.Append(",\"guard\":").Append(selected.Any(a => a.Info.HasTraitInfo<GuardInfo>() && a.Info.HasTraitInfo<AutoTargetInfo>()) ? "true" : "false")
+				.Append(",\"scatter\":").Append(selected.Any(a => a.Info.HasTraitInfo<IMoveInfo>()) ? "true" : "false")
+				.Append(",\"deploy\":").Append(selected.Any(a => a.TraitsImplementing<IIssueDeployOrder>().Any(d => d.CanIssueDeployOrder(a, false))) ? "true" : "false")
+				.Append(",\"stop\":").Append(selected.Any(a => a.Info.TraitInfoOrDefault<CommandBarBlacklistInfo>()?.DisableStop != true) ? "true" : "false")
+				.Append('}');
 			sb.Append(",\"stances\":[").Append(string.Join(",", selected.SelectMany(a => a.TraitsImplementing<AutoTarget>())
 				.Select(t => t.PredictedStance.ToString().ToLowerInvariant()).Distinct().Select(J))).Append(']');
 			sb.Append(",\"supportPowers\":[");
@@ -184,11 +184,15 @@ namespace OpenRA.WebSim
 			if (Sandbox.Active)
 				sb.Append(",\"sandbox\":").Append(Sandbox.Json());
 
-			var catalog = Catalog(p);
-			if (catalog != lastCatalog)
+			// The catalog is written into a reused builder and compared in place; a string is made only when it changed.
+			// Its per-item text (names, Fluent descriptions, prerequisites) is cached per actor type.
+			var catalogSb = CatalogBuilder.Clear();
+			WriteCatalog(catalogSb, p);
+
+			if (lastCatalog == null || !catalogSb.Equals(lastCatalog.AsSpan()))
 			{
-				lastCatalog = catalog;
-				sb.Append(",\"catalog\":").Append(catalog);
+				lastCatalog = catalogSb.ToString();
+				sb.Append(",\"catalog\":").Append(lastCatalog);
 			}
 
 			sb.Append('}');
@@ -196,12 +200,56 @@ namespace OpenRA.WebSim
 		}
 
 		/// <summary>The page lost its state (a new game, a reload): send the catalog again with the next State().</summary>
-		public static void Resync() => lastCatalog = null;
+		public static void Resync()
+		{
+			lastCatalog = null;
+			ItemText.Clear();
+		}
+
+		static readonly StringBuilder StateBuilder = new(4096);
+		static readonly StringBuilder CatalogBuilder = new(8192);
+		static readonly HashSet<string> Buildable = [];
+
+		// Per actor type, the catalog text that never changes during a game: name, label, the desktop production tooltip's
+		// description, and the prerequisites it lists while the item cannot be built.
+		sealed class ItemCache
+		{
+			public string Head;     // {"name":..,"label":..
+			public string Desc;     // ,"desc":.. or ""
+			public string Requires; // ,"requires":[..] or ""
+			public bool Building;
+			public int Power;
+		}
+
+		static readonly Dictionary<ActorInfo, ItemCache> ItemText = [];
+		static readonly List<(int Order, int Index, ActorInfo Actor)> SortedItems = [];
+		static readonly Comparison<(int Order, int Index, ActorInfo Actor)> ByPaletteOrder =
+			(x, y) => x.Order != y.Order ? x.Order.CompareTo(y.Order) : x.Index.CompareTo(y.Index);
+
+		static ItemCache Item(Player p, ActorInfo a)
+		{
+			if (ItemText.TryGetValue(a, out var c))
+				return c;
+			var bi = a.TraitInfo<BuildableInfo>();
+			var rules = p.World.Map.Rules;
+			var requires = bi.Prerequisites
+				.Where(r => !r.StartsWith('~') && !r.StartsWith('!') && rules.Actors.ContainsKey(r))
+				.Select(r => ActorLabel(rules.Actors[r])).Distinct().ToList();
+			c = new ItemCache
+			{
+				Head = "{\"name\":" + J(a.Name) + ",\"label\":" + J(ActorLabel(a)),
+				Desc = bi.Description != null && FluentProvider.TryGetMessage(bi.Description, out var desc) ? ",\"desc\":" + J(desc) : "",
+				Requires = requires.Count > 0 ? ",\"requires\":[" + string.Join(",", requires.Select(J)) + "]" : "",
+				Building = a.HasTraitInfo<BuildingInfo>(),
+				Power = a.TraitInfos<PowerInfo>().Where(i => i.EnabledByDefault).Sum(i => i.Amount),
+			};
+			ItemText[a] = c;
+			return c;
+		}
 
 		/// <summary>Items per queue, in palette order, with cost, build time and whether they can be built now.</summary>
-		static string Catalog(Player p)
+		static void WriteCatalog(StringBuilder sb, Player p)
 		{
-			var sb = new StringBuilder(2048);
 			sb.Append('[');
 			var first = true;
 			foreach (var q in Queues(p))
@@ -209,38 +257,32 @@ namespace OpenRA.WebSim
 				if (!first)
 					sb.Append(',');
 				first = false;
-				var buildable = q.BuildableItems().Select(a => a.Name).ToHashSet();
+				Buildable.Clear();
+				foreach (var b in q.BuildableItems())
+					Buildable.Add(b.Name);
 				sb.Append("{\"type\":").Append(J(q.Info.Group ?? q.Info.Type)).Append(",\"items\":[");
+				// AllItems changes with the tech tree: sort it each tick into a reused list (stable, like OrderBy).
+				SortedItems.Clear();
+				foreach (var a in q.AllItems())
+					SortedItems.Add((a.TraitInfo<BuildableInfo>().BuildPaletteOrder, SortedItems.Count, a));
+				SortedItems.Sort(ByPaletteOrder);
 				var firstItem = true;
-				foreach (var a in q.AllItems().OrderBy(a => a.TraitInfo<BuildableInfo>().BuildPaletteOrder))
+				foreach (var (_, _, a) in SortedItems)
 				{
 					if (!firstItem)
 						sb.Append(',');
 					firstItem = false;
-					var bi = a.TraitInfo<BuildableInfo>();
-					var power = a.TraitInfos<PowerInfo>().Where(i => i.EnabledByDefault).Sum(i => i.Amount);
-					var canBuild = buildable.Contains(a.Name);
-					sb.Append("{\"name\":").Append(J(a.Name))
-						.Append(",\"label\":").Append(J(ActorLabel(a)))
+					var c = Item(p, a);
+					var canBuild = Buildable.Contains(a.Name);
+					sb.Append(c.Head)
 						.Append(",\"cost\":").Append(q.GetProductionCost(a))
-						.Append(",\"time\":").Append(q.GetBuildTime(a, bi))
-						.Append(",\"power\":").Append(power)
+						.Append(",\"time\":").Append(q.GetBuildTime(a, a.TraitInfo<BuildableInfo>()))
+						.Append(",\"power\":").Append(c.Power)
 						.Append(",\"buildable\":").Append(canBuild ? "true" : "false")
-						.Append(",\"building\":").Append(a.HasTraitInfo<BuildingInfo>() ? "true" : "false");
-
-					// The desktop production tooltip: description, and what is still missing to build it.
-					if (bi.Description != null && FluentProvider.TryGetMessage(bi.Description, out var desc))
-						sb.Append(",\"desc\":").Append(J(desc));
+						.Append(",\"building\":").Append(c.Building ? "true" : "false")
+						.Append(c.Desc);
 					if (!canBuild)
-					{
-						var rules = p.World.Map.Rules;
-						var requires = bi.Prerequisites
-							.Where(r => !r.StartsWith('~') && !r.StartsWith('!') && rules.Actors.ContainsKey(r))
-							.Select(r => ActorLabel(rules.Actors[r])).Distinct().ToList();
-						if (requires.Count > 0)
-							sb.Append(",\"requires\":[").Append(string.Join(",", requires.Select(J))).Append(']');
-					}
-
+						sb.Append(c.Requires);
 					sb.Append('}');
 				}
 
@@ -248,7 +290,6 @@ namespace OpenRA.WebSim
 			}
 
 			sb.Append(']');
-			return sb.ToString();
 		}
 
 		static string ActorLabel(ActorInfo a)

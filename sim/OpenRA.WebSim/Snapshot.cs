@@ -58,6 +58,7 @@ namespace OpenRA.WebSim
 
 		static readonly List<(IRenderable R, uint Key)> Renderables = [];
 		static readonly List<IRenderable> Others = [];
+		static readonly List<IFinalizedRenderable> Finalized = [];
 		static readonly Dictionary<int, int> ModelBufferVersionsSent = [];
 		static readonly List<int> TextureQueue = [];
 		static int paletteTextureId = -1;
@@ -100,6 +101,7 @@ namespace OpenRA.WebSim
 			// The last build's renderables and actors: until the next build they kept the ended world reachable.
 			Renderables.Clear();
 			Others.Clear();
+			Finalized.Clear();
 			ViewActors.Clear();
 			lastPalette = null;
 			viewSet = false;
@@ -528,7 +530,8 @@ namespace OpenRA.WebSim
 					CaptureGroundLayers(overlay, wr);
 				Game.Renderer.Flush();
 				Capture.GroundPass = false;
-				var finalized = new List<IFinalizedRenderable>(Others.Count);
+				var finalized = Finalized;
+				finalized.Clear();
 				foreach (var r in Others)
 				{
 					try { finalized.Add(r.PrepareRender(wr)); }
@@ -654,7 +657,9 @@ namespace OpenRA.WebSim
 						continue;
 					}
 
-					lastPalette = (byte[])tex.Data.Clone();
+					if (lastPalette == null || lastPalette.Length != tex.Data.Length)
+						lastPalette = new byte[tex.Data.Length];
+					tex.Data.AsSpan().CopyTo(lastPalette);
 				}
 
 				Ensure(TextureBytes);
@@ -725,20 +730,37 @@ namespace OpenRA.WebSim
 
 		// The browser camera is independent of the headless viewport. Capture all occupied
 		// cells from the engine layers rather than culling them with that viewport.
+		// The reflection is resolved once per overlay type (GetFields copied a FieldInfo[] and GetValue boxed every
+		// value-type field of every overlay, every tick).
+		const System.Reflection.BindingFlags LayerFields = System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance;
+		static readonly System.Reflection.FieldInfo ShaderField = typeof(SpriteRenderer).GetField("shader", LayerFields);
+		static readonly System.Reflection.FieldInfo VerticesField = typeof(TerrainSpriteLayer).GetField("vertices", LayerFields);
+		static readonly System.Reflection.FieldInfo SheetsField = typeof(TerrainSpriteLayer).GetField("sheets", LayerFields);
+		static readonly Dictionary<Type, System.Reflection.FieldInfo[]> LayerFieldsByType = [];
+
 		static void CaptureGroundLayers(IRenderOverlay overlay, WorldRenderer wr)
 		{
-			const System.Reflection.BindingFlags fields = System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance;
-			var shader = (WebShader)typeof(SpriteRenderer).GetField("shader", fields).GetValue(Game.Renderer.WorldSpriteRenderer);
-			for (var type = overlay.GetType(); type != null; type = type.BaseType)
-				foreach (var field in type.GetFields(fields | System.Reflection.BindingFlags.DeclaredOnly))
-				{
-					if (field.GetValue(overlay) is not TerrainSpriteLayer layer) continue;
-					var v = (Vertex[])typeof(TerrainSpriteLayer).GetField("vertices", fields).GetValue(layer);
-					var sheets = (Sheet[])typeof(TerrainSpriteLayer).GetField("sheets", fields).GetValue(layer);
-					for (var n = 0; n < sheets.Length; n++)
-						if (sheets[n] != null) shader.SetTexture("Texture" + n, sheets[n].GetTexture());
-					Capture.AddQuads(v, 0, v.Length, layer.BlendMode, shader);
-				}
+			var shader = (WebShader)ShaderField.GetValue(Game.Renderer.WorldSpriteRenderer);
+			var type0 = overlay.GetType();
+			if (!LayerFieldsByType.TryGetValue(type0, out var layerFields))
+			{
+				var found = new List<System.Reflection.FieldInfo>();
+				for (var type = type0; type != null; type = type.BaseType)
+					foreach (var field in type.GetFields(LayerFields | System.Reflection.BindingFlags.DeclaredOnly))
+						if (typeof(TerrainSpriteLayer).IsAssignableFrom(field.FieldType) || field.FieldType.IsAssignableFrom(typeof(TerrainSpriteLayer)) && !field.FieldType.IsValueType)
+							found.Add(field);
+				LayerFieldsByType[type0] = layerFields = found.ToArray();
+			}
+
+			foreach (var field in layerFields)
+			{
+				if (field.GetValue(overlay) is not TerrainSpriteLayer layer) continue;
+				var v = (Vertex[])VerticesField.GetValue(layer);
+				var sheets = (Sheet[])SheetsField.GetValue(layer);
+				for (var n = 0; n < sheets.Length; n++)
+					if (sheets[n] != null) shader.SetTexture(Capture.TextureNames[n], sheets[n].GetTexture());
+				Capture.AddQuads(v, 0, v.Length, layer.BlendMode, shader);
+			}
 		}
 
 		/// <summary>A JSON string literal (no reflection: the trimmed AOT build has reflection-based serialization off).</summary>

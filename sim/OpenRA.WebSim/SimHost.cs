@@ -354,6 +354,7 @@ namespace OpenRA.WebSim
 			Sandbox.Forget();
 			AiLab.Forget();
 			EditorHost.Forget();
+			Ui.Resync(); // its catalog text is cached per ActorInfo of the ended world's rules
 			RetainedAfterEndMB = GC.GetTotalMemory(true) / 1048576.0;
 		}
 
