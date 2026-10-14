@@ -208,6 +208,8 @@ export class MissionMemory {
   swept = new Map<number, number>();
   offset: number | null = null;
   lastKind: "unit" | "economy" | "" = "";
+  /** When something the mission protects (or the base) was last under attack (a game tick). */
+  attacked: number | null = null;
   /** The last order for units: its line stays up while they carry it out. */
   said: { text: string; tick: number } | null = null;
   /** Game ticks per real millisecond (the game speed), from consecutive observations. */
@@ -676,6 +678,7 @@ function defend(w: World, busy: Set<number>): MissionAdvice | null {
     }
   if (!best) return null;
   const contact = cellOf(best.enemy), place = best.place;
+  w.memory.attacked = w.tick;
   // A coarse goal: the same fight keeps the same goal while the attackers shift.
   const goal = `defend:${Math.round(contact.u / 8)},${Math.round(contact.v / 16)}`;
   const reach = place.vital ? (w.hasBase ? 34 : 20) : 26;
@@ -935,7 +938,9 @@ function armyTask(w: World, f: Focus, army: AdviserActor[]): MissionAdvice | nul
         if (idle.length) return advice(`Focus fire on ${label}: put ${units(Math.min(MAX, idle.length))} on it.`, `Attack ${label} with ${units(Math.min(MAX, idle.length))}`,
           idle.sort(byId).slice(0, MAX).map((u) => ({ action: "attack" as const, actor_id: u.actorId, target_actor_id: next.a!.actorId })), goal, { goal });
       }
-      return go(w, army, next.p, `destroy:${next.t}`, (n) => [`Destroy ${label}: send ${units(n)}${left !== null ? ` (${clock(left)} left)` : ""}.`, `Attack-move ${units(n)} to ${label}`], 5);
+      // Units put onto the target (or charging it) are on it already.
+      const onIt = (u: AdviserActor) => { const h = w.memory.heading.get(u.actorId); return !!h && (h.goal === `hit:${next.t}` || h.goal === `c4:${next.t}`) && (!u.idle || w.tick - h.tick < 250); };
+      return go(w, army.filter((u) => !onIt(u)), next.p, `destroy:${next.t}`, (n) => [`Destroy ${label}: send ${units(n)}${left !== null ? ` (${clock(left)} left)` : ""}.`, `Attack-move ${units(n)} to ${label}`], 5);
     }
     case "capture": {
       const next = targetsOf()[0];
@@ -1094,6 +1099,28 @@ function missionProduction(w: World): MissionAdvice | null {
   return null;
 }
 
+/** Ground defences the base can build (not walls, air defence, coastal guns or support buildings), by name. */
+const defenceName = /bunker|pill ?box|sentry|guard tower|tesla|prism|emplacement|turret|autocannon|cannon/i;
+const notDefence = /\bAA\b|air|flak|patriot|\bsam\b|missile|coastal|wall|relay|workshop|uplink|satellite|sensor|silo|weather|gap|array/i;
+
+/** A base that has to hold (a survive or protect objective, or attacks on it lately) builds a few ground defences. */
+function defences(w: World): MissionAdvice | null {
+  const o = w.obs, tree = w.ctx.techTree;
+  const holding = w.objectives.some((x) => (x.kind === "survive" || x.kind === "protect") && x.status === "active")
+    || w.tick - (w.memory.attacked ?? -9999) < 1500;
+  if (!holding || o.cash < 1200) return null;
+  const isDefence = (kind: string) => { const n = w.name(kind); return tree[baseType(kind)]?.kind === "building" && defenceName.test(n) && !notDefence.test(n); };
+  const have = o.buildings.filter((b) => isDefence(b.kind)).length + o.production.filter((p) => isDefence(p.item)).length;
+  const limit = w.difficulty === "easy" ? 2 : w.difficulty === "hard" ? 4 : 3;
+  const queue = (item: string) => tree[baseType(item)]?.queue?.toLowerCase();
+  const pick = o.availableProduction.map((x) => x.toLowerCase()).filter((x) => isDefence(x) && (tree[baseType(x)]?.cost ?? 9999) <= o.cash / 2
+    && !o.production.some((p) => p.queueType.toLowerCase() === queue(x)))
+    .sort((a, b) => (tree[baseType(b)]?.cost ?? 0) - (tree[baseType(a)]?.cost ?? 0) || a.localeCompare(b))[0];
+  if (have >= limit || !pick) return null;
+  return advice(`The base has to hold: build ${article(w.name(pick))} to cover it (${have + 1} of ${limit}).`, `Build ${article(w.name(pick))}`,
+    [{ action: "build", item_type: pick }], `eco:build:defence:${pick}`);
+}
+
 /** The base: the skirmish adviser's economy and the objectives' needs, then spending what piles up on a bigger army. */
 function economy(w: World): MissionAdvice | null {
   if (!w.hasBase) return null;
@@ -1103,6 +1130,8 @@ function economy(w: World): MissionAdvice | null {
   if (base && ["deploy", "place", "build:power"].includes(base.key)) return ours(base);
   const need = missionProduction(w);
   if (need) return need;
+  const guns = defences(w);
+  if (guns) return guns;
   if (base) {
     // Rich: bigger batches.
     if (base.key === "train:tank" && o.cash >= 6000) return ours({ ...base, summary: base.summary.replace(/^Train 3/, "Train 5"), commands: [...base.commands, ...base.commands.slice(0, 2)] });
