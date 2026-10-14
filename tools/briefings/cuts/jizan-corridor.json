@@ -1,0 +1,94 @@
+{
+  "mission": "jizan-corridor",
+  "chapter": "The Lifeline · Chapter 1",
+  "title": "A Road Through the Silence",
+  "music": "C:/Users/Admin/Code/hq/montage/out/reels/films/story-mv74pb65/music.mp3",
+  "musicVolume": 0.55,
+  "segments": [
+    {
+      "src": "C:/Users/Admin/Code/hq/montage/out/reels/films/story-mv74pb65/s01.mp4",
+      "kind": "cinema",
+      "voice": "C:/Users/Admin/Code/hq/montage/out/reels/films/story-mv74pb65/n01.wav",
+      "line": "Oh five forty. The Jizan coastal radar has gone silent.",
+      "poster": true
+    },
+    {
+      "src": "D:/rtsai-campaign/footage-out/jizan-corridor/establishing.mp4",
+      "kind": "game",
+      "voice": "C:/Users/Admin/Code/hq/montage/out/reels/films/story-mv74pb65/n02.wav",
+      "line": "Without it, nobody can see the corridor. Relief trucks are waiting on the coast road, and no one can promise them a safe way to the port.",
+      "zoom": 1.1
+    },
+    {
+      "src": "C:/Users/Admin/Code/hq/montage/out/reels/films/story-mv74pb65/s03.mp4",
+      "kind": "cinema",
+      "voice": "C:/Users/Admin/Code/hq/montage/out/reels/films/story-mv74pb65/n03.wav",
+      "line": "A drone has found two mobile launchers in the hills above the road. While they are out there, nothing moves."
+    },
+    {
+      "src": "C:/Users/Admin/Code/hq/montage/out/reels/films/story-mv74pb65/s04.mp4",
+      "kind": "cinema",
+      "voice": "C:/Users/Admin/Code/hq/montage/out/reels/films/story-mv74pb65/n04.wav",
+      "line": "Commander, your orders. Retake the radar. Remove both launchers. Then bring the convoy through."
+    },
+    {
+      "src": "D:/rtsai-campaign/footage-out/jizan-corridor/objective-1.mp4",
+      "kind": "game",
+      "dur": 4.2,
+      "zoom": 1.1,
+      "card": {
+        "kicker": "Objective 1",
+        "text": "Capture Radar Node Seven."
+      }
+    },
+    {
+      "src": "D:/rtsai-campaign/footage-out/jizan-corridor/objective-2.mp4",
+      "kind": "game",
+      "dur": 4.2,
+      "zoom": 1.1,
+      "card": {
+        "kicker": "Objective 2",
+        "text": "Destroy both mobile launchers."
+      }
+    },
+    {
+      "src": "D:/rtsai-campaign/footage-out/jizan-corridor/objective-3.mp4",
+      "kind": "game",
+      "dur": 4.2,
+      "zoom": 1.1,
+      "card": {
+        "kicker": "Objective 3",
+        "text": "Escort at least two relief trucks to the port."
+      }
+    },
+    {
+      "src": "D:/rtsai-campaign/footage-out/jizan-corridor/objective-4.mp4",
+      "kind": "game",
+      "dur": 4.2,
+      "zoom": 1.1,
+      "card": {
+        "kicker": "Bonus objective",
+        "text": "Keep the port depot and desalination plant intact."
+      }
+    },
+    {
+      "src": "C:/Users/Admin/Code/hq/montage/out/reels/films/story-mv74pb65/s05.mp4",
+      "kind": "cinema",
+      "voice": "C:/Users/Admin/Code/hq/montage/out/reels/films/story-mv74pb65/n05.wav",
+      "line": "A destroyed enemy base is not the measure of success."
+    },
+    {
+      "src": "D:/rtsai-campaign/footage-out/jizan-corridor/battle.mp4",
+      "kind": "game",
+      "in": 1.5,
+      "dur": 10,
+      "zoom": 1.25
+    },
+    {
+      "src": "C:/Users/Admin/Code/hq/montage/out/reels/films/story-mv74pb65/s06.mp4",
+      "kind": "cinema",
+      "voice": "C:/Users/Admin/Code/hq/montage/out/reels/films/story-mv74pb65/n06.wav",
+      "line": "The convoy must arrive."
+    }
+  ]
+}
