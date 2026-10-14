@@ -3,6 +3,7 @@
 // Positional sounds are attenuated and panned against the camera (the listener), like the desktop OpenAL path.
 
 import { preferences } from "./preferences";
+import { createAudioContext } from "./audio-context";
 const NEAR = 450; // world px: full volume within this distance of the camera centre
 const FAR = 1900; // silent beyond this
 
@@ -38,7 +39,8 @@ export class AudioEngine {
 
   private ensure() {
     if (this.ctx) return this.ctx;
-    const ctx = new AudioContext({ latencyHint: "interactive" });
+    const ctx = createAudioContext({ latencyHint: "interactive" });
+    if (!ctx) return null;
     this.master = ctx.createGain();
     this.master.connect(ctx.destination);
     this.music = ctx.createGain();
@@ -50,13 +52,14 @@ export class AudioEngine {
     this.ctx = ctx;
     this.applyVolumes();
     // Browsers start audio suspended until the player interacts with the page.
-    const resume = () => { if (ctx.state === "suspended") ctx.resume(); };
+    const resume = () => { if (ctx.state === "suspended") void ctx.resume().catch(() => {}); };
     for (const ev of ["pointerdown", "keydown"]) window.addEventListener(ev, resume, { capture: true });
     return ctx;
   }
 
   private toBuffer(channels: number, bits: number, rate: number, pcm: ArrayBuffer) {
     const ctx = this.ensure();
+    if (!ctx) return null;
     const bytes = bits / 8;
     const frames = Math.floor(pcm.byteLength / (bytes * channels));
     const buf = ctx.createBuffer(Math.max(1, channels), Math.max(1, frames), rate);
@@ -72,7 +75,8 @@ export class AudioEngine {
   }
 
   source(id: number, channels: number, bits: number, rate: number, pcm: ArrayBuffer) {
-    this.sources.set(id, this.toBuffer(channels, bits, rate, pcm));
+    const buffer = this.toBuffer(channels, bits, rate, pcm);
+    if (buffer) this.sources.set(id, buffer);
   }
 
   private gainFor(p: { x: number; y: number; positional: boolean; volume: number }) {
@@ -88,6 +92,7 @@ export class AudioEngine {
     const buf = this.sources.get(source);
     if (!buf || !this.soundOn) return;
     const ctx = this.ensure();
+    if (!ctx) return;
     const node = ctx.createBufferSource();
     node.buffer = buf;
     node.loop = loop;
@@ -105,6 +110,7 @@ export class AudioEngine {
 
   stream(sound: number, channels: number, bits: number, rate: number, pcm: ArrayBuffer, end: boolean, volume: number) {
     const ctx = this.ensure();
+    if (!ctx) return;
     let s = this.streams.get(sound);
     if (!s) {
       const gain = ctx.createGain();
@@ -115,7 +121,7 @@ export class AudioEngine {
     s.gain.gain.value = this.musicOn ? volume : 0;
     if (pcm.byteLength > 0) {
       const node = ctx.createBufferSource();
-      node.buffer = this.toBuffer(channels, bits, rate, pcm);
+      node.buffer = this.toBuffer(channels, bits, rate, pcm)!;
       node.connect(s.gain);
       const at = Math.max(s.next, ctx.currentTime + 0.02);
       node.start(at);
@@ -147,7 +153,7 @@ export class AudioEngine {
 
   pause(sound: number, paused: boolean) {
     if (sound < 0 && this.ctx) {
-      if (paused) this.ctx.suspend(); else this.ctx.resume();
+      void (paused ? this.ctx.suspend() : this.ctx.resume()).catch(() => {});
     }
   }
 
@@ -193,6 +199,7 @@ export class AudioEngine {
   /** The co-commander's spoken reply (a WAV); music ducks while it plays. Resolves when it ends. */
   async voice(wav: ArrayBuffer) {
     const ctx = this.ensure();
+    if (!ctx) return;
     const copy = this.onVoice ? wav.slice(0) : null;
     const buf = await ctx.decodeAudioData(wav);
     this.stopVoice();
@@ -224,6 +231,7 @@ export class AudioEngine {
    */
   async radio(encoded: ArrayBuffer, wanted: () => boolean) {
     const ctx = this.ensure();
+    if (!ctx) return 0;
     const buf = await ctx.decodeAudioData(encoded);
     if (!wanted()) return 0;
     this.stopRadio();

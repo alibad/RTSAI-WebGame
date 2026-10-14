@@ -6,6 +6,7 @@
 import type { CompanionEngineEvent } from "./sim/protocol";
 import { store } from "./store";
 import type { AudioEngine } from "./audio";
+import { createAudioContext } from "./audio-context";
 import { nextAdvice, assessThreat, type AdviserThreat, type AdviserCommand, type AdviserObservation } from "./adviser";
 import type { AdviserActionReceipt } from "./sim/adviser-rpc";
 import adviserTree from "./adviser-tree.json";
@@ -495,10 +496,13 @@ export class CoCommander {
     if (this.recorder || this.s.listening) return;
     this.audio.stopVoice();
     const match = this.matchRevision;
+    let stream: MediaStream | null = null;
+    let ctx: AudioContext | null = null;
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true } });
-      if (match !== this.matchRevision) { stream.getTracks().forEach(t => t.stop()); return; }
-      const ctx = new AudioContext();
+      ctx = createAudioContext();
+      if (!ctx) throw new Error("Audio capture is unavailable in this browser.");
+      stream = await navigator.mediaDevices.getUserMedia({ audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true } });
+      if (match !== this.matchRevision) { stream.getTracks().forEach(t => t.stop()); void ctx.close().catch(() => {}); return; }
       const source = ctx.createMediaStreamSource(stream);
       const node = ctx.createScriptProcessor(4096, 1, 1);
       const chunks: Float32Array[] = [];
@@ -508,6 +512,8 @@ export class CoCommander {
       this.recorder = { ctx, stream, node, chunks, rate: ctx.sampleRate };
       this.set({ listening: true });
     } catch (e) {
+      stream?.getTracks().forEach(t => t.stop());
+      if (ctx) void ctx.close().catch(() => {});
       if (match !== this.matchRevision) return;
       this.push("system", `Microphone unavailable: ${e instanceof Error ? e.message : e}`);
     }

@@ -27,6 +27,14 @@ if (shots) fs.mkdirSync(shots, { recursive: true });
 
 const browser = await chromium.launch({ executablePath: browserExecutable(), headless: true, args: [...browserArgs(), "--disable-background-timer-throttling"] });
 const page = await browser.newPage({ viewport: { width: 1600, height: 900 } });
+if (["127.0.0.1", "localhost"].includes(new URL(url).hostname)) {
+  // Local QA must not emit production analytics or depend on hosted services.
+  await page.route("**/*", route => {
+    const target = new URL(route.request().url());
+    return ["127.0.0.1", "localhost"].includes(target.hostname) || ["blob:", "data:"].includes(target.protocol)
+      ? route.continue() : route.abort();
+  });
+}
 const pageErrors = [], consoleErrors = [], failures = [], matches = [];
 page.on("pageerror", (e) => pageErrors.push(String(e).slice(0, 300)));
 page.on("console", (m) => { if (m.type() === "error") consoleErrors.push(m.text().slice(0, 300)); });
