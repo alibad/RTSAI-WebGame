@@ -23,6 +23,9 @@ const victoryCall = calls.find((c) => c.when === "victory");
 assert(startCall && timeCall && objectiveCall && victoryCall, "jizan-corridor needs start, time, objective and victory calls");
 const launchable = (id) => story.chapters[id]?.status !== "coming" && missions.some((m) => m.id === id);
 const locked = story.arcs.flatMap((a) => a.missions).filter((id) => !launchable(id));
+// Where to scroll for the last act: its locked chapters while there are any, else its own chapters.
+const lastActFirst = locked[0] ?? story.arcs.at(-1).missions[0];
+const lastActEnd = locked.at(-1) ?? story.arcs.at(-1).missions.at(-1);
 
 const browser = await chromium.launch({ executablePath: path.join(process.env.LOCALAPPDATA, "ms-playwright/chromium-1228/chrome-win64/chrome.exe"), headless: true,
   args: ["--use-angle=d3d11", "--ignore-gpu-blocklist", "--autoplay-policy=no-user-gesture-required"] });
@@ -64,12 +67,12 @@ try {
   assert(loadedBefore < speakers, `every portrait loaded at once (${loadedBefore}/${speakers})`);
   await page.waitForTimeout(900);
   await shot("campaign-desktop");
-  await page.locator(`.cp-mission[data-chapter="${locked.at(-1)}"]`).scrollIntoViewIfNeeded();
+  await page.locator(`.cp-mission[data-chapter="${lastActEnd}"]`).scrollIntoViewIfNeeded();
   await page.waitForFunction((n) => document.querySelectorAll(".cp-mission-speaker img").length > n, loadedBefore);
   const unpublished = page.locator(`.cp-mission-speaker[data-cast="${UNPUBLISHED}"]`);
   await unpublished.scrollIntoViewIfNeeded();
   await unpublished.locator('.lazy-img[data-state="failed"] .cast-initials').waitFor();
-  await page.locator(`.cp-mission[data-chapter="${locked.at(-1)}"]`).scrollIntoViewIfNeeded();
+  await page.locator(`.cp-mission[data-chapter="${lastActEnd}"]`).scrollIntoViewIfNeeded();
   await page.waitForTimeout(900);
   await shot("campaign-act3-desktop");
   console.log(`Campaign screen passed: prologue, ${story.arcs.length} acts, ${locked.length} locked chapters, portraits ${loadedBefore}/${speakers} before scrolling.`);
@@ -97,7 +100,7 @@ try {
   await page.evaluate(() => document.querySelector(".scr-content")?.scrollTo?.(0, 0));
   await page.getByRole("heading", { name: story.title, exact: true }).scrollIntoViewIfNeeded();
   await shot("campaign-phone");
-  await page.locator(`.cp-mission[data-chapter="${locked[0]}"]`).scrollIntoViewIfNeeded();
+  await page.locator(`.cp-mission[data-chapter="${lastActFirst}"]`).scrollIntoViewIfNeeded();
   await shot("campaign-act3-phone");
   await page.getByRole("button", { name: /Jizan Corridor/ }).click();
   await page.waitForTimeout(800);
