@@ -32,10 +32,14 @@ REFERENCE = {
     'lantern': "This is the coordination desk. I keep the roads, the ports and the sea lanes open, and I keep every side talking. Stay on this channel and wait for my word.",
     'tanya': "Alright, listen up. I've been in worse spots than this, and I always get out. Keep your heads down, follow me, and try to keep up.",
     'orlov': "Good evening. I don't make threats. I make offers, and I am very patient. Everyone eventually wants to see the world a little more clearly.",
+    'einstein': "I am recording this in the spring of nineteen fifty-three. The machine is quiet now, but I am not sure it is finished with us. Listen carefully.",
 }
 DEFAULT_REFERENCE = "Command here. Hold your positions and report what you see. Engineers forward, reserves stay with the convoy, and nobody moves until I give the order."
 RADIO = 'highpass=f=280,lowpass=f=3600,acompressor=threshold=-20dB:ratio=4:attack=5:release=80,loudnorm=I=-16:TP=-1.5'
 BROKER = 'highpass=f=90,lowpass=f=7000,aecho=0.8:0.5:35:0.2,loudnorm=I=-17:TP=-1.5'
+# Einstein speaks from a 1953 film reel: narrow, warm and slightly wavering, not a field radio.
+REEL = 'highpass=f=220,lowpass=f=3200,aphaser=type=t:speed=0.25:decay=0.25,acompressor=threshold=-18dB:ratio=3,loudnorm=I=-17:TP=-1.5'
+CHAINS = {'orlov': BROKER, 'einstein': REEL}
 
 os.environ['HF_HUB_OFFLINE'] = '1'
 os.environ.setdefault('HF_HOME', 'D:/AI Models/huggingface')
@@ -135,7 +139,7 @@ for mission, calls in story.get('radio', {}).items():
             used = 'kokoro'
         padded = mp3.with_suffix('.pad.wav')
         subprocess.run([ffmpeg, '-loglevel', 'error', '-y', '-i', str(wav), '-af', 'adelay=100|100,apad=pad_dur=0.2', str(padded)], check=True)
-        chain = BROKER if speaker == 'orlov' else RADIO
+        chain = CHAINS.get(speaker, RADIO)
         subprocess.run([ffmpeg, '-loglevel', 'error', '-y', '-i', str(padded), '-af', chain, '-ar', '44100', '-ac', '1', '-b:a', '64k', str(mp3)], check=True)
         wav.unlink(); padded.unlink()
         stamp.write_text(key)
