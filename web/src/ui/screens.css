@@ -655,3 +655,11 @@
   :root .menu-subnav .menu-subnav-back, :root .menu-subnav .menu-subnav-studio, :root .mp-launch { width: 40px; }
   :root .menu-subnav .scr-tabs > button { padding: 0 6px; font-size: 11px; letter-spacing: .02em; }
 }
+
+/* Two columns: the chosen chapter's briefing stays in view beside the chapter list (its title and map on top, the rest
+   scrolling inside), so a chapter picked low in Act III shows its own title instead of the bottom of its briefing. */
+@media (min-width: 1081px) {
+  /* Sticky makes the panel a stacking context: above the foot bar (z 1), so its fixed launch row stays bright. */
+  .cp-detail { position: sticky; top: 72px; z-index: 2; max-height: calc(100dvh - 176px); }
+  .cp-detail > .cp-body { min-height: 0; overflow-y: auto; scrollbar-color: #4a5443 transparent; scrollbar-width: thin; }
+}

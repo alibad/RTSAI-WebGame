@@ -86,8 +86,10 @@ export function Missions({ game }: { game: Game }) {
     if (play && id === filmId) { setDeployAfterFilm(false); setFilmError(false); setShowFilm(true); }
     else playOnOpen.current = play;
     setSelected(id);
-    // One column: the briefing is below the list, so bring it into view.
-    if (innerWidth < 1000) requestAnimationFrame(() => detail.current?.scrollIntoView({ behavior: "smooth", block: "start" }));
+    // One column (screens.css, up to 1080 px): the briefing is below the list, so bring it into view. Two columns: the
+    // briefing stays in view (sticky) and starts at its top.
+    if (matchMedia("(max-width: 1080px)").matches) requestAnimationFrame(() => detail.current?.scrollIntoView({ behavior: "smooth", block: "start" }));
+    else requestAnimationFrame(() => detail.current?.querySelector(".cp-body")?.scrollTo({ top: 0 }));
   };
   const preview = (id: string) => (publicShot ? "" : previews[id] ?? "");
   const done = startable.filter((m) => completed[m.id]).length;
@@ -254,7 +256,7 @@ export function Missions({ game }: { game: Game }) {
                 </section>}
               </div>
 
-              <details className="cp-original"><summary>Original mission briefing and background</summary><p>{mission.briefing}</p></details>
+              <details key={mission.id} className="cp-original"><summary>Original mission briefing and background</summary><p>{mission.briefing}</p></details>
               <p className="scr-fine">{mission.adaptation} Original fictional story. Campaign arcs connect perspectives and exercises; they do not transfer armies or resources between missions.</p>
             </>}
             <p data-testid="ea-notice" className="scr-notice">{EA_NOTICE}</p>
