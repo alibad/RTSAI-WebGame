@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    Balance probe for campaign missions: runs a mission headless with an already built native runner's assemblies
+    and prints the objectives each minute (no change to sim/). Build and run it from a copy of the runner folder:
+      dotnet build tools/mission-probe -c Release -o <out> -p:WebSimBin=<build>/bin/OpenRA.WebSim.Native-public/Release/net10.0/
+      copy <runner folder> to <run>, add <out>/MissionProbe.dll and MissionProbe.runtimeconfig.json (no deps.json)
+      dotnet <run>/MissionProbe.dll <absolute vfs root> <absolute scenario.json> <ticks> [idle | Waypoint,Waypoint,...] [difficulty]
+    A plan of waypoints attack-moves the whole mobile force through those named actors in order: a crude stand-in
+    for a player, not a measure of human difficulty.
+  -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <AssemblyName>MissionProbe</AssemblyName>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <NoWarn>$(NoWarn);CS1591;NU1900</NoWarn>
+    <NuGetAudit>false</NuGetAudit>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="*.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <Reference Include="OpenRA.Game"><HintPath>$(WebSimBin)OpenRA.Game.dll</HintPath></Reference>
+    <Reference Include="OpenRA.Mods.Common"><HintPath>$(WebSimBin)OpenRA.Mods.Common.dll</HintPath></Reference>
+    <Reference Include="OpenRA.WebSim"><HintPath>$(WebSimBin)OpenRA.WebSim.dll</HintPath></Reference>
+  </ItemGroup>
+</Project>

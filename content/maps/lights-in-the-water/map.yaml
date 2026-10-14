@@ -91,7 +91,7 @@ Actors:
 	Haidar4: r2ymlr
 		Owner: Yemen
 		Location: 66,6
-	Haidar5: r2ymr
+	Haidar5: r2ymlr
 		Owner: Yemen
 		Location: 69,4
 	Haidar6: r2ymr
@@ -103,7 +103,7 @@ Actors:
 	Haidar8: r2ymr
 		Owner: Yemen
 		Location: 63,11
-	Haidar9: r2yrpg
+	Haidar9: r2ymr
 		Owner: Yemen
 		Location: 66,9
 	Haidar10: r2yrpg
@@ -112,9 +112,12 @@ Actors:
 	Haidar11: r2yrpg
 		Owner: Yemen
 		Location: 70,5
-	Haidar12: r2yspot
+	Haidar12: r2yrpg
 		Owner: Yemen
 		Location: 60,16
+	Haidar13: r2yspot
+		Owner: Yemen
+		Location: 63,14
 	SurvivorsCove: waypoint
 		Owner: Neutral
 		Location: 86,-3
@@ -199,18 +202,12 @@ Actors:
 	StrangerSitePatrol4: deso
 		Owner: Orion Group
 		Location: 125,-48
-	StrangerSitePatrol5: deso
-		Owner: Orion Group
-		Location: 118,-44
-	StrangerSitePatrol6: ttnk
+	StrangerSitePatrol5: ttnk
 		Owner: Orion Group
 		Location: 119,-48
-	StrangerSitePatrol7: ttnk
+	StrangerSitePatrol6: ttnk
 		Owner: Orion Group
 		Location: 125,-54
-	StrangerSitePatrol8: apoc
-		Owner: Orion Group
-		Location: 129,-55
 	Roadblock0: ttnk
 		Owner: Orion Group
 		Location: 113,-39

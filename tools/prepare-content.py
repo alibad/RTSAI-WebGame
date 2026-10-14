@@ -495,7 +495,7 @@ def lights_in_the_water():
     m.add('TownPowerTwo', 'napowr', 'Yemen', 8, 66)
     # Captain Haidar's mobile force: no base, no production.
     m.add('MissionSpawn', 'mpspawn', 'Neutral', 26, 76)
-    force = [('r2technical', 2), ('r2ytechrr', 2), ('r2ymlr', 1), ('r2ymr', 4), ('r2yrpg', 3), ('r2yspot', 1)]
+    force = [('r2technical', 2), ('r2ytechrr', 2), ('r2ymlr', 2), ('r2ymr', 4), ('r2yrpg', 3), ('r2yspot', 1)]
     i = 0
     for kind, count in force:
         for _ in range(count):
@@ -511,8 +511,8 @@ def lights_in_the_water():
     # Orion patrols have reached each group: heavier the further east (the stranger is what Orion wants).
     patrols = {'SurvivorsCove': [('e2', -3, -2), ('e2', 3, -2), ('e2', 0, -5), ('deso', 5, -4), ('ttnk', 2, -7)],
                'SurvivorsJetty': [('e2', -3, -2), ('e2', 3, -2), ('e2', -2, -5), ('deso', 4, -5), ('ttnk', 0, -8), ('ttnk', 5, -8)],
-               'StrangerSite': [('e2', -4, -2), ('e2', 3, -2), ('e2', -2, -5), ('e2', 4, -5), ('deso', 0, -3), ('deso', -5, -6),
-                                ('ttnk', -3, -9), ('ttnk', 3, -9), ('apoc', 6, -6)]}
+               'StrangerSite': [('e2', -4, -2), ('e2', 3, -2), ('e2', -2, -5), ('e2', 4, -5), ('deso', 0, -3),
+                                ('ttnk', -3, -9), ('ttnk', 3, -9)]}
     for site, u0 in sites:
         for k, (kind, du, dv) in enumerate(patrols[site]): m.add(f'{site}Patrol{k}', kind, 'Orion Group', u0+du, coast[u0]-3+dv)
     for k, (kind, u, v) in enumerate([('ttnk', 76, 74), ('e2', 75, 77), ('e2', 78, 76)]):
