@@ -58,11 +58,13 @@ for (const [name, browserType, options, contextOptions] of [
       const first = await page.evaluate(() => window.game.client.cur?.header.tick ?? 0);
       await page.waitForTimeout(8000);
       const played = await page.evaluate(() => ({ phase: window.store.getState().phase, error: window.store.getState().error,
+        gridType: window.store.getState().info?.gridType,
         tick: window.game.client.cur?.header.tick ?? 0, actors: window.game.client.cur?.actors.length ?? 0,
         draws: window.game.renderer.stats.draws, textures: window.game.renderer.textures.size }));
       row.modes.push({ profile, ...played, advancedTicks: played.tick - first });
       await page.screenshot({ path: path.join(out, `${name}-${profile}.png`) });
       assert.equal(played.phase, "playing", played.error);
+      assert.equal(played.gridType, profile === "public" ? "RectangularIsometric" : "Rectangular", "Incorrect gameplay grid");
       assert.ok(played.tick - first >= 40, "Simulation stalled");
       assert.ok(played.actors > 0 && played.draws > 0 && played.textures > 0, "No rendered battlefield");
       await page.evaluate(() => window.game.quit());
