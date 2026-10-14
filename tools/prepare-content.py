@@ -936,7 +936,11 @@ def every_light_on():
 
 # Lines of Hope, Act IV (Aftershocks): two chapters on separate coasts and days, one per faction, against the Directorate's
 # last cells. They never meet; Lantern's desk connects them on the radio.
-SALT_ROAD_TOWN = 'PlayerReference@Town:\n\tName: Town\n\tNonCombatant: True\n\tFaction: iran\n\tColor: B8B2A2\n'
+# Both give Orion power, so their tesla coils charge (Act III's run unpowered). The coil's charge sound, btespow.wav, is
+# not in the public build, and the browser simulation stops when it is asked for a missing file: charge with the tesla
+# trooper's charge sound, which ships.
+POWERED_TESLA = 'tesla:\n\tAttackTesla:\n\t\tChargeAudio: iteschaa.wav\n'
+SALT_ROAD_TOWN ='PlayerReference@Town:\n\tName: Town\n\tNonCombatant: True\n\tFaction: iran\n\tColor: B8B2A2\n'
 
 def sweet_water():
     """Act IV, chapter 1 (Iran): a salt-desert trade road and a port town whose water plant, with a coil cache under it,
@@ -1011,7 +1015,7 @@ def sweet_water():
     intact = '\tExternalCondition@intact:\n\t\tCondition: intact\n\tDamageMultiplier@intact:\n\t\tModifier: 0\n\t\tRequiresCondition: intact\n'
     m.write('Sweet Water', 'Iran', 'iran', '6A9E3F', extra_players=SALT_ROAD_TOWN, extra_rules=(
         'sapc:\n\tMobile:\n\t\tSpeed: 70\nnarefn:\n' + intact + 'nanrct:\n' + intact + 'natech:\n' + intact
-        + '\tExternalCondition@sealed:\n\t\tCondition: sealed\n\tCapturable:\n\t\tRequiresCondition: !sealed\n'))
+        + '\tExternalCondition@sealed:\n\t\tCondition: sealed\n\tCapturable:\n\t\tRequiresCondition: !sealed\n' + POWERED_TESLA))
     guns = [name+'Gun' for name, *_ in roadblocks]
     events = [
         dict(id='plant-held', when=dict(time=0), grant=[dict(condition='intact', actors=['WaterPlant', 'PlantPower', 'CoilVault']),
@@ -1160,7 +1164,7 @@ def ghosts_on_the_glass():
         if cells(near, p) < 12: raise ValueError(f'{m.id}: phantom {p} is {cells(near, p):.1f} cells from {near}')
     m.write('Ghosts on the Glass', 'Israel', 'israel', '3A6EA5', extra_players=HARBOUR_CIVILIANS + CONTACTS,
             enemies=('Contacts',), orion_allies=('Contacts',), extra_rules=(
-                contact_rules('htnk', 3) + contact_rules('hyd', 3)
+                contact_rules('htnk', 3) + contact_rules('hyd', 3) + POWERED_TESLA
                 + 'waypoint:\n\tHealth:\n\t\tHP: 1\n\tHitShape:\n\tExternalCondition@struck:\n\t\tCondition: struck\n'
                   '\tKillsSelf@struck:\n\t\tRequiresCondition: struck\n'))
     names = [name for name, *_ in contacts]

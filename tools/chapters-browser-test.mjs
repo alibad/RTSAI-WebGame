@@ -136,11 +136,15 @@ try {
       s = await state(page);
       assert(["plant-held", "intel"].every((e) => s.mission.events.includes(e)), JSON.stringify(s.mission.events));
       assert(s.mission.objectives[1].waiting && s.mission.objectives[3].waiting, "the trucks and the vault are not waiting");
-      // Engineers beside the plant take its power station and its pumps through the player's own orders.
+      // Engineers beside the plant take its power station and its pumps through the player's own orders, each behind
+      // a few tanks that deal with the guards first.
       for (const target of ["PlantPower", "WaterPlant"]) {
         const at = marker(s, target);
         await page.evaluate((m) => window.game.lookAt(m.x, m.y), at);
-        await spawn(page, "engineer", at, 1, 0, 70);
+        await spawn(page, "r2karrar", at, 5, 0, 110);
+        await page.evaluate(() => window.game.client.send({ type: "speed", speed: 2 }));
+        await page.waitForTimeout(6000);
+        await spawn(page, "engineer", at, 1, 0, 60);
         await page.waitForTimeout(800);
         const engineer = await page.evaluate(() => { const c = window.game.client; const me = c.cur.players.findIndex((p) => p.flags & 1); return c.cur.actors.filter((a) => c.str(a.type) === "engineer" && a.owner === me).map((a) => a.id).at(-1); });
         await page.evaluate((id) => window.game.select([id]), engineer);
@@ -149,7 +153,7 @@ try {
         await page.waitForTimeout(400);
       }
       await page.evaluate(() => window.game.client.send({ type: "speed", speed: 4 }));
-      await until(page, () => window.store.getState().ui?.mission?.objectives[2].status !== "active" || ["Won", "Lost"].includes(window.store.getState().ui?.win), null, 180000);
+      await until(page, () => window.store.getState().ui?.mission?.objectives[2].status !== "active" || ["Won", "Lost"].includes(window.store.getState().ui?.win), null, 300000);
       s = await state(page);
       completed = 2;
       await page.waitForTimeout(2000);

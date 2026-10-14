@@ -377,6 +377,9 @@ Rules:
 			BorderColor: 00000080
 			BorderWidth: 5
 			RequiresCondition: !phantom && sensor-on && (sensor-tripped || spoof-off)
+	tesla:
+		AttackTesla:
+			ChargeAudio: iteschaa.wav
 	waypoint:
 		Health:
 			HP: 1
