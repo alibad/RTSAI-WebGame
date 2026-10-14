@@ -38,14 +38,20 @@ static class SoundTest
 		var world = SimHost.World;
 		var players = SimHost.PlayablePlayers();
 		int Targets() => world.Actors.Count(a => a.Owner == players[1] && a.IsInWorld && !a.IsDead && a.TraitOrDefault<Mobile>() != null);
+		string[] Towers() => world.Actors.Where(a => a.IsInWorld && !a.IsDead && a.Info.Name is "tesla" or "atesla")
+			.Select(a => $"{a.Owner.Faction.InternalName}:{a.Info.Name}").Distinct().ToArray();
+
+		// A scenario that places towers stops once their targets are dead; one without (bots building their own bases,
+		// e.g. scenarios/ai-towers.json) runs for --ticks.
+		var placed = spec.Spawns.Count > 0;
 		var before = Targets();
-		var towers = world.Actors.Where(a => a.Owner == players[0] && a.Info.Name is "tesla" or "atesla").Select(a => a.Info.Name).ToArray();
+		var towers = Towers();
 		var ticks = int.Parse(opts.GetValueOrDefault("ticks", "1500"));
 		Exception error = null;
 		var tick = 0;
 		try
 		{
-			for (; tick < ticks && Targets() > 0; tick++)
+			for (; tick < ticks && (!placed || Targets() > 0); tick++)
 				SimHost.Tick();
 		}
 		catch (Exception e)
@@ -54,13 +60,13 @@ static class SoundTest
 		}
 
 		var after = error == null ? Targets() : -1;
-		var fired = error == null && after < before;
+		var fired = error == null && (!placed || after < before);
 		var expectError = opts.ContainsKey("expect-error");
-		var passed = expectError ? error != null : error == null && fired && towers.Length > 0;
+		var passed = expectError ? error != null : error == null && fired && (towers.Length > 0 || !placed);
 		Console.WriteLine(JsonSerializer.Serialize(new
 		{
-			scenario = Path.GetFileName(opts["scenario"]), gate, towers, ticks = tick, targetsBefore = before, targetsAfter = after,
-			skippedSounds = SimHost.SkippedSounds, error = error?.GetBaseException().Message, passed
+			scenario = Path.GetFileName(opts["scenario"]), gate, towers, towersAtEnd = Towers(), ticks = tick, targetsBefore = before,
+			targetsAfter = after, skippedSounds = SimHost.SkippedSounds, error = error?.GetBaseException().Message, passed
 		}));
 		return passed ? 0 : 1;
 	}
