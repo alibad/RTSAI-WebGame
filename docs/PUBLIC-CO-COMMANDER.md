@@ -54,20 +54,30 @@ when only gated objectives remain it prepares for the next one (holds the convoy
 a sealed target, gathers by the base). With a base, it alternates with the economy: the skirmish adviser's, plus
 what the objectives need (build objectives and their prerequisites from the production menu, an engineer for a
 capture, the units a reach objective names) and, when money piles up, more infantry and up to three factories.
-A mission with a base waits for 6/8/10 fighters (easy/normal/hard) before striking a defended objective.
+A mission with a base waits for 6/8/10 fighters (easy/normal/hard) before striking a defended objective. In a
+mission the co-commander looks every game second (every real second at normal speed, more often when a test runs the
+game faster); skirmish keeps one look a second.
 
-Stealth (a `undetected` objective): every move is planned on the cell grid round zones that never sleep and,
+Stealth (an `undetected` objective): every move is planned on the cell grid round zones that never sleep and,
 where it can, round sweeping ones; a group walks to the edge of the next zone and crosses only when the sweep stays
 asleep from the moment the fastest unit could enter until the slowest is through (with the order's delay at the
 game speed). Waypoints keep both of the engine's bent paths between them clear of zones. A team without a base
 (Glass Island) moves in step; its fighters clear guards in sight while the specialist holds or steps back. When
 staying hidden is a bonus objective, units on a required errand keep going.
 
+Contacts (sensors that are enemy units, not masts or markers: Act IV's Ghosts on the Glass, where six of nine are
+phantoms and firing on an unverified phantom fails the mission) are verified before anyone fires on them: while any
+is unverified, armed units are set to return fire only, units move instead of attack-moving, guards are attacked by
+name, defence never targets a contact, no new guns are built, and one unit goes within each contact's radius (a
+contact out of reach is not tried again). Once every contact is verified, units fire at will again. Captures take the
+places not yet ours, the least defended first (Sweet Water's power station before the pumps), and the economy trains
+an engineer for each place still to take.
+
 Lines are short and stay the same while nothing changes, so Suggest shows the next objective-driven step: "Find
 the first group of survivors at the cove: send 12 units there (3 must reach it).", "Take the Network Technician to
 the core node and deploy it: hold at the edge of the bluff mast's zone and cross while it sleeps.", "The curtain
 control is clear: send your Engineer to capture it now." The mission's unit orders (move, attack-move, attack,
-capture, C4, deploy, stop, queued waypoints) go through the same confirmation and native checks as every proposal;
+capture, C4, deploy, stop, stance, queued waypoints) go through the same confirmation and native checks as every proposal;
 `target_actor_id` and `queued` are now encoded.
 
 `node tools/mission-adviser-test.mjs` checks the planner on synthetic observations; `node tools/chapters-playtest.mjs`
