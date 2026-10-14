@@ -10,7 +10,8 @@ using OpenRA.WebSim;
 // usage: MissionProbe <vfs root> <scenario.json> <ticks> [plan] [difficulty] (see MissionProbe.csproj)
 // plan "idle": the player does nothing. plan "sweep": the whole force attack-moves through the named waypoints in
 // order (a crude stand-in for a player), moving on when the force is near each one or after a time limit.
-// plans "stealth", "boarding", "finale": the scripted players of Scripted.cs (Glass Island, Black Platform, Every Light On).
+// plans "stealth", "boarding", "finale", "water", "verify", "careless": the scripted players of Scripted.cs (Glass Island,
+// Black Platform, Every Light On, Sweet Water, Ghosts on the Glass).
 static class Probe
 {
 	static int Main(string[] args)
@@ -26,7 +27,9 @@ static class Probe
 		var human = world.LocalPlayer;
 		var named = world.WorldActor.Trait<SpawnMapActors>().Actors;
 		var watch = named.Keys.Where(k => k.Contains("Checkpoint") || k.Contains("Pier") || k.Contains("Clinic") || k.Contains("Watch") || k.Contains("Town")
-			|| k.StartsWith("Dome", StringComparison.Ordinal) || k.StartsWith("Gen", StringComparison.Ordinal) || k is "Tanya" or "Specialist" or "CurtainControl" or "PictureRelay" or "SaudiConyard").ToArray();
+			|| k.StartsWith("Dome", StringComparison.Ordinal) || k.StartsWith("Gen", StringComparison.Ordinal) || k is "Tanya" or "Specialist" or "CurtainControl" or "PictureRelay" or "SaudiConyard"
+			|| k.StartsWith("Relay", StringComparison.Ordinal) && !k.Contains("Guard") || k.StartsWith("Shelter", StringComparison.Ordinal) || k.EndsWith("Gun", StringComparison.Ordinal) && k.StartsWith("Roadblock", StringComparison.Ordinal)
+			|| k is "WaterPlant" or "PlantPower" or "CoilVault" or "ContactPicture" || (k.StartsWith("Iran", StringComparison.Ordinal) || k.StartsWith("Israel", StringComparison.Ordinal)) && !k.Contains("Guard")).ToArray();
 		var script = Scripted.For(plan, world, human, named, Missions.Catalog.Single(m => m.Id == spec.Mission));
 		var steps = plan == "idle" || script != null ? [] : plan.Split(',');
 		var step = 0; var stepStart = 0;

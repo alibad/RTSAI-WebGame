@@ -1,0 +1,52 @@
+{
+  "mission": "epilogue",
+  "chapter": "Lines of Hope · Epilogue",
+  "title": "1946",
+  "style": "Cinematic painted key art in an archival film look for a real-time strategy game: soft film grain, warm amber lamp light and silver shadows, pale blue electric light where the past shows through, deep shadows, rich detail, wide 16:9 composition, no text, no logos, no letters, no flags, no insignia.",
+  "music": {
+    "caption": "slow melancholic brass waltz under old film crackle, the fragile music box motif returning, a warm swell of strings, then one unresolved low note and the faint hum of a giant machine, no vocals",
+    "seconds": 60
+  },
+  "shots": [
+    {
+      "id": "wall",
+      "prompt": "A small operations room at night after a long crisis: the screens quiet and dim, one warm amber desk lamp, a cork wall covered with pinned photographs, maps, notes and red string, a cold mug of tea on the desk, peaceful but watchful.",
+      "line": "When every light was back on, Lantern went back to her wall.",
+      "motion": "push-in-slow"
+    },
+    {
+      "id": "pinning",
+      "prompt": "Close on a woman's hands pinning an old black-and-white photograph to a cork wall under a warm amber desk lamp; the print shows a huge machine of brass rings and glass coils in a laboratory hall, an elderly white-haired scientist standing beside it.",
+      "line": "One print was missing from it: the first test of the Chronosphere, nineteen forty-six.",
+      "motion": "static",
+      "action": "Her fingers press the pin home and smooth the corner of the print."
+    },
+    {
+      "id": "print",
+      "prompt": "An old black-and-white photograph from 1946 filling the frame, painted in an archival style: a vast laboratory hall, a huge time machine of brass rings and glass coils on a platform, an elderly scientist with wild white hair and a white moustache standing at the control desk, technicians in white coats in a row behind him, film grain, silver light, scratches on the print.",
+      "line": "She knew every face in it. She had counted them a hundred times.",
+      "motion": "push-in-slow"
+    },
+    {
+      "id": "loupe",
+      "prompt": "Close-up of a magnifying loupe held over an old black-and-white photograph under amber lamp light; through the glass, far in the background behind a brass ring machine, a tall man in a long dark overcoat whose face is lost in deep shadow, one gloved hand resting on a brass rail, standing where no one stood before.",
+      "line": "Tonight there is one more. A man who was not in the picture yesterday.",
+      "motion": "zoom-target"
+    },
+    {
+      "id": "lantern",
+      "reference": "cast/lantern",
+      "prompt": "Keep this woman's face, glasses and cardigan exactly. Move her to the same small operations room at night, sitting very still at her desk under the warm amber lamp, an old photograph in her hand, the glow of quiet screens behind her, a look of quiet dread, looking past the viewer.",
+      "line": "For seventy-three years he was missing from every photograph.",
+      "motion": "push-in-slow"
+    },
+    {
+      "id": "needle",
+      "prompt": "On a desk under a warm amber lamp at night, an old 1950s radio set with its dial needle swinging by itself, a pinned black-and-white photograph out of focus on the cork wall behind it, a faint pale blue flicker in the air like an old film frame.",
+      "line": "Tonight he is in the first one.",
+      "motion": "push-in",
+      "action": "The radio needle swings and the pale blue flicker passes across the wall.",
+      "title": true
+    }
+  ]
+}

@@ -1,0 +1,333 @@
+MapFormat: 12
+RequiresMod: rtsai
+Title: Sweet Water
+Author: RTS AI — Lines of Hope
+Tileset: TEMPERATE
+MapSize: 96,96
+Bounds: 1,1,94,94
+Visibility: MissionSelector
+Categories: Campaign
+LockPreview: True
+Players:
+	PlayerReference@Iran:
+		Name: Iran
+		AllowBots: False
+		Playable: True
+		Required: True
+		LockFaction: True
+		Faction: iran
+		LockColor: True
+		Color: 6A9E3F
+		LockSpawn: True
+		LockTeam: True
+		Enemies: Orion Group
+	PlayerReference@Orion:
+		Name: Orion Group
+		Faction: russia
+		Color: 545D66
+		Enemies: Iran
+	PlayerReference@Neutral:
+		Name: Neutral
+		OwnsWorld: True
+		NonCombatant: True
+		Faction: china
+	PlayerReference@Town:
+		Name: Town
+		NonCombatant: True
+		Faction: iran
+		Color: B8B2A2
+Actors:
+	MissionSpawn: mpspawn
+		Owner: Neutral
+		Location: 42,22
+	IranConyard: nacnst
+		Owner: Iran
+		Location: 37,21
+	IranPowerOne: napowr
+		Owner: Iran
+		Location: 32,25
+	IranPowerTwo: napowr
+		Owner: Iran
+		Location: 34,28
+	IranBarracks: nahand
+		Owner: Iran
+		Location: 43,13
+	IranFactory: naweap
+		Owner: Iran
+		Location: 45,18
+	IranRefinery: narefn
+		Owner: Iran
+		Location: 49,22
+	IranRadar: naradr
+		Owner: Iran
+		Location: 38,30
+	IranBunkerNorth: r2irbunker
+		Owner: Iran
+		Location: 35,17
+	IranBunkerEast: r2irbunker
+		Owner: Iran
+		Location: 47,6
+	Tavakoli0: r2karrar
+		Owner: Iran
+		Location: 48,9
+	Tavakoli1: r2karrar
+		Owner: Iran
+		Location: 50,8
+	Tavakoli2: r2karrar
+		Owner: Iran
+		Location: 52,5
+	Tavakoli3: r2karrar
+		Owner: Iran
+		Location: 54,4
+	Tavakoli4: r2raad
+		Owner: Iran
+		Location: 56,1
+	Tavakoli5: r2basij
+		Owner: Iran
+		Location: 58,0
+	Tavakoli6: r2basij
+		Owner: Iran
+		Location: 49,10
+	Tavakoli7: r2basij
+		Owner: Iran
+		Location: 51,9
+	Tavakoli8: r2basij
+		Owner: Iran
+		Location: 53,6
+	Tavakoli9: r2basij
+		Owner: Iran
+		Location: 55,5
+	Tavakoli10: r2basij
+		Owner: Iran
+		Location: 57,2
+	Tavakoli11: r2toophan
+		Owner: Iran
+		Location: 59,1
+	Tavakoli12: r2toophan
+		Owner: Iran
+		Location: 50,11
+	Tavakoli13: r2toophan
+		Owner: Iran
+		Location: 52,10
+	Tavakoli14: engineer
+		Owner: Iran
+		Location: 54,7
+	Tavakoli15: engineer
+		Owner: Iran
+		Location: 56,6
+	Tavakoli16: engineer
+		Owner: Iran
+		Location: 58,3
+	RoadblockWestGun: nalasr
+		Owner: Orion Group
+		Location: 59,-10
+	RoadblockWestGuard0: e2
+		Owner: Orion Group
+		Location: 55,-9
+	RoadblockWestGuard1: e2
+		Owner: Orion Group
+		Location: 62,-10
+	RoadblockWestGuard2: flakt
+		Owner: Orion Group
+		Location: 61,-8
+	RoadblockWestGuard3: htnk
+		Owner: Orion Group
+		Location: 60,-14
+	RoadblockWestGuard4: e2
+		Owner: Orion Group
+		Location: 56,-11
+	RoadblockMidGun: nalasr
+		Owner: Orion Group
+		Location: 71,-21
+	RoadblockMidGuard0: e2
+		Owner: Orion Group
+		Location: 68,-21
+	RoadblockMidGuard1: e2
+		Owner: Orion Group
+		Location: 75,-22
+	RoadblockMidGuard2: flakt
+		Owner: Orion Group
+		Location: 72,-18
+	RoadblockMidGuard3: deso
+		Owner: Orion Group
+		Location: 73,-25
+	RoadblockMidGuard4: htnk
+		Owner: Orion Group
+		Location: 70,-17
+	RoadblockMidGuard5: e2
+		Owner: Orion Group
+		Location: 74,-20
+	RoadblockEastGun: nalasr
+		Owner: Orion Group
+		Location: 82,-33
+	RoadblockEastCoil: tesla
+		Owner: Orion Group
+		Location: 84,-34
+	RoadblockEastGuard0: e2
+		Owner: Orion Group
+		Location: 78,-32
+	RoadblockEastGuard1: e2
+		Owner: Orion Group
+		Location: 85,-33
+	RoadblockEastGuard2: flakt
+		Owner: Orion Group
+		Location: 80,-35
+	RoadblockEastGuard3: deso
+		Owner: Orion Group
+		Location: 80,-28
+	RoadblockEastGuard4: htnk
+		Owner: Orion Group
+		Location: 83,-37
+	RoadblockEastGuard5: ttnk
+		Owner: Orion Group
+		Location: 87,-35
+	TownHall: nahand
+		Owner: Town
+		Location: 79,-55
+	TownMarket: nadept
+		Owner: Town
+		Location: 88,-58
+	TownWorks: napowr
+		Owner: Town
+		Location: 91,-67
+	WaterPlant: narefn
+		Owner: Orion Group
+		Location: 100,-44
+		FreeActor: False
+	PlantPower: nanrct
+		Owner: Orion Group
+		Location: 98,-62
+	CoilVault: natech
+		Owner: Orion Group
+		Location: 103,-39
+	PlantTeslaNorth: tesla
+		Owner: Orion Group
+		Location: 96,-42
+	PlantTeslaSouth: tesla
+		Owner: Orion Group
+		Location: 100,-37
+	PlantGun: nalasr
+		Owner: Orion Group
+		Location: 103,-49
+	PlantFlak: naflak
+		Owner: Orion Group
+		Location: 109,-53
+	PlantTeslaEast: tesla
+		Owner: Orion Group
+		Location: 113,-52
+	PlantGunWest: nalasr
+		Owner: Orion Group
+		Location: 94,-36
+	PlantGuard0: e2
+		Owner: Orion Group
+		Location: 96,-39
+	PlantGuard1: e2
+		Owner: Orion Group
+		Location: 106,-47
+	PlantGuard2: e2
+		Owner: Orion Group
+		Location: 108,-44
+	PlantGuard3: e2
+		Owner: Orion Group
+		Location: 92,-40
+	PlantGuard4: e2
+		Owner: Orion Group
+		Location: 105,-36
+	PlantGuard5: flakt
+		Owner: Orion Group
+		Location: 110,-41
+	PlantGuard6: deso
+		Owner: Orion Group
+		Location: 106,-43
+	PlantGuard7: htnk
+		Owner: Orion Group
+		Location: 96,-35
+	PlantGuard8: htnk
+		Owner: Orion Group
+		Location: 98,-47
+	PlantGuard9: ttnk
+		Owner: Orion Group
+		Location: 107,-54
+	PlantGuard10: ttnk
+		Owner: Orion Group
+		Location: 100,-34
+	PlantGuard11: shk
+		Owner: Orion Group
+		Location: 99,-47
+	PlantGuard12: e2
+		Owner: Orion Group
+		Location: 94,-60
+	PlantGuard13: e2
+		Owner: Orion Group
+		Location: 103,-65
+	PlantGuard14: flakt
+		Owner: Orion Group
+		Location: 101,-59
+	PlantGuard15: htnk
+		Owner: Orion Group
+		Location: 96,-57
+	TruckEntry: waypoint
+		Owner: Neutral
+		Location: 27,23
+	RoadCamp: waypoint
+		Owner: Neutral
+		Location: 39,11
+	SaltWest: waypoint
+		Owner: Neutral
+		Location: 53,-3
+	SaltMid: waypoint
+		Owner: Neutral
+		Location: 65,-15
+	SaltEast: waypoint
+		Owner: Neutral
+		Location: 77,-27
+	TownGate: waypoint
+		Owner: Neutral
+		Location: 76,-36
+	Cistern: waypoint
+		Owner: Neutral
+		Location: 79,-47
+	RaidCamp: waypoint
+		Owner: Neutral
+		Location: 47,-41
+	Dock: waypoint
+		Owner: Neutral
+		Location: 112,-61
+	DockWater: waypoint
+		Owner: Neutral
+		Location: 114,-60
+	SeaApproach: waypoint
+		Owner: Neutral
+		Location: 119,-68
+Rules:
+	World:
+		-SpawnStartingUnits:
+		-CrateSpawner:
+		-StartGameNotification:
+	Player:
+		-ConquestVictoryConditions:
+	sapc:
+		Mobile:
+			Speed: 70
+	narefn:
+		ExternalCondition@intact:
+			Condition: intact
+		DamageMultiplier@intact:
+			Modifier: 0
+			RequiresCondition: intact
+	nanrct:
+		ExternalCondition@intact:
+			Condition: intact
+		DamageMultiplier@intact:
+			Modifier: 0
+			RequiresCondition: intact
+	natech:
+		ExternalCondition@intact:
+			Condition: intact
+		DamageMultiplier@intact:
+			Modifier: 0
+			RequiresCondition: intact
+		ExternalCondition@sealed:
+			Condition: sealed
+		Capturable:
+			RequiresCondition: !sealed

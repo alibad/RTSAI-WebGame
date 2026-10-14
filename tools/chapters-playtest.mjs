@@ -22,11 +22,20 @@ const limitMinutes = Number(opt("limit", 14));
 const director = argv.includes("--director");
 const auto = opt("mode", "auto") !== "suggest";
 fs.mkdirSync(out, { recursive: true });
-// Mission goals in order: send the army to `goal` (a named actor) until objective `until` is complete.
+// Mission goals in order: send the army to `goal` (a named actor) until objective `until` is complete (a number), until
+// the mission event `until` has fired (a string), or for `minutes` of game time. `units` (a pattern of unit types) sends
+// only those units, with `action` (default attack_move); `capture` sends an engineer to capture each named building.
 const DIRECTOR = {
   "lights-in-the-water": [{ goal: "SurvivorsCove", until: 0 }, { goal: "SurvivorsJetty", until: 1 }, { goal: "StrangerSite", until: 2 },
     { goal: "ReefRoadMid", until: 3 }, { goal: "TownGate", until: 99 }],
   "hold-the-ferry-line": [{ goal: "OrionPicket0", until: 0 }, { goal: "FerryPierNorth", until: 99 }],
+  "sweet-water": [{ goal: "RoadblockEastGun", until: 0 }, { goal: "PlantPower", until: 2, capture: ["PlantPower", "WaterPlant"] },
+    { goal: "CoilVault", until: 3, capture: ["CoilVault"] }],
+  // Observers first, on the contacts along the city road and the bay head; then the relays; then home to hold.
+  "ghosts-on-the-glass": [{ goal: "Contact6", until: "ghost-school", units: "observer", action: "move" },
+    { goal: "Contact7", until: "ghost-north", units: "observer", action: "move" },
+    { goal: "Contact4", until: "ghost-bridge", units: "observer", action: "move" },
+    { goal: "RelayNorth", minutes: 3 }, { goal: "RelayCape", minutes: 3 }, { goal: "RelaySouth", until: 1 }, { goal: "IsraelConyard", until: 99 }],
 };
 // Named actors' cells from the map (CPos), converted to the co-commander's map positions (MPos, isometric).
 const named = {};
@@ -69,7 +78,7 @@ for (const difficulty of diffs.split(",")) {
       // The co-commander's feed: orders applied or refused, and its lines (new entries since the last look).
       const state = () => page.evaluate(() => { const s = window.store.getState(); return { win: ["Won", "Lost"].includes(s.ui?.win) ? s.ui.win : "", tick: s.ui?.tick ?? 0, cash: s.ui?.cash ?? 0, m: s.ui?.mission,
         feed: s.cc.feed.map((f) => ({ id: f.id, kind: f.kind, text: f.text, state: f.state })) }; });
-      let s = await state(), lastMin = -1, lastPush = 0, step = 0, seen = 0, applied = 0, refused = 0, line = "";
+      let s = await state(), lastMin = -1, lastPush = 0, step = 0, stepStart = 0, seen = 0, applied = 0, refused = 0, line = "";
       const timeline = [], lines = [], refusals = [];
       const read = () => {
         for (const f of s.feed.filter((x) => x.id > seen)) {
@@ -80,25 +89,36 @@ for (const difficulty of diffs.split(",")) {
         seen = Math.max(seen, ...s.feed.map((x) => x.id));
       };
       const plan = director ? DIRECTOR[mission] ?? [] : [];
+      const stepDone = (p) => typeof p.until === "string" ? (s.m.events ?? []).includes(p.until)
+        : p.minutes ? s.tick - stepStart >= p.minutes * 1500 : s.m.objectives[p.until]?.status === "complete";
       while (!s.win && s.tick < limitMinutes * 1500) {
         await page.waitForTimeout(2000);
         s = await state();
         read();
-        while (step < plan.length && s.m.objectives[plan[step].until]?.status === "complete") step++;
+        while (step < plan.length && stepDone(plan[step])) { step++; stepStart = s.tick; }
         if (step < plan.length && Date.now() - lastPush > 8000) {
           lastPush = Date.now();
-          const goal = named[plan[step].goal];
-          const sent = await page.evaluate(async ({ goal, nonCombat }) => {
+          const p = plan[step];
+          const goal = named[p.goal];
+          const captures = (p.capture ?? []).map((n) => named[n]);
+          const sent = await page.evaluate(async ({ goal, nonCombat, units, action, captures }) => {
             const obs = await window.game.client.adviserObserve();
-            const far = obs.units.filter((u) => u.canAttack && !new RegExp(nonCombat, "i").test(u.kind)
-              && Math.hypot(u.cellX - goal[0], (u.cellY - goal[1]) / 2) > 3);
+            const pick = (u) => units ? new RegExp(units, "i").test(u.kind) : u.canAttack && !new RegExp(nonCombat, "i").test(u.kind);
+            const far = obs.units.filter((u) => pick(u) && Math.hypot(u.cellX - goal[0], (u.cellY - goal[1]) / 2) > 3);
             let ok = 0;
             for (const u of far.slice(0, 30)) {
-              try { const r = await window.game.client.adviserExecute(`director-${u.actorId}-${Date.now()}`, [{ action: "attack_move", actor_id: u.actorId, target_x: goal[0], target_y: goal[1] }]); if (r?.accepted) ok++; } catch { /* refused */ }
+              try { const r = await window.game.client.adviserExecute(`director-${u.actorId}-${Date.now()}`, [{ action, actor_id: u.actorId, target_x: goal[0], target_y: goal[1] }]); if (r?.accepted) ok++; } catch { /* refused */ }
+            }
+            // One engineer to each building to capture (the nearest idle one each time; re-sent while not taken).
+            const engineers = obs.units.filter((u) => /engineer/i.test(u.kind));
+            for (const [k, c] of captures.entries()) {
+              const e = engineers[k];
+              if (!e) break;
+              try { const r = await window.game.client.adviserExecute(`director-capture-${e.actorId}-${Date.now()}`, [{ action: "capture", actor_id: e.actorId, target_x: c[0], target_y: c[1] }]); if (r?.accepted) ok++; } catch { /* refused */ }
             }
             return ok;
-          }, { goal, nonCombat: nonCombat.source });
-          if (sent) timeline.push(`${(s.tick / 1500).toFixed(1)} min: ${sent} units to ${plan[step].goal}`);
+          }, { goal, nonCombat: nonCombat.source, units: p.units ?? null, action: p.action ?? "attack_move", captures });
+          if (sent) timeline.push(`${(s.tick / 1500).toFixed(1)} min: ${sent} orders toward ${p.goal}`);
         }
         const min = Math.floor(s.tick / 1500);
         if (min !== lastMin) {

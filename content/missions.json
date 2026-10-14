@@ -1406,5 +1406,603 @@
         "secondary": true
       }
     ]
+  },
+  {
+    "id": "sweet-water",
+    "title": "Sweet Water",
+    "faction": "iran",
+    "campaign": "Lines of Hope",
+    "slot": "Iran",
+    "enemy": "Orion Group",
+    "protect": [
+      "IranConyard"
+    ],
+    "events": [
+      {
+        "id": "plant-held",
+        "when": {
+          "time": 0
+        },
+        "grant": [
+          {
+            "condition": "intact",
+            "actors": [
+              "WaterPlant",
+              "PlantPower",
+              "CoilVault"
+            ]
+          },
+          {
+            "condition": "sealed",
+            "actors": [
+              "CoilVault"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "intel",
+        "when": {
+          "time": 0
+        },
+        "reveal": [
+          {
+            "at": "RoadblockWestGun",
+            "radius": 3
+          },
+          {
+            "at": "RoadblockMidGun",
+            "radius": 3
+          },
+          {
+            "at": "RoadblockEastGun",
+            "radius": 3
+          },
+          {
+            "at": "WaterPlant",
+            "radius": 3
+          }
+        ]
+      },
+      {
+        "id": "raid",
+        "when": {
+          "time": 300
+        },
+        "repeat": 180,
+        "until": "water-on",
+        "spawn": [
+          {
+            "at": "RaidCamp",
+            "to": "IranConyard",
+            "types": [
+              "e2",
+              "e2",
+              "flakt",
+              "e2",
+              "deso"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "trucks-rolling",
+        "when": {
+          "objective": 0
+        }
+      },
+      {
+        "id": "trucks-in",
+        "when": {
+          "objective": 1
+        }
+      },
+      {
+        "id": "water-on",
+        "when": {
+          "objective": 2
+        },
+        "reveal": [
+          {
+            "at": "WaterPlant",
+            "radius": 10
+          }
+        ]
+      },
+      {
+        "id": "recovery",
+        "when": {
+          "event": "water-on"
+        },
+        "delay": 20,
+        "repeat": 40,
+        "until": "cache-secured",
+        "spawn": [
+          {
+            "at": "Dock",
+            "to": "CoilVault",
+            "types": [
+              "e2",
+              "e2",
+              "flakt",
+              "deso",
+              "e2",
+              "htnk"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "gunboat",
+        "when": {
+          "event": "water-on"
+        },
+        "delay": 30,
+        "spawn": [
+          {
+            "at": "SeaApproach",
+            "to": "DockWater",
+            "types": [
+              "hyd",
+              "hyd"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "vault-open",
+        "when": {
+          "event": "water-on"
+        },
+        "delay": 45,
+        "revoke": [
+          {
+            "condition": "sealed",
+            "actors": [
+              "CoilVault"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "cache-secured",
+        "when": {
+          "objective": 3
+        }
+      }
+    ],
+    "briefing": "Colonel Arash Tavakoli. A cell of the Obsidian Directorate has seized the desalination and power plant of a port town on the salt coast and cut the town's water. Under the plant is a cache of Chronosphere coils the cell means to take away by sea.\n\nArmy water trucks are waiting at the western edge of the salt, and they are due on the road in ten minutes. The cell has blocked the salt road in three places: destroy each roadblock's gun before then, and bring the trucks through to the town cistern. Retake the plant with engineers: its pumps, and the power station that feeds the cell's coils. When the lock on the vault is cut, take the cache whole with an engineer. Nothing on the plant can be destroyed.\n\nRaiders from the northern hills will strike the road camp. If the construction yard falls, the trucks are lost, or the road is still closed when the trucks are due, the operation fails.",
+    "adaptation": "An original RTS AI chapter on the terrain of Jizan Corridor, with a new coast, salt flat and actors.",
+    "objectives": [
+      {
+        "text": "Clear the three roadblocks on the salt road before the water trucks are due.",
+        "kind": "destroy",
+        "targets": [
+          "RoadblockWestGun",
+          "RoadblockMidGun",
+          "RoadblockEastGun"
+        ],
+        "limit": 600
+      },
+      {
+        "text": "Bring the water trucks through to the town cistern.",
+        "kind": "escort",
+        "targets": [],
+        "entry": "TruckEntry",
+        "route": [
+          "RoadCamp",
+          "SaltWest",
+          "SaltMid",
+          "SaltEast",
+          "TownGate",
+          "Cistern"
+        ],
+        "count": 2,
+        "requires": [
+          0
+        ]
+      },
+      {
+        "text": "Retake the water plant: capture its pumps and its power station with engineers.",
+        "kind": "capture",
+        "targets": [
+          "WaterPlant",
+          "PlantPower"
+        ]
+      },
+      {
+        "text": "Take the coil cache in the plant vault with an engineer.",
+        "kind": "capture",
+        "targets": [
+          "CoilVault"
+        ],
+        "requires": [
+          2
+        ],
+        "after": [
+          "vault-open"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "ghosts-on-the-glass",
+    "title": "Ghosts on the Glass",
+    "faction": "israel",
+    "campaign": "Lines of Hope",
+    "slot": "Israel",
+    "enemy": "Orion Group",
+    "protect": [
+      "IsraelConyard"
+    ],
+    "sensors": [
+      {
+        "actor": "Contact1",
+        "radius": 3
+      },
+      {
+        "actor": "Contact2",
+        "radius": 3
+      },
+      {
+        "actor": "Contact3",
+        "radius": 3
+      },
+      {
+        "actor": "Contact4",
+        "radius": 3
+      },
+      {
+        "actor": "Contact5",
+        "radius": 3
+      },
+      {
+        "actor": "Contact6",
+        "radius": 3
+      },
+      {
+        "actor": "Contact7",
+        "radius": 3
+      },
+      {
+        "actor": "Contact8",
+        "radius": 3
+      },
+      {
+        "actor": "Contact9",
+        "radius": 3
+      },
+      {
+        "actor": "WarnSchool",
+        "radius": 9
+      },
+      {
+        "actor": "WarnNorth",
+        "radius": 9
+      },
+      {
+        "actor": "WarnBridge",
+        "radius": 9
+      }
+    ],
+    "events": [
+      {
+        "id": "phantoms",
+        "when": {
+          "time": 0
+        },
+        "grant": [
+          {
+            "condition": "phantom",
+            "actors": [
+              "Contact1",
+              "Contact3",
+              "Contact4",
+              "Contact6",
+              "Contact7",
+              "Contact9"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "intel",
+        "when": {
+          "time": 0
+        },
+        "reveal": [
+          {
+            "at": "RelayNorth",
+            "radius": 3
+          },
+          {
+            "at": "RelayCape",
+            "radius": 3
+          },
+          {
+            "at": "RelaySouth",
+            "radius": 3
+          }
+        ]
+      },
+      {
+        "id": "struck-Contact1",
+        "when": {
+          "killed": "Contact1"
+        },
+        "grant": [
+          {
+            "condition": "struck",
+            "actors": [
+              "ContactPicture"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "struck-Contact3",
+        "when": {
+          "killed": "Contact3"
+        },
+        "grant": [
+          {
+            "condition": "struck",
+            "actors": [
+              "ContactPicture"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "struck-Contact4",
+        "when": {
+          "killed": "Contact4"
+        },
+        "grant": [
+          {
+            "condition": "struck",
+            "actors": [
+              "ContactPicture"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "struck-Contact6",
+        "when": {
+          "killed": "Contact6"
+        },
+        "grant": [
+          {
+            "condition": "struck",
+            "actors": [
+              "ContactPicture"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "struck-Contact7",
+        "when": {
+          "killed": "Contact7"
+        },
+        "grant": [
+          {
+            "condition": "struck",
+            "actors": [
+              "ContactPicture"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "struck-Contact9",
+        "when": {
+          "killed": "Contact9"
+        },
+        "grant": [
+          {
+            "condition": "struck",
+            "actors": [
+              "ContactPicture"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "warn-school",
+        "when": {
+          "detected": "WarnSchool"
+        }
+      },
+      {
+        "id": "warn-north",
+        "when": {
+          "detected": "WarnNorth"
+        }
+      },
+      {
+        "id": "warn-bridge",
+        "when": {
+          "detected": "WarnBridge"
+        }
+      },
+      {
+        "id": "ghost-quay",
+        "when": {
+          "detected": "Contact1"
+        }
+      },
+      {
+        "id": "ghost-school",
+        "when": {
+          "detected": "Contact6"
+        }
+      },
+      {
+        "id": "ghost-north",
+        "when": {
+          "detected": "Contact7"
+        }
+      },
+      {
+        "id": "ghost-bridge",
+        "when": {
+          "detected": "Contact4"
+        }
+      },
+      {
+        "id": "real-bridge",
+        "when": {
+          "detected": "Contact5"
+        }
+      },
+      {
+        "id": "real-cape",
+        "when": {
+          "detected": "Contact8"
+        }
+      },
+      {
+        "id": "landing",
+        "when": {
+          "time": 210
+        },
+        "repeat": 150,
+        "until": "picture-clean",
+        "spawn": [
+          {
+            "at": "LandingBeach",
+            "to": "IsraelConyard",
+            "types": [
+              "e2",
+              "e2",
+              "flakt",
+              "htnk",
+              "e2"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "picture-clean",
+        "when": {
+          "objective": 1
+        },
+        "grant": [
+          {
+            "condition": "spoof-off",
+            "actors": [
+              "Contact1",
+              "Contact2",
+              "Contact3",
+              "Contact4",
+              "Contact5",
+              "Contact6",
+              "Contact7",
+              "Contact8",
+              "Contact9"
+            ]
+          }
+        ],
+        "reveal": [
+          {
+            "radius": 0
+          }
+        ]
+      },
+      {
+        "id": "strike-group",
+        "when": {
+          "event": "picture-clean"
+        },
+        "delay": 15,
+        "repeat": 45,
+        "until": "held",
+        "spawn": [
+          {
+            "at": "LandingBeach",
+            "to": "IsraelConyard",
+            "types": [
+              "htnk",
+              "e2",
+              "e2",
+              "flakt",
+              "deso"
+            ]
+          },
+          {
+            "at": "SeaSouth",
+            "to": "HarbourMouth",
+            "types": [
+              "hyd",
+              "hyd"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "held",
+        "when": {
+          "objective": 2
+        }
+      }
+    ],
+    "briefing": "Lieutenant Colonel Maya Ronen. The harbour city's picture shows nine contacts closing on it, and most of them are not there. A cell of the Obsidian Directorate is painting phantoms onto every screen in the city from relay towers on the cape across the bay. It wants the city to fire first, on nothing, and to sell the picture.\n\nEvery contact is marked by a ring. Before anything fires on one, verify it: a unit of yours must come within its ring. A phantom fades and its ring turns pale; a real contact's ring turns red. Send forward observers first, and set approaching units to Return fire so they never shoot first. Then take the road round the head of the bay, destroy the three relay towers, and hold the harbour against the strike group behind the lie.\n\nThe families are in three public shelters. If the city fires on a phantom, a shelter falls, or the construction yard is lost, the operation fails.",
+    "adaptation": "An original RTS AI chapter on the frame of the Bab al-Mandab Passage map, repainted as a harbour bay.",
+    "objectives": [
+      {
+        "text": "Fire on nothing you have not verified.",
+        "kind": "protect",
+        "targets": [
+          "ContactPicture"
+        ]
+      },
+      {
+        "text": "Destroy the three relay towers on the cape before first light.",
+        "kind": "destroy",
+        "targets": [
+          "RelayNorth",
+          "RelayCape",
+          "RelaySouth"
+        ],
+        "limit": 960
+      },
+      {
+        "text": "Hold the harbour until the strike group turns back.",
+        "kind": "survive",
+        "targets": [],
+        "seconds": 180,
+        "requires": [
+          1
+        ]
+      },
+      {
+        "text": "Keep the shelters standing.",
+        "kind": "protect",
+        "targets": [
+          "ShelterNorth",
+          "ShelterSchool",
+          "ShelterQuay"
+        ]
+      },
+      {
+        "text": "Verify every contact on the picture.",
+        "kind": "scout",
+        "targets": [
+          "Contact1",
+          "Contact2",
+          "Contact3",
+          "Contact4",
+          "Contact5",
+          "Contact6",
+          "Contact7",
+          "Contact8",
+          "Contact9"
+        ],
+        "radius": 3,
+        "secondary": true
+      }
+    ]
   }
 ]
