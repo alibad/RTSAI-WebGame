@@ -824,7 +824,7 @@ function focusOf(w: World): Focus | null {
   };
   const army0 = (o: Objective) => o.status === "active" && !passiveKinds.has(o.kind) && !["build", "disperse", "scout"].includes(o.kind) && !special(o);
   // Targets all out at sea are for ships: an army with none takes them last.
-  const ships = w.fighters.some((u) => !w.onLand(u));
+  const ships = w.fighters.some((u) => w.ctx.techTree[baseType(u.kind)]?.queue === "Ship");
   const atSea = (o: Objective) => !ships && !!w.grid && (o.kind === "destroy" || o.kind === "capture") && (o.targets ?? []).length > 0
     && (o.targets ?? []).every((t) => { const p = w.where(t); return !p || !w.grid!.pass(p); });
   const rank = (o: Objective) => (o.secondary ? 1000 : 0) + (o.kind === "survive" ? 500 : 0) + (atSea(o) ? 400 : 0) + (o.limit ? -100 : 0) + far(o) / 10;
