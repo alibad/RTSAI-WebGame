@@ -381,7 +381,7 @@
     "protect": [
       "TownClinic"
     ],
-    "briefing": "Captain Nabil Haidar, coast guard. Tonight the navigation lights along this reef coast lied. Spoofed signals steered the fishing fleet onto the reef line, and three groups of survivors are stranded on the beaches east of town.\n\nYou have a small mobile force and no base. Find all three groups, then bring their transports back along the coast road to the town clinic. Orion Group patrols are already closing in from the north, and their columns will strike the watch post and then the town. The third group pulled someone out of the sea, a stranger nobody can explain.\n\nIf the clinic falls or your force is lost, the operation fails.",
+    "briefing": "Captain Nabil Haidar, coast guard. Tonight the navigation lights along this reef coast lied. Spoofed signals steered the fishing fleet onto the reef line, and three groups of survivors are stranded on the beaches east of town.\n\nYou have a small mobile force and no base. Find all three groups. The transports can only cross the reef at high tide, eight minutes from now; escort them from the reef landing along the coast road to the town clinic. Orion Group patrols are already closing in from the north, and their columns will strike the watch post and then the town. The third group pulled someone out of the sea, a stranger nobody can explain.\n\nIf the clinic falls or your force is lost, the operation fails.",
     "adaptation": "An original RTS AI chapter on the terrain of Hodeidah Lifeline, with a new coast and new actors.",
     "objectives": [
       {
@@ -397,7 +397,8 @@
           "r2yspot"
         ],
         "target": "SurvivorsCove",
-        "radius": 4
+        "radius": 5,
+        "count": 3
       },
       {
         "text": "Find the second group by the old jetty.",
@@ -412,7 +413,8 @@
           "r2yspot"
         ],
         "target": "SurvivorsJetty",
-        "radius": 4
+        "radius": 5,
+        "count": 3
       },
       {
         "text": "Find the third group on the far reef, with the stranger.",
@@ -427,7 +429,14 @@
           "r2yspot"
         ],
         "target": "StrangerSite",
-        "radius": 4
+        "radius": 5,
+        "count": 3
+      },
+      {
+        "text": "Hold on until high tide lets the transports reach the reef landing.",
+        "kind": "survive",
+        "targets": [],
+        "seconds": 480
       },
       {
         "text": "Escort the survivors from the reef landing to the town clinic.",
@@ -445,7 +454,8 @@
         "requires": [
           0,
           1,
-          2
+          2,
+          3
         ]
       },
       {

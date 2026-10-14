@@ -485,12 +485,13 @@ def lights_in_the_water():
     m.add('TownMissilesNorth', 'r2ycoastal', 'Yemen', 28, 58)
     m.add('TownBunkerEast', 'r2ybunker', 'Yemen', 34, 66)
     m.add('TownMissilesEast', 'r2ycoastal', 'Yemen', 32, 72)
+    m.add('TownMissilesWest', 'r2ycoastal', 'Yemen', 12, 54)
     m.add('TownClinic', 'cahosp', 'Yemen', 16, 64)
     m.add('TownPowerOne', 'napowr', 'Yemen', 10, 58)
     m.add('TownPowerTwo', 'napowr', 'Yemen', 8, 66)
     # Captain Haidar's mobile force: no base, no production.
     m.add('MissionSpawn', 'mpspawn', 'Neutral', 26, 76)
-    force = [('r2technical', 3), ('r2ytechrr', 2), ('r2ymlr', 1), ('r2ymr', 5), ('r2yrpg', 4), ('r2yspot', 1)]
+    force = [('r2technical', 2), ('r2ytechrr', 2), ('r2ymlr', 1), ('r2ymr', 4), ('r2yrpg', 3), ('r2yspot', 1)]
     i = 0
     for kind, count in force:
         for _ in range(count):
@@ -503,14 +504,15 @@ def lights_in_the_water():
         for k, kind in enumerate(['civ1', 'civa', 'civ2'] if name != 'StrangerSite' else ['civb', 'civ3']):
             m.add(f'{name}Civilian{k}', kind, 'Neutral', u-2+k*2, v-1)
     m.add('Stranger', 'tany', 'Neutral', 87, coast[87]-5)
-    # Orion patrols closing on each group: heavier the further east (the stranger is what Orion wants).
-    patrols = {'SurvivorsCove': [('e2', 47, 74), ('e2', 49, 75), ('htnk', 50, 70)],
-               'SurvivorsJetty': [('e2', 61, 72), ('e2', 67, 73), ('e2', 64, 70), ('htnk', 68, 68)],
-               'StrangerSite': [('e2', 82, 74), ('e2', 84, 72), ('e2', 89, 73), ('e2', 91, 75), ('htnk', 85, 68), ('htnk', 90, 69)]}
-    for site, units in patrols.items():
-        for k, (kind, u, v) in enumerate(units): m.add(f'{site}Patrol{k}', kind, 'Orion Group', u, v)
-    m.add('RoadblockTank', 'htnk', 'Orion Group', 56, 60)
-    m.add('RoadblockRifles', 'e2', 'Orion Group', 58, 62)
+    # Orion patrols have reached each group: heavier the further east (the stranger is what Orion wants).
+    patrols = {'SurvivorsCove': [('e2', -3, -2), ('e2', 3, -2), ('e2', 0, -5), ('deso', 5, -4), ('ttnk', 2, -7)],
+               'SurvivorsJetty': [('e2', -3, -2), ('e2', 3, -2), ('e2', -2, -5), ('deso', 4, -5), ('ttnk', 0, -8), ('ttnk', 5, -8)],
+               'StrangerSite': [('e2', -4, -2), ('e2', 3, -2), ('e2', -2, -5), ('e2', 4, -5), ('deso', 0, -3), ('deso', -5, -6),
+                                ('ttnk', -3, -9), ('ttnk', 3, -9), ('apoc', 6, -6)]}
+    for site, u0 in sites:
+        for k, (kind, du, dv) in enumerate(patrols[site]): m.add(f'{site}Patrol{k}', kind, 'Orion Group', u0+du, coast[u0]-3+dv)
+    for k, (kind, u, v) in enumerate([('ttnk', 76, 74), ('e2', 75, 77), ('e2', 78, 76)]):
+        m.add(f'Roadblock{k}', kind, 'Orion Group', u, v)
     # The survivors' transports leave from the reef landing and follow the coast road to the clinic.
     m.add('ReefLanding', 'waypoint', 'Neutral', 84, 78)
     route = [('ReefRoadEast', 72, 77), ('ReefRoadMid', 58, 77), ('ReefRoadWest', 44, 76), ('TownGate', 32, 78), ('ClinicDoor', 22, 79)]
@@ -522,24 +524,28 @@ def lights_in_the_water():
     # mission), and Orion's patrol tanks are lighter export hulls so a force without a base can hold the town.
     m.write('Lights in the Water', 'Yemen', 'yemen', '8F7A45', extra_rules=(
         'r2ycoastal:\n\t-MustBeDestroyed:\nr2ybunker:\n\t-MustBeDestroyed:\nnapowr:\n\t-MustBeDestroyed:\n'
-        'htnk:\n\tHealth:\n\t\tHP: 260\n'))
+        'htnk:\n\tHealth:\n\t\tHP: 260\nsapc:\n\tMobile:\n\t\tSpeed: 50\n'))
     types = [k for k, _ in force]
     mission = dict(id=m.id, map=m, title='Lights in the Water', faction='yemen', campaign='Lines of Hope', slot='Yemen',
         enemy='Orion Group', protect=['TownClinic'],
         briefing=('Captain Nabil Haidar, coast guard. Tonight the navigation lights along this reef coast lied. Spoofed '
                   'signals steered the fishing fleet onto the reef line, and three groups of survivors are stranded '
-                  'on the beaches east of town.\n\nYou have a small mobile force and no base. Find all three groups, '
-                  'then bring their transports back along the coast road to the town clinic. Orion Group patrols are '
+                  'on the beaches east of town.\n\nYou have a small mobile force and no base. Find all three groups. '
+                  'The transports can only cross the reef at high tide, eight minutes from now; escort them from the '
+                  'reef landing along the coast road to the town clinic. Orion Group patrols are '
                   'already closing in from the north, and their columns will strike the watch post and then the '
                   'town. The third group pulled someone out of the sea, a stranger nobody can explain.\n\nIf the '
                   'clinic falls or your force is lost, the operation fails.'),
         adaptation='An original RTS AI chapter on the terrain of Hodeidah Lifeline, with a new coast and new actors.')
     return chapter_entry(mission, [
-        objective('Find the first group of survivors at the cove.', 'reach', types=types, target='SurvivorsCove', radius=4),
-        objective('Find the second group by the old jetty.', 'reach', types=types, target='SurvivorsJetty', radius=4),
-        objective('Find the third group on the far reef, with the stranger.', 'reach', types=types, target='StrangerSite', radius=4),
+        objective('Find the first group of survivors at the cove.', 'reach', types=types, target='SurvivorsCove', radius=5, count=3),
+        objective('Find the second group by the old jetty.', 'reach', types=types, target='SurvivorsJetty', radius=5, count=3),
+        objective('Find the third group on the far reef, with the stranger.', 'reach', types=types, target='StrangerSite', radius=5, count=3),
+        # The transports can only cross the reef at high tide, eight minutes in: until then the force must cover
+        # both the landing and the town (an idle town falls at about 12 minutes).
+        objective('Hold on until high tide lets the transports reach the reef landing.', 'survive', seconds=480),
         objective('Escort the survivors from the reef landing to the town clinic.', 'escort', entry='ReefLanding',
-                  route=[name for name, _, _ in route], count=2, requires=[0, 1, 2]),
+                  route=[name for name, _, _ in route], count=2, requires=[0, 1, 2, 3]),
         objective('Keep the town clinic standing.', 'protect', ['TownClinic'])])
 
 def hold_the_ferry_line():
@@ -547,16 +553,18 @@ def hold_the_ferry_line():
     m = ChapterMap('straits-shield', 'hold-the-ferry-line')
     m.add('OrionWaveEntry', 'waypoint', 'Neutral', 136, 94)
     # Three approaches, each held by a checkpoint. Missions.Wave sends each column at the first building still
-    # standing, so Orion hits the north road, then the east road, then the south road, then the port itself.
-    for name, (u, v), guns in [('NorthCheckpoint', (88, 66), [('r2boran', 85, 64), ('r2hisar', 93, 67), ('r2hisar', 86, 72)]),
-                               ('EastCheckpoint', (104, 76), [('r2boran', 101, 74), ('r2hisar', 108, 80), ('r2hisar', 101, 82)]),
-                               ('SouthCheckpoint', (90, 110), [('r2boran', 88, 107), ('r2hisar', 95, 112), ('r2hisar', 87, 115)])]:
+    # standing, so Orion hits the north road, then the east road, then the south road, then the piers.
+    for name, (u, v), guns in [('NorthCheckpoint', (88, 66), [('r2hisar', 93, 67), ('r2hisar', 85, 64)]),
+                               ('EastCheckpoint', (104, 76), [('r2boran', 101, 74), ('r2hisar', 108, 80)]),
+                               ('SouthCheckpoint', (90, 110), [('r2hisar', 95, 112), ('r2hisar', 88, 107)])]:
         m.add(name, 'caoutp', 'Turkey', u, v)
         for k, (kind, gu, gv) in enumerate(guns): m.add(f'{name}Gun{k}', kind, 'Turkey', gu, gv)
-    # The port: a small base around the two ferry piers.
-    for name, kind, u, v in [('TurkeyConyard', 'gacnst', 73, 88), ('TurkeyPowerOne', 'gapowr', 79, 86), ('TurkeyPowerTwo', 'gapowr', 82, 89),
-                             ('TurkeyPowerThree', 'gapowr', 79, 92), ('TurkeyBarracks', 'gapile', 54, 92), ('TurkeyFactory', 'gaweap', 61, 91),
-                             ('TurkeyRefinery', 'garefn', 84, 78), ('FerryPierNorth', 'caoutp', 77, 59), ('FerryPierSouth', 'caoutp', 67, 86)]:
+    # Then the two ferry piers, then the port base: once the checkpoints fall, the columns go for the piers.
+    for name, kind, u, v in [('FerryPierNorth', 'caoutp', 77, 59), ('FerryPierSouth', 'caoutp', 67, 86),
+                             ('PierNorthGun', 'r2boran', 82, 62), ('PierSouthGun', 'r2hisar', 71, 84),
+                             ('TurkeyConyard', 'gacnst', 73, 88), ('TurkeyPowerOne', 'gapowr', 79, 86), ('TurkeyPowerTwo', 'gapowr', 82, 89),
+                             ('TurkeyPowerThree', 'gapowr', 79, 92), ('TurkeyBarracks', 'gapile', 82, 95), ('TurkeyFactory', 'gaweap', 61, 91),
+                             ('TurkeyRefinery', 'garefn', 84, 78)]:
         m.add(name, kind, 'Turkey', u, v)
     m.add('MissionSpawn', 'mpspawn', 'Neutral', 80, 83)
     m.add('TurkeyHarvester', 'harv', 'Turkey', 76, 82)
@@ -564,7 +572,7 @@ def hold_the_ferry_line():
     i = 0
     for kind, count in force:
         for _ in range(count):
-            m.add(f'Aydin{i}', kind, 'Turkey', 88+i % 5*2, 94+i//5*2 + (i % 2)); i += 1
+            m.add(f'Aydin{i}', kind, 'Turkey', 86+i % 5*2, 99+i//5*2 + (i % 2)); i += 1
     # Five ferries cross the strait to the far shore once loading is done; an Orion boat picket waits in the channel.
     lanes = [[(68, 63), (66, 70), (63, 77), (57, 82), (49, 84), (42, 83)],
              [(69, 66), (67, 73), (62, 79), (54, 83), (46, 84), (44, 82)],
@@ -577,13 +585,13 @@ def hold_the_ferry_line():
         for j, (u, v) in enumerate(lane):
             name = f'Ferry{k}Start' if j == 0 else f'Ferry{k}Shore' if j == len(lane)-1 else f'Ferry{k}Way{j}'
             m.add(name, 'waypoint', 'Neutral', u, v, where='water'); names[-1].append(name)
-    m.add('OrionBoatOne', 'hyd', 'Orion Group', 50, 86, where='water')
-    m.add('OrionBoatTwo', 'hyd', 'Orion Group', 44, 88, where='water')
-    m.add('OrionSpotters', 'e2', 'Orion Group', 47, 92)
+    for k, (u, v) in enumerate([(46, 87), (48, 89), (42, 88), (39, 86)]):
+        m.add(f'OrionPicket{k}', 'dest', 'Orion Group', u, v, where='water')
     for a, b in [('OrionWaveEntry', 'NorthCheckpoint'), ('OrionWaveEntry', 'EastCheckpoint'), ('OrionWaveEntry', 'SouthCheckpoint'),
                  ('OrionWaveEntry', 'FerryPierNorth'), ('OrionWaveEntry', 'TurkeyConyard')]:
         if not m.reachable(a, b): raise ValueError(f'{m.id}: no land route {a} -> {b}')
-    m.write('Hold the Ferry Line', 'Turkey', 'turkey', 'A73731')
+    # Mission rules: the ferries are slow, unarmoured civilian hulls.
+    m.write('Hold the Ferry Line', 'Turkey', 'turkey', 'A73731', extra_rules='lcrf:\n\tMobile:\n\t\tSpeed: 50\n\tHealth:\n\t\tHP: 150\n')
     mission = dict(id=m.id, map=m, title='Hold the Ferry Line', faction='turkey', campaign='Lines of Hope', slot='Turkey',
         enemy='Orion Group', protect=['FerryPierNorth', 'FerryPierSouth'],
         briefing=('Colonel Kemal Aydın. The port on the far side of the strait is the last ferry line out, and Orion '

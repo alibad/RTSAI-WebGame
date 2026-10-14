@@ -56,6 +56,9 @@ Actors:
 	TownMissilesEast: r2ycoastal
 		Owner: Yemen
 		Location: 68,4
+	TownMissilesWest: r2ycoastal
+		Owner: Yemen
+		Location: 39,15
 	TownClinic: cahosp
 		Owner: Yemen
 		Location: 48,16
@@ -74,16 +77,16 @@ Actors:
 	Haidar1: r2technical
 		Owner: Yemen
 		Location: 61,12
-	Haidar2: r2technical
+	Haidar2: r2ytechrr
 		Owner: Yemen
 		Location: 62,10
 	Haidar3: r2ytechrr
 		Owner: Yemen
 		Location: 65,8
-	Haidar4: r2ytechrr
+	Haidar4: r2ymlr
 		Owner: Yemen
 		Location: 66,6
-	Haidar5: r2ymlr
+	Haidar5: r2ymr
 		Owner: Yemen
 		Location: 69,4
 	Haidar6: r2ymr
@@ -95,27 +98,18 @@ Actors:
 	Haidar8: r2ymr
 		Owner: Yemen
 		Location: 63,11
-	Haidar9: r2ymr
+	Haidar9: r2yrpg
 		Owner: Yemen
 		Location: 66,9
-	Haidar10: r2ymr
+	Haidar10: r2yrpg
 		Owner: Yemen
 		Location: 67,7
 	Haidar11: r2yrpg
 		Owner: Yemen
 		Location: 70,5
-	Haidar12: r2yrpg
+	Haidar12: r2yspot
 		Owner: Yemen
 		Location: 60,16
-	Haidar13: r2yrpg
-		Owner: Yemen
-		Location: 63,14
-	Haidar14: r2yrpg
-		Owner: Yemen
-		Location: 64,12
-	Haidar15: r2yspot
-		Owner: Yemen
-		Location: 67,10
 	SurvivorsCove: waypoint
 		Owner: Neutral
 		Location: 86,-3
@@ -154,49 +148,73 @@ Actors:
 		Location: 126,-48
 	SurvivorsCovePatrol0: e2
 		Owner: Orion Group
-		Location: 84,-10
+		Location: 82,-1
 	SurvivorsCovePatrol1: e2
 		Owner: Orion Group
-		Location: 87,-12
-	SurvivorsCovePatrol2: htnk
+		Location: 88,-7
+	SurvivorsCovePatrol2: e2
 		Owner: Orion Group
-		Location: 85,-15
+		Location: 83,-5
+	SurvivorsCovePatrol3: deso
+		Owner: Orion Group
+		Location: 89,-10
+	SurvivorsCovePatrol4: ttnk
+		Owner: Orion Group
+		Location: 84,-8
 	SurvivorsJettyPatrol0: e2
 		Owner: Orion Group
-		Location: 97,-25
+		Location: 101,-22
 	SurvivorsJettyPatrol1: e2
 		Owner: Orion Group
-		Location: 104,-31
+		Location: 107,-28
 	SurvivorsJettyPatrol2: e2
 		Owner: Orion Group
-		Location: 99,-29
-	SurvivorsJettyPatrol3: htnk
+		Location: 100,-24
+	SurvivorsJettyPatrol3: deso
 		Owner: Orion Group
-		Location: 102,-34
+		Location: 106,-30
+	SurvivorsJettyPatrol4: ttnk
+		Owner: Orion Group
+		Location: 101,-28
+	SurvivorsJettyPatrol5: ttnk
+		Owner: Orion Group
+		Location: 106,-33
 	StrangerSitePatrol0: e2
 		Owner: Orion Group
-		Location: 119,-45
+		Location: 121,-43
 	StrangerSitePatrol1: e2
 		Owner: Orion Group
-		Location: 120,-48
+		Location: 128,-50
 	StrangerSitePatrol2: e2
 		Owner: Orion Group
-		Location: 126,-53
+		Location: 122,-47
 	StrangerSitePatrol3: e2
 		Owner: Orion Group
-		Location: 129,-54
-	StrangerSitePatrol4: htnk
+		Location: 128,-53
+	StrangerSitePatrol4: deso
 		Owner: Orion Group
-		Location: 119,-51
-	StrangerSitePatrol5: htnk
+		Location: 125,-48
+	StrangerSitePatrol5: deso
 		Owner: Orion Group
-		Location: 125,-56
-	RoadblockTank: htnk
+		Location: 118,-44
+	StrangerSitePatrol6: ttnk
 		Owner: Orion Group
-		Location: 86,-26
-	RoadblockRifles: e2
+		Location: 119,-48
+	StrangerSitePatrol7: ttnk
 		Owner: Orion Group
-		Location: 89,-27
+		Location: 125,-54
+	StrangerSitePatrol8: apoc
+		Owner: Orion Group
+		Location: 129,-55
+	Roadblock0: ttnk
+		Owner: Orion Group
+		Location: 113,-39
+	Roadblock1: e2
+		Owner: Orion Group
+		Location: 114,-37
+	Roadblock2: e2
+		Owner: Orion Group
+		Location: 116,-40
 	ReefLanding: waypoint
 		Owner: Neutral
 		Location: 123,-45
@@ -231,3 +249,6 @@ Rules:
 	htnk:
 		Health:
 			HP: 260
+	sapc:
+		Mobile:
+			Speed: 50
