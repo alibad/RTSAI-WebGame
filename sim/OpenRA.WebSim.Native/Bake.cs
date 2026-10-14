@@ -106,6 +106,8 @@ static class Bake
 		SpriteCache.Store = new SpriteStore();
 
 		SimHost.Boot(root);
+		// The boot loads only the setup screen's maps (WebMaps): the baker needs every one.
+		WebMaps.EnsureAll();
 
 		// "all": every map a player can pick (any MapFolder), the sandbox arena included.
 		var maps = opts["maps"] == "all"

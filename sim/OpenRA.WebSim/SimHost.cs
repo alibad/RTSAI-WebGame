@@ -135,8 +135,11 @@ namespace OpenRA.WebSim
 				Game.Renderer.InitializeFonts(Game.ModData);
 			});
 
-			// Registers the bundled maps (World looks its map up in the MapCache).
-			Time("boot.maps", () => Game.ModData.MapCache.LoadMaps(Game.ModData));
+			// Registers the bundled maps (World looks its map up in the MapCache): the setup screen's now, every other one
+			// when it is first prepared (WebMaps; MapCache.LoadMaps merged every mission's rules at boot).
+			Time("boot.maps", () => WebMaps.Load(Game.ModData));
+			Timings["boot.maps.loaded"] = WebMaps.LoadedAtBoot;
+			Timings["boot.maps.deferred"] = WebMaps.Deferred;
 		}
 
 		/// <summary>A map's package path by its folder name, in any of the mod's MapFolders (e.g. ra2|standalone/maps).</summary>
@@ -144,6 +147,7 @@ namespace OpenRA.WebSim
 		{
 			var generated = Path.Combine(Root, "mods", "rtsai", "web", "content", "maps", mapName);
 			if (File.Exists(Path.Combine(generated, "map.yaml"))) return generated;
+			WebMaps.Ensure(mapName);
 			return ModData.MapCache.FirstOrDefault(p => Path.GetFileName(p.Path) == mapName)?.Path
 				?? Path.Combine(Root, "mods", ModId, "maps", mapName);
 		}
@@ -261,6 +265,8 @@ namespace OpenRA.WebSim
 			// Loading starts from a collected heap, so its allocations reuse freed memory instead of growing it (WebAssembly
 			// memory never shrinks).
 			Time("prepare.collect", () => GC.Collect());
+			// The map joins the MapCache as the boot used to add it (World looks it up there).
+			Time("prepare.mapcache", () => WebMaps.Ensure(mapName));
 			Map map = null;
 			Time("prepare.map", () => map = LoadMap(MapPath(mapName)));
 
