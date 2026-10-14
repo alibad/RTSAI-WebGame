@@ -210,3 +210,5 @@ Rules:
 	nairon:
 		Health:
 			HP: 2000
+	r2falcon:
+		-AirstrikePower@falcon:

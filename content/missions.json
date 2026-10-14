@@ -903,7 +903,7 @@
         ]
       }
     ],
-    "briefing": "Commander Lin Haoran. The island no chart names is real, and the Obsidian Directorate watches it with sensor masts. Tonight a three-man team lands on its western beach: Tanya, a network specialist and one Red Spear.\n\nEach mast sees a circle around it. Some sweep and sleep; watch the circle dim before you cross. Reach the core node in the east, deploy the specialist to copy the routing logs, then bring him to the boat at the north cove. Every mast that sees you, or goes dark, sends the garrison to look.\n\nIf the island sees you too often, or Tanya or the specialist falls, the operation fails.",
+    "briefing": "Commander Lin Haoran. The island no chart names is real, and the Obsidian Directorate watches it with sensor masts. Tonight a three-man team lands on its western beach: Tanya, a network specialist and one Red Spear.\n\nEach mast sees a circle around it. Some sweep and sleep; watch the circle dim before you cross. Reach the core node in the east, deploy the specialist to copy the routing logs, then bring him to the boat at the north cove before first light, six minutes from the landing. Every mast that sees you, or goes dark, sends the garrison to look.\n\nIf the island sees you too often, the boat has to leave without the logs, or Tanya or the specialist falls, the operation fails.",
     "adaptation": "An original RTS AI chapter on the terrain of Haitan Network, with a new channel and new actors.",
     "objectives": [
       {
@@ -918,7 +918,7 @@
         "deploy": true
       },
       {
-        "text": "Bring the specialist and the logs to the boat at the north cove.",
+        "text": "Bring the specialist and the logs to the boat at the north cove before first light.",
         "kind": "reach",
         "targets": [],
         "types": [
@@ -928,7 +928,8 @@
         "radius": 4,
         "requires": [
           0
-        ]
+        ],
+        "limit": 360
       },
       {
         "text": "Stay out of the sensor masts' sight.",
@@ -1166,7 +1167,7 @@
         ]
       }
     ],
-    "briefing": "Commander Turki Al-Zahrani. While this platform jams, no one can see the Directorate hub. Its four jammer generators sit under an Iron Curtain prototype: nothing can touch them while the curtain control room runs it.\n\nYour boarding team lands on the south pad with Tanya, two engineers and no reinforcements. Clear the control deck, take the control room with an engineer to drop the curtain, then let Tanya place charges on every generator out on the wings. When the jamming stops, Orion will come from the docks and the sea: hold the control room until the picture comes back. The two deck scanners take turns; the lane down the middle is out of their sight.\n\nIf Tanya falls, the control room is destroyed, or both engineers are lost before it is taken, the operation fails.",
+    "briefing": "Commander Turki Al-Zahrani. While this platform jams, no one can see the Directorate hub. Its four jammer generators sit under an Iron Curtain prototype: nothing can touch them while the curtain control room runs it.\n\nYour boarding team lands on the south pad with Tanya, two engineers and no reinforcements. Clear the control deck, take the control room with an engineer to drop the curtain, then let Tanya place charges on every generator out on the wings. When the jamming stops, Orion will come from the docks and the sea: hold the control room until the picture comes back. Orion's relief flotilla reaches the platform seven minutes after you land; the charges must be in before then. The two deck scanners take turns; the lane down the middle is out of their sight.\n\nIf Tanya falls, the control room is destroyed, both engineers are lost before it is taken, or the relief arrives first, the operation fails.",
     "adaptation": "An original RTS AI chapter on the frame of the Bab al-Mandab Passage map, repainted as open sea with a platform.",
     "objectives": [
       {
@@ -1177,7 +1178,7 @@
         ]
       },
       {
-        "text": "Place charges on all four jammer generators.",
+        "text": "Place charges on all four jammer generators before the relief flotilla arrives.",
         "kind": "destroy",
         "targets": [
           "GenNW",
@@ -1187,7 +1188,8 @@
         ],
         "requires": [
           0
-        ]
+        ],
+        "limit": 420
       },
       {
         "text": "Hold the control room until the picture comes back.",

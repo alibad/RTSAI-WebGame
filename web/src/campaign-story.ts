@@ -133,7 +133,7 @@ const story: CampaignStory = {
       "status": "playable",
       "speaker": "lin",
       "intro": "The island no chart names is real, and its masts see everything. A three-unit team with Tanya lands at night, stays out of every sensor's sight, copies the routing logs, and leaves by boat.",
-      "tactics": "Watch the sensor masts' sweep before you move. Nothing on this island should ever see you.",
+      "tactics": "Watch the sensor masts' sweep before you move. Nothing on this island should ever see you, and the boat leaves at first light.",
       "victory": "Beside the logs in the Directorate's vault lay a film reel labelled in Einstein's hand. His message from 1953 explains the echo, and how to end it.",
       "defeat": "The island saw you. Wait for the sweep, move between the masts, and get the team out alive."
     },
@@ -143,7 +143,7 @@ const story: CampaignStory = {
       "status": "playable",
       "speaker": "turki",
       "intro": "While the platform jams, no one can see the hub, and its generators run on an Iron Curtain prototype. Board it with Tanya and a small team, take the control room to drop the curtain, place charges on every generator, and hold the room until the picture comes back.",
-      "tactics": "There are no reinforcements, and only an engineer can take the control room. Clear each deck before you plant a charge, and keep the team together.",
+      "tactics": "There are no reinforcements, and only an engineer can take the control room. Clear each deck before you plant a charge, and finish before Orion's relief arrives.",
       "victory": "Every screen on the coast lights up at once. The hub is exposed, and the Broker makes his offer to everyone at the same time. Nobody answers.",
       "defeat": "The boarding team is lost and the jamming holds. Clear each deck before moving on."
     },
@@ -597,6 +597,13 @@ const story: CampaignStory = {
       },
       {
         "when": {
+          "time": 240
+        },
+        "speaker": "lantern",
+        "line": "First light is coming, Commander. The boat can't wait for the sun."
+      },
+      {
+        "when": {
           "objective": 0
         },
         "speaker": "lin",
@@ -639,6 +646,13 @@ const story: CampaignStory = {
         },
         "speaker": "tanya",
         "line": "So much for quiet. Here comes the deck crew."
+      },
+      {
+        "when": {
+          "time": 270
+        },
+        "speaker": "lantern",
+        "line": "Orion's relief flotilla is under way. Get those charges in before it reaches the platform."
       },
       {
         "when": {

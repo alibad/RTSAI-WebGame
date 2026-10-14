@@ -28,7 +28,7 @@ namespace OpenRA.WebSim
 			public string[] Targets = [], Types = [], Route = [], After = [];
 			public string[][] Lanes = [];
 			public int[] Requires = [], Area = [];
-			public int Radius = 3, Count = 1, Seconds = 120, Allowed = 1, Until = -1;
+			public int Radius = 3, Count = 1, Seconds = 120, Allowed = 1, Until = -1, Limit;
 			public bool Secondary, Deploy;
 		}
 
@@ -205,6 +205,10 @@ namespace OpenRA.WebSim
 
 		/// <summary>Sensor trips an undetected objective tolerates: one more on easy, one fewer on hard.</summary>
 		static int Allowance(Objective o) => Math.Max(0, o.Allowed + (difficulty == "easy" ? 1 : difficulty == "hard" ? -1 : 0));
+
+		/// <summary>An objective with a Limit fails if it is not complete by then (game seconds from the start, whether or not
+		/// its gates have opened): half as long again on easy, a fifth shorter on hard.</summary>
+		static int Deadline(Objective o) => difficulty == "easy" ? o.Limit * 3 / 2 : difficulty == "hard" ? o.Limit * 4 / 5 : o.Limit;
 		static int Seen(Objective o) => sensors.Count(x => x.Tripped && (o.Targets.Length == 0 || o.Targets.Contains(x.Spec.Actor)));
 
 		public static void Tick(World world)
@@ -218,6 +222,7 @@ namespace OpenRA.WebSim
 			{
 				var s = states[i]; var o = s.Spec;
 				if (s.Status != "active") continue;
+				if (o.Limit > 0 && world.WorldTick >= Deadline(o) * 25) { s.Status = "failed"; continue; }
 				if (!Open(o)) continue;
 				if (s.Opened < 0) s.Opened = world.WorldTick;
 				switch (o.Kind)
@@ -485,7 +490,9 @@ namespace OpenRA.WebSim
 				case "undetected":
 					var spare = Allowance(o) - Seen(o);
 					return spare > 0 ? $"{spare} alarm{(spare > 1 ? "s" : "")} to spare" : spare == 0 ? "no alarm to spare" : "";
-				default: return "";
+				default:
+					var left = o.Limit > 0 && s.Status == "active" ? Math.Max(0, Deadline(o) - SimHost.World.WorldTick / 25) : -1;
+					return left >= 0 ? $"{left / 60}:{left % 60:00} left" : "";
 			}
 		}
 

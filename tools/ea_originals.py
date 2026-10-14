@@ -557,14 +557,16 @@ class Generator:
                 owners.setdefault(a, set()).add(f)
         # What a country can build or field in a skirmish decides which actors get original art.
         self.skirmish = {k: set(v) for k, v in owners.items()}
-        # Mission maps place actors for their own (modern) factions.
+        # Mission maps place actors for their own (modern) factions. An actor placed with its own faction (Tanya,
+        # player-owned in Glass Island and Black Platform but "Faction: america") is fielded by that faction: its
+        # FactionInit, not its owner, picks her art and voice, so a modern owner must not change the overlays.
         for m in sorted((self.content / 'maps').glob('*/map.yaml')):
             tree = {n.key: n for n in parse(m.read_text(encoding='utf-8'), str(m))}
             players = {}
             for p in tree.get('Players', Node('Players')).children:
                 players[p.val('Name')] = p.val('Faction')
             for a in tree.get('Actors', Node('Actors')).children:
-                faction = players.get(a.val('Owner'))
+                faction = a.val('Faction') or players.get(a.val('Owner'))
                 if a.value and faction:
                     owners.setdefault(a.value.lower(), set()).add(faction)
         return owners

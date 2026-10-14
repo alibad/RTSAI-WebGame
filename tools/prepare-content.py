@@ -351,7 +351,9 @@ def missions():
 # Orion Group is the fictional contractor force (no flag, no real nation); its faction only picks its unit art and
 # the scripted wave type (Missions.Wave). Positions are (u, v) map cells, like the Hezbollah exercise above.
 TILE = dict(water=1 if CLASSIC_MODE else 1015, rough=2 if CLASSIC_MODE else 1047,
-            road=3 if CLASSIC_MODE else 1031, beach=0 if CLASSIC_MODE else 1063, clear=0)
+            road=3 if CLASSIC_MODE else 1031, beach=0 if CLASSIC_MODE else 1063, clear=0,
+            # Concrete: the tileset's sixteen "Pavement Individual" tiles (463-478), mixed per cell; road in Classic.
+            deck=3 if CLASSIC_MODE else 463)
 MAP_RULES = 'World:\n\t-SpawnStartingUnits:\n\t-CrateSpawner:\n\t-StartGameNotification:\nPlayer:\n\t-ConquestVictoryConditions:\n'
 
 def chapter_players(slot, faction, color, extra='', ally=None):
@@ -385,7 +387,8 @@ class ChapterMap:
     def ore(self, u, v): return self.res and self.raw[self.res+(u*self.h+v)*2] in (1, 2)
     def paint(self, u, v, kind):
         if not (0 <= u < self.w and 0 <= v < self.h): return
-        struct.pack_into('<HB', self.raw, self.tiles+(u*self.h+v)*3, TILE[kind], 0)
+        tile = TILE[kind] + ((u*7 + v*5) % 16 if kind == 'deck' and not CLASSIC_MODE else 0)
+        struct.pack_into('<HB', self.raw, self.tiles+(u*self.h+v)*3, tile, 0)
         if kind in ('water', 'beach') and self.res: struct.pack_into('<BB', self.raw, self.res+(u*self.h+v)*2, 0, 0)
     def fill(self, u0, v0, u1, v1, kind):
         for u in range(u0, u1+1):
@@ -468,6 +471,7 @@ class ChapterMap:
         w, h = self.w, self.h
         img = Image.new('RGB', (w if CLASSIC_MODE else 2*w, h))
         colors = {TILE['water']: (55, 94, 135), TILE['rough']: (111, 116, 62), TILE['road']: (133, 111, 74)}
+        if not CLASSIC_MODE: colors.update({TILE['deck']+k: (120, 122, 124) for k in range(16)})
         if not CLASSIC_MODE: colors[TILE['beach']] = (183, 163, 105)
         for u in range(w):
             for v in range(h):
@@ -730,14 +734,16 @@ def glass_island():
                   'sensor masts. Tonight a three-man team lands on its western beach: Tanya, a network specialist and '
                   'one Red Spear.\n\nEach mast sees a circle around it. Some sweep and sleep; watch the circle dim before '
                   'you cross. Reach the core node in the east, deploy the specialist to copy the routing logs, then '
-                  'bring him to the boat at the north cove. Every mast that sees you, or goes dark, sends the garrison '
-                  'to look.\n\nIf the island sees you too often, or Tanya or the specialist falls, the operation fails.'),
+                  'bring him to the boat at the north cove before first light, six minutes from the landing. Every mast '
+                  'that sees you, or goes dark, sends the garrison to look.\n\nIf the island sees you too often, the boat '
+                  'has to leave without the logs, or Tanya or the specialist falls, the operation fails.'),
         adaptation='An original RTS AI chapter on the terrain of Haitan Network, with a new channel and new actors.')
     return chapter_entry(mission, [
         objective('Copy the routing logs: deploy the network specialist beside the core node.', 'reach', types=['r2cnnetwork'],
                   target='CoreNode', radius=4, deploy=True),
-        objective('Bring the specialist and the logs to the boat at the north cove.', 'reach', types=['r2cnnetwork'],
-                  target='ExtractionCove', radius=4, requires=[0]),
+        # First light: about twice the scripted player's time on normal (tools/mission-probe, plan "stealth").
+        objective('Bring the specialist and the logs to the boat at the north cove before first light.', 'reach',
+                  types=['r2cnnetwork'], target='ExtractionCove', radius=4, requires=[0], limit=360),
         objective("Stay out of the sensor masts' sight.", 'undetected', [name for name, *_ in masts], allowed=1),
         objective('Keep Tanya and the specialist alive.', 'protect', ['Tanya', 'Specialist'])])
 
@@ -752,7 +758,7 @@ def black_platform():
     for box in [(44, 68, 52, 77), (42, 38, 54, 58), (33, 25, 37, 70), (59, 25, 63, 70), (42, 23, 54, 32),
                 (47, 59, 49, 67), (38, 47, 41, 50), (55, 47, 58, 50), (38, 27, 41, 29), (55, 27, 58, 29),
                 (47, 33, 49, 37), (38, 72, 43, 74), (53, 72, 58, 74)]:
-        m.fill(*box, 'road')
+        m.fill(*box, 'deck')
     # Commander Turki's boarding team on the landing pad: no base, no reinforcements.
     m.add('MissionSpawn', 'mpspawn', 'Neutral', 48, 73)
     m.add('LandingPad', 'waypoint', 'Neutral', 48, 73)
@@ -781,8 +787,10 @@ def black_platform():
         if not m.reachable(a, b): raise ValueError(f'{m.id}: no deck route {a} -> {b}')
     for a, b in [('SeaWest', 'SeaWestStation'), ('SeaEast', 'SeaEastStation')]:
         if not m.reachable(a, b, water=True): raise ValueError(f'{m.id}: no sea route {a} -> {b}')
-    # Mission rules: the control room's armoured core outlasts a few volleys while the team holds it.
-    m.write('Black Platform', 'Saudi Arabia', 'saudi', '2E8B57', extra_rules=sensor_rules('naradr', 4) + 'nairon:\n\tHealth:\n\t\tHP: 2000\n')
+    # Mission rules: the control room's armoured core outlasts a few volleys while the team holds it, and the Falcons
+    # bring no air strike (a boarding action: no reinforcements, nothing from outside).
+    m.write('Black Platform', 'Saudi Arabia', 'saudi', '2E8B57', extra_rules=sensor_rules('naradr', 4)
+            + 'nairon:\n\tHealth:\n\t\tHP: 2000\nr2falcon:\n\t-AirstrikePower@falcon:\n')
     crew = ['e2', 'e2', 'dog', 'e2', 'flakt']
     counter = ['e2', 'e2', 'flakt', 'e2']
     gen_names = [name for name, _, _ in gens]
@@ -810,13 +818,17 @@ def black_platform():
                   'control room runs it.\n\nYour boarding team lands on the south pad with Tanya, two engineers and no '
                   'reinforcements. Clear the control deck, take the control room with an engineer to drop the curtain, '
                   'then let Tanya place charges on every generator out on the wings. When the jamming stops, Orion will '
-                  'come from the docks and the sea: hold the control room until the picture comes back. The two deck '
-                  'scanners take turns; the lane down the middle is out of their sight.\n\nIf Tanya falls, the control '
-                  'room is destroyed, or both engineers are lost before it is taken, the operation fails.'),
+                  'come from the docks and the sea: hold the control room until the picture comes back. Orion\'s relief '
+                  'flotilla reaches the platform seven minutes after you land; the charges must be in before then. The '
+                  'two deck scanners take turns; the lane down the middle is out of their sight.\n\nIf Tanya falls, '
+                  'the control room is destroyed, both engineers are lost before it is taken, or the relief arrives '
+                  'first, the operation fails.'),
         adaptation='An original RTS AI chapter on the frame of the Bab al-Mandab Passage map, repainted as open sea with a platform.')
     return chapter_entry(mission, [
         objective('Take the curtain control room with an engineer.', 'capture', ['CurtainControl']),
-        objective('Place charges on all four jammer generators.', 'destroy', gen_names, requires=[0]),
+        # The relief flotilla: about twice the scripted player's time on normal, with the hold (plan "boarding").
+        objective('Place charges on all four jammer generators before the relief flotilla arrives.', 'destroy', gen_names,
+                  requires=[0], limit=420),
         objective('Hold the control room until the picture comes back.', 'survive', seconds=120, requires=[1]),
         objective('Keep Tanya alive.', 'protect', ['Tanya']),
         objective('Keep an engineer alive until the control room is taken.', 'squad', ['Engineer1', 'Engineer2'], count=1, until=0),
@@ -833,7 +845,7 @@ def every_light_on():
                              ('SaudiFactory', 'gaweap', 86, 116), ('PictureRelay', 'gaairc', 71, 112),
                              ('SaudiGuardNorth', 'r2saguard', 93, 106), ('SaudiGuardEast', 'r2saguard', 95, 113), ('SaudiTow', 'r2satow', 92, 118)]:
         m.add(name, kind, 'Saudi Arabia', u, v)
-    m.add('SaudiHarvester', 'harv', 'Saudi Arabia', 89, 110)
+    m.add('SaudiHarvester', 'cmin', 'Saudi Arabia', 89, 110)
     force = [('r2m1a2s', 3), ('r2bradley', 2), ('r2sads', 1), ('r2sang', 4), ('r2saat', 3), ('engineer', 2)]
     i = 0
     for kind, count in force:

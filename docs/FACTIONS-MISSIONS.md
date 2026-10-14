@@ -29,7 +29,11 @@ The last three chapters of Act III use the mission features below, in both hosts
 the desktop trait `RTSAICampaign.cs` in RTSAI-Mod is generated from it by `tools/import-shared-campaigns.py`). Every
 actor they place is checked against the standalone's stand-in art (`stand_in_art`): enemies are Orion Group
 (`russia`, drawn with the original Westwood art in the isometric mode), and Tanya is the `tany` actor with
-`Faction: america`, which gives her the original commando art and voice while the player owns her.
+`Faction: america`, which gives her the original commando art and voice while the player owns her. The original-art
+and original-voice generators (`tools/ea_originals.py`, which `ea_voices.py` follows) count a placed actor's own
+`Faction` as the faction that fields it, so a Chinese or Saudi Tanya changes no overlay: without that, China and Saudi
+Arabia would have joined her sprite groups and her pistols would have lost their original sound in every game (the
+same problem Hold the Ferry Line solved with an allied Tanya side).
 
 - **Glass Island** (`glass-island`, China, Commander Lin Haoran): Haitan Network's terrain, ore cleared, the plateau
   cut off from the lowland by a tidal channel with one causeway. Lin's team (Tanya, a network specialist, a Red Spear)
@@ -38,17 +42,19 @@ actor they place is checked against the standalone's stand-in art (`stand_in_art
   round by the south coast), and the vault's two masts take turns (10 / 14, offset 12). The specialist deploys within
   4 cells of the core node (`gatech`) to copy the logs; a patrol boat then comes to the north cove, inside the north
   vault mast's zone. "Stay out of the sensor masts' sight" allows one trip on normal (two on easy, none on hard);
-  every trip, and every mast destroyed, sends six hunters from the nearest garrison to that mast. Losing Tanya, the
-  specialist or the whole team fails the mission.
+  every trip, and every mast destroyed, sends six hunters from the nearest garrison to that mast. The boat leaves at
+  first light (6:00; 9:00 on easy, 4:48 on hard). Losing Tanya, the specialist or the whole team fails the mission.
 - **Black Platform** (`black-platform`, Saudi Arabia, Commander Turki Al-Zahrani): Bab al-Mandab's map frame painted
-  as open sea with concrete deck modules on catwalks. A nine-man boarding team (Tanya, two Falcons, three riflemen,
-  an anti-tank soldier, two engineers) and no reinforcements. The four jammer generators (`gapowr`) carry the Iron
+  as open sea with concrete deck modules on catwalks (the tileset's pavement tiles; road in Classic). A nine-man
+  boarding team (Tanya, two Falcons without their air strike, three riflemen, an anti-tank soldier, two engineers) and
+  no reinforcements. The four jammer generators (`gapowr`) carry the Iron
   Curtain's `invulnerability` condition (an event at 0:00) until an engineer takes the curtain control room
   (`nairon`, 2000 HP here); then charges on all four stop the jamming: the map is revealed, Orion lands at the north
   dock, then at the west and east docks every 40 seconds, and two gunboats arrive; hold the room for two minutes.
   Two deck scanners (`naradr`, 4 cells, 8 / 8, taking turns) watch the control deck's sides and the catwalks to the
-  wings; a trip brings the deck crew, and staying clear of them is a bonus objective. Losing Tanya, the control room,
-  or both engineers before the capture fails the mission.
+  wings; a trip brings the deck crew, and staying clear of them is a bonus objective. The charges must be in before
+  Orion's relief flotilla arrives (7:00; 10:30 on easy, 5:36 on hard). Losing Tanya, the control room, or both
+  engineers before the capture fails the mission.
 - **Every Light On** (`every-light-on`, Saudi Arabia, Colonel Badr Al-Shammari): Straits Shield's terrain, the island
   chain's central landmass. A forward base with $10,000 and a small force. Destroy three radar domes (`amradr`,
   1800 HP here, each behind two Tesla coils, a sentry gun and a garrison), then capture the Chronosphere (`gacsph`,
@@ -56,14 +62,15 @@ actor they place is checked against the standalone's stand-in art (`stand_in_art
   heard on the radio: Lin's picture (the map revealed while the radar relay `PictureRelay` stands; the fog returns if
   it falls), Turki's platform (1:15, radio only), Kemal's northern lane (gunboats every 110 s from 2:30 until the lane
   closes at 8:00), Nabil's towns (at 10:00 the seal lifts and a strike team of two engineers and two Bradleys lands
-  near the hub). Hub columns attack the base every two minutes from 3:00. Losing the construction yard fails the
-  mission.
+  near the hub). Hub columns attack the base every 150 seconds from 4:00; two guard towers and a TOW post cover the
+  base. Losing the construction yard fails the mission.
 
 Scripted players (`tools/mission-probe/Scripted.cs`, plans `stealth`, `boarding`, `finale`) finish all three on easy,
 normal and hard: Glass Island in about 2:40 without an alarm, Black Platform in about 4:30, Every Light On in about
 10:30 (the strike waits for the towns; on hard an all-in army has lost the yard to the hub columns). They play like a
 careful human who knows the map, so they show that each chapter can be finished and where it bites, not how hard it
-feels.
+feels. The deadlines are about twice the scripted time on normal; an idle player loses Glass Island at 6:00 and Black
+Platform at 7:00.
 
 ### Mission features (JSON in `content/missions.json`)
 
@@ -84,7 +91,8 @@ feels.
   "objectives": [
     { "kind": "undetected", "targets": ["MastBluff"], "allowed": 1 },   // fails after more trips than allowed (+1 easy, -1 hard)
     { "kind": "squad", "targets": ["Engineer1", "Engineer2"], "count": 1, "until": 0 }, // fails below count alive
-    { "kind": "capture", "targets": ["Chronosphere"], "requires": [0], "after": ["towns-clear"] }
+    { "kind": "capture", "targets": ["Chronosphere"], "requires": [0], "after": ["towns-clear"] },
+    { "kind": "reach", "target": "ExtractionCove", "requires": [0], "limit": 360 }  // fails if not complete by 6:00
   ]
 }
 ```
@@ -98,6 +106,8 @@ feels.
 - Enemy spawns follow the difficulty (easy: every other unit; hard: half as many again); the player's do not. Enemy
   units attack-move to `to`, else to the trigger's site (the tripped sensor or the lost actor), else to the nearest
   player unit; the player's move to `to`.
+- Any objective can have a deadline (`limit`, game seconds from the start, gated or not; half as long again on easy,
+  a fifth shorter on hard): it fails if it is not complete by then, and its progress shows the time left.
 - Every objective can wait for objectives (`requires`) and events (`after`); a timed objective behind a gate counts
   from the moment it opens. `protect`, `squad` and `undetected` complete with the mission, or when their `until`
   objective completes. The page shows a waiting objective with a lock (`ui.mission.objectives[n].waiting`).
