@@ -973,6 +973,102 @@ def originals():
     return manifest
 
 
+# Sounds the rules name that the public build does not ship. The mod's standalone sound set was made for the sounds its
+# audit found in fields named *Sound* or *Report*, so the tesla coil's and the prism tower's charge sounds
+# (AttackTesla.ChargeAudio) never got one; runtimes up to rt-04dcc660ef36 then stopped the whole browser simulation the
+# first time a powered coil or tower charged (their lazy audio made the engine open the missing file). Every sound a
+# public game can play must ship: a sound listed here is replaced by a shipped project sound (or None: no sound) through
+# content/sound-fallbacks.yaml, which the bundle loads last in both modes, and any other missing one fails the build.
+# A fallback applies only while the inputs lack the file, so it falls away once the mod ships its own.
+SOUND_FALLBACKS = {
+    'btespow.wav': 'iteschaa.wav',  # Tesla Coil charging: the tesla trooper's charge
+    'bpripow.wav': None,            # Prism Tower charging: silent until the mod has its own
+}
+
+def sound_check(ea_clips=()):
+    """Every sound file named in the rules and weapons of the public game, against the files the build ships: the folders
+    the mod mounts (its FileSystem packages, read by bare name), explicit 'ra2|' paths, and, in the isometric mode with
+    original voices, the original clips. Writes content/sound-fallbacks.yaml for SOUND_FALLBACKS; raises for any other
+    missing sound that a public game can play (an actor that is buildable or placed on a shipped map, or a weapon one of
+    them carries). Missing sounds of actors no public game has (animals, civilian flags) are only reported."""
+    available = {c.lower() for c in ea_clips}
+    packages = parse((MOD/'mod.yaml').read_text(encoding='utf-8'))['FileSystem']['children']['Packages']['children']
+    for key in list(packages) + (['$rtsai-topdown'] if CLASSIC_MODE else []):
+        entry = key.lstrip('~')
+        folder = {'$rtsai': MOD, '$rtsai-topdown': MOD.parent/'rtsai-topdown'}.get(entry) or (MOD/entry.split('|', 1)[1] if entry.startswith('ra2|') else None)
+        if folder is not None and folder.is_dir():
+            available |= {f.name.lower() for f in folder.iterdir() if f.is_file()}
+    def shipped(name):
+        if '|' in name:
+            alias, path = name.split('|', 1)
+            return alias == 'ra2' and (MOD/path).is_file()
+        return name.lower() in available
+    # The rules as the public game loads them: the mod's, Classic's own file, the web content overlays, and map rules.
+    allrules = copy.deepcopy(rules)
+    overlays = [MOD.parent/'rtsai-topdown/rules.yaml'] if CLASSIC_MODE else []
+    overlays += [OUT/f for f in ('countries.yaml', 'ea-art.yaml', 'ea-audio.yaml')]
+    for p in overlays:
+        if p.exists(): merge(allrules, parse(p.read_text(encoding='utf-8')))
+    weapons = {}
+    for name in manifest['Weapons']['children']:
+        if name.startswith('ra2|'): merge(weapons, parse((MOD/name.split('|')[1]).read_text(encoding='utf-8')))
+    if (OUT/'ea-weapons.yaml').exists(): merge(weapons, parse((OUT/'ea-weapons.yaml').read_text(encoding='utf-8')))
+    maps = [p for d in (OUT/'maps', MOD/'standalone/maps', MOD/'maps') if d.is_dir() for p in d.glob('*/map.yaml')]
+    placed = set()
+    for p in maps:
+        m = parse(p.read_text(encoding='utf-8'))
+        placed |= {a['value'] for a in m.get('Actors', node())['children'].values()}
+        for actor, n in m.get('Rules', node())['children'].items():
+            if actor in allrules: merge(allrules[actor]['children'], copy.deepcopy(n['children']))
+    def sounds(nodes, path=()):
+        for k, n in nodes.items():
+            names = [s.strip() for s in (n['value'] or '').split(',') if re.search(r'\.(wav|aud)$', s.strip(), re.I)]
+            if names: yield path + (k,), names
+            yield from sounds(n['children'], path + (k,))
+    def reachable(actor, r):
+        return actor in placed or bool(r.get('Buildable', node())['children'].get('Queue', node())['value'])
+    overlay, unreachable, problems = {}, {}, []
+    armed = {}
+    for actor in sorted(a for a in allrules if not a.startswith('^')):
+        try: r = resolve(allrules, actor)
+        except (KeyError, ValueError): continue
+        live = reachable(actor, r)
+        for t, n in r.items():
+            if t.startswith('Armament') and live: armed.setdefault(n['children'].get('Weapon', node())['value'], actor)
+        for path, names in sounds(r):
+            missing = [s for s in names if not shipped(s)]
+            if not missing: continue
+            if not live:
+                for s in missing: unreachable.setdefault(s, set()).add(actor)
+                continue
+            if any(s.lower() not in SOUND_FALLBACKS for s in missing):
+                problems.append(f'{actor} {".".join(path)}: {", ".join(s for s in missing if s.lower() not in SOUND_FALLBACKS)}')
+                continue
+            if len(path) != 2: problems.append(f'{actor} {".".join(path)}: a fallback can only replace a trait field'); continue
+            kept = [SOUND_FALLBACKS.get(s.lower(), s) if not shipped(s) else s for s in names]
+            kept = [s for s in kept if s]
+            if any(not shipped(s) for s in kept):
+                problems.append(f'{actor} {".".join(path)}: the fallback {", ".join(s for s in kept if not shipped(s))} is not shipped either'); continue
+            trait = overlay.setdefault(actor, {}).setdefault(path[0], {})
+            trait[('' if kept else '-') + path[1]] = ', '.join(kept)
+    for wname in sorted(w for w in weapons if not w.startswith('^')):
+        try: w = resolve(weapons, wname)
+        except (KeyError, ValueError): continue
+        for path, names in sounds(w):
+            for s in (s for s in names if not shipped(s)):
+                if wname in armed: problems.append(f'weapon {wname} {".".join(path)} (carried by {armed[wname]}): {s}')
+                else: unreachable.setdefault(s, set()).add(f'weapon {wname}')
+    if problems:
+        raise ValueError('sounds the public game can play that the build does not ship (add a file or a SOUND_FALLBACKS '
+                         'entry):\n  ' + '\n  '.join(problems))
+    text = ''.join(f'{actor}:\n' + ''.join(f'\t{trait}:\n' + ''.join(f'\t\t{f}:{" " + v if v else ""}\n' for f, v in fields.items())
+                                           for trait, fields in traits.items()) for actor, traits in overlay.items())
+    out = OUT/'sound-fallbacks.yaml'
+    if text: out.write_text('# Generated by tools/prepare-content.py (SOUND_FALLBACKS): sounds the inputs do not ship.\n' + text, encoding='utf-8', newline='\n')
+    elif out.exists(): out.unlink()
+    print(f'sounds: {len(overlay)} actors given fallbacks ({", ".join(overlay)}); {len(unreachable)} missing sounds only on actors '
+          f'no public game has ({", ".join(sorted(unreachable))})')
+
 if __name__ == '__main__':
     OUT.mkdir(parents=True, exist_ok=True)
     SCENARIOS.mkdir(parents=True, exist_ok=True)
@@ -984,6 +1080,8 @@ if __name__ == '__main__':
     if args.ea_list:
         print(f'wrote {args.ea_list}')
         raise SystemExit(0)
+    ea_clips = json.loads((OUT/'ea-audio.json').read_text())['clips'] if ea_manifest and not args.no_ea_audio else []
+    sound_check(ea_clips)
     sources=[p for p in MISSIONS.rglob('*') if p.is_file() and p.suffix in {'.yaml','.bin','.md'}]
     sources += [CLASSIC/'mods/ra/tilesets/temperat.yaml',CLASSIC/'mods/ra/tilesets/desert.yaml',MOD/'standalone/maps/twin-fords/map.yaml',MOD/'standalone/maps/twin-fords/map.bin',MOD.parent/'rtsai-topdown/tileset.yaml']
     if ea_manifest: sources.append(args.ea_art/'EA-INPUTS.json')
