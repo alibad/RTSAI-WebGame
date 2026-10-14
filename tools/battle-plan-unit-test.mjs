@@ -13,7 +13,9 @@ const moduleUrl = (file, replace = (s) => s) => {
 const labUrl = moduleUrl('web/src/ai-lab.ts', (s) => s.replace('import { store } from "./store";', 'const store = { get: () => ({ paused: false }) };'));
 const planUrl = moduleUrl('web/src/battle-plan.ts', (s) => s.replace('from "./ai-lab";', `from "${labUrl}";`));
 const plan = await import(planUrl);
-const mission = await import(moduleUrl('web/src/mission.ts', (s) => s.replace('from "./ai-lab";', `from "${labUrl}";`).replace('from "./battle-plan";', `from "${planUrl}";`)));
+const strengthUrl = moduleUrl('web/src/strength.ts');
+const strength = await import(strengthUrl);
+const mission = await import(moduleUrl('web/src/mission.ts', (s) => s.replace('from "./ai-lab";', `from "${labUrl}";`).replace('from "./battle-plan";', `from "${planUrl}";`).replace('from "./strength";', `from "${strengthUrl}";`)));
 
 // Facings: north 0, west 256, south 512, east 768 (WAngle).
 assert.equal(plan.facingToward({ u: 10, v: 20 }, { u: 10, v: 10 }), 0);
@@ -64,6 +66,39 @@ assert.ok(worth(0) >= worth(1) * 0.8, `armies of about equal value (${worth(0)} 
 // The mainline infantry of a classic country: the G.I., not the attack dog first in its palette.
 const lab = await import(labUrl);
 assert.equal(lab.pickUnit('infantry', 'america', [{ name: 'dog', label: 'Attack Dog', queue: 'Infantry', modern: false }, { name: 'e1', label: 'G.I.', queue: 'Infantry', modern: false }], { america: ['dog', 'e1'] }), 'e1');
+
+// Strength from the rules: damage per second against the target's armor, only with weapons that can hit it.
+const gun = { dps: { '': 10, Heavy: 4, Light: 12 }, valid: ['Ground'], invalid: [] };
+const flak = { dps: { '': 20 }, valid: ['Air'], invalid: [] };
+const tankA = { name: 'a', hp: 400, armor: 'Heavy', targets: ['Ground', 'Vehicle'], weapons: [gun] };
+const tankB = { name: 'b', hp: 800, armor: 'Heavy', targets: ['Ground', 'Vehicle'], weapons: [{ ...gun, dps: { Heavy: 8 } }] };
+const heli = { name: 'h', hp: 200, armor: 'Light', targets: ['Air'], weapons: [gun] };
+assert.equal(strength.dps(tankA, tankB), 4);
+assert.equal(strength.dps(tankA, heli), 0, 'a tank gun cannot hit a helicopter');
+assert.equal(strength.dps({ ...tankA, weapons: [gun, flak] }, heli), 20);
+// B is twice as tough and hits twice as hard: A needs twice the tanks (square law), not four times.
+assert.ok(Math.abs(strength.evenScale([[tankA, 8]], [[tankB, 8]]) - 2) < 1e-9);
+assert.equal(strength.evenScale([[{ name: 'x' }, 8]], [[tankB, 8]]), null, 'no stats: no answer');
+
+// A mission with the rules' stats: armies even in strength, and air defence against an attack with aircraft.
+const W = (dpsHeavy, valid = ['Ground']) => ({ dps: { '': 10, Heavy: dpsHeavy, None: 10, Light: 10 }, valid, invalid: [] });
+const stat = (name, label, kind, queue, cost, hp, armor, targets, weapons, modern = true) => ({ name, label, kind, queue, cost, hp, armor, targets, weapons, modern });
+const statUnits = [
+  ...units.filter((u) => u.kind === 'building' || u.kind === 'defense'),
+  stat('grizzly', 'Grizzly Battle Tank', 'vehicle', 'Vehicle', 700, 300, 'Heavy', ['Ground', 'Vehicle'], [W(27)], false),
+  stat('gi', 'G.I.', 'infantry', 'Infantry', 200, 125, 'None', ['Ground', 'Infantry'], [W(6)], false),
+  stat('ifv', 'IFV', 'vehicle', 'Vehicle', 600, 200, 'Light', ['Ground', 'Vehicle'], [W(5, ['Air'])], false),
+  stat('karrar', 'Karrar Battle Tank', 'vehicle', 'Vehicle', 1100, 420, 'Heavy', ['Ground', 'Vehicle'], [W(30)]),
+  stat('basij', 'Basij Rifleman', 'infantry', 'Infantry', 150, 105, 'None', ['Ground', 'Infantry'], [W(3)]),
+  stat('heli', 'Toufan Gunship', 'aircraft', 'Aircraft', 1450, 220, 'Light', ['Air'], [W(4)]),
+];
+const statRosters = { america: ['gacnst', 'gapowr', 'gapile', 'gaweap', 'r2saguard', 'grizzly', 'gi', 'ifv'], iran: ['karrar', 'basij', 'heli'] };
+const usMission = mission.missionPlacements({ ...spec, fa: 'america', fb: 'iran' }, statUnits, statRosters);
+const count = (id) => usMission.filter((p) => p.id === id).length;
+assert.ok(count('heli') === 2 && count('ifv') > 0, 'air defence (the IFV) against the gunships');
+assert.ok(count('grizzly') > 8, `more Grizzlies than Karrars to be even in strength (${count('grizzly')})`);
+const noAA = mission.missionPlacements({ ...spec, fa: 'america', fb: 'iran' }, statUnits, { ...statRosters, america: statRosters.america.filter((n) => n !== 'ifv') });
+assert.ok(!noAA.some((p) => p.id === 'heli') && noAA.filter((p) => p.id === 'karrar').length === 10, 'no air defence: the attack comes without aircraft');
 
 // Forces at a place: a foreign force named at a host nation's base holds it; the attacker is its rival, named or not.
 const forces = await import(moduleUrl('web/src/forces.ts'));

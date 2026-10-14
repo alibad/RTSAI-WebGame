@@ -7,6 +7,7 @@
 import { pickUnit, type Rosters, type UnitOption } from "./ai-lab";
 import { between, facingToward, formationAt, type Cell } from "./battle-plan";
 import type { Placement, SandboxOrder, SimUnit } from "./sandbox";
+import { dps, evenScale, type Army } from "./strength";
 
 export interface MissionSpec {
   /** The map built from the place (its engine id). */
@@ -82,12 +83,30 @@ export function missionPlacements(spec: MissionSpec, units: SimUnit[], rosters: 
       formationAt(c, target, sizes[i]).forEach((cell) => add(id, side, cell, order, face));
     });
   };
-  // Armies of equal value, so an older army (a classic country's) gets more units against a modern one; the
+  // Armies even in strength (strength.ts: the units' health and weapons from the rules), so a classic country's older
+  // army gets more units against a modern one, and fewer against a weaker one. Without stats, even in value. The
   // defender's edge is its base, its defences and the money to build more.
   const attack = picks(attacker), defend = picks(defender);
-  const attackSizes = [8, 8, 2];
-  const scale = Math.min(2, Math.max(1, value(attack, attackSizes) / Math.max(1, value(defend, [8, 8, 0]))));
-  army(defender, defend, between(site, from, 0.24), from, "hold", [Math.round(8 * scale), Math.round(8 * scale), 0]);
+  const attackSizes = [8, 8, 2], defendSizes = [8, 8, 0];
+  // Aircraft only against an army that can shoot them down: the defender adds air defence from its roster (an air
+  // base would have it), or the attack comes without aircraft. Needs the rules' combat stats.
+  const unit = (id: string) => units.find((u) => u.name === id);
+  const air = attack[2] ? unit(attack[2]) : undefined;
+  if (air?.weapons) {
+    const hitsAir = (u: SimUnit | undefined) => !!u && dps(u, air) > 0;
+    if (!defend.some((id) => hitsAir(unit(id)))) {
+      const aa = (rosters[faction(defender)] ?? []).map(unit)
+        .filter((u): u is SimUnit => !!u && !["building", "defense"].includes(u.kind) && u.combat !== false && hitsAir(u))
+        .sort((x, y) => Number(y.modern) - Number(x.modern) || x.cost - y.cost)[0];
+      if (aa) [defend[2], defendSizes[2]] = [aa.name, 4];
+      else [attackSizes[0], attackSizes[2]] = [attackSizes[0] + 2, 0];
+    }
+  }
+  const toArmy = (ids: string[], sizes: number[]): Army =>
+    ids.flatMap((id, i) => { const u = units.find((x) => x.name === id); return u && sizes[i] ? [[u, sizes[i]] as [SimUnit, number]] : []; });
+  const even = evenScale(toArmy(defend, defendSizes), toArmy(attack, attackSizes)) ?? value(attack, attackSizes) / Math.max(1, value(defend, defendSizes));
+  const scale = Math.min(3, Math.max(0.5, even));
+  army(defender, defend, between(site, from, 0.24), from, "hold", defendSizes.map((n) => Math.max(n ? 1 : 0, Math.round(n * scale))));
   army(attacker, attack, between(from, site, 0.12), site, "engage", attackSizes);
   return placements;
 }

@@ -677,6 +677,7 @@ namespace OpenRA.WebSim
 		public static string UnitCatalog(Ruleset rules)
 		{
 			var queues = new HashSet<string> { "Infantry", "Vehicle", "Aircraft", "Ship", "Building", "Support" };
+			var armors = rules.Actors.Values.SelectMany(a => a.TraitInfos<ArmorInfo>()).Select(a => a.Type).Where(t => t != null).Distinct().Order().ToArray();
 			var sb = new StringBuilder("{\"units\":[");
 			var first = true;
 			foreach (var a in rules.Actors.Values.OrderBy(a => a.Name))
@@ -703,10 +704,70 @@ namespace OpenRA.WebSim
 					.Append(",\"combat\":").Append(a.HasTraitInfo<AttackBaseInfo>() && a.HasTraitInfo<ArmamentInfo>() ? "true" : "false");
 				if (building != null)
 					sb.Append(",\"footprint\":[").Append(building.Dimensions.X).Append(',').Append(building.Dimensions.Y).Append(']');
+				AppendCombat(sb, a, rules, armors);
 				sb.Append('}');
 			}
 
 			return sb.Append("]}").ToString();
+		}
+
+		/// <summary>
+		/// What a unit brings to a fight, from its rules: "hp", "armor", the target types it can be hit as ("targets";
+		/// an aircraft as flying) and each weapon's damage per second against every armor type, with the target types it
+		/// can and can't hit (DamageWarhead Versus, Burst, ReloadDelay at 25 ticks a second). The battle simulator's
+		/// missions balance their armies with it (web/src/strength.ts).
+		/// </summary>
+		static void AppendCombat(StringBuilder sb, ActorInfo a, Ruleset rules, string[] armors)
+		{
+			var health = a.TraitInfoOrDefault<HealthInfo>();
+			if (health == null)
+				return;
+
+			// The unit as it usually fights: no conditions granted (not paradropped, not elite), an aircraft airborne.
+			// Traits enabled in that state count; when none would be, all of them do.
+			var state = new Dictionary<string, int>();
+			if (a.HasTraitInfo<AircraftInfo>())
+				state["airborne"] = 1;
+			List<T> Usual<T>(IEnumerable<T> traits) where T : ConditionalTraitInfo
+			{
+				var all = traits.ToList();
+				var on = all.Where(t => t.RequiresCondition == null || t.RequiresCondition.Evaluate(state)).ToList();
+				return on.Count > 0 ? on : all;
+			}
+
+			var targetables = Usual(a.TraitInfos<TargetableInfo>());
+			var targets = targetables.SelectMany(t => t.TargetTypes.Select(x => x.ToString())).Distinct();
+			sb.Append(",\"hp\":").Append(health.HP)
+				.Append(",\"armor\":").Append(J(a.TraitInfos<ArmorInfo>().FirstOrDefault()?.Type ?? ""))
+				.Append(",\"targets\":[").Append(string.Join(",", targets.Select(t => J(t)))).Append("],\"weapons\":[");
+			var firstWeapon = true;
+			foreach (var arm in Usual(a.TraitInfos<ArmamentInfo>()))
+			{
+				if (!rules.Weapons.TryGetValue(arm.Weapon.ToLowerInvariant(), out var w) || w.ReloadDelay <= 0)
+					continue;
+				var warheads = w.Warheads.OfType<OpenRA.Mods.Common.Warheads.DamageWarhead>().ToList();
+				if (warheads.Count == 0)
+					continue;
+				if (!firstWeapon)
+					sb.Append(',');
+				firstWeapon = false;
+				var perSecond = 25.0 * w.Burst / w.ReloadDelay;
+				sb.Append("{\"dps\":{");
+				var firstArmor = true;
+				foreach (var armor in armors.Prepend(""))
+				{
+					var damage = warheads.Sum(d => d.Damage * (d.Versus.TryGetValue(armor, out var pct) ? pct : 100) / 100.0) * perSecond;
+					if (!firstArmor)
+						sb.Append(',');
+					firstArmor = false;
+					sb.Append(J(armor)).Append(':').Append(Math.Round(damage, 1).ToString(System.Globalization.CultureInfo.InvariantCulture));
+				}
+
+				sb.Append("},\"valid\":[").Append(string.Join(",", w.ValidTargets.Select(t => J(t.ToString()))))
+					.Append("],\"invalid\":[").Append(string.Join(",", w.InvalidTargets.Select(t => J(t.ToString())))).Append("]}");
+			}
+
+			sb.Append(']');
 		}
 
 		/// <summary>

@@ -24,8 +24,9 @@ selecting and deleting behave as in the desktop editor. Changed terrain rows go 
   nations can be picked.
   Build runs the website's Earth compiler (imported from RTSAI-Web via the `@site` alias) and opens the map in the
   editor. **Start mission** turns a scanned site into a battle between any two nations (`web/src/mission.ts`): the
-  defender's base on the site from its own roster, armies of equal value (an older army gets more units), the
-  attack from the farthest start position.
+  defender's base on the site from its own roster, armies even in strength (`web/src/strength.ts`: health and
+  weapons from the rules, `Ui.AppendCombat`; Lanchester's square law, so an older army gets more units), air defence
+  for the defender when the attack brings aircraft (or no aircraft), and the attack from the farthest start position.
 - Save writes the map with the engine's `Map.Save` into IndexedDB (`rtsai-maps`) and mounts it, so it appears in
   the simulator and skirmish map lists; `.oramap` downloads the same package. Test in simulator opens it there.
 
@@ -40,11 +41,18 @@ selecting and deleting behave as in the desktop editor. Changed terrain rows go 
 - Fight starts a bare scenario: no starting units, the placed actors, starting money. You command your side with
   the full HUD (production, power, selection, orders); the AI commands the other. Edit returns to the layout.
 
-## Data
+## Data and building
 
-The Faction Viewer frames come from RTSAI-Web: `npm run export:viewer` there, then `node tools/sync-viewer.mjs`
-here copies them to `web/public/viewer/` (ignored). The dev server serves the website's art from
-`RTSAI_SITE_PUBLIC`. Building the page needs the website source: `RTSAI_SITE_ROOT` (default `../RTSAI-Web`).
+The page imports website source (RTSAI-Web: the Faction viewer components and the Earth compiler). The build finds
+it at `RTSAI_SITE_ROOT`, else beside this checkout (or beside a parent folder), and stops with a clear message when
+it is missing. When `web/public/viewer/` (ignored) is missing, the build writes the viewer data itself
+(`tools/sync-viewer.mjs`, the website's `scripts/export-viewer-data.mts`); delete it to refresh. The build records
+the website's commit as `import.meta.env.VITE_SITE_COMMIT`. In production the cards' art comes from the website's
+own `/art-lab`, `/faction-art` and `/units` paths on rtsai.net; locally the server serves them from
+`RTSAI_SITE_PUBLIC`.
+
+Earth maps read OpenStreetMap ways and, since 14 October, multipolygon relations (lakes such as Lake Timsah) and the
+sea, drawn from coastlines (the Suez Canal's banks are coastline): RTSAI-Web `lib/earth-evidence.ts`.
 
 ## Checks
 
@@ -59,7 +67,6 @@ $env:RTSAI_TEST_URL = "http://127.0.0.1:3490/"; node tools/editor-simulator-brow
 The local server relays OpenStreetMap queries and keeps the answers (`/api/overpass`; overpass-api.de refuses
 requests without an identifying User-Agent).
 
-Known gaps: the Earth compiler reads OpenStreetMap ways only, so lakes and canals mapped as multipolygon relations
-(Lake Timsah, the Suez Canal's water area) are missing from built maps; the classic countries' units are weaker than
-the modern factions' (missions even out the armies' value, not their strength); and the `Bundle.cs` editor-widget
-overlay takes effect after the next data repack (the runtime also quiets the editor widgets itself).
+Known gaps: islands inside a lake or sea stay water (the compiler has no land fill); a coastline that ends inside the
+box (missing data) adds no sea; and the `Bundle.cs` editor-widget overlay takes effect after the next data repack (the
+runtime also quiets the editor widgets itself).
