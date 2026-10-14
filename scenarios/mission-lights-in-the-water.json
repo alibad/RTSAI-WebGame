@@ -1,0 +1,18 @@
+{
+  "map": "lights-in-the-water",
+  "mission": "lights-in-the-water",
+  "seed": 2026,
+  "players": [
+    {
+      "slot": "Yemen",
+      "faction": "yemen",
+      "color": "2A6FDB"
+    }
+  ],
+  "options": {
+    "startingcash": "10000",
+    "difficulty": "normal",
+    "fog": "True",
+    "explored": "False"
+  }
+}

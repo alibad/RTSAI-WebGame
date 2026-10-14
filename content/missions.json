@@ -370,5 +370,176 @@
         ]
       }
     ]
+  },
+  {
+    "id": "lights-in-the-water",
+    "title": "Lights in the Water",
+    "faction": "yemen",
+    "campaign": "Lines of Hope",
+    "slot": "Yemen",
+    "enemy": "Orion Group",
+    "protect": [
+      "TownClinic"
+    ],
+    "briefing": "Captain Nabil Haidar, coast guard. Tonight the navigation lights along this reef coast lied. Spoofed signals steered the fishing fleet onto the reef line, and three groups of survivors are stranded on the beaches east of town.\n\nYou have a small mobile force and no base. Find all three groups. The transports can only cross the reef at high tide, eight minutes from now; escort them from the reef landing along the coast road to the town clinic. Orion Group patrols are already closing in from the north, and their columns will strike the watch post and then the town. The third group pulled someone out of the sea, a stranger nobody can explain.\n\nIf the clinic falls or your force is lost, the operation fails.",
+    "adaptation": "An original RTS AI chapter on the terrain of Hodeidah Lifeline, with a new coast and new actors.",
+    "objectives": [
+      {
+        "text": "Find the first group of survivors at the cove.",
+        "kind": "reach",
+        "targets": [],
+        "types": [
+          "r2technical",
+          "r2ytechrr",
+          "r2ymlr",
+          "r2ymr",
+          "r2yrpg",
+          "r2yspot"
+        ],
+        "target": "SurvivorsCove",
+        "radius": 5,
+        "count": 3
+      },
+      {
+        "text": "Find the second group by the old jetty.",
+        "kind": "reach",
+        "targets": [],
+        "types": [
+          "r2technical",
+          "r2ytechrr",
+          "r2ymlr",
+          "r2ymr",
+          "r2yrpg",
+          "r2yspot"
+        ],
+        "target": "SurvivorsJetty",
+        "radius": 5,
+        "count": 3
+      },
+      {
+        "text": "Find the third group on the far reef, with the stranger.",
+        "kind": "reach",
+        "targets": [],
+        "types": [
+          "r2technical",
+          "r2ytechrr",
+          "r2ymlr",
+          "r2ymr",
+          "r2yrpg",
+          "r2yspot"
+        ],
+        "target": "StrangerSite",
+        "radius": 5,
+        "count": 3
+      },
+      {
+        "text": "Hold on until high tide lets the transports reach the reef landing.",
+        "kind": "survive",
+        "targets": [],
+        "seconds": 480
+      },
+      {
+        "text": "Escort the survivors from the reef landing to the town clinic.",
+        "kind": "escort",
+        "targets": [],
+        "entry": "ReefLanding",
+        "route": [
+          "ReefRoadEast",
+          "ReefRoadMid",
+          "ReefRoadWest",
+          "TownGate",
+          "ClinicDoor"
+        ],
+        "count": 2,
+        "requires": [
+          0,
+          1,
+          2,
+          3
+        ]
+      },
+      {
+        "text": "Keep the town clinic standing.",
+        "kind": "protect",
+        "targets": [
+          "TownClinic"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "hold-the-ferry-line",
+    "title": "Hold the Ferry Line",
+    "faction": "turkey",
+    "campaign": "Lines of Hope",
+    "slot": "Turkey",
+    "enemy": "Orion Group",
+    "protect": [
+      "FerryPierNorth",
+      "FerryPierSouth"
+    ],
+    "briefing": "Colonel Kemal Ayd\u0131n. The port on the far side of the strait is the last ferry line out, and Orion Group wants it closed. The town is loading four ferries for the far shore.\n\nHold the port for twelve minutes. Orion columns will come down the north road, then the east road, then the south road; each checkpoint you keep standing buys the town time. When loading is done the ferries sail through the channel, where an Orion boat picket is waiting. Every one must reach the far shore.\n\nIf either ferry pier falls, the line is broken.",
+    "adaptation": "An original RTS AI chapter on the terrain of Straits Shield, with new actors.",
+    "objectives": [
+      {
+        "text": "Hold until the ferries finish loading.",
+        "kind": "survive",
+        "targets": [],
+        "seconds": 360
+      },
+      {
+        "text": "Get all four ferries across to the far shore.",
+        "kind": "shipping",
+        "targets": [],
+        "count": 4,
+        "requires": [
+          0
+        ],
+        "lanes": [
+          [
+            "Ferry0Start",
+            "Ferry0Way1",
+            "Ferry0Way2",
+            "Ferry0Way3",
+            "Ferry0Way4",
+            "Ferry0Shore"
+          ],
+          [
+            "Ferry1Start",
+            "Ferry1Way1",
+            "Ferry1Way2",
+            "Ferry1Way3",
+            "Ferry1Way4",
+            "Ferry1Shore"
+          ],
+          [
+            "Ferry2Start",
+            "Ferry2Way1",
+            "Ferry2Way2",
+            "Ferry2Shore"
+          ],
+          [
+            "Ferry3Start",
+            "Ferry3Way1",
+            "Ferry3Way2",
+            "Ferry3Shore"
+          ]
+        ]
+      },
+      {
+        "text": "Hold the ferry line for 12 minutes.",
+        "kind": "survive",
+        "targets": [],
+        "seconds": 720
+      },
+      {
+        "text": "Keep both ferry piers standing.",
+        "kind": "protect",
+        "targets": [
+          "FerryPierNorth",
+          "FerryPierSouth"
+        ]
+      }
+    ]
   }
 ]

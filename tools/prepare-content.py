@@ -340,7 +340,281 @@ def missions():
     (d/'map.bin').write_bytes(raw)
     catalog.append(hz)
     (SCENARIOS/('mission-'+hz['id']+'.json')).write_text(json.dumps(dict(map=hz['id'],mission=hz['id'],seed=2026,players=[dict(slot=hz['slot'],faction=hz['faction'],color='2A6FDB')],options={'startingcash':'10000','difficulty':'normal','fog':'True','explored':'False'}),indent=2)+'\n')
+    catalog += chapters()
     (OUT/'missions.json').write_text(json.dumps(catalog,indent=2)+'\n',encoding='utf-8')
+
+# Lines of Hope, Act III: original missions on the terrain of two adapted maps, with new actors placed here.
+# Orion Group is the fictional contractor force (no flag, no real nation); its faction only picks its unit art and
+# the scripted wave type (Missions.Wave). Positions are (u, v) map cells, like the Hezbollah exercise above.
+TILE = dict(water=1 if CLASSIC_MODE else 1015, rough=2 if CLASSIC_MODE else 1047,
+            road=3 if CLASSIC_MODE else 1031, beach=0 if CLASSIC_MODE else 1063, clear=0)
+MAP_RULES = 'World:\n\t-SpawnStartingUnits:\n\t-CrateSpawner:\n\t-StartGameNotification:\nPlayer:\n\t-ConquestVictoryConditions:\n'
+
+def chapter_players(slot, faction, color, extra=''):
+    return parse(f'PlayerReference@{slot}:\n\tName: {slot}\n\tAllowBots: False\n\tPlayable: True\n\tRequired: True\n'
+                 f'\tLockFaction: True\n\tFaction: {faction}\n\tLockColor: True\n\tColor: {color}\n\tLockSpawn: True\n'
+                 f'\tLockTeam: True\n\tEnemies: Orion Group\n'
+                 'PlayerReference@Orion:\n\tName: Orion Group\n\tFaction: russia\n\tColor: 545D66\n\tEnemies: '+slot+'\n'
+                 'PlayerReference@Neutral:\n\tName: Neutral\n\tOwnsWorld: True\n\tNonCombatant: True\n\tFaction: china\n'+extra)
+
+# Stranded crews and the stranger: a non-combatant side nobody is hostile to. Its faction (one of the original
+# countries) only gives the stranger the original 1950s commando art in the isometric mode.
+SURVIVORS = 'PlayerReference@Survivors:\n\tName: Survivors\n\tNonCombatant: True\n\tFaction: america\n\tColor: D8D2C4\n'
+
+class ChapterMap:
+    """A converted base map's terrain plus new actors; validates every placement against the terrain."""
+    def __init__(self, base, mission_id):
+        self.id = mission_id
+        self.yaml = parse((OUT/'maps'/base/'map.yaml').read_text(encoding='utf-8'))
+        self.raw = bytearray((OUT/'maps'/base/'map.bin').read_bytes())
+        _, self.w, self.h, self.tiles, _, self.res = struct.unpack_from('<BHHIII', self.raw)
+        self.actors = {}; self.cells = {}
+
+    def tile(self, u, v): return struct.unpack_from('<H', self.raw, self.tiles+(u*self.h+v)*3)[0]
+    def ore(self, u, v): return self.res and self.raw[self.res+(u*self.h+v)*2] in (1, 2)
+    def paint(self, u, v, kind):
+        if not (0 <= u < self.w and 0 <= v < self.h): return
+        struct.pack_into('<HB', self.raw, self.tiles+(u*self.h+v)*3, TILE[kind], 0)
+        if kind in ('water', 'beach') and self.res: struct.pack_into('<BB', self.raw, self.res+(u*self.h+v)*2, 0, 0)
+
+    def cpos(self, u, v):
+        off = v & 1
+        return (u, v) if CLASSIC_MODE else ((v+off)//2+u, (v-off)//2-u)
+    def mpos(self, x, y):
+        if CLASSIC_MODE: return x, y
+        v = x+y; return (x-y-(v & 1))//2, v
+
+    def add(self, name, kind, owner, u, v, where='land'):
+        if name in self.actors: raise ValueError(f'{self.id}: duplicate actor {name}')
+        if kind not in rules: raise ValueError(f'{self.id}: unknown actor type {kind} ({name})')
+        x, y = self.cpos(u, v)
+        footprint = [(x, y)]
+        building = resolve(rules, kind).get('Building')
+        if building:
+            dw, dh = map(int, building['children'].get('Dimensions', node('1,1'))['value'].replace(' ', '').split(','))
+            rows = building['children'].get('Footprint', node('x'))['value'].split()
+            # Conservative: the footprint rows and their transpose (some kit shapes list Dimensions as rows x columns).
+            cells = {(i, j) for j, row in enumerate(rows) for i, c in enumerate(row) if c != '_'}
+            cells |= {(j, i) for i, j in cells} | {(i, j) for i in range(dw) for j in range(dh)}
+            footprint = sorted((x+i, y+j) for i, j in cells)
+        for cx, cy in footprint:
+            mu, mv = self.mpos(cx, cy)
+            b = self.yaml['Bounds']['value'].split(',')
+            if not (int(b[0]) <= mu < int(b[0])+int(b[2]) and int(b[1]) <= mv < int(b[1])+int(b[3])):
+                raise ValueError(f'{self.id}: {name} at {u},{v} leaves the map bounds')
+            t = self.tile(mu, mv)
+            if kind != 'waypoint':
+                water = t == TILE['water']
+                if where == 'water' and not water: raise ValueError(f'{self.id}: {name} at {u},{v} must be on water')
+                if where == 'land' and water: raise ValueError(f'{self.id}: {name} at {u},{v} is on water')
+                if building and (water or (t == TILE['beach'] and not CLASSIC_MODE) or self.ore(mu, mv)):
+                    raise ValueError(f'{self.id}: building {name} at {u},{v} overlaps water, beach or ore at {mu},{mv}')
+                if (cx, cy) in self.cells and (building or self.cells[(cx, cy)][1]):
+                    raise ValueError(f'{self.id}: {name} overlaps {self.cells[(cx, cy)][0]}')
+                self.cells[(cx, cy)] = (name, bool(building))
+            elif where == 'water' and t != TILE['water']:
+                raise ValueError(f'{self.id}: waypoint {name} at {u},{v} must be on water')
+            elif where == 'land' and t == TILE['water']:
+                raise ValueError(f'{self.id}: waypoint {name} at {u},{v} is on water')
+        self.actors[name] = node(kind, values(Owner=owner, Location=f'{x},{y}'))
+
+    def reachable(self, a, b):
+        """Land connectivity between two actors' cells (8-neighbour flood fill over non-water map cells)."""
+        start = self.mpos(*map(int, self.actors[a]['children']['Location']['value'].split(',')))
+        goal = self.mpos(*map(int, self.actors[b]['children']['Location']['value'].split(',')))
+        seen = {start}; todo = [start]
+        while todo:
+            u, v = todo.pop()
+            if (u, v) == goal: return True
+            near = [(u-1, v), (u+1, v), (u, v-2), (u, v+2), (u, v-1), (u, v+1)]
+            near += [(u-1, v-1), (u-1, v+1)] if not v & 1 else [(u+1, v-1), (u+1, v+1)]
+            if CLASSIC_MODE: near = [(u+du, v+dv) for du in (-1, 0, 1) for dv in (-1, 0, 1) if du or dv]
+            for n in near:
+                if n not in seen and 0 <= n[0] < self.w and 0 <= n[1] < self.h and self.tile(*n) != TILE['water']:
+                    seen.add(n); todo.append(n)
+        return False
+
+    def write(self, title, slot, faction, color, extra_rules='', extra_players=''):
+        m = self.yaml
+        m['Title'] = node(title); m['Author'] = node('RTS AI — Lines of Hope')
+        m['Visibility'] = node('MissionSelector'); m['Categories'] = node('Campaign')
+        m['Players'] = node(children=chapter_players(slot, faction, color, extra_players))
+        m['Actors'] = node(children=self.actors)
+        m['Rules'] = node(children=parse(MAP_RULES+extra_rules))
+        d = OUT/'maps'/self.id; d.mkdir(parents=True, exist_ok=True)
+        (d/'map.yaml').write_text(dump(m), encoding='utf-8', newline='\n'); (d/'map.bin').write_bytes(self.raw)
+        w, h = self.w, self.h
+        img = Image.new('RGB', (w if CLASSIC_MODE else 2*w, h))
+        colors = {TILE['water']: (55, 94, 135), TILE['rough']: (111, 116, 62), TILE['road']: (133, 111, 74)}
+        if not CLASSIC_MODE: colors[TILE['beach']] = (183, 163, 105)
+        for u in range(w):
+            for v in range(h):
+                color = colors.get(self.tile(u, v), (93, 125, 59))
+                for x in ([u] if CLASSIC_MODE else [2*u+(v & 1), 2*u+1+(v & 1)]):
+                    if x < img.width: img.putpixel((x, v), color)
+        img.save(d/'map.png')
+
+def chapter_entry(mission, objectives):
+    named = set(mission.pop('map').actors)
+    for obj in objectives:
+        refs = obj.get('targets', [])+obj.get('route', [])+[obj[k] for k in ('target', 'via', 'entry') if k in obj]
+        refs += [x for lane in obj.get('lanes', []) for x in lane]
+        for ref in refs:
+            if ref not in named: raise ValueError(f"{mission['id']}: unknown objective actor {ref}")
+    for name in mission['protect']:
+        if name not in named: raise ValueError(f"{mission['id']}: unknown protected actor {name}")
+    mission['objectives'] = objectives
+    (SCENARIOS/('mission-'+mission['id']+'.json')).write_text(json.dumps(dict(map=mission['id'], mission=mission['id'], seed=2026,
+        players=[dict(slot=mission['slot'], faction=mission['faction'], color='2A6FDB')],
+        options={'startingcash': '10000', 'difficulty': 'normal', 'fog': 'True', 'explored': 'False'}), indent=2)+'\n')
+    return mission
+
+def lights_in_the_water():
+    """Act III, chapter 1: a night rescue on a reef coast (terrain of Hodeidah Lifeline with a painted sea)."""
+    import math
+    m = ChapterMap('hodeidah-lifeline', 'lights-in-the-water')
+    coast = {u: 85+round(2*math.sin(u*0.35)) for u in range(m.w)}
+    for u in range(m.w):
+        for v in range(coast[u]-2, m.h): m.paint(u, v, 'beach' if v < coast[u] else 'water')
+    # The reef line: a broken chain of rocks offshore that the spoofed signals steered the fishing fleet onto.
+    for u in range(36, 92):
+        if (u//3) % 3 != 2: m.paint(u, coast[u]+4+(u//5) % 2, 'rough')
+    # Orion's columns come down the north road; they make for the watch post first, then the town.
+    m.add('OrionWaveEntry', 'waypoint', 'Neutral', 52, 3)
+    # Buildings in this order: Missions.Wave sends each column at the first of them still standing.
+    m.add('WatchPost', 'caoutp', 'Yemen', 30, 44)
+    m.add('WatchMissiles', 'r2ycoastal', 'Yemen', 27, 42)
+    m.add('WatchBunker', 'r2ybunker', 'Yemen', 35, 50)
+    m.add('TownBunkerNorth', 'r2ybunker', 'Yemen', 22, 56)
+    m.add('TownMissilesNorth', 'r2ycoastal', 'Yemen', 28, 58)
+    # The north and west sites before the east ones: the columns reach the coast road (and the arriving
+    # transports) as late as possible.
+    m.add('TownMissilesWest', 'r2ycoastal', 'Yemen', 12, 54)
+    m.add('TownBunkerEast', 'r2ybunker', 'Yemen', 34, 66)
+    m.add('TownMissilesEast', 'r2ycoastal', 'Yemen', 32, 72)
+    m.add('TownClinic', 'cahosp', 'Yemen', 16, 64)
+    m.add('TownPowerOne', 'napowr', 'Yemen', 10, 58)
+    m.add('TownPowerTwo', 'napowr', 'Yemen', 8, 66)
+    # Captain Haidar's mobile force: no base, no production.
+    m.add('MissionSpawn', 'mpspawn', 'Neutral', 26, 76)
+    force = [('r2technical', 2), ('r2ytechrr', 2), ('r2ymlr', 2), ('r2ymr', 4), ('r2yrpg', 3), ('r2yspot', 1)]
+    i = 0
+    for kind, count in force:
+        for _ in range(count):
+            m.add(f'Haidar{i}', kind, 'Yemen', 22+i % 6*2, 72+i//6*2 + (i % 2)); i += 1
+    # Three stranded groups on the beach; the third holds the stranger pulled from the sea.
+    sites = [('SurvivorsCove', 44), ('SurvivorsJetty', 64), ('StrangerSite', 86)]
+    for name, u in sites:
+        v = coast[u]-3
+        m.add(name, 'waypoint', 'Neutral', u, v)
+        for k, kind in enumerate(['civ1', 'civa', 'civ2'] if name != 'StrangerSite' else ['civb', 'civ3']):
+            m.add(f'{name}Civilian{k}', kind, 'Survivors', u-2+k*2, v-1)
+    m.add('Stranger', 'tany', 'Survivors', 87, coast[87]-5)
+    # Orion patrols have reached each group: heavier the further east (the stranger is what Orion wants).
+    patrols = {'SurvivorsCove': [('e2', -3, -2), ('e2', 3, -2), ('e2', 0, -5), ('deso', 5, -4), ('ttnk', 2, -7)],
+               'SurvivorsJetty': [('e2', -3, -2), ('e2', 3, -2), ('e2', -2, -5), ('deso', 4, -5), ('ttnk', 0, -8), ('ttnk', 5, -8)],
+               'StrangerSite': [('e2', -4, -2), ('e2', 3, -2), ('e2', -2, -5), ('e2', 4, -5), ('deso', 0, -3),
+                                ('ttnk', -3, -9), ('ttnk', 3, -9)]}
+    for site, u0 in sites:
+        for k, (kind, du, dv) in enumerate(patrols[site]): m.add(f'{site}Patrol{k}', kind, 'Orion Group', u0+du, coast[u0]-3+dv)
+    for k, (kind, u, v) in enumerate([('ttnk', 76, 74), ('e2', 75, 77), ('e2', 78, 76)]):
+        m.add(f'Roadblock{k}', kind, 'Orion Group', u, v)
+    # The survivors' transports leave from the reef landing and follow the coast road to the clinic.
+    m.add('ReefLanding', 'waypoint', 'Neutral', 84, 78)
+    route = [('ReefRoadEast', 72, 77), ('ReefRoadMid', 58, 77), ('ReefRoadWest', 44, 76), ('TownGate', 32, 78), ('ClinicDoor', 22, 79)]
+    for name, u, v in route: m.add(name, 'waypoint', 'Neutral', u, v)
+    for a, b in [('OrionWaveEntry', 'WatchPost'), ('OrionWaveEntry', 'TownClinic'), ('ReefLanding', 'ClinicDoor'),
+                 ('MissionSpawn', 'StrangerSite'), ('MissionSpawn', 'SurvivorsCove'), ('MissionSpawn', 'SurvivorsJetty')]:
+        if not m.reachable(a, b): raise ValueError(f'{m.id}: no land route {a} -> {b}')
+    # Mission rules: the town's defences and generators are not part of the force (losing every unit loses the
+    # mission), and Orion's patrol tanks are lighter export hulls so a force without a base can hold the town.
+    m.write('Lights in the Water', 'Yemen', 'yemen', '8F7A45', extra_players=SURVIVORS, extra_rules=(
+        'r2ycoastal:\n\t-MustBeDestroyed:\nr2ybunker:\n\t-MustBeDestroyed:\nnapowr:\n\t-MustBeDestroyed:\n'
+        'htnk:\n\tHealth:\n\t\tHP: 260\nsapc:\n\tMobile:\n\t\tSpeed: 50\n'))
+    types = [k for k, _ in force]
+    mission = dict(id=m.id, map=m, title='Lights in the Water', faction='yemen', campaign='Lines of Hope', slot='Yemen',
+        enemy='Orion Group', protect=['TownClinic'],
+        briefing=('Captain Nabil Haidar, coast guard. Tonight the navigation lights along this reef coast lied. Spoofed '
+                  'signals steered the fishing fleet onto the reef line, and three groups of survivors are stranded '
+                  'on the beaches east of town.\n\nYou have a small mobile force and no base. Find all three groups. '
+                  'The transports can only cross the reef at high tide, eight minutes from now; escort them from the '
+                  'reef landing along the coast road to the town clinic. Orion Group patrols are '
+                  'already closing in from the north, and their columns will strike the watch post and then the '
+                  'town. The third group pulled someone out of the sea, a stranger nobody can explain.\n\nIf the '
+                  'clinic falls or your force is lost, the operation fails.'),
+        adaptation='An original RTS AI chapter on the terrain of Hodeidah Lifeline, with a new coast and new actors.')
+    return chapter_entry(mission, [
+        objective('Find the first group of survivors at the cove.', 'reach', types=types, target='SurvivorsCove', radius=5, count=3),
+        objective('Find the second group by the old jetty.', 'reach', types=types, target='SurvivorsJetty', radius=5, count=3),
+        objective('Find the third group on the far reef, with the stranger.', 'reach', types=types, target='StrangerSite', radius=5, count=3),
+        # The transports can only cross the reef at high tide, eight minutes in: until then the force must cover
+        # both the landing and the town (an idle town falls at about 12 minutes).
+        objective('Hold on until high tide lets the transports reach the reef landing.', 'survive', seconds=480),
+        objective('Escort the survivors from the reef landing to the town clinic.', 'escort', entry='ReefLanding',
+                  route=[name for name, _, _ in route], count=2, requires=[0, 1, 2, 3]),
+        objective('Keep the town clinic standing.', 'protect', ['TownClinic'])])
+
+def hold_the_ferry_line():
+    """Act III, chapter 2: a timed defence of a strait port (terrain of Straits Shield)."""
+    m = ChapterMap('straits-shield', 'hold-the-ferry-line')
+    m.add('OrionWaveEntry', 'waypoint', 'Neutral', 136, 94)
+    # Three approaches, each held by a checkpoint. Missions.Wave sends each column at the first building still
+    # standing, so Orion hits the north road, then the east road, then the south road, then the piers.
+    for name, (u, v), guns in [('NorthCheckpoint', (88, 66), [('r2hisar', 93, 67), ('r2hisar', 85, 64)]),
+                               ('EastCheckpoint', (104, 76), [('r2boran', 101, 74), ('r2hisar', 108, 80)]),
+                               ('SouthCheckpoint', (90, 110), [('r2hisar', 95, 112), ('r2hisar', 88, 107)])]:
+        m.add(name, 'caoutp', 'Turkey', u, v)
+        for k, (kind, gu, gv) in enumerate(guns): m.add(f'{name}Gun{k}', kind, 'Turkey', gu, gv)
+    # Then the two ferry piers, then the port base: once the checkpoints fall, the columns go for the piers.
+    for name, kind, u, v in [('FerryPierNorth', 'caoutp', 77, 59), ('FerryPierSouth', 'caoutp', 67, 86),
+                             ('PierNorthGun', 'r2boran', 82, 62), ('PierSouthGun', 'r2hisar', 71, 84),
+                             ('TurkeyConyard', 'gacnst', 73, 88), ('TurkeyPowerOne', 'gapowr', 79, 86), ('TurkeyPowerTwo', 'gapowr', 82, 89),
+                             ('TurkeyPowerThree', 'gapowr', 79, 92), ('TurkeyBarracks', 'gapile', 82, 95), ('TurkeyFactory', 'gaweap', 61, 91),
+                             ('TurkeyRefinery', 'garefn', 84, 78)]:
+        m.add(name, kind, 'Turkey', u, v)
+    m.add('MissionSpawn', 'mpspawn', 'Neutral', 80, 83)
+    m.add('TurkeyHarvester', 'harv', 'Turkey', 76, 82)
+    m.add('Tanya', 'tany', 'Turkey', 78, 84)
+    force = [('r2trrifle', 6), ('r2trat', 4), ('r2bozkir', 2), ('r2aras', 2), ('r2gokkalkan', 1)]
+    i = 0
+    for kind, count in force:
+        for _ in range(count):
+            m.add(f'Aydin{i}', kind, 'Turkey', 86+i % 5*2, 99+i//5*2 + (i % 2)); i += 1
+    # Four ferries cross the strait to the far shore once loading is done; an Orion boat picket waits in the channel.
+    lanes = [[(68, 63), (66, 70), (63, 77), (57, 82), (49, 84), (42, 83)],
+             [(69, 66), (67, 73), (62, 79), (54, 83), (46, 84), (44, 82)],
+             [(62, 84), (55, 85), (48, 85), (40, 84)],
+             [(60, 86), (53, 86), (45, 86), (38, 85)]]
+    names = []
+    for k, lane in enumerate(lanes):
+        names.append([])
+        for j, (u, v) in enumerate(lane):
+            name = f'Ferry{k}Start' if j == 0 else f'Ferry{k}Shore' if j == len(lane)-1 else f'Ferry{k}Way{j}'
+            m.add(name, 'waypoint', 'Neutral', u, v, where='water'); names[-1].append(name)
+    for k, (u, v) in enumerate([(46, 87), (48, 89), (42, 88), (39, 86)]):
+        m.add(f'OrionPicket{k}', 'dest', 'Orion Group', u, v, where='water')
+    for a, b in [('OrionWaveEntry', 'NorthCheckpoint'), ('OrionWaveEntry', 'EastCheckpoint'), ('OrionWaveEntry', 'SouthCheckpoint'),
+                 ('OrionWaveEntry', 'FerryPierNorth'), ('OrionWaveEntry', 'TurkeyConyard')]:
+        if not m.reachable(a, b): raise ValueError(f'{m.id}: no land route {a} -> {b}')
+    # Mission rules: the ferries are slow, unarmoured civilian hulls.
+    m.write('Hold the Ferry Line', 'Turkey', 'turkey', 'A73731', extra_rules='lcrf:\n\tMobile:\n\t\tSpeed: 50\n\tHealth:\n\t\tHP: 150\n')
+    mission = dict(id=m.id, map=m, title='Hold the Ferry Line', faction='turkey', campaign='Lines of Hope', slot='Turkey',
+        enemy='Orion Group', protect=['FerryPierNorth', 'FerryPierSouth'],
+        briefing=('Colonel Kemal Aydın. The port on the far side of the strait is the last ferry line out, and Orion '
+                  'Group wants it closed. The town is loading four ferries for the far shore.\n\nHold the port for '
+                  'twelve minutes. Orion columns will come down the north road, then the east road, then the south '
+                  'road; each checkpoint you keep standing buys the town time. When loading is done the ferries sail '
+                  'through the channel, where an Orion boat picket is waiting. Every one must reach the far '
+                  'shore.\n\nIf either ferry pier falls, the line is broken.'),
+        adaptation='An original RTS AI chapter on the terrain of Straits Shield, with new actors.')
+    return chapter_entry(mission, [
+        objective('Hold until the ferries finish loading.', 'survive', seconds=360),
+        objective('Get all four ferries across to the far shore.', 'shipping', count=4, requires=[0], lanes=names),
+        objective('Hold the ferry line for 12 minutes.', 'survive', seconds=720),
+        objective('Keep both ferry piers standing.', 'protect', ['FerryPierNorth', 'FerryPierSouth'])])
+
+def chapters():
+    return [lights_in_the_water(), hold_the_ferry_line()]
 
 def originals():
     """Original art for the nine original countries (isometric only): content/ea-art.yaml, ea-sequences.yaml,
