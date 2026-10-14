@@ -231,7 +231,16 @@ function subjectsOf(o, ui) {
   for (const m of ui?.markers ?? []) pts.push({ name: m.name, at: [m.x, m.y], cell: named[m.name]?.cell ?? worldToCell([m.x, m.y]) });
   const add = (n) => { const a = named[n]; if (a?.cell && !pts.some((p) => p.name === n)) pts.push({ name: n, at: cellToWorld(a.cell), cell: a.cell }); };
   if (o.kind === "escort" && o.entry) add(o.entry);
-  if (o.kind === "shipping") for (const lane of o.lanes ?? []) add(lane[0]);
+  if (o.kind === "shipping") {
+    // The lanes' entries are open sea at the map edge and the ships only sail once the objective is active: the shot
+    // is the strait itself, from the coast by the player's base out over the lane waypoint nearest to it.
+    const wps = (o.lanes ?? []).flatMap((lane) => lane.slice(1, -1)).filter((n) => named[n]?.cell).map((n) => ({ name: n, at: cellToWorld(named[n].cell), cell: named[n].cell }));
+    const lane = wps.sort((a, b) => dist(a.at, base) - dist(b.at, base))[0];
+    if (lane) {
+      const mix = (f) => [lane.at[0] + (base[0] - lane.at[0]) * f, lane.at[1] + (base[1] - lane.at[1]) * f];
+      return { groups: [[lane]], toward: null, path: [mix(0.5), mix(0.15)], pathNote: `the strait from the coast by the player's base out over the shipping lane at ${lane.name}` };
+    }
+  }
   let groups = [];
   for (const p of pts) {
     const g = groups.find((g) => dist(g[0].at, p.at) < 700);
@@ -306,27 +315,42 @@ function keyFrame(rec, startMs, endMs, file) {
 }
 
 const segments = [];
-/** Records one segment: run(), which moves the camera, between start and stop; the clip is [start, start + seconds]. */
-async function segment(name, seconds, run, describe) {
-  const rec = recorder(path.join(tmpRoot, name));
-  await rec.start();
-  await sleep(150);
-  const start = await now();
-  await run(start);
-  const left = start + seconds * 1000 - (await now());
-  if (left > 0) await sleep(left + 120);
-  const end = start + seconds * 1000;
-  await rec.stop();
-  const file = path.join(out, `${name}.mp4`);
-  const inWindow = rec.frames.filter((f) => f.t >= start && f.t <= end);
-  encode(rec.frames, rec.dir, file, start, seconds * 1000);
-  const frameAt = keyFrame(rec, start, end, path.join(framesDir, `${name}.png`));
-  if (!keepFrames) fs.rmSync(rec.dir, { recursive: true, force: true });
-  const p = probe(file);
-  const seg = { file: `${name}.mp4`, keyFrame: `frames/${name}.png`, keyFrameAt: frameAt, ...p, captureFps: +(inWindow.length / seconds).toFixed(1), ...describe };
-  segments.push(seg);
-  log(`${name}: ${p.seconds} s, ${p.width}x${p.height} ${p.fps}, ${p.frames} frames, screencast ${seg.captureFps} fps`);
-  return seg;
+/**
+ * Records one segment: run(), which moves the camera, between start and stop; the clip is [start, start + seconds].
+ * A take where the page stalled (the screencast under 45 fps, or a gap over 150 ms between frames: the 30 fps clip would
+ * stutter) is recorded again, after again(), up to three takes.
+ */
+async function segment(name, seconds, run, describe, again = null) {
+  for (let attempt = 1; ; attempt++) {
+    if (attempt > 1 && again) await again();
+    const rec = recorder(path.join(tmpRoot, name));
+    await rec.start();
+    await sleep(150);
+    const start = await now();
+    await run(start);
+    const left = start + seconds * 1000 - (await now());
+    if (left > 0) await sleep(left + 120);
+    const end = start + seconds * 1000;
+    await rec.stop();
+    const inWindow = rec.frames.filter((f) => f.t >= start && f.t <= end);
+    const times = [start, ...inWindow.map((f) => f.t), end];
+    const longestGap = Math.round(Math.max(...times.slice(1).map((t, i) => t - times[i])));
+    const captureFps = +(inWindow.length / seconds).toFixed(1);
+    if ((captureFps < 45 || longestGap > 150) && attempt < 3) {
+      log(`${name}: take ${attempt} stuttered (screencast ${captureFps} fps, longest gap ${longestGap} ms): again`);
+      fs.rmSync(rec.dir, { recursive: true, force: true });
+      continue;
+    }
+    const file = path.join(out, `${name}.mp4`);
+    encode(rec.frames, rec.dir, file, start, seconds * 1000);
+    const frameAt = keyFrame(rec, start, end, path.join(framesDir, `${name}.png`));
+    if (!keepFrames) fs.rmSync(rec.dir, { recursive: true, force: true });
+    const p = probe(file);
+    const seg = { file: `${name}.mp4`, keyFrame: `frames/${name}.png`, keyFrameAt: frameAt, ...p, captureFps, longestFrameGapMs: longestGap, takes: attempt, ...describe };
+    segments.push(seg);
+    log(`${name}: ${p.seconds} s, ${p.width}x${p.height} ${p.fps}, ${p.frames} frames, screencast ${captureFps} fps, longest gap ${longestGap} ms, take ${attempt}`);
+    return seg;
+  }
 }
 
 /** Jumps the camera (between recordings, a cut) and lets the view's actors and art stream in. */
@@ -357,7 +381,7 @@ if (only.has("establishing")) {
     await sleep(200);
     await page.evaluate(([keys]) => window.__fx.glide(keys, 7600), [keys]);
   }, { shows: `Camera glide from ${far ? `the battlefield toward ${far.g.map((p) => p.name).join(", ")} (objective ${far.o.index})` : "the battlefield"} to the player's base`,
-    camera: { keys, easing: "cosine ease-in-out over a Catmull-Rom path, 0.2 s holds" }, from: { at: from.map(Math.round), cell: worldToCell(from) }, to: { at: base, cell: worldToCell(base), name: "player base (start)" } });
+    camera: { keys, easing: "cosine ease-in-out over a Catmull-Rom path, 0.2 s holds" }, from: { at: from.map(Math.round), cell: worldToCell(from) }, to: { at: base, cell: worldToCell(base), name: "player base (start)" } }, () => cutTo(keys[0].x, keys[0].y, keys[0].zoom, 2200));
 }
 
 // ------------------------------------------------------------------------------------------------- objectives
@@ -377,19 +401,19 @@ if (only.has("objectives")) {
       const xs = g.map((p) => p.at[0]), ys = g.map((p) => p.at[1]);
       const fit = Math.min(CSS_W / (Math.max(...xs) - Math.min(...xs) + 700), CSS_H / (Math.max(...ys) - Math.min(...ys) + 420));
       const z1 = Math.max(0.75, Math.min(1.3, fit)), z0 = z1 * 0.9;
-      const keys = [{ x: a[0], y: a[1], zoom: z0 }, { x: b[0], y: b[1], zoom: z1 }];
+      const keys = o.path && k === 0 ? [{ x: o.path[0][0], y: o.path[0][1], zoom: 0.75 }, { x: o.path[1][0], y: o.path[1][1], zoom: 0.82 }] : [{ x: a[0], y: a[1], zoom: z0 }, { x: b[0], y: b[1], zoom: z1 }];
       const name = k === 0 ? `objective-${o.index}` : `objective-${o.index}-${k + 1}`;
       await cutTo(keys[0].x, keys[0].y, keys[0].zoom);
       await segment(name, 5, async () => { await page.evaluate(([keys]) => window.__fx.glide(keys, 5000), [keys]); },
-        { shows: `Objective ${o.index}${o.secondary ? " (secondary)" : ""}: ${o.text} Subject: ${g.map((p) => p.name).join(", ")}${o.toward && k === 0 ? `, drifting toward ${o.toward.name}` : ""}.`,
+        { shows: `Objective ${o.index}${o.secondary ? " (secondary)" : ""}: ${o.text} Subject: ${g.map((p) => p.name).join(", ")}${o.toward && k === 0 ? `, drifting toward ${o.toward.name}` : ""}${o.pathNote && k === 0 ? ` (${o.pathNote})` : ""}.`,
           objective: { index: o.index, text: o.text, kind: o.kind, secondary: o.secondary }, actors: cellsOf(g), toward: o.toward ? cellsOf([o.toward])[0] : undefined,
-          camera: { keys, easing: "cosine ease-in-out drift and push-in" } });
+          camera: { keys, easing: "cosine ease-in-out drift and push-in" } }, () => cutTo(keys[0].x, keys[0].y, keys[0].zoom));
     }
   }
 }
 
 // ------------------------------------------------------------------------------------------------- battle
-const battle = { warmup: [], pushed: null };
+const battle = { warmup: [], pushes: [] };
 if (only.has("battle")) {
   /** The fighting: own actors (units, buildings) and enemy units within 7 cells of each other (co-commander observation,
    * not fog-limited here since the fog is off). Returns its centre (world px) and size, or null. */
@@ -411,40 +435,42 @@ if (only.has("battle")) {
     return { obs, fight: { at, size: centre.n.length, enemies: centre.n.filter((a) => enemies.includes(a)).length, cell: worldToCell(at), mpos: worldToMPos(at) } };
   }
   const nonCombat = /harv|mcv|engineer|engi|truck|sapc|network|spy|dog/i;
+  const fightersOf = (obs, moving = false) => (obs ? obs.units.filter((u) => u.canAttack && !nonCombat.test(u.kind) && (!moving || !u.idle)) : []);
+  const centreOf = (us) => mposToWorld([us.reduce((s, u) => s + u.cellX, 0) / us.length, us.reduce((s, u) => s + u.cellY, 0) / us.length]);
+  /** Where the camera goes without a fight: the army on the move, else nothing (null). */
+  const movingArmy = (obs) => { const m = fightersOf(obs, true); return m.length ? centreOf(m) : null; };
+
+  /** The player's combat units attack-move at the nearest enemy objective target or enemy, through the co-commander's
+   * engine channel (the same validated orders its Attack recommendation gives). */
+  async function push(obs) {
+    const fighters = fightersOf(obs);
+    if (!fighters.length) return null;
+    const armyAt = [fighters.reduce((s, u) => s + u.cellX, 0) / fighters.length, fighters.reduce((s, u) => s + u.cellY, 0) / fighters.length];
+    const targets = objectives.filter((o) => ["destroy", "capture"].includes(o.kind)).flatMap((o) => o.groups.flat()).filter((p) => p.cell && !p.base).map((p) => ({ name: p.name, cell: p.cell, mpos: cposToMPos(p.cell) }));
+    const enemies = obs.visibleEnemies.map((e) => ({ name: e.kind, mpos: [e.cellX, e.cellY], cell: mposToCPos([e.cellX, e.cellY]) }));
+    const goal = [...targets, ...enemies].sort((a, b) => dist(a.mpos, armyAt) - dist(b.mpos, armyAt))[0];
+    if (!goal) return null;
+    const commands = fighters.slice(0, 20).map((u) => ({ action: "attack_move", actor_id: u.actorId, target_x: goal.mpos[0], target_y: goal.mpos[1] }));
+    const receipt = await page.evaluate(async (c) => { try { return await window.game.client.adviserExecute(`footage-push-${Date.now()}`, c); } catch (e) { return { error: String(e) }; } }, commands);
+    const p = { tick: await gameTime(), units: commands.length, target: goal.name, cell: goal.cell, receipt: receipt?.error ?? "ok" };
+    battle.pushes.push(p);
+    log("push", JSON.stringify(p));
+    return p;
+  }
   await cutTo(base[0], base[1], 0.6, 300);
   await setSpeed(warmSpeed);
   log(`warm-up at ${warmSpeed}x from tick ${await gameTime()}`);
-  let fight = null, pushedAt = 0;
+  let fight = null, lastPush = 0;
   const warmStart = Date.now();
   while (Date.now() - warmStart < 150000) {
     const r = await action();
     if (r.fight && r.fight.size >= 3 && r.fight.enemies >= 1) { fight = r.fight; break; }
-    if (r.fight) await page.evaluate(([x, y]) => window.__fx.follow(x, y, 0.6), r.fight.at);
-    // No fighting after the first 30 s (about two game minutes at 4x): the player's army goes at the nearest enemy
-    // objective target (or the nearest enemy) by attack-move, through the co-commander's engine channel.
-    if (!pushedAt && Date.now() - warmStart > 30000 && r.obs) {
-      const fighters = r.obs.units.filter((u) => u.canAttack && !nonCombat.test(u.kind));
-      const armyAt = fighters.length ? [fighters.reduce((s, u) => s + u.cellX, 0) / fighters.length, fighters.reduce((s, u) => s + u.cellY, 0) / fighters.length] : worldToMPos(base);
-      const targets = objectives.filter((o) => ["destroy", "capture"].includes(o.kind)).flatMap((o) => o.groups.flat()).filter((p) => p.cell && !p.base).map((p) => ({ name: p.name, cell: p.cell, mpos: cposToMPos(p.cell) }));
-      const enemyCells = r.obs.visibleEnemies.map((e) => ({ name: e.kind, mpos: [e.cellX, e.cellY], cell: mposToCPos([e.cellX, e.cellY]) }));
-      const pool = targets.length ? targets : enemyCells;
-      const goal = pool.sort((a, b) => dist(a.mpos, armyAt) - dist(b.mpos, armyAt))[0];
-      if (fighters.length && goal) {
-        const commands = fighters.slice(0, 16).map((u) => ({ action: "attack_move", actor_id: u.actorId, target_x: goal.mpos[0], target_y: goal.mpos[1] }));
-        const receipt = await page.evaluate(async (c) => { try { return await window.game.client.adviserExecute(`footage-push-${Date.now()}`, c); } catch (e) { return { error: String(e) }; } }, commands);
-        battle.pushed = { tick: await gameTime(), units: commands.length, target: goal.name, cell: goal.cell, receipt: receipt?.error ?? "ok" };
-        log("push", JSON.stringify(battle.pushed));
-        pushedAt = Date.now();
-      }
+    // No fighting after 15 s (a game minute at 4x): push, and again every 25 s with the units built since (at most 4).
+    if (r.obs && !r.fight && Date.now() - warmStart > 15000 && Date.now() - lastPush > 25000 && battle.pushes.length < 4) {
+      if (await push(r.obs)) lastPush = Date.now();
     }
-    if (pushedAt && !r.fight && r.obs) {
-      // Keep the army in view while it travels.
-      const fighters = r.obs.units.filter((u) => u.canAttack && !nonCombat.test(u.kind) && !u.idle);
-      if (fighters.length) {
-        const c = mposToWorld([fighters.reduce((s, u) => s + u.cellX, 0) / fighters.length, fighters.reduce((s, u) => s + u.cellY, 0) / fighters.length]);
-        await page.evaluate(([x, y]) => window.__fx.follow(x, y, 0.6), c);
-      }
-    }
+    const look = r.fight?.at ?? (lastPush ? movingArmy(r.obs) : null);
+    if (look) await page.evaluate(([x, y]) => window.__fx.follow(x, y, 0.6), look);
     await sleep(500);
   }
   battle.warmup.push({ seconds: +((Date.now() - warmStart) / 1000).toFixed(1), speed: warmSpeed, tick: await gameTime(), fight });
@@ -454,26 +480,35 @@ if (only.has("battle")) {
   for (let k = 1; k <= cuts; k++) {
     let r = await action();
     if (!r.fight && k > 1) {
-      // Between cuts the fight may be over: catch up at speed to the next contact (at most 40 s).
+      // Between cuts the fight may be over: catch up at speed to the next contact (at most 40 s; a push after 20 s).
       await setSpeed(warmSpeed);
-      const end = Date.now() + 40000;
-      while (Date.now() < end && !(r.fight && r.fight.enemies >= 1)) { await sleep(500); r = await action(); }
+      const t = Date.now();
+      let pushed = false;
+      while (Date.now() - t < 40000 && !(r.fight && r.fight.enemies >= 1)) {
+        await sleep(500);
+        r = await action();
+        if (!pushed && r.obs && Date.now() - t > 20000) { pushed = !!(await push(r.obs)); }
+      }
       await setSpeed(1);
       battle.warmup.push({ beforeCut: k, tick: await gameTime(), fight: r.fight });
     }
-    const target = r.fight?.at ?? fight?.at ?? base;
+    const target = r.fight?.at ?? movingArmy(r.obs) ?? fight?.at ?? base;
     await cutTo(target[0], target[1], 0.95, 1200);
     const seen = [];
-    await segment(`battle-${k}`, cutSeconds, async (start) => {
+    const startTick = await gameTime();
+    const seg = await segment(`battle-${k}`, cutSeconds, async (start) => {
+      seen.length = 0;
       await page.evaluate(([x, y]) => window.__fx.follow(x, y, 0.95), target);
       while ((await now()) < start + cutSeconds * 1000 - 400) {
         const q = await action();
-        if (q.fight) { seen.push({ at: +(((await now()) - start) / 1000).toFixed(1), cell: q.fight.cell, size: q.fight.size }); await page.evaluate(([x, y]) => window.__fx.follow(x, y, 0.95), q.fight.at); }
+        if (q.fight) seen.push({ at: +(((await now()) - start) / 1000).toFixed(1), cell: q.fight.cell, size: q.fight.size });
+        const look = q.fight?.at ?? movingArmy(q.obs);
+        if (look) await page.evaluate(([x, y]) => window.__fx.follow(x, y, 0.95), look);
         await sleep(450);
       }
-    }, { shows: `Battle cut ${k}: real play, the camera following the fighting (the player's side played by the co-commander in Auto${battle.pushed ? ", its army sent at " + battle.pushed.target : ""}; the enemy is the mission's scripted forces).`,
-      camera: { follow: "critically damped spring to the densest engagement, capped at 260 world px/s, zoom 0.95" },
-      fight: seen.length ? { first: seen[0], last: seen.at(-1), samples: seen.length } : null, startTick: await gameTime() });
+    }, { shows: `Battle cut ${k}: real play, the camera following the fighting (the player's side played by the co-commander in Auto${battle.pushes.length ? ", its army sent at " + battle.pushes.map((p) => p.target).join(", then ") : ""}; the enemy is the mission's own forces${/Wave/.test(String(Object.keys(named))) ? " and scripted waves" : ""}).`,
+      camera: { follow: "critically damped spring to the densest engagement (else the army on the move), capped at 260 world px/s, zoom 0.95" }, startTick });
+    seg.fight = seen.length ? { first: seen[0], last: seen.at(-1), samples: seen.length } : null;
     files.push(`battle-${k}.mp4`);
     if (k < cuts) { await page.evaluate(() => window.__fx.stopAll()); await sleep(3000); }
   }
