@@ -16,7 +16,7 @@ const [mission, diffs = "normal"] = argv.filter((a, i) => !a.startsWith("--") &&
 const runs = Number(opt("runs", 2));
 const speed = Number(opt("speed", 4));
 const url = opt("url", "http://127.0.0.1:3492/?profile=public");
-const out = opt("out", "artifacts/chapters-playtest");
+const out = opt("out", "D:/rtsai-campaign/playtest");
 const limitMinutes = Number(opt("limit", 14));
 const director = argv.includes("--director");
 fs.mkdirSync(out, { recursive: true });

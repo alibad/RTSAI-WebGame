@@ -62,7 +62,8 @@ static class Probe
 				var enemy = world.Actors.Count(a => a.Owner.InternalName == "Orion Group" && a.IsInWorld && !a.IsDead && a.TraitOrDefault<IMove>() != null);
 				var hurt = watch.Where(n => !named[n].IsDead && named[n].IsInWorld && named[n].TraitOrDefault<IHealth>() is { } h && h.HP < h.MaxHP)
 					.Select(n => $"{n} {100 * named[n].Trait<IHealth>().HP / named[n].Trait<IHealth>().MaxHP}%");
-				Console.WriteLine($"{world.WorldTick / 1500.0:F2} min: {state} | units {units} vs {enemy} | down: {string.Join(",", dead)} | hurt: {string.Join(",", hurt)} | events {string.Join(",", Missions.FiredEvents)}");
+				var res = human.PlayerActor.Trait<PlayerResources>();
+				Console.WriteLine($"{world.WorldTick / 1500.0:F2} min: {state} | units {units} vs {enemy} | cash {res.Cash + res.Resources} | down: {string.Join(",", dead)} | hurt: {string.Join(",", hurt)} | events {string.Join(",", Missions.FiredEvents)}");
 				lastState = state;
 			}
 
