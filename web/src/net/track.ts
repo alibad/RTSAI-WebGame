@@ -7,8 +7,10 @@ export type GameEvent = "game_loaded" | "match_started" | "match_ended" | "multi
   | "multiplayer_started" | "ai_assist" | "game_error" | "feedback_sent";
 type Props = Record<string, string | number | boolean | undefined>;
 
-/** Counted per player and overall, or emailed to the event log. */
-const SERVER_EVENTS = new Set<GameEvent>(["match_started", "multiplayer_started", "ai_assist", "game_error"]);
+/** Counted per player and overall, emailed to the event log, or rolled up for the weekly digest (the site's
+ * recordEvent/weeklyDigest). Feedback reaches the site through /api/feedback instead. */
+export const SERVER_EVENTS = new Set<GameEvent>(["game_loaded", "match_started", "match_ended", "multiplayer_created", "multiplayer_joined",
+  "multiplayer_started", "ai_assist", "game_error"]);
 
 let analytics: Promise<((name: string, props: Props) => void) | null> | null = null;
 function ga() {
@@ -26,6 +28,9 @@ function ga() {
 
 export function track(name: GameEvent, props: Props = {}) {
   if (!accountsConfigured) return;
-  void ga().then(log => log?.(name, props));
-  if (SERVER_EVENTS.has(name)) void siteApi("/api/event", { name, props }, true);
+  try {
+    void ga().then(log => log?.(name, props)).catch(() => { /* analytics never breaks the game */ });
+    // Only a signed-in player sends (siteApi returns without a user); a failed call is dropped.
+    if (SERVER_EVENTS.has(name)) void siteApi("/api/event", { name, props }, true).catch(() => null);
+  } catch { /* analytics never breaks the game */ }
 }

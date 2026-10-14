@@ -10,6 +10,7 @@
 #endregion
 
 using System;
+using System.Collections.Frozen;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -59,9 +60,11 @@ namespace OpenRA.WebSim
 			if (world == null || p == null)
 				return "{}";
 
-			var sb = new StringBuilder(1024);
+			// One builder for every tick: the returned string is the only per-tick copy.
+			var sb = StateBuilder.Clear();
 			sb.Append("{\"tick\":").Append(world.WorldTick);
-			sb.Append(",\"coach\":").Append(AiLab.CoachJson(world, p));
+			sb.Append(",\"coach\":");
+			AiLab.WriteCoachJson(sb, world, p);
 
 			var res = p.PlayerActor.TraitOrDefault<PlayerResources>();
 			if (res != null)
@@ -79,15 +82,13 @@ namespace OpenRA.WebSim
 			sb.Append(",\"mode\":").Append(J(ModeName(world.OrderGenerator)));
 
 			var selected = OwnSelection(world);
-			var capabilities = new Dictionary<string, bool>
-			{
-				["attackmove"] = selected.Any(a => a.Info.HasTraitInfo<AttackMoveInfo>() && a.Info.HasTraitInfo<AutoTargetInfo>()),
-				["guard"] = selected.Any(a => a.Info.HasTraitInfo<GuardInfo>() && a.Info.HasTraitInfo<AutoTargetInfo>()),
-				["scatter"] = selected.Any(a => a.Info.HasTraitInfo<IMoveInfo>()),
-				["deploy"] = selected.Any(a => a.TraitsImplementing<IIssueDeployOrder>().Any(d => d.CanIssueDeployOrder(a, false))),
-				["stop"] = selected.Any(a => a.Info.TraitInfoOrDefault<CommandBarBlacklistInfo>()?.DisableStop != true),
-			};
-			sb.Append(",\"commands\":{").Append(string.Join(",", capabilities.Select(k => J(k.Key) + ":" + (k.Value ? "true" : "false")))).Append('}');
+			// The five command flags, in this order.
+			sb.Append(",\"commands\":{\"attackmove\":").Append(selected.Any(a => a.Info.HasTraitInfo<AttackMoveInfo>() && a.Info.HasTraitInfo<AutoTargetInfo>()) ? "true" : "false")
+				.Append(",\"guard\":").Append(selected.Any(a => a.Info.HasTraitInfo<GuardInfo>() && a.Info.HasTraitInfo<AutoTargetInfo>()) ? "true" : "false")
+				.Append(",\"scatter\":").Append(selected.Any(a => a.Info.HasTraitInfo<IMoveInfo>()) ? "true" : "false")
+				.Append(",\"deploy\":").Append(selected.Any(a => a.TraitsImplementing<IIssueDeployOrder>().Any(d => d.CanIssueDeployOrder(a, false))) ? "true" : "false")
+				.Append(",\"stop\":").Append(selected.Any(a => a.Info.TraitInfoOrDefault<CommandBarBlacklistInfo>()?.DisableStop != true) ? "true" : "false")
+				.Append('}');
 			sb.Append(",\"stances\":[").Append(string.Join(",", selected.SelectMany(a => a.TraitsImplementing<AutoTarget>())
 				.Select(t => t.PredictedStance.ToString().ToLowerInvariant()).Distinct().Select(J))).Append(']');
 			sb.Append(",\"supportPowers\":[");
@@ -183,11 +184,15 @@ namespace OpenRA.WebSim
 			if (Sandbox.Active)
 				sb.Append(",\"sandbox\":").Append(Sandbox.Json());
 
-			var catalog = Catalog(p);
-			if (catalog != lastCatalog)
+			// The catalog is written into a reused builder and compared in place; a string is made only when it changed.
+			// Its per-item text (names, Fluent descriptions, prerequisites) is cached per actor type.
+			var catalogSb = CatalogBuilder.Clear();
+			WriteCatalog(catalogSb, p);
+
+			if (lastCatalog == null || !catalogSb.Equals(lastCatalog.AsSpan()))
 			{
-				lastCatalog = catalog;
-				sb.Append(",\"catalog\":").Append(catalog);
+				lastCatalog = catalogSb.ToString();
+				sb.Append(",\"catalog\":").Append(lastCatalog);
 			}
 
 			sb.Append('}');
@@ -195,12 +200,56 @@ namespace OpenRA.WebSim
 		}
 
 		/// <summary>The page lost its state (a new game, a reload): send the catalog again with the next State().</summary>
-		public static void Resync() => lastCatalog = null;
+		public static void Resync()
+		{
+			lastCatalog = null;
+			ItemText.Clear();
+		}
+
+		static readonly StringBuilder StateBuilder = new(4096);
+		static readonly StringBuilder CatalogBuilder = new(8192);
+		static readonly HashSet<string> Buildable = [];
+
+		// Per actor type, the catalog text that never changes during a game: name, label, the desktop production tooltip's
+		// description, and the prerequisites it lists while the item cannot be built.
+		sealed class ItemCache
+		{
+			public string Head;     // {"name":..,"label":..
+			public string Desc;     // ,"desc":.. or ""
+			public string Requires; // ,"requires":[..] or ""
+			public bool Building;
+			public int Power;
+		}
+
+		static readonly Dictionary<ActorInfo, ItemCache> ItemText = [];
+		static readonly List<(int Order, int Index, ActorInfo Actor)> SortedItems = [];
+		static readonly Comparison<(int Order, int Index, ActorInfo Actor)> ByPaletteOrder =
+			(x, y) => x.Order != y.Order ? x.Order.CompareTo(y.Order) : x.Index.CompareTo(y.Index);
+
+		static ItemCache Item(Player p, ActorInfo a)
+		{
+			if (ItemText.TryGetValue(a, out var c))
+				return c;
+			var bi = a.TraitInfo<BuildableInfo>();
+			var rules = p.World.Map.Rules;
+			var requires = bi.Prerequisites
+				.Where(r => !r.StartsWith('~') && !r.StartsWith('!') && rules.Actors.ContainsKey(r))
+				.Select(r => ActorLabel(rules.Actors[r])).Distinct().ToList();
+			c = new ItemCache
+			{
+				Head = "{\"name\":" + J(a.Name) + ",\"label\":" + J(ActorLabel(a)),
+				Desc = bi.Description != null && FluentProvider.TryGetMessage(bi.Description, out var desc) ? ",\"desc\":" + J(desc) : "",
+				Requires = requires.Count > 0 ? ",\"requires\":[" + string.Join(",", requires.Select(J)) + "]" : "",
+				Building = a.HasTraitInfo<BuildingInfo>(),
+				Power = a.TraitInfos<PowerInfo>().Where(i => i.EnabledByDefault).Sum(i => i.Amount),
+			};
+			ItemText[a] = c;
+			return c;
+		}
 
 		/// <summary>Items per queue, in palette order, with cost, build time and whether they can be built now.</summary>
-		static string Catalog(Player p)
+		static void WriteCatalog(StringBuilder sb, Player p)
 		{
-			var sb = new StringBuilder(2048);
 			sb.Append('[');
 			var first = true;
 			foreach (var q in Queues(p))
@@ -208,38 +257,32 @@ namespace OpenRA.WebSim
 				if (!first)
 					sb.Append(',');
 				first = false;
-				var buildable = q.BuildableItems().Select(a => a.Name).ToHashSet();
+				Buildable.Clear();
+				foreach (var b in q.BuildableItems())
+					Buildable.Add(b.Name);
 				sb.Append("{\"type\":").Append(J(q.Info.Group ?? q.Info.Type)).Append(",\"items\":[");
+				// AllItems changes with the tech tree: sort it each tick into a reused list (stable, like OrderBy).
+				SortedItems.Clear();
+				foreach (var a in q.AllItems())
+					SortedItems.Add((a.TraitInfo<BuildableInfo>().BuildPaletteOrder, SortedItems.Count, a));
+				SortedItems.Sort(ByPaletteOrder);
 				var firstItem = true;
-				foreach (var a in q.AllItems().OrderBy(a => a.TraitInfo<BuildableInfo>().BuildPaletteOrder))
+				foreach (var (_, _, a) in SortedItems)
 				{
 					if (!firstItem)
 						sb.Append(',');
 					firstItem = false;
-					var bi = a.TraitInfo<BuildableInfo>();
-					var power = a.TraitInfos<PowerInfo>().Where(i => i.EnabledByDefault).Sum(i => i.Amount);
-					var canBuild = buildable.Contains(a.Name);
-					sb.Append("{\"name\":").Append(J(a.Name))
-						.Append(",\"label\":").Append(J(ActorLabel(a)))
+					var c = Item(p, a);
+					var canBuild = Buildable.Contains(a.Name);
+					sb.Append(c.Head)
 						.Append(",\"cost\":").Append(q.GetProductionCost(a))
-						.Append(",\"time\":").Append(q.GetBuildTime(a, bi))
-						.Append(",\"power\":").Append(power)
+						.Append(",\"time\":").Append(q.GetBuildTime(a, a.TraitInfo<BuildableInfo>()))
+						.Append(",\"power\":").Append(c.Power)
 						.Append(",\"buildable\":").Append(canBuild ? "true" : "false")
-						.Append(",\"building\":").Append(a.HasTraitInfo<BuildingInfo>() ? "true" : "false");
-
-					// The desktop production tooltip: description, and what is still missing to build it.
-					if (bi.Description != null && FluentProvider.TryGetMessage(bi.Description, out var desc))
-						sb.Append(",\"desc\":").Append(J(desc));
+						.Append(",\"building\":").Append(c.Building ? "true" : "false")
+						.Append(c.Desc);
 					if (!canBuild)
-					{
-						var rules = p.World.Map.Rules;
-						var requires = bi.Prerequisites
-							.Where(r => !r.StartsWith('~') && !r.StartsWith('!') && rules.Actors.ContainsKey(r))
-							.Select(r => ActorLabel(rules.Actors[r])).Distinct().ToList();
-						if (requires.Count > 0)
-							sb.Append(",\"requires\":[").Append(string.Join(",", requires.Select(J))).Append(']');
-					}
-
+						sb.Append(c.Requires);
 					sb.Append('}');
 				}
 
@@ -247,7 +290,6 @@ namespace OpenRA.WebSim
 			}
 
 			sb.Append(']');
-			return sb.ToString();
 		}
 
 		static string ActorLabel(ActorInfo a)
@@ -398,7 +440,7 @@ namespace OpenRA.WebSim
 
 				// ---- battle sandbox (an editing world that does not tick; runs are rebuilt from the placements)
 				case "units":
-					return UnitCatalog(world);
+					return UnitCatalog(world.Map.Rules);
 
 				case "spawn":
 				{
@@ -408,8 +450,11 @@ namespace OpenRA.WebSim
 					if (type == null || !world.Map.Rules.Actors.ContainsKey(type))
 						return "{\"error\":\"unknown actor\"}";
 
-					var center = SimHost.CellAtWorldPx(new int2(Int("x"), Int("y")));
-					var count = Math.Clamp(Int("count", 1), 1, 50);
+					var center = r.TryGetProperty("u", out _) ? new MPos(Int("u"), Int("v")).ToCPos(world.Map) : SimHost.CellAtWorldPx(new int2(Int("x"), Int("y")));
+					var buildingInfo = world.Map.Rules.Actors[type].TraitInfoOrDefault<BuildingInfo>();
+					if (buildingInfo != null)
+						center -= new CVec(buildingInfo.Dimensions.X / 2, buildingInfo.Dimensions.Y / 2);
+					var count = buildingInfo != null ? 1 : Math.Clamp(Int("count", 1), 1, 50);
 					var columns = Math.Max(1, (int)Math.Ceiling(Math.Sqrt(count)));
 					var created = 0;
 					for (var i = 0; i < count; i++)
@@ -452,6 +497,32 @@ namespace OpenRA.WebSim
 
 				case "placements":
 					return Placements(world);
+
+				case "rosters":
+					return Rosters(world.Map.Rules);
+
+				case "unitinfo":
+					return UnitInfo(world, Str("type"));
+
+				case "spawnpoints":
+				{
+					// The map's start positions (MPos and world px), for laying out forces on any map.
+					var wr = SimHost.WorldRenderer;
+					var points = world.Actors.Where(a => a.Info.Name == "mpspawn" && a.IsInWorld).OrderBy(a => a.ActorID).Select(a =>
+					{
+						var uv = a.Location.ToMPos(world.Map);
+						var px = wr.ScreenPxPosition(a.CenterPosition);
+						return $"{{\"u\":{uv.U},\"v\":{uv.V},\"x\":{px.X},\"y\":{px.Y}}}";
+					});
+					return "{\"points\":[" + string.Join(",", points) + "]}";
+				}
+
+				case "cellat":
+				{
+					// The map cell (MPos) under a world pixel, accounting for terrain height.
+					var uv = SimHost.CellAtWorldPx(new int2(Int("x"), Int("y"))).ToMPos(world.Map);
+					return $"{{\"u\":{uv.U},\"v\":{uv.V}}}";
+				}
 
 				// ---- the desktop game's hotkey logics (mods/common/hotkeys, the mod's ingame chrome), same calls
 				case "selectall":
@@ -640,13 +711,17 @@ namespace OpenRA.WebSim
 			return sb.Append("]}").ToString();
 		}
 
-		/// <summary>Every buildable unit (infantry, vehicles, aircraft, ships) for the sandbox picker.</summary>
-		static string UnitCatalog(World world)
+		/// <summary>
+		/// Everything a player can build (infantry, vehicles, aircraft, ships, buildings and defences) for the simulator's
+		/// drawer: name, label, queue, kind, cost and the building footprint.
+		/// </summary>
+		public static string UnitCatalog(Ruleset rules)
 		{
-			var queues = new HashSet<string> { "Infantry", "Vehicle", "Aircraft", "Ship" };
+			var queues = new HashSet<string> { "Infantry", "Vehicle", "Aircraft", "Ship", "Building", "Support" };
+			var armors = rules.Actors.Values.SelectMany(a => a.TraitInfos<ArmorInfo>()).Select(a => a.Type).Where(t => t != null).Distinct().Order().ToArray();
 			var sb = new StringBuilder("{\"units\":[");
 			var first = true;
-			foreach (var a in world.Map.Rules.Actors.Values.OrderBy(a => a.Name))
+			foreach (var a in rules.Actors.Values.OrderBy(a => a.Name))
 			{
 				if (a.Name.StartsWith('^'))
 					continue;
@@ -656,14 +731,212 @@ namespace OpenRA.WebSim
 					continue;
 
 				var tooltip = a.TraitInfos<TooltipInfo>().FirstOrDefault(t => t.EnabledByDefault);
+				var building = a.TraitInfoOrDefault<BuildingInfo>();
+				var cost = a.TraitInfoOrDefault<ValuedInfo>()?.Cost ?? 0;
 				if (!first)
 					sb.Append(',');
 				first = false;
 				sb.Append("{\"name\":").Append(J(a.Name))
 					.Append(",\"label\":").Append(J(tooltip != null ? FluentProvider.GetMessage(tooltip.Name) : a.Name))
 					.Append(",\"queue\":").Append(J(queue))
+					.Append(",\"kind\":").Append(J(building != null ? (queue == "Support" ? "defense" : "building") : queue.ToLowerInvariant()))
+					.Append(",\"cost\":").Append(cost)
 					.Append(",\"modern\":").Append(a.Name.StartsWith("r2", StringComparison.Ordinal) ? "true" : "false")
-					.Append('}');
+					.Append(",\"combat\":").Append(a.HasTraitInfo<AttackBaseInfo>() && a.HasTraitInfo<ArmamentInfo>() ? "true" : "false");
+				if (building != null)
+					sb.Append(",\"footprint\":[").Append(building.Dimensions.X).Append(',').Append(building.Dimensions.Y).Append(']');
+				AppendCombat(sb, a, rules, armors);
+				sb.Append('}');
+			}
+
+			return sb.Append("]}").ToString();
+		}
+
+		/// <summary>
+		/// What a unit brings to a fight, from its rules: "hp", "armor", the target types it can be hit as ("targets";
+		/// an aircraft as flying) and each weapon's damage per second against every armor type, with the target types it
+		/// can and can't hit (DamageWarhead Versus, Burst, ReloadDelay at 25 ticks a second). The battle simulator's
+		/// missions balance their armies with it (web/src/strength.ts).
+		/// </summary>
+		static void AppendCombat(StringBuilder sb, ActorInfo a, Ruleset rules, string[] armors)
+		{
+			var health = a.TraitInfoOrDefault<HealthInfo>();
+			if (health == null)
+				return;
+
+			// The unit as it usually fights: no conditions granted (not paradropped, not elite), an aircraft airborne.
+			// Traits enabled in that state count; when none would be, all of them do.
+			var state = new Dictionary<string, int>();
+			if (a.HasTraitInfo<AircraftInfo>())
+				state["airborne"] = 1;
+			List<T> Usual<T>(IEnumerable<T> traits) where T : ConditionalTraitInfo
+			{
+				var all = traits.ToList();
+				var on = all.Where(t => t.RequiresCondition == null || t.RequiresCondition.Evaluate(state)).ToList();
+				return on.Count > 0 ? on : all;
+			}
+
+			var targetables = Usual(a.TraitInfos<TargetableInfo>());
+			var targets = targetables.SelectMany(t => t.TargetTypes.Select(x => x.ToString())).Distinct();
+			sb.Append(",\"hp\":").Append(health.HP)
+				.Append(",\"armor\":").Append(J(a.TraitInfos<ArmorInfo>().FirstOrDefault()?.Type ?? ""))
+				.Append(",\"targets\":[").Append(string.Join(",", targets.Select(t => J(t)))).Append("],\"weapons\":[");
+			var firstWeapon = true;
+			foreach (var arm in Usual(a.TraitInfos<ArmamentInfo>()))
+			{
+				if (!rules.Weapons.TryGetValue(arm.Weapon.ToLowerInvariant(), out var w) || w.ReloadDelay <= 0)
+					continue;
+				var warheads = w.Warheads.OfType<OpenRA.Mods.Common.Warheads.DamageWarhead>().ToList();
+				if (warheads.Count == 0)
+					continue;
+				if (!firstWeapon)
+					sb.Append(',');
+				firstWeapon = false;
+				var perSecond = 25.0 * w.Burst / w.ReloadDelay;
+				sb.Append("{\"dps\":{");
+				var firstArmor = true;
+				foreach (var armor in armors.Prepend(""))
+				{
+					var damage = warheads.Sum(d => d.Damage * (d.Versus.TryGetValue(armor, out var pct) ? pct : 100) / 100.0) * perSecond;
+					if (!firstArmor)
+						sb.Append(',');
+					firstArmor = false;
+					sb.Append(J(armor)).Append(':').Append(Math.Round(damage, 1).ToString(System.Globalization.CultureInfo.InvariantCulture));
+				}
+
+				sb.Append("},\"valid\":[").Append(string.Join(",", w.ValidTargets.Select(t => J(t.ToString()))))
+					.Append("],\"invalid\":[").Append(string.Join(",", w.InvalidTargets.Select(t => J(t.ToString())))).Append("]}");
+			}
+
+			sb.Append(']');
+		}
+
+		/// <summary>
+		/// What each selectable faction can field, from the rules alone: an actor belongs to a faction's roster when every
+		/// prerequisite it names is provided for that faction (ProvidesPrerequisite and its Factions list, e.g. the mod's
+		/// "~faction.saudi") and none it negates is. The simulator's drawer and the Earth missions use it.
+		/// </summary>
+		public static string Rosters(Ruleset rules)
+		{
+			var worldInfo = rules.Actors[SystemActors.World];
+			var queues = new HashSet<string> { "Infantry", "Vehicle", "Aircraft", "Ship", "Building", "Support" };
+			bool InQueue(ActorInfo a) => a.TraitInfoOrDefault<BuildableInfo>()?.Queue.Any(queues.Contains) == true;
+
+			// Who provides each prerequisite: actors nobody builds from a queue (the player, construction yards) always
+			// count; a buildable provider counts once that faction can build it.
+			var providers = new Dictionary<string, List<(ActorInfo Actor, FrozenSet<string> Factions)>>();
+			foreach (var a in rules.Actors.Values)
+				foreach (var p in a.TraitInfos<ProvidesPrerequisiteInfo>())
+				{
+					var name = p.Prerequisite ?? a.Name;
+					if (!providers.TryGetValue(name, out var list))
+						providers[name] = list = [];
+					list.Add((a, p.Factions));
+				}
+
+			// A queue actor gated by a prerequisite nobody provides ("~disabled": the construction yards) is never built
+			// from a palette; a faction gets it from its starting units (its MCV deploys into it).
+			bool Unbuildable(ActorInfo a) => a.TraitInfo<BuildableInfo>().Prerequisites.Any(r => !r.Contains('!') && !providers.ContainsKey(r.Replace("~", "")));
+			var buildable = rules.Actors.Values.Where(a => !a.Name.StartsWith('^') && a.HasTraitInfo<RenderSpritesInfo>() && InQueue(a) && !Unbuildable(a)).ToList();
+			var startingUnits = worldInfo.TraitInfos<StartingUnitsInfo>().ToList();
+			HashSet<ActorInfo> BaseOf(string faction)
+			{
+				var result = new HashSet<ActorInfo>();
+				foreach (var su in startingUnits.Where(su => su.Factions.Count == 0 || su.Factions.Contains(faction)))
+					foreach (var name in su.SupportActors.Append(su.BaseActor).Where(n => n != null))
+						if (rules.Actors.TryGetValue(name.ToLowerInvariant(), out var actor))
+						{
+							result.Add(actor);
+							var into = actor.TraitInfoOrDefault<TransformsInfo>()?.IntoActor;
+							if (into != null && rules.Actors.TryGetValue(into, out var deployed))
+								result.Add(deployed);
+						}
+				return result;
+			}
+
+			var sb = new StringBuilder("{\"rosters\":{");
+			var first = true;
+			foreach (var faction in worldInfo.TraitInfos<FactionInfo>().Where(f => f.Selectable && f.RandomFactionMembers.Count == 0))
+			{
+				var f = faction.InternalName;
+				var available = new HashSet<ActorInfo>();
+				var baseActors = BaseOf(f);
+				bool Base(ActorInfo a) => baseActors.Contains(a) || !a.HasTraitInfo<BuildableInfo>();
+				bool Provided(string name) => providers.TryGetValue(name, out var list)
+					&& list.Any(x => (x.Factions.Count == 0 || x.Factions.Contains(f)) && (Base(x.Actor) || available.Contains(x.Actor)));
+
+				// Fixed point: a building unlocks what needs it, which may unlock more.
+				for (var changed = true; changed;)
+				{
+					changed = false;
+					foreach (var a in buildable)
+					{
+						if (available.Contains(a))
+							continue;
+						var ok = a.TraitInfo<BuildableInfo>().Prerequisites.All(req =>
+						{
+							var name = req.Replace("~", "").Replace("!", "");
+							return Provided(name) != req.Contains('!');
+						});
+						if (ok)
+						{
+							available.Add(a);
+							changed = true;
+						}
+					}
+				}
+
+				if (!first)
+					sb.Append(',');
+				first = false;
+				// The faction's construction yard joins its roster: the simulator can drop a base without an MCV.
+				var roster = buildable.Where(available.Contains)
+					.Concat(baseActors.Where(b => !available.Contains(b) && b.HasTraitInfo<BuildableInfo>() && b.HasTraitInfo<RenderSpritesInfo>()));
+				sb.Append(J(f)).Append(":[").Append(string.Join(",", roster.Select(a => J(a.Name)))).Append(']');
+			}
+
+			return sb.Append("}}").ToString();
+		}
+
+		/// <summary>
+		/// One actor's numbers from the rules this game runs (the simulator's unit card): cost, health, armour, speed,
+		/// sight and each weapon's range, reload, burst, damage and targets. Text descriptions are the mod's own.
+		/// </summary>
+		static string UnitInfo(World world, string type)
+		{
+			if (type == null || !world.Map.Rules.Actors.TryGetValue(type, out var a))
+				return "{\"error\":\"unknown actor\"}";
+
+			var rules = world.Map.Rules;
+			var tooltip = a.TraitInfos<TooltipInfo>().FirstOrDefault(t => t.EnabledByDefault);
+			var description = a.TraitInfoOrDefault<TooltipDescriptionInfo>()?.Description ?? a.TraitInfoOrDefault<BuildableInfo>()?.Description;
+			var speed = a.TraitInfoOrDefault<MobileInfo>()?.Speed ?? a.TraitInfoOrDefault<AircraftInfo>()?.Speed ?? 0;
+			var sight = a.TraitInfos<RevealsShroudInfo>().Select(r => r.Range.Length).DefaultIfEmpty(0).Max();
+			var sb = new StringBuilder("{");
+			sb.Append("\"name\":").Append(J(type))
+				.Append(",\"label\":").Append(J(tooltip != null ? FluentProvider.GetMessage(tooltip.Name) : type))
+				.Append(",\"description\":").Append(J(description != null ? FluentProvider.GetMessage(description) : ""))
+				.Append(",\"cost\":").Append(a.TraitInfoOrDefault<ValuedInfo>()?.Cost ?? 0)
+				.Append(",\"hp\":").Append(a.TraitInfoOrDefault<HealthInfo>()?.HP ?? 0)
+				.Append(",\"armor\":").Append(J(a.TraitInfos<ArmorInfo>().FirstOrDefault()?.Type ?? ""))
+				.Append(",\"speed\":").Append(speed)
+				.Append(",\"sight\":").Append((sight / 1024.0).ToString("0.#", System.Globalization.CultureInfo.InvariantCulture))
+				.Append(",\"weapons\":[");
+			var firstWeapon = true;
+			foreach (var arm in a.TraitInfos<ArmamentInfo>())
+			{
+				if (!rules.Weapons.TryGetValue(arm.Weapon.ToLowerInvariant(), out var w))
+					continue;
+				var damage = w.Warheads.OfType<OpenRA.Mods.Common.Warheads.DamageWarhead>().Sum(d => d.Damage);
+				if (!firstWeapon)
+					sb.Append(',');
+				firstWeapon = false;
+				sb.Append("{\"name\":").Append(J(arm.Weapon))
+					.Append(",\"range\":").Append((w.Range.Length / 1024.0).ToString("0.##", System.Globalization.CultureInfo.InvariantCulture))
+					.Append(",\"reload\":").Append(w.ReloadDelay)
+					.Append(",\"burst\":").Append(w.Burst)
+					.Append(",\"damage\":").Append(damage)
+					.Append(",\"targets\":[").Append(string.Join(",", w.ValidTargets.Select(t => J(t.ToString())))).Append("]}");
 			}
 
 			return sb.Append("]}").ToString();
@@ -675,7 +948,7 @@ namespace OpenRA.WebSim
 			var players = SimHost.PlayablePlayers();
 			var sb = new StringBuilder("{\"spawns\":[");
 			var first = true;
-			foreach (var a in world.Actors.Where(a => a.IsInWorld && !a.IsDead && a.OccupiesSpace != null && players.Contains(a.Owner) && !a.Info.HasTraitInfo<BuildingInfo>()).OrderBy(a => a.ActorID))
+			foreach (var a in world.Actors.Where(a => a.IsInWorld && !a.IsDead && a.OccupiesSpace != null && players.Contains(a.Owner) && !IsSpawnedPart(a)).OrderBy(a => a.ActorID))
 			{
 				var uv = a.Location.ToMPos(world.Map);
 				var facing = a.TraitOrDefault<IFacing>()?.Facing.Angle ?? 512;
@@ -690,6 +963,12 @@ namespace OpenRA.WebSim
 
 			return sb.Append("]}").ToString();
 		}
+
+		/// <summary>
+		/// Actors a placed actor brings along by itself (a building's free harvester, a wall's segments) are not placements
+		/// of their own: re-spawning them would double them. Building placements are recorded at their top-left cell.
+		/// </summary>
+		static bool IsSpawnedPart(Actor a) => a.Info.HasTraitInfo<LineBuildInfo>();
 
 		/// <summary>Issues orders and plays the acknowledgement voice, like CommandBarLogic.</summary>
 		static void Issue(World world, IEnumerable<Order> orders)
