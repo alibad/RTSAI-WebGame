@@ -12,6 +12,7 @@ import { normalizeVoiceLanguage } from "../voice-language";
 import { CompanionRelay } from "./companion";
 import { encodeAdviserStatus } from "./adviser-rpc";
 import { fetchShippedSprites, SpriteBake, hashString } from "./spritecache";
+import { fluentActorNames, fluentFiles } from "./fluent-names";
 
 declare const self: DedicatedWorkerGlobalScope;
 
@@ -214,6 +215,12 @@ async function init(msg: Extract<ToWorker, { type: "init" }>) {
   // The bundle's content id (Bundle.cs): caches and prebaked sprites are keyed by it.
   const idAt = packFiles.get("ora/BUNDLE_ID");
   const bundleId = idAt ? new TextDecoder().decode(bundle.subarray(idAt[0], idAt[0] + idAt[1])).trim() : bundleTag;
+  // Every actor's name from the mod's Fluent messages, for the HUD (the engine names only what a build menu lists).
+  let actorNames: Record<string, string> = {};
+  try {
+    const text = (name: string) => { const at = packFiles.get(name); return at ? new TextDecoder().decode(bundle.subarray(at[0], at[0] + at[1])) : ""; };
+    actorNames = fluentActorNames(fluentFiles([...packFiles.keys()], text).map(text));
+  } catch { /* names fall back to the engine's lists */ }
   // Prebaked sprite sheets shipped with a profile's data (websim bake), fetched while the engine loads its rules.
   const shipped = msg.profile ? fetchShippedSprites(new URL(`${dataRoot}${profileDir}sprites/`, base).href, bundleId) : Promise.resolve(null);
 
@@ -295,7 +302,7 @@ async function init(msg: Extract<ToWorker, { type: "init" }>) {
   }
   timings["worker.total"] = performance.now() - t0;
   timings["heap.ready"] = (runtimeApi.Module.HEAPU8.length / 1048576) | 0;
-  post({ type: "ready", timings, runtimeMs, downloadBytes: resourceBytes(), setup: { ...JSON.parse(S.Setup()), multiplayer: typeof S.NetworkPoll === "function" && typeof S.NetworkInject === "function" }, privateContent });
+  post({ type: "ready", timings, runtimeMs, downloadBytes: resourceBytes(), setup: { ...JSON.parse(S.Setup()), multiplayer: typeof S.NetworkPoll === "function" && typeof S.NetworkInject === "function" }, privateContent, actorNames });
 }
 
 function stopLoop() {

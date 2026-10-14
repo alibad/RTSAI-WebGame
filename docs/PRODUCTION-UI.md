@@ -13,6 +13,14 @@ some vehicle tracks. CSS cannot recover those overwritten pixels. No art was reg
 in `web/src/portraits.json`. The classic profile retains its engine-provided cameos.
 The sync checks that each modern portrait's labelled original matches the installed mod icon before copying.
 
+The selection panel names an actor with the build menu's name, else the engine's unit names, else the mod's own
+Fluent messages for every actor (`web/src/sim/fluent-names.ts`, read from the game data at boot): the Construction
+Yard, the other side's buildings and neutral ones are named too, and an unknown actor reads "Structure" or "Unit",
+never its id. Westwood drew no Construction Yard cameo (an MCV deploys into one), so the original countries' yards
+had a stand-in, a crane on a plate; the panel shows such actors, and any actor the engine has no cameo for, drawn from
+their own sprites in their owner's art (`web/src/ui/actor-display.ts`, `Renderer.renderActor`).
+`node tools/actor-names-unit-test.mjs [web-bundle.pack]`.
+
 ## Local verification (9 October 2026)
 
 - TypeScript check and Vite production build passed.

@@ -394,6 +394,58 @@ export class Renderer {
     return this.iconRaster.render(sprite, t?.tex, this.palette?.tex, this.paletteRows);
   }
 
+  /**
+   * An actor as the battlefield draws it (its own sprites in draw order: shadow, body, overlays; not the selection
+   * decorations), fitted on a cameo-shaped plate (120 x 96, twice a 60 x 48 cameo), as a PNG data URL: the HUD's picture
+   * of an actor whose art has no cameo. null until its sheets and the palette are on the GPU; "" when it draws no
+   * sprites in this snapshot (out of view, or a voxel model).
+   */
+  renderActor(s: Snapshot, id: number): string | null {
+    const parts: { sprite: SpriteInfo; x: number; y: number; w: number; h: number; pal: number }[] = [];
+    let l = Infinity, t = Infinity, r = -Infinity, b = -Infinity;
+    for (let i = 0; i < s.header.drawCount; i++) {
+      const o = i * DRAW_BYTES;
+      // Decorations (1), rotated sprites (2) and sprites above the shroud (4) are not the actor's body.
+      if (s.draws.getUint32(o, true) !== id || (s.draws.getUint16(o + 26, true) & 7) !== 0) continue;
+      const sprite = this.sprites[s.draws.getInt32(o + 4, true)];
+      if (!sprite) continue;
+      const scale = s.draws.getFloat32(o + 20, true);
+      const x = s.draws.getFloat32(o + 8, true), y = s.draws.getFloat32(o + 12, true);
+      const w = Math.abs(scale * sprite.size[0]), h = Math.abs(scale * sprite.size[1]);
+      if (w < 1 || h < 1) continue;
+      parts.push({ sprite, x, y, w, h, pal: s.draws.getUint16(o + 24, true) });
+      l = Math.min(l, x); t = Math.min(t, y); r = Math.max(r, x + w); b = Math.max(b, y + h);
+    }
+    if (!parts.length) return "";
+    const W = 120, H = 96, pad = 5;
+    const k = Math.min((W - 2 * pad) / (r - l), (H - 2 * pad) / (b - t), 2);
+    const out = document.createElement("canvas");
+    out.width = W;
+    out.height = H;
+    const ctx = out.getContext("2d")!;
+    const plate = ctx.createLinearGradient(0, 0, 0, H);
+    plate.addColorStop(0, "#36432f");
+    plate.addColorStop(1, "#11160f");
+    ctx.fillStyle = plate;
+    ctx.fillRect(0, 0, W, H);
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = "high";
+    const ox = (W - (r - l) * k) / 2, oy = (H - (b - t) * k) / 2;
+    for (const p of parts) {
+      const sheet = this.textures.get(p.sprite.tex);
+      if (!sheet) { this.onMissingTexture(p.sprite.tex); return null; }
+      // At the sheet's own resolution, then scaled onto the plate (shipped sheets keep only their used rows).
+      const [u0, v0, u1, v1] = p.sprite.uv;
+      const pw = Math.max(1, Math.round(Math.abs(u1 - u0) * sheet.width)), ph = Math.max(1, Math.round(Math.abs(v1 - v0) * sheet.height * sheet.rowScale));
+      const k2 = sheet.rowScale;
+      const pixels = this.iconRaster.raster({ tex: p.sprite.tex, channel: p.sprite.channel, uv: [u0, v0 * k2, u1, v1 * k2], w: pw, h: ph, pal: p.pal },
+        sheet.tex, this.palette?.tex, this.paletteRows);
+      if (!pixels) return null;
+      ctx.drawImage(pixels, ox + (p.x - l) * k, oy + (p.y - t) * k, p.w * k, p.h * k);
+    }
+    return out.toDataURL("image/png");
+  }
+
   setModelBuffer(id: number, data: ArrayBuffer) {
     this.models.setBuffer(id, data);
     this.version++;

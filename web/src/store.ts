@@ -35,7 +35,10 @@ export interface Store {
   privateContent: boolean;
   /** "" (the RA2 mod with the player's own files) or "public" (the standalone game). */
   profile: string;
-  /** Unit type -> display name from the engine (Game.loadActorLabels), for units the build menu does not list. */
+  /**
+   * Actor type -> display name, for actors the build menu does not list: every actor's from the mod's messages (the
+   * worker's ready message, sim/fluent-names.ts), then the engine's unit names over them (Game.loadActorLabels).
+   */
   actorLabels: Record<string, string>;
   setup: SetupData | null;
   preparedMap: string | null;
@@ -44,6 +47,8 @@ export interface Store {
   mapErrors: Record<string, string>;
   previews: Record<string, string>; // map id -> object URL of map.png
   icons: Record<string, string | null>; // actor -> object URL of its cameo (null: none)
+  /** "type@owner" -> an actor drawn from its own sprites, for actors without a real cameo (ui/actor-display.ts); "" none. */
+  actorPictures: Record<string, string>;
   info: StartInfo | null;
   ui: UiState | null;
   catalog: CatalogQueue[];
@@ -90,6 +95,7 @@ export const useStore = create<Store>((set) => ({
   mapErrors: {},
   previews: {},
   icons: {},
+  actorPictures: {},
   info: null,
   ui: null,
   catalog: [],

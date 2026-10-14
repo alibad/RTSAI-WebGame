@@ -17,6 +17,8 @@ import { Radio } from "./radio";
 import { preferences } from "./preferences";
 import { Sandbox, worldToCell } from "./sandbox";
 import { Coach } from "./ai-lab";
+import { generatedMapName } from "./map-names";
+import { drawsActor, pictureKey } from "./ui/actor-display";
 
 // OpenRA enums
 const MOD_SHIFT = 1, MOD_ALT = 2, MOD_CTRL = 4, MOD_META = 8;
@@ -157,7 +159,8 @@ export class Game {
     c.on("progress", (m) => store.set({ stage: m.stage, detail: m.detail ?? "" }));
     c.on("error", (m) => store.set({ phase: "error", error: m.message }));
     c.on("ready", (m) => {
-      store.set({ phase: "setup", setup: m.setup, privateContent: m.privateContent, timings: { ...m.timings, "runtime.start": m.runtimeMs }, downloads: m.downloadBytes });
+      store.set({ phase: "setup", setup: m.setup, privateContent: m.privateContent, timings: { ...m.timings, "runtime.start": m.runtimeMs }, downloads: m.downloadBytes,
+        actorLabels: { ...m.actorNames, ...store.get().actorLabels } });
     });
     c.on("prepared", (m) => {
       const s = store.get();
@@ -177,13 +180,16 @@ export class Game {
       this.generateWaiter = null;
       if (m.error || !m.map) { waiter?.reject(Error(m.error || "Couldn't make a map.")); return; }
       // The request that made it: the generator is deterministic, so in multiplayer guests make the same map from it.
+      // Its name comes from the seed and landscape too (map-names.ts), so every player sees the same one; the engine's
+      // own title ("Lakes 2489") stays in the map files, which the map uid hashes.
       const s = store.get();
       if (s.setup && !s.setup.maps.some((x) => x.id === m.map)) {
         const url = m.png?.byteLength ? URL.createObjectURL(new Blob([m.png], { type: "image/png" })) : "";
         const players = m.players ?? 2;
+        const title = m.landscape ? generatedMapName(m.seed ?? m.map, m.landscape) : m.title ?? "Random map";
         store.set({
           previews: { ...s.previews, [m.map]: url },
-          setup: { ...s.setup, maps: [{ id: m.map, uid: m.map, title: m.title ?? "Random map", players, tileset: "TEMPERATE", author: "",
+          setup: { ...s.setup, maps: [{ id: m.map, uid: m.map, title, players, tileset: "TEMPERATE", author: "",
             generated: true, landscape: m.landscape, gen: waiter?.request, slots: Array.from({ length: players }, (_, i) => `Multi${i}`) }, ...s.setup.maps] },
         });
       }
@@ -335,7 +341,7 @@ export class Game {
     this.overlay.selected.clear();
     this.ui = null;
     this.latency = [];
-    store.set({ phase: "loading", stage: "Building the world", ui: null, catalog: [], verify: "", menuOpen: false, paused });
+    store.set({ phase: "loading", stage: "Building the world", ui: null, catalog: [], verify: "", menuOpen: false, paused, actorPictures: {} });
     // A saved map not mounted yet (e.g. a guest's copy of the host's map) is fetched first.
     const map = String(JSON.parse(scenarioJson).map ?? "");
     if (this.savedMaps.has(map) && !this.savedMaps.get(map)!.ready) {
@@ -447,7 +453,10 @@ export class Game {
   get sandboxMatch() { try { return JSON.parse(this.scenarioJson || "{}").sandbox === true; } catch { return false; } }
   /** Watching a saved match's recorded orders (MatchLibrary): nobody can command, so nothing offers orders. */
   get replayMatch() { try { return JSON.parse(this.scenarioJson || "{}").webReplay?.readonly === true; } catch { return false; } }
-  /** Every unit's display name (the engine's tooltips), loaded once: the selection panel names units the build menu does not list. */
+  /**
+   * Every unit's display name (the engine's tooltips), loaded once: the selection panel names units the build menu does
+   * not list. They join every actor's name from the mod's messages (the worker's ready message) and win over them.
+   */
   private actorLabelsLoaded = false;
   private loadActorLabels() {
     if (this.actorLabelsLoaded) return;
@@ -455,7 +464,7 @@ export class Game {
     void this.command<{ units?: { name: string; label: string }[] }>({ cmd: "units" }).then((r) => {
       const labels: Record<string, string> = {};
       for (const u of r.units ?? []) labels[u.name] = u.label.replace(/(\w+)\s+$/i, "$1");
-      store.set({ actorLabels: labels });
+      store.set({ actorLabels: { ...store.get().actorLabels, ...labels } });
     }).catch(() => { this.actorLabelsLoaded = false; });
   }
   /** The mod's cursors, asked once: by the menu as soon as the mod is loaded (ui/feel.ts), else by the first match. */
@@ -532,6 +541,42 @@ export class Game {
     store.set(patch);
   }
 
+  /** The owner of an actor in the current snapshot: its player index and faction. */
+  actorOwner(id: number) {
+    const cur = this.client.cur, actor = cur?.actorById.get(id), player = actor && cur!.players[actor.owner];
+    return actor && player ? { index: actor.owner, faction: this.client.str(player.faction) } : undefined;
+  }
+
+  /**
+   * Selected actors whose art has no real cameo (ui/actor-display.ts) are drawn from their own sprites, once per type and
+   * owner. An actor out of view, still being built, or whose sheets are not on the GPU yet is tried again a moment later.
+   */
+  private lastPictures = 0;
+  private drawPictures(now: number) {
+    const s = store.get(), cur = this.client.cur, selection = s.ui?.selection;
+    if (!cur || !selection?.length || now - this.lastPictures < 200) return;
+    const local = s.info?.players.find((p) => p.name === s.info?.localPlayer)?.faction;
+    const wanted = new Map<string, Actor>();
+    for (const a of selection) {
+      const actor = cur.actorById.get(a.id), owner = this.actorOwner(a.id);
+      if (!actor || !owner || !drawsActor(a.type, s.icons[a.type], local, owner.faction, s.profile)) continue;
+      const key = pictureKey(a.type, owner.index);
+      if (!(key in s.actorPictures) && !wanted.has(key)) wanted.set(key, actor);
+    }
+    if (!wanted.size) return;
+    this.lastPictures = now;
+    const done: Record<string, string> = {};
+    for (const [key, actor] of wanted) {
+      // Mid-construction the "make" animation would show half a building.
+      if (/^(make|build)/.test(this.client.str(actor.sequence))) continue;
+      // Screenshot mode: only the project's own (modern-faction) art.
+      if (s.publicShot && !key.startsWith("r2")) { done[key] = ""; continue; }
+      const url = this.renderer.renderActor(cur, actor.id);
+      if (url) done[key] = url;
+    }
+    if (Object.keys(done).length) store.set({ actorPictures: { ...store.get().actorPictures, ...done } });
+  }
+
   /** Cameos whose sheet has reached the GPU are rendered and handed to the HUD (a few per frame). */
   private rasterIcons() {
     const done: Record<string, string> = {};
@@ -591,6 +636,7 @@ export class Game {
       this.frames++;
     }
     if (this.iconQueue.size) this.rasterIcons();
+    if (playing) this.drawPictures(now);
     if (now - this.lastListener > 100) { this.audio.setListener(this.cam.x, this.cam.y); this.lastListener = now; }
 
     const pl = this.pendingLatency;

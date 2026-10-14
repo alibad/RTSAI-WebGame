@@ -30,12 +30,15 @@ export function parseScenario(json: string): ScenarioLike {
   return value;
 }
 
-/** "Twin Fords", or the operation's title for a campaign mission. */
-export function matchTitle(scenario: ScenarioLike, setup: SetupData | null) {
+/**
+ * "Twin Fords", or the operation's title for a campaign mission. `known`: the name a save recorded, for a map this
+ * session's list does not have (a random map is made in the session that plays it).
+ */
+export function matchTitle(scenario: ScenarioLike, setup: SetupData | null, known?: string) {
   const mission = typeof scenario.mission === "string" ? setup?.missions?.find((m) => m.id === scenario.mission) : undefined;
   if (mission) return mission.title;
   const id = typeof scenario.map === "string" ? scenario.map : "";
-  return setup?.maps.find((m) => m.id === id)?.title ?? prettify(id);
+  return setup?.maps.find((m) => m.id === id)?.title ?? (known || (id.startsWith("gen-") ? "Random map" : prettify(id)));
 }
 
 /** "Skirmish", "Campaign", "Practice battle" or "Multiplayer". */

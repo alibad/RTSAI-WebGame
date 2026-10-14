@@ -57,6 +57,11 @@ export class IconRaster {
 
   /** Renders a cameo; null when its sheet or the palette has not arrived yet (try again next frame). */
   render(s: IconSprite, sheet: WebGLTexture | undefined, palette: WebGLTexture | undefined, paletteRows: number): string | null {
+    return this.raster(s, sheet, palette, paletteRows)?.toDataURL("image/png") ?? null;
+  }
+
+  /** A sprite's pixels in its palette, on a canvas of its size; null when its sheet or the palette is missing. */
+  raster(s: IconSprite, sheet: WebGLTexture | undefined, palette: WebGLTexture | undefined, paletteRows: number): HTMLCanvasElement | null {
     if (!sheet || !palette || s.w <= 0 || s.h <= 0) return null;
     const gl = this.gl;
     if (this.size[0] !== s.w || this.size[1] !== s.h) {
@@ -99,6 +104,6 @@ export class IconRaster {
     canvas.width = s.w;
     canvas.height = s.h;
     canvas.getContext("2d")!.putImageData(img, 0, 0);
-    return canvas.toDataURL("image/png");
+    return canvas;
   }
 }
