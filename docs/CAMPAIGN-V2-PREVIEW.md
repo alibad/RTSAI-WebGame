@@ -17,6 +17,17 @@
 ## Promoting to /play (needs the owner's go)
 Page-only release against the live runtime with the new data root: build the page from the preview branch with `VITE_DATA_BASE=https://rtsai-play-cdn.pages.dev/<new data root>/` and `VITE_CAMPAIGN_BASE=https://rtsai-play-cdn.pages.dev/campaign-v2/`, then the usual `page-build` / `vercel-page-deploy` / `vercel promote` flow (see `rtsai-map-generator` notes and `docs/DEPLOY-PUBLIC.md`), after `vercel usage --scope alibads-projects`. Merge the branches into main first so other sessions' pages keep this work.
 
+## Found and fixed overnight
+- **Cloudflare Pages `_headers` takes at most 100 rules.** The shared play-cdn file reached 113, so the newest data root lost its `Content-Encoding: br` rules and the page failed to boot ("not valid JSON"). Removing the rules of a superseded root (`data-036902deb973`, moved to `D:/rtsai-campaign/old-roots/`) brought it to 97. Production's rules were never affected (they come first). Count rules before every CDN deploy.
+- **Cloudflare Pages answers no byte-range requests**, so a browser could not seek in a film (every seek snapped to 0). The open film is now fetched whole (7–11 MB) and played from memory (`useWholeFile` in `web/src/briefings.ts`), then released.
+- **Survivors rendered as green placeholder boxes** (all standalone civilians are placeholder art); they are engineers now, in data root `data-da8c4728eb0c`.
+
+## Tests on the deployed preview
+- `tools/campaign-story-test.mjs`: 8 films played, sought and captioned; missing-film fallback; a real mission launched; debrief, navigation and reload checks.
+- `tools/campaign-radio-test.mjs`: start (voiced), game-time, objective and victory calls; auto-dismiss.
+- `tools/chapters-browser-test.mjs`: both new chapters launch with their objectives, one completes, idle play ends in defeat.
+- Native `websim missiontest`: success and failure paths of both new chapters (8/8).
+
 ## Known gaps
 - Glass Island, Black Platform and Every Light On need Phase 2 mission features (detection zones, fixed squads with squad-loss failure, event-gated objectives, a Tanya hero unit).
 - Balance of the new chapters comes from scripted probes; a human playtest is the real check.
