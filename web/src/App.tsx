@@ -19,7 +19,7 @@ import { MainMenu } from "./ui/MainMenu";
 import { installUiFeel } from "./ui/feel";
 import { siteOrigin } from "./net/account";
 import { mySavedMaps, savedMap } from "./net/saved-maps";
-import { ArrowLeft, Check, Copy, RotateCcw, TriangleAlert } from "lucide-react";
+import { ArrowLeft, Check, Copy, Map as MapIcon, RotateCcw, TriangleAlert } from "lucide-react";
 import { GameButton, Kbd } from "./ui/kit/game";
 import { Brackets, Meter, ScreenBackdrop } from "./ui/screen-parts";
 import { keyFor, type Command } from "./preferences";
@@ -232,7 +232,7 @@ export default function App() {
               <button type="button" aria-current={mode === "skirmish" ? "page" : undefined} onClick={() => setMode("skirmish")}>Skirmish</button>
               <button type="button" aria-current={mode === "missions" ? "page" : undefined} onClick={() => setMode("missions")}>Campaign</button>
             </div>
-            <button type="button" onClick={() => import.meta.env.VITE_STATIC_BUILD !== "1" ? setMapStudioOpen(true) : location.assign(studioUrl)}>Map studio</button>
+            <button type="button" className="menu-subnav-studio" aria-label="Map studio" onClick={() => import.meta.env.VITE_STATIC_BUILD !== "1" ? setMapStudioOpen(true) : location.assign(studioUrl)}><MapIcon size={15} aria-hidden="true" /><span>Map studio</span></button>
           </nav>
         </>}
       </>}
