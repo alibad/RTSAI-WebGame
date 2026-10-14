@@ -100,11 +100,6 @@ export type PlanField = "faction" | "enemy" | "unit" | "enemyUnit" | "count" | "
 export interface PlanIssue { field: PlanField | null; message: string }
 
 export const MAX_FORCE = 24;
-/** The flat arena: each side's front rank (MPos u, 25 cells apart) and the row the formations are centred on. */
-export const ARENA_FRONT: readonly [number, number] = [51, 76];
-export const ARENA_ROW = 62;
-const DEFAULT_SIZE: [number, number] = [72, 60];
-const FORMATION_GAP = 12;
 
 export type UnitClass = "infantry" | "air" | "drone" | "artillery" | "tank" | "vehicle";
 const CLASS_WORDS: [UnitClass, RegExp][] = [
@@ -123,14 +118,12 @@ const IS: Record<UnitClass, (u: UnitOption) => boolean> = {
   tank: u => u.queue === "Vehicle" && /\btank\b/i.test(u.label),
   vehicle: u => u.queue === "Vehicle",
 };
-/** The plain front-line pick of a class: a battle tank, a rifleman. */
-const MAINLINE: Partial<Record<UnitClass, RegExp>> = { tank: /\bbattle tank\b/i, infantry: /\b(rifle(man|men)?|guard|basij|g\.i\.|conscript|line fighter|infantry)\b/i };
+/** The plain front-line pick of a class: a battle tank (the Coalition's Battle Tank, the Union's Heavy Tank), a rifleman. */
+const MAINLINE: Partial<Record<UnitClass, RegExp>> = { tank: /\b(battle tank|heavy tank|mbt)\b/i, infantry: /\b(rifle(man|men)?|guard|basij|conscript|line fighter|infantry)\b|\bg\.i\./i };
 const TIME_WORD = /^(s|secs?|seconds?|m|mins?|minutes?)$/;
 /** Words that never name a particular unit on their own. */
 const STOP = new Set(["battle", "main", "medium", "heavy", "light", "mobile", "attack", "armed", "strike", "recon", "field", "forward", "portable", "combined", "combined-arms", "network", "phase", "area", "naval", "airborne", "elite", "demolition", "control", "anti-armor", "coastal", "escort", "rifle", "drone", "tank", "team", "rocket", "missile", "siege", "falcon", "line", "mountain", "fighter", "infantry", "vehicle", "carrier", "support", "command", "night", "spectrum", "camouflage", "flak", "mechanized", "precision", "national"]);
 
-/** "Heavy Assault Tank Tank" -> "Heavy Assault Tank" (the tooltip name repeated as its generic noun). */
-export const cleanLabel = (label: string) => label.replace(/\b(\w+)\s+\1$/i, "$1");
 export const unitClass = (u: UnitOption | undefined): UnitClass | null => u ? (Object.keys(IS) as UnitClass[]).find(c => IS[c](u)) ?? null : null;
 const canFight = (u: UnitOption | undefined) => !!u && u.combat !== false && u.queue !== "Ship";
 
@@ -148,7 +141,8 @@ export function pickUnit(cls: UnitClass | null, faction: string, units: UnitOpti
   const want = cls ?? "tank";
   const rank = (u: UnitOption) => { const i = roster.indexOf(u.name); return i < 0 ? 999 : i; };
   const score = (u: UnitOption) => MAINLINE[want]?.test(u.label) ? 0 : 1;
-  const best = (list: UnitOption[]) => [...list].sort((a, b) => score(a) - score(b) || rank(a) - rank(b) || a.label.localeCompare(b.label))[0];
+  // The class's mainline unit; a nation that fields both, its modern one (the M1A2, not the Grizzly).
+  const best = (list: UnitOption[]) => [...list].sort((a, b) => score(a) - score(b) || Number(b.modern) - Number(a.modern) || rank(a) - rank(b) || a.label.localeCompare(b.label))[0];
   for (const list of [own.filter(IS[want]), want === "tank" ? own.filter(IS.vehicle) : [], own, combat.filter(IS[want]), combat])
     if (list.length) return best(list).name;
   return "";
@@ -188,7 +182,9 @@ export function interpret(text: string, units: UnitOption[], factions: string[],
     const keys = [u.name.toLowerCase(), label, ...(first.length >= 4 && /[a-z]/.test(first) && !STOP.has(first) && !factionWords.has(first) && !CLASS_WORDS.some(([, re]) => re.test(first)) ? [first] : [])];
     const at = Math.min(...keys.map(k => s.search(new RegExp(`(^|[^\\w-])${escape(k)}s?($|[^\\w-])`))).map(i => i < 0 ? Infinity : i));
     return { u, at };
-  }).filter(m => Number.isFinite(m.at)).sort((a, b) => a.at - b.at || b.u.label.length - a.u.label.length).map(m => m.u);
+  }).filter(m => Number.isFinite(m.at)).sort((a, b) => a.at - b.at || b.u.label.length - a.u.label.length)
+    // One unit per mention: variants sharing a name ("Karrar" and a husk or upgrade of it) match at the same place.
+    .filter((m, i, all) => i === 0 || all[i - 1].at !== m.at).map(m => m.u);
 
   // Counts: a number not followed by a time word, with the word after it.
   const countsIn = (s: string) => [...s.matchAll(/\b(\d{1,4})\b(?:\s*x)?(?:\s+([a-z][\w-]*))?/g)]
@@ -266,110 +262,4 @@ export function nativeIssues(errors: string[], p: PracticePlan, units: UnitOptio
     } else out.push({ field: null, message: e });
   }
   return out.filter((x, i) => out.findIndex(y => y.field === x.field && y.message === x.message) === i);
-}
-
-/**
- * A side's formation: ranks facing the opponent, files spaced by the unit's on-screen size so no two units (or
- * their selection boxes) overlap, at any force size. Isometric MPos: one u is a tile width, two v a tile height;
- * rows stay on even v so files never stagger. Side 0 stands west of its front rank, side 1 east of its own.
- */
-export function formation(count: number, side: 0 | 1, size: [number, number] = DEFAULT_SIZE, tile: [number, number] = [60, 30]) {
-  const n = Math.max(0, Math.min(MAX_FORCE, Math.floor(count) || 0));
-  const du = Math.max(1, Math.ceil((size[0] + FORMATION_GAP) / tile[0]));
-  const rows = Math.max(1, Math.ceil((size[1] + FORMATION_GAP) / tile[1]));
-  const perRank = Math.max(1, Math.min(n, Math.ceil(Math.sqrt(n * 2))));
-  return Array.from({ length: n }, (_, i) => {
-    const rank = Math.floor(i / perRank), file = i % perRank, inRank = Math.min(perRank, n - rank * perRank);
-    const row = file * rows - Math.floor((inRank - 1) * rows / 2);
-    return { u: side ? ARENA_FRONT[1] + rank * du : ARENA_FRONT[0] - rank * du, v: ARENA_ROW + 2 * row };
-  });
-}
-
-const ARENA_OPTIONS = { explored: "True", fog: "False", crates: "False", shortgame: "False" };
-
-/**
- * The practice battle. The workshop builds it paused as its preview, so "Start battle" only unpauses the very world
- * that was checked: you command side 0 (Multi0); the opponent is the arena's idle bot under its practice orders.
- */
-export function practiceScenario(p: PracticePlan, units: UnitOption[] = []) {
-  const size = (name: string) => units.find(u => u.name === name)?.size;
-  const placements = ([0, 1] as const).flatMap(side => formation(side ? p.enemyCount : p.count, side, size(side ? p.enemyUnit : p.unit))
-    .map(c => ({ id: side ? p.enemyUnit : p.unit, side, u: c.u, v: c.v, facing: side ? 256 : 768, order: side ? p.enemyOrder : "hold" })));
-  return { map: "web-arena", seed: p.seed, sandbox: true, objective: p.objective, duration: p.duration, players: [{ slot: "Multi0", faction: p.faction, color: "2A6FDB" }, { slot: "Multi1", faction: p.enemy, color: "D83A2E", bot: "webidle" }], options: ARENA_OPTIONS, placements };
-}
-
-// ---- engine probes for the workshop (a paused, empty arena; nothing here changes a game the player plays)
-
-/** Resolves when the world started by game.start is running (or paused and drawn); rejects on an engine error. */
-export function waitForWorld(alive: () => boolean = () => true, timeout = 120000) {
-  return new Promise<void>((resolve, reject) => {
-    const started = Date.now();
-    const timer = setInterval(() => {
-      const s = store.get();
-      if (s.phase === "playing") { clearInterval(timer); resolve(); }
-      else if (s.phase === "error" || !alive() || Date.now() - started > timeout) { clearInterval(timer); reject(new Error(s.error || (alive() ? "The battle took too long to build." : "Closed."))); }
-    }, 60);
-  });
-}
-const until = (test: () => boolean, timeout: number) => new Promise<boolean>(resolve => {
-  const started = Date.now();
-  const timer = setInterval(() => { const ok = test(); if (ok || Date.now() - started > timeout) { clearInterval(timer); resolve(ok); } }, 30);
-});
-/** Resolves once the match's sprite sheets are on the GPU: an opponent's art may still be streaming when its world starts. */
-export const waitForArt = (timeout = 10000) => until(() => { const s = store.get().sheets; return s.uploaded >= s.total; }, timeout);
-
-/** An empty, paused arena with `faction` as the local player (its production palette lists that faction's roster). */
-async function openArena(game: Game, faction: string, other: string, alive: () => boolean) {
-  game.start(JSON.stringify({ map: "web-arena", seed: 42, sandbox: true, players: [{ slot: "Multi0", faction, color: "2A6FDB" }, { slot: "Multi1", faction: other, color: "D83A2E", bot: "webidle" }], options: ARENA_OPTIONS }), true);
-  await waitForWorld(alive);
-}
-/** The local player's roster from its production palette (Infantry, Vehicle and Aircraft queues). */
-async function readRoster(): Promise<string[]> {
-  await until(() => store.get().catalog.length > 0, 4000);
-  return store.get().catalog.filter(q => ["Infantry", "Vehicle", "Aircraft"].includes(q.type)).flatMap(q => q.items.filter(i => !i.building).map(i => i.name));
-}
-
-let probed: { units: UnitOption[]; rosters: Rosters } | null = null;
-
-/**
- * The workshop's unit catalog, asked of the engine itself: every land and air unit, whether it can fight (one of each
- * is placed and counted by validate-practice, the same test the battle check uses) and its on-screen size. Also
- * returns the rosters of `faction` (the arena's local player) and of `others`. Cached for the session.
- */
-export async function loadPracticeCatalog(game: Game, faction: string, others: string[], alive: () => boolean): Promise<{ units: UnitOption[]; rosters: Rosters }> {
-  if (!probed) {
-    await openArena(game, faction, others.find(f => f !== faction) ?? faction, alive);
-    const rosters: Rosters = { [faction]: await readRoster() };
-    const r = await game.command<{ units?: UnitOption[] }>({ cmd: "units" });
-    const units = (r.units ?? []).filter(u => u.queue !== "Ship").map(u => ({ ...u, label: cleanLabel(u.label) }));
-    const info = game.info!;
-    const x = info.cellOrigin[0] + 2 * 64 * info.tileSize[0] / 2, y = info.cellOrigin[1] + ARENA_ROW * info.tileSize[1] / 2;
-    let fighters = 0;
-    for (const u of units) {
-      if (!alive()) throw new Error("Closed.");
-      await game.command({ cmd: "spawn", type: u.name, player: 0, x, y, count: 1 });
-      const v = await game.command<{ units?: number }>({ cmd: "validate-practice" });
-      u.combat = (v.units ?? fighters) > fighters; fighters = v.units ?? fighters;
-    }
-    // A paused world redraws on a view change: the snapshot then carries every probe actor's selection bounds.
-    game.lookAt(x, y);
-    await until(() => (game.client.cur?.actors.length ?? 0) >= units.length, 3000);
-    const cur = game.client.cur;
-    for (const a of cur?.actors ?? []) {
-      const u = units.find(x => x.name === game.client.str(a.type));
-      if (u && a.bw > 0 && a.bh > 0) u.size = [Math.max(u.size?.[0] ?? 0, a.bw), Math.max(u.size?.[1] ?? 0, a.bh)];
-    }
-    probed = { units, rosters };
-  }
-  for (const f of others) await probeRoster(game, f, faction, alive);
-  return { units: probed.units, rosters: { ...probed.rosters } };
-}
-/** A faction's roster (cached): an empty arena with that faction as the local player. */
-export async function probeRoster(game: Game, faction: string, other: string, alive: () => boolean): Promise<string[]> {
-  if (!probed) throw new Error("The unit catalog is not loaded.");
-  if (!(faction in probed.rosters)) {
-    await openArena(game, faction, other, alive);
-    probed.rosters[faction] = await readRoster();
-  }
-  return probed.rosters[faction];
 }

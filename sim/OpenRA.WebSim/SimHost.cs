@@ -250,6 +250,7 @@ namespace OpenRA.WebSim
 					PreferredColor = color,
 					Team = p.Team,
 					SpawnPoint = p.SpawnPoint,
+					Handicap = p.Handicap,
 					State = Session.ClientState.Ready,
 					IsAdmin = p.Bot == null,
 				});
@@ -383,6 +384,8 @@ namespace OpenRA.WebSim
 			Snapshot.Reset();
 			Sandbox.Forget();
 			AiLab.Forget();
+			EditorHost.Forget();
+			Ui.Resync(); // its catalog text is cached per ActorInfo of the ended world's rules
 			RetainedAfterEndMB = GC.GetTotalMemory(true) / 1048576.0;
 		}
 
@@ -421,7 +424,11 @@ namespace OpenRA.WebSim
 			};
 			Time("start.loadcomplete", () => World.LoadComplete(WorldRenderer));
 
+			if (s.Bare)
+				RemoveStartingUnits();
+
 			SpawnActors(s);
+			GiveCash(s);
 
 			OrderManager.StartGame();
 			WorldRenderer.RefreshPalette();
@@ -438,6 +445,62 @@ namespace OpenRA.WebSim
 
 			// The load's garbage goes before play starts, so play allocates into a collected heap.
 			Time("start.settle", () => GC.Collect());
+		}
+
+		/// <summary>
+		/// Opens a map in the engine's editor world (WorldType.Editor, the desktop map editor's world: EditorActorLayer,
+		/// EditorResourceLayer, EditorActionManager, the cursor layer) with a spectator session, like Game.LoadEditor.
+		/// Nothing ticks; the browser's map editor drives it through EditorHost.
+		/// </summary>
+		public static void StartEditor(string mapName)
+		{
+			EndGame();
+			Scenario = new ScenarioSpec { Map = mapName };
+			Prepare(mapName);
+			var map = preparedMap;
+			preparedMap = null;
+			preparedMapName = null;
+
+			Connection = new WebConnection();
+			OrderManager = new OrderManager(Connection);
+			Connection.Attach(OrderManager);
+			Game.OrderManager = OrderManager;
+			var session = new Session();
+			session.GlobalSettings.Map = map.Uid;
+			session.GlobalSettings.RandomSeed = 1;
+			session.GlobalSettings.EnableSingleplayer = true;
+			session.Clients.Add(new Session.Client { Index = WebConnection.ClientId, Name = "Editor", Faction = "Random", Color = Color.White, State = Session.ClientState.Ready, IsAdmin = true });
+			OrderManager.LobbyInfo = session;
+
+			if (map.Grid.EnableDepthBuffer)
+				Game.Renderer.SetDepthMargin(map.Rules.TerrainInfo.TileSize.Height * map.Grid.MaximumTerrainHeight);
+
+			QuietEditorWidgets(map);
+			Time("start.world", () => World = OrderManager.World = new World(map, ModData, OrderManager, WorldType.Editor));
+			Time("start.worldrenderer", () => WorldRenderer = new WorldRenderer(ModData, World));
+			Capture.ViewToWorld = (x, y) =>
+			{
+				var vp = WorldRenderer.Viewport;
+				return (vp.TopLeft.X + x / vp.Zoom, vp.TopLeft.Y + y / vp.Zoom);
+			};
+			Time("start.loadcomplete", () => World.LoadComplete(WorldRenderer));
+			OrderManager.StartGame();
+			WorldRenderer.RefreshPalette();
+			GC.Collect();
+		}
+
+		/// <summary>
+		/// Data packed before the web rules overlay dropped LoadWidgetAtGameStart from the editor world (Bundle.cs) would
+		/// build the desktop editor's widget tree on load, which needs the desktop chrome: its root becomes an empty container.
+		/// </summary>
+		static void QuietEditorWidgets(Map map)
+		{
+			var info = map.Rules.Actors[SystemActors.EditorWorld].TraitInfoOrDefault<LoadWidgetAtGameStartInfo>();
+			if (info == null)
+				return;
+			var field = typeof(WidgetLoader).GetField("widgets", BindingFlags.NonPublic | BindingFlags.Instance);
+			if (field?.GetValue(ModData.WidgetLoader) is Dictionary<string, MiniYamlNode> widgets)
+				widgets[info.EditorRoot] = new MiniYamlNode("Container@" + info.EditorRoot, "");
 		}
 
 		static readonly List<(Actor Actor, SpawnSpec Spec)> Spawned = [];
@@ -468,6 +531,30 @@ namespace OpenRA.WebSim
 
 				Spawned.Add((actor, a));
 			}
+		}
+
+		/// <summary>
+		/// A bare scenario keeps only its own spawns: the units SpawnStartingUnits gave each player at the map's start
+		/// positions are taken out before the game starts (the same in the browser and the native runner).
+		/// </summary>
+		static void RemoveStartingUnits()
+		{
+			var players = PlayablePlayers();
+			foreach (var a in World.Actors.Where(a => players.Contains(a.Owner) && a != a.Owner.PlayerActor && !a.Disposed).ToList())
+			{
+				if (a.IsInWorld)
+					World.Remove(a);
+				a.Dispose();
+			}
+		}
+
+		/// <summary>Credits a scenario gives a player on top of the starting cash.</summary>
+		static void GiveCash(ScenarioSpec s)
+		{
+			var players = PlayablePlayers();
+			for (var i = 0; i < s.Players.Count && i < players.Count; i++)
+				if (s.Players[i].Cash > 0)
+					players[i].PlayerActor.TraitOrDefault<PlayerResources>()?.GiveCash(s.Players[i].Cash);
 		}
 
 		/// <summary>Playable players in scenario order (the order of ScenarioSpec.Players).</summary>

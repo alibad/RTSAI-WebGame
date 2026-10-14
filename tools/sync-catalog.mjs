@@ -20,8 +20,16 @@ for (const f of src.catalog.factions) {
   const id = f.variants?.ra2?.engineFactionId ?? f.id;
   out.factions[id] = { name: f.variants?.ra2?.name ?? f.name, title: f.title, tagline: f.tagline, accent: f.accent, strengths: f.strengths };
 }
+// Each catalogued unit's story, keyed by the actor the isometric game runs: the simulator's unit card shows it next to
+// the engine's own numbers (cost, health, weapons), so the text and the rules never come from two copies.
+out.units = {};
+for (const u of src.catalog.units ?? []) {
+  const actor = u.variants?.ra2?.actorId;
+  if (!actor) continue;
+  out.units[actor] = { faction: u.factionId, name: u.variants.ra2.name ?? u.name, role: u.variants.ra2.role ?? u.role, story: u.story, strengths: u.strengths, counterplay: u.counterplay };
+}
 const outIndex = process.argv.indexOf("--out");
 const destination = outIndex > 0 ? path.resolve(process.argv[outIndex + 1]) : path.join(repo, "web", "src", "data", "factions.json");
 fs.mkdirSync(path.dirname(destination), { recursive: true });
 fs.writeFileSync(destination, JSON.stringify(out, null, 2) + "\n");
-console.log(`synced ${Object.keys(out.factions).length} factions (catalog ${out.revision})`);
+console.log(`synced ${Object.keys(out.factions).length} factions and ${Object.keys(out.units).length} units (catalog ${out.revision})`);
