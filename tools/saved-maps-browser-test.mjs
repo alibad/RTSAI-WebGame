@@ -47,7 +47,7 @@ try {
   await Promise.all([host, guest].map(signIn));
   // The web build's main menu leads to the website's studio, and offers no top-down view any more.
   await host.getByRole('button', { name: /Map studio/ }).waitFor();
-  assert.equal(await host.getByRole('button', { name: 'Classic / top-down', exact: true }).count(), 0);
+  assert.equal(await host.getByRole('button', { name: 'Classic / top-down', exact: true }).count(), 1);
   receipt.checks.menu = true; console.log('PASS menu: Map studio link, isometric only');
 
   // Build a battlefield in the studio (signed in through the game: one session on the shared origin).

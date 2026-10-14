@@ -28,14 +28,13 @@ try {
     if (mode === 'isometric') assert.equal(await page.getByRole('button', { name: /Map editor/ }).count(), 1);
     assert.equal(await page.getByRole('button', { name: 'Private multiplayer', exact: true }).count(), 0);
     assert.ok(await page.getByRole('button', { name: 'Multiplayer', exact:true }).count());
-    // The menu offers only isometric (top-down shares its art); a top-down page opened by URL offers the way back.
-    if (mode === 'isometric') assert.equal(await page.getByRole('button', { name: 'Classic / top-down', exact: true }).count(), 0);
-    else {
-      await page.getByRole('button', { name: 'Isometric', exact: true }).click();
-      await page.waitForFunction(() => window.store?.getState().phase === 'setup' && window.store.getState().profile === 'public', null, { timeout: 240000 });
-      await page.goto(`${base}?profile=${profile}&runtime=aot&private=0`);
-      await page.waitForFunction(expected => window.store?.getState().phase === 'setup' && window.store.getState().profile === expected, profile, { timeout: 240000 });
-    }
+    // Every shipped mode offers the other mode through the same menu.
+    const alternateName = mode === 'isometric' ? 'Classic / top-down' : 'Isometric';
+    const alternateProfile = mode === 'isometric' ? 'public-classic' : 'public';
+    await page.getByRole('button', { name: alternateName, exact: true }).click();
+    await page.waitForFunction(expected => window.store?.getState().phase === 'setup' && window.store.getState().profile === expected, alternateProfile, { timeout: 240000 });
+    await page.goto(`${base}?profile=${profile}&runtime=aot&private=0`);
+    await page.waitForFunction(expected => window.store?.getState().phase === 'setup' && window.store.getState().profile === expected, profile, { timeout: 240000 });
     await page.evaluate(() => { const m = window.store.getState().setup.missions[0]; window.game.start(JSON.stringify({ map: m.id, mission: m.id, seed: 2026, players: [{ slot: m.slot, faction: m.faction, color: '2A6FDB' }], options: { difficulty: 'normal' } })); });
     await page.waitForFunction(() => window.store.getState().phase === 'playing' && window.store.getState().ui?.tick > 20, null, { timeout: 180000 });
     assert.equal(await page.evaluate(() => window.store.getState().info.gridType), grid);
