@@ -26,9 +26,14 @@
 // and game.cam.zoom from a requestAnimationFrame loop in the page (eased glides, a damped follow). The player's side is
 // played by the page's co-commander in Auto (the browser strategy adviser applying its own recommendations: build,
 // train, defend, attack); the enemy is the mission's own scripted forces and waves. The warm-up runs at a raised game
-// speed until the two sides meet, then the battle is recorded at normal speed. If they have not met after the warm-up,
-// the player's combat units are sent (attack-move, through the same engine channel the co-commander uses) at the
-// nearest enemy objective target, and footage.json says so.
+// speed until the two sides meet (actors losing health, or own and enemy within ~10 cells, from the co-commander's
+// observation), then the battle is recorded at normal speed. When nothing has met after 15 s of warm-up (at once on a
+// map whose mission sends no waves), the player's combat units are sent (attack-move, one validated order per unit,
+// through the same engine channel the co-commander's Attack uses) at the nearest enemy objective target or enemy, again
+// every 25 s while nothing fights; footage.json lists every push. A take whose screencast stalled (under 45 fps or a gap
+// over 150 ms) is recorded again. Objectives whose target is not on the map yet get a stand-in subject: escorts the
+// route's entry drifting along the route, shipping lanes the strait seen from the coast by the base, survive the wave
+// entry's approach to the base, build the base.
 import fs from "node:fs";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
@@ -241,6 +246,16 @@ function subjectsOf(o, ui) {
       return { groups: [[lane]], toward: null, path: [mix(0.5), mix(0.15)], pathNote: `the strait from the coast by the player's base out over the shipping lane at ${lane.name}` };
     }
   }
+  if (o.kind === "survive" && !pts.length) {
+    // The attacks come from the mission's wave entry (Missions.Wave's naming rule) at the base: the shot looks down
+    // that approach toward the base.
+    const entry = Object.keys(named).find((n) => named[n].cell && (n.includes("GroundEntry") || n.includes("WaveEntry") || n === "NorthEntry" || n === "WestEntry"));
+    if (entry) {
+      const at = cellToWorld(named[entry].cell);
+      const mix = (f) => [base[0] + (at[0] - base[0]) * f, base[1] + (at[1] - base[1]) * f];
+      return { groups: [[{ name: entry, at, cell: named[entry].cell }]], toward: null, path: [mix(0.6), mix(0.3)], pathNote: `the attackers' approach from ${entry} toward the player's base` };
+    }
+  }
   let groups = [];
   for (const p of pts) {
     const g = groups.find((g) => dist(g[0].at, p.at) < 700);
@@ -363,8 +378,12 @@ const gameTime = () => page.evaluate(() => window.game.client.cur?.header.tick ?
 const setSpeed = (speed) => page.evaluate((speed) => window.game.client.send({ type: "speed", speed }), speed);
 const cellsOf = (pts) => pts.map((p) => ({ name: p.name, cell: p.cell }));
 
+// The mission sends waves at the base only from an entry named as Missions.Wave looks for; without one, nothing
+// attacks the player and the army is sent out at once.
+const hasWaves = Object.keys(named).some((n) => n.includes("GroundEntry") || n.includes("WaveEntry") || n === "NorthEntry" || n === "WestEntry");
+
 // ------------------------------------------------------------------------------------------------- establishing
-if (only.has("establishing")) {
+async function shootEstablishing() {
   // From the battlefield (toward the farthest primary objective, at most 2400 px away) to the player's base.
   const primary = objectives.filter((o) => !o.secondary).flatMap((o) => o.groups.map((g) => ({ o, g, c: [g.reduce((s, p) => s + p.at[0], 0) / g.length, g.reduce((s, p) => s + p.at[1], 0) / g.length] })));
   // Prefer starting on an objective 1200-2600 px out (something to see at the start), else the farthest one.
@@ -385,7 +404,7 @@ if (only.has("establishing")) {
 }
 
 // ------------------------------------------------------------------------------------------------- objectives
-if (only.has("objectives")) {
+async function shootObjectives() {
   for (const o of objectives) {
     for (let k = 0; k < o.groups.length; k++) {
       const g = o.groups[k];
@@ -414,31 +433,51 @@ if (only.has("objectives")) {
 
 // ------------------------------------------------------------------------------------------------- battle
 const battle = { warmup: [], pushes: [] };
-if (only.has("battle")) {
-  /** The fighting: own actors (units, buildings) and enemy units within 7 cells of each other (co-commander observation,
-   * not fog-limited here since the fog is off). Returns its centre (world px) and size, or null. */
+async function shootBattle() {
+  /**
+   * The fighting, from the co-commander's observation (not fog-limited here since the fog is off): actors that lost
+   * health since the last look (that is where the shots land and the explosions are), and own actors (units,
+   * buildings) and enemy units within 330 world px (about ten cells) of each other. Returns the densest group's centre
+   * (world px), its size and how many enemies are in it, or null.
+   */
+  const lastHp = new Map();
   async function action() {
     const obs = await page.evaluate(async () => { try { return await window.game.client.adviserObserve(); } catch (e) { return { error: String(e) }; } });
     if (!obs || obs.error) return { obs: null, fight: null };
-    const own = [...obs.units, ...obs.buildings], enemies = obs.visibleEnemies;
-    const engaged = [];
-    for (const e of enemies) {
-      const near = own.filter((a) => (a.cellX - e.cellX) ** 2 + (a.cellY - e.cellY) ** 2 <= 49);
-      if (near.length) engaged.push(e, ...near.filter((a) => !engaged.includes(a)));
+    const own = [...obs.units, ...obs.buildings], enemies = [...obs.visibleEnemies, ...obs.visibleEnemyBuildings];
+    const at = (a) => (a.at ??= mposToWorld([a.cellX, a.cellY]));
+    const near = (a, b, r) => dist(at(a), at(b)) <= r;
+    const hit = [];
+    for (const a of [...own, ...enemies]) {
+      const hp = a.hpPercent ?? 1, before = lastHp.get(a.actorId);
+      if (before !== undefined && hp < before - 0.001) hit.push(a);
+      lastHp.set(a.actorId, hp);
     }
-    if (engaged.length < 2) return { obs, fight: null };
-    // The densest cluster: the engaged actor with the most engaged neighbours within 6 cells, then their mean.
-    const centre = engaged.map((a) => ({ a, n: engaged.filter((b) => (a.cellX - b.cellX) ** 2 + (a.cellY - b.cellY) ** 2 <= 36) }))
-      .sort((p, q) => q.n.length - p.n.length)[0];
-    const pts = centre.n.map((a) => mposToWorld([a.cellX, a.cellY]));
-    const at = [pts.reduce((s, p) => s + p[0], 0) / pts.length, pts.reduce((s, p) => s + p[1], 0) / pts.length];
-    return { obs, fight: { at, size: centre.n.length, enemies: centre.n.filter((a) => enemies.includes(a)).length, cell: worldToCell(at), mpos: worldToMPos(at) } };
+    const engaged = new Set(hit);
+    for (const e of obs.visibleEnemies) {
+      const close = own.filter((a) => near(a, e, 330));
+      if (close.length) { engaged.add(e); for (const a of close) engaged.add(a); }
+    }
+    const list = [...engaged];
+    if (list.length < 2) return { obs, fight: null };
+    // The densest group: the actor with the most others within 450 px (a hit counts double), then their mean.
+    const weight = (a) => (hit.includes(a) ? 2 : 1);
+    const centre = list.map((a) => ({ a, n: list.filter((b) => near(a, b, 450)) }))
+      .sort((p, q) => q.n.reduce((s, b) => s + weight(b), 0) - p.n.reduce((s, b) => s + weight(b), 0))[0];
+    const pts = centre.n.map(at);
+    const c = [pts.reduce((s, p) => s + p[0], 0) / pts.length, pts.reduce((s, p) => s + p[1], 0) / pts.length];
+    const isEnemy = (a) => enemies.includes(a);
+    return { obs, fight: { at: c, size: centre.n.length, hits: centre.n.filter((a) => hit.includes(a)).length,
+      enemies: centre.n.filter(isEnemy).length || (centre.n.some((a) => hit.includes(a)) ? obs.visibleEnemies.filter((e) => dist(at(e), c) <= 500).length : 0),
+      cell: worldToCell(c), mpos: worldToMPos(c) } };
   }
   const nonCombat = /harv|mcv|engineer|engi|truck|sapc|network|spy|dog/i;
   const fightersOf = (obs, moving = false) => (obs ? obs.units.filter((u) => u.canAttack && !nonCombat.test(u.kind) && (!moving || !u.idle)) : []);
   const centreOf = (us) => mposToWorld([us.reduce((s, u) => s + u.cellX, 0) / us.length, us.reduce((s, u) => s + u.cellY, 0) / us.length]);
   /** Where the camera goes without a fight: the army on the move, else nothing (null). */
   const movingArmy = (obs) => { const m = fightersOf(obs, true); return m.length ? centreOf(m) : null; };
+  /** Without a fight after a push: the army wherever it is (it went toward the enemy). */
+  const army = (obs) => { const m = fightersOf(obs); return m.length ? centreOf(m) : null; };
 
   /** The player's combat units attack-move at the nearest enemy objective target or enemy, through the co-commander's
    * engine channel (the same validated orders its Attack recommendation gives). */
@@ -448,32 +487,48 @@ if (only.has("battle")) {
     const armyAt = [fighters.reduce((s, u) => s + u.cellX, 0) / fighters.length, fighters.reduce((s, u) => s + u.cellY, 0) / fighters.length];
     const targets = objectives.filter((o) => ["destroy", "capture"].includes(o.kind)).flatMap((o) => o.groups.flat()).filter((p) => p.cell && !p.base).map((p) => ({ name: p.name, cell: p.cell, mpos: cposToMPos(p.cell) }));
     const enemies = obs.visibleEnemies.map((e) => ({ name: e.kind, mpos: [e.cellX, e.cellY], cell: mposToCPos([e.cellX, e.cellY]) }));
-    const goal = [...targets, ...enemies].sort((a, b) => dist(a.mpos, armyAt) - dist(b.mpos, armyAt))[0];
+    // The nearest live enemy unit first (targets move: ships patrol), else the nearest objective target or building.
+    const byDistance = (list) => list.sort((p, q) => dist(mposToWorld(p.mpos), mposToWorld(armyAt)) - dist(mposToWorld(q.mpos), mposToWorld(armyAt)));
+    const live = byDistance(obs.visibleEnemies.map((e) => ({ name: e.kind, mpos: [e.cellX, e.cellY], cell: mposToCPos([e.cellX, e.cellY]) })));
+    const goal = live[0] ?? byDistance([...targets, ...enemies])[0];
     if (!goal) return null;
     const commands = fighters.slice(0, 20).map((u) => ({ action: "attack_move", actor_id: u.actorId, target_x: goal.mpos[0], target_y: goal.mpos[1] }));
-    const receipt = await page.evaluate(async (c) => { try { return await window.game.client.adviserExecute(`footage-push-${Date.now()}`, c); } catch (e) { return { error: String(e) }; } }, commands);
-    const p = { tick: await gameTime(), units: commands.length, target: goal.name, cell: goal.cell, receipt: receipt?.error ?? "ok" };
+    // One order per unit: the engine validates each against the latest observation, and one batch can be refused whole.
+    const receipts = await page.evaluate(async (cs) => {
+      const out = [];
+      for (const c of cs) {
+        try { const r = await window.game.client.adviserExecute(`footage-push-${c.actor_id}-${Date.now()}`, [c]); out.push(r?.accepted ? "ok" : (r?.detail ?? "refused")); }
+        catch (e) { out.push(String(e)); }
+      }
+      return out;
+    }, commands);
+    const accepted = receipts.filter((r) => r === "ok").length;
+    const p = { tick: await gameTime(), units: commands.length, accepted, target: goal.name, cell: goal.cell, distancePx: Math.round(dist(mposToWorld(goal.mpos), mposToWorld(armyAt))), liveEnemies: obs.visibleEnemies.length, refused: receipts.filter((r) => r !== "ok").slice(0, 3) };
     battle.pushes.push(p);
     log("push", JSON.stringify(p));
     return p;
   }
   await cutTo(base[0], base[1], 0.6, 300);
-  await setSpeed(warmSpeed);
-  log(`warm-up at ${warmSpeed}x from tick ${await gameTime()}`);
+  // Without waves the first clash is the army arriving: a gentler warm-up speed so it is not over before it is seen.
+  const warmUp = hasWaves ? warmSpeed : Math.min(2, warmSpeed);
+  await setSpeed(warmUp);
+  log(`warm-up at ${warmUp}x from tick ${await gameTime()}`);
   let fight = null, lastPush = 0;
   const warmStart = Date.now();
   while (Date.now() - warmStart < 150000) {
     const r = await action();
-    if (r.fight && r.fight.size >= 3 && r.fight.enemies >= 1) { fight = r.fight; break; }
-    // No fighting after 15 s (a game minute at 4x): push, and again every 25 s with the units built since (at most 4).
-    if (r.obs && !r.fight && Date.now() - warmStart > 15000 && Date.now() - lastPush > 25000 && battle.pushes.length < 4) {
+    // A fight: three engaged, or shots landing (a hit) with an enemy in it or near (long-range fire, ships).
+    if (r.fight && r.fight.enemies >= 1 && (r.fight.size >= 3 || r.fight.hits >= 1)) { fight = r.fight; break; }
+    // No fighting after 15 s (a game minute at 4x; at once on a map without waves): push, and again every 25 s with the
+    // units built since (at most 4).
+    if (r.obs && !r.fight && Date.now() - warmStart > (hasWaves ? 15000 : 0) && Date.now() - lastPush > 25000 && battle.pushes.length < 4) {
       if (await push(r.obs)) lastPush = Date.now();
     }
     const look = r.fight?.at ?? (lastPush ? movingArmy(r.obs) : null);
     if (look) await page.evaluate(([x, y]) => window.__fx.follow(x, y, 0.6), look);
     await sleep(500);
   }
-  battle.warmup.push({ seconds: +((Date.now() - warmStart) / 1000).toFixed(1), speed: warmSpeed, tick: await gameTime(), fight });
+  battle.warmup.push({ seconds: +((Date.now() - warmStart) / 1000).toFixed(1), speed: warmUp, tick: await gameTime(), fight });
   await setSpeed(1);
   log("battle from tick", await gameTime(), "fight", JSON.stringify(fight));
   const files = [];
@@ -492,7 +547,7 @@ if (only.has("battle")) {
       await setSpeed(1);
       battle.warmup.push({ beforeCut: k, tick: await gameTime(), fight: r.fight });
     }
-    const target = r.fight?.at ?? movingArmy(r.obs) ?? fight?.at ?? base;
+    const target = r.fight?.at ?? movingArmy(r.obs) ?? (battle.pushes.length ? army(r.obs) : null) ?? fight?.at ?? base;
     await cutTo(target[0], target[1], 0.95, 1200);
     const seen = [];
     const startTick = await gameTime();
@@ -502,11 +557,11 @@ if (only.has("battle")) {
       while ((await now()) < start + cutSeconds * 1000 - 400) {
         const q = await action();
         if (q.fight) seen.push({ at: +(((await now()) - start) / 1000).toFixed(1), cell: q.fight.cell, size: q.fight.size });
-        const look = q.fight?.at ?? movingArmy(q.obs);
+        const look = q.fight?.at ?? movingArmy(q.obs) ?? (battle.pushes.length ? army(q.obs) : null);
         if (look) await page.evaluate(([x, y]) => window.__fx.follow(x, y, 0.95), look);
         await sleep(450);
       }
-    }, { shows: `Battle cut ${k}: real play, the camera following the fighting (the player's side played by the co-commander in Auto${battle.pushes.length ? ", its army sent at " + battle.pushes.map((p) => p.target).join(", then ") : ""}; the enemy is the mission's own forces${/Wave/.test(String(Object.keys(named))) ? " and scripted waves" : ""}).`,
+    }, { shows: `Battle cut ${k}: real play, the camera following the fighting (the player's side played by the co-commander in Auto${battle.pushes.length ? ", its army sent at " + battle.pushes.map((p) => p.target).join(", then ") : ""}; the enemy is the mission's own forces${hasWaves ? " and scripted waves" : ""}).`,
       camera: { follow: "critically damped spring to the densest engagement (else the army on the move), capped at 260 world px/s, zoom 0.95" }, startTick });
     seg.fight = seen.length ? { first: seen[0], last: seen.at(-1), samples: seen.length } : null;
     files.push(`battle-${k}.mp4`);
@@ -520,6 +575,12 @@ if (only.has("battle")) {
   if (best) fs.copyFileSync(path.join(out, best.keyFrame), path.join(framesDir, "battle.png"));
   segments.push({ file: "battle.mp4", keyFrame: "frames/battle.png", ...probe(path.join(out, "battle.mp4")), shows: `The ${files.length} battle cuts joined: ${files.join(", ")}.`, cuts: files });
 }
+
+// The order of the shots: a mission that sends waves at the base is filmed establishing, objectives, battle; one
+// without waves (nothing attacks the player) is filmed battle first, while its forces are still where they start, so
+// the army sent out meets them.
+const shots = { establishing: shootEstablishing, objectives: shootObjectives, battle: shootBattle };
+for (const name of hasWaves ? ["establishing", "objectives", "battle"] : ["battle", "establishing", "objectives"]) if (only.has(name)) await shots[name]();
 
 const ui = await page.evaluate(() => window.store.getState().ui?.mission);
 await browser.close();
