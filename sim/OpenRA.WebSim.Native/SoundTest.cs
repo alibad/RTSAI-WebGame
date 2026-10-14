@@ -60,9 +60,12 @@ static class SoundTest
 		}
 
 		var after = error == null ? Targets() : -1;
-		var fired = error == null && (!placed || after < before);
+		// Placed towers must fire (their targets fall); other placed actors (scenarios/editor-critters.json: a cow, a
+		// civilian and sandbags with sounds the build lacks) only have to run without an error.
+		var wantsTower = spec.Spawns.Any(s => s.Type is "tesla" or "atesla");
+		var fired = error == null && (!wantsTower || towers.Length > 0 && after < before);
 		var expectError = opts.ContainsKey("expect-error");
-		var passed = expectError ? error != null : error == null && fired && (towers.Length > 0 || !placed);
+		var passed = expectError ? error != null : error == null && fired;
 		Console.WriteLine(JsonSerializer.Serialize(new
 		{
 			scenario = Path.GetFileName(opts["scenario"]), gate, towers, towersAtEnd = Towers(), ticks = tick, targetsBefore = before,
