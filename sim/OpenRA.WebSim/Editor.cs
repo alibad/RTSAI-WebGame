@@ -81,6 +81,16 @@ namespace OpenRA.WebSim
 			controller = null;
 		}
 
+		/// <summary>Drops everything that points into the editor's world (SimHost.EndGame), so it can be collected.</summary>
+		public static void Forget()
+		{
+			controller = null;
+			brushName = "select";
+			dirtyMin = int.MaxValue;
+			dirtyMax = -1;
+			EditorWaterBrush.Reset();
+		}
+
 		static void Dirty(CPos cell)
 		{
 			var v = cell.ToMPos(SimHost.World.Map).V;
