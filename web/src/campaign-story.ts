@@ -113,7 +113,7 @@ const story: CampaignStory = {
       "status": "playable",
       "speaker": "nabil",
       "intro": "Spoofed navigation signals have walked a fishing fleet onto the reef, and Orion Group patrols are already searching the water. They are looking for someone. Take a small force with no base, find the three stranded crews, and bring every survivor to the town clinic.",
-      "tactics": "Move in pairs and keep out of the patrols' way until each crew is found. Keep a few units at the clinic: the survivors are only safe once they arrive.",
+      "tactics": "Move in pairs and keep out of the patrols' way until each crew is found. The transports can only reach the reef at high tide: hold the town until then, then bring everyone to the clinic.",
       "victory": "Every crew is at the clinic. Among them is a stranger pulled from the sea in a soaked 1950s uniform, who asks what year it is and then gives a name: Tanya.",
       "defeat": "The reef is lost. Regroup, find the crews before the patrols do, and keep the clinic standing."
     },
@@ -457,23 +457,55 @@ const story: CampaignStory = {
       },
       {
         "when": {
+          "objective": 0
+        },
+        "speaker": "nabil",
+        "line": "First crew is safe. Two to go.",
+        "audio": "lights-in-the-water/radio-3.mp3"
+      },
+      {
+        "when": {
+          "objective": 1
+        },
+        "speaker": "nabil",
+        "line": "Second crew found by the jetty. The reef is next.",
+        "audio": "lights-in-the-water/radio-4.mp3"
+      },
+      {
+        "when": {
+          "objective": 2
+        },
+        "speaker": "tanya",
+        "line": "Took you long enough. Who is in charge here, and what year is it?",
+        "audio": "lights-in-the-water/radio-5.mp3"
+      },
+      {
+        "when": {
+          "objective": 3
+        },
+        "speaker": "lantern",
+        "line": "High tide. The transports can reach the landing now. Get everyone to the clinic.",
+        "audio": "lights-in-the-water/radio-6.mp3"
+      },
+      {
+        "when": {
           "time": 240
         },
         "speaker": "lantern",
         "line": "The patrol boats are sweeping the reef in a grid. They're looking for someone in particular.",
-        "audio": "lights-in-the-water/radio-3.mp3"
+        "audio": "lights-in-the-water/radio-7.mp3"
       },
       {
         "when": "victory",
         "speaker": "tanya",
         "line": "Name's Tanya. Last thing I remember, I had hold of a man's coat in 1953. Tell me you've seen him.",
-        "audio": "lights-in-the-water/radio-4.mp3"
+        "audio": "lights-in-the-water/radio-8.mp3"
       },
       {
         "when": "defeat",
         "speaker": "nabil",
         "line": "Pull back. We'll find them again.",
-        "audio": "lights-in-the-water/radio-5.mp3"
+        "audio": "lights-in-the-water/radio-9.mp3"
       }
     ],
     "hold-the-ferry-line": [
@@ -493,11 +525,19 @@ const story: CampaignStory = {
       },
       {
         "when": {
+          "objective": 0
+        },
+        "speaker": "kemal",
+        "line": "The ferries are loaded. Now get them across.",
+        "audio": "hold-the-ferry-line/radio-3.mp3"
+      },
+      {
+        "when": {
           "time": 300
         },
         "speaker": "orlov",
         "line": "Colonel. You could have a much clearer picture of the strait. All you have to do is ask.",
-        "audio": "hold-the-ferry-line/radio-3.mp3"
+        "audio": "hold-the-ferry-line/radio-4.mp3"
       },
       {
         "when": {
@@ -505,19 +545,27 @@ const story: CampaignStory = {
         },
         "speaker": "tanya",
         "line": "That voice. I chased it through a machine. That's Orlov.",
-        "audio": "hold-the-ferry-line/radio-4.mp3"
+        "audio": "hold-the-ferry-line/radio-5.mp3"
+      },
+      {
+        "when": {
+          "objective": 1
+        },
+        "speaker": "kemal",
+        "line": "All four ferries are across. Now we hold until the town is clear of the strait.",
+        "audio": "hold-the-ferry-line/radio-6.mp3"
       },
       {
         "when": "victory",
         "speaker": "kemal",
         "line": "Every ferry crossed. Lantern, a prisoner had orders for a place called Glass Island.",
-        "audio": "hold-the-ferry-line/radio-5.mp3"
+        "audio": "hold-the-ferry-line/radio-7.mp3"
       },
       {
         "when": "defeat",
         "speaker": "kemal",
         "line": "The line broke. Spread out across all three roads.",
-        "audio": "hold-the-ferry-line/radio-6.mp3"
+        "audio": "hold-the-ferry-line/radio-8.mp3"
       }
     ]
   }
