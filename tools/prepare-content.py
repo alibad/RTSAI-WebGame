@@ -987,14 +987,22 @@ SOUND_FALLBACKS = {
     'btespow.wav': None,  # Tesla Coil charging
     'bpripow.wav': None,  # Prism Tower charging
 }
+# With the map editor in the build, a player's own map can hold any actor the editor offers (MapEditorData categories):
+# animals, civilian props, fences, sandbags. Their sounds play in a test match like any other (a cow's ambient moo
+# within seconds), so they count too; a missing one of an actor only the editor offers is dropped (and listed) rather
+# than failing the build: the factions' own sounds must all ship.
+EDITOR = (ROOT/'sim/OpenRA.WebSim/Editor.cs').is_file()
+SOUND_FALLBACK_FILES = {'Rules': 'sound-fallbacks.yaml', 'Weapons': 'sound-fallbacks-weapons.yaml',
+                        'Voices': 'sound-fallbacks-voices.yaml'}
 
 def sound_check(ea_clips=()):
-    """Every sound file named in the rules and weapons of the public game, against the files the build ships: the folders
-    the mod mounts (its FileSystem packages, read by bare name), explicit 'ra2|' paths (the mod's files, the web content,
-    and in the isometric mode with original voices the original clips under web/ea/audio). Writes
-    content/sound-fallbacks.yaml for SOUND_FALLBACKS; raises for any other missing sound that a public game can play (an
-    actor that is buildable or placed on a shipped map, or a weapon one of them carries). Missing sounds of actors no
-    public game has (animals, civilian flags) are only reported. Voices and notifications are contenttest's."""
+    """Every sound file named in the rules, weapons and (for actors only the map editor offers) voice sets of the public
+    game, against the files the build ships: the folders the mod mounts (its FileSystem packages, read by bare name),
+    explicit 'ra2|' paths (the mod's files, the web content, and in the isometric mode with original voices the original
+    clips under web/ea/audio). Writes content/sound-fallbacks*.yaml (one per manifest section, loaded last) for
+    SOUND_FALLBACKS and for the editor-only actors' missing sounds; raises for any other missing sound that a public game
+    can play (an actor that is buildable or placed on a shipped map, or a weapon one of them carries). Sounds of actors
+    no public game has are only reported. The factions' voices and notifications are contenttest's."""
     available = set()
     packages = parse((MOD/'mod.yaml').read_text(encoding='utf-8'))['FileSystem']['children']['Packages']['children']
     for key in list(packages) + (['$rtsai-topdown'] if CLASSIC_MODE else []):
@@ -1034,48 +1042,89 @@ def sound_check(ea_clips=()):
             if names: yield path + (k,), names
             yield from sounds(n['children'], path + (k,))
     def reachable(actor, r):
-        return actor in placed or bool(r.get('Buildable', node())['children'].get('Queue', node())['value'])
-    overlay, unreachable, problems = {}, {}, []
-    armed = {}
+        """'faction' (buildable or placed on a shipped map), 'editor' (only the map editor offers it) or None."""
+        if actor in placed or r.get('Buildable', node())['children'].get('Queue', node())['value']: return 'faction'
+        if EDITOR and r.get('MapEditorData', node())['children'].get('Categories', node())['value'].strip(): return 'editor'
+        return None
+    overlays = {s: {} for s in SOUND_FALLBACK_FILES}
+    unreachable, problems, dropped = {}, [], {}
+    def fallback(section, top, path, names, live, what):
+        """A sound-valued field with missing files: an overlay entry that replaces or drops them, or a problem."""
+        missing = [s for s in names if not shipped(s)]
+        if not missing: return
+        if not live:
+            for s in missing: unreachable.setdefault(s, set()).add(what)
+            return
+        strict = [s for s in missing if s.lower() not in SOUND_FALLBACKS]
+        if strict and live == 'faction':
+            problems.append(f'{what} {".".join(path)}: {", ".join(strict)}'); return
+        kept = [s if shipped(s) else SOUND_FALLBACKS.get(s.lower()) for s in names]
+        kept = [s for s in kept if s]
+        if any(not shipped(s) for s in kept):
+            problems.append(f'{what} {".".join(path)}: the fallback {", ".join(s for s in kept if not shipped(s))} is not shipped either'); return
+        for s in strict: dropped.setdefault(s, set()).add(what)
+        if section == 'Voices':  # a phrase names clips: the voice set's suffix is added back by the engine
+            kept = [voice_clips[top][path[-1]][names.index(s)] for s in kept]
+        at = overlays[section].setdefault(top, node())['children']
+        if not kept and section == 'Rules' and path[0].split('@')[0] == 'AmbientSound':
+            at['-' + path[0]] = node(); return  # its SoundFiles is required: the trait goes
+        for k in path[:-1]: at = at.setdefault(k, node())['children']
+        at[('' if kept else '-') + path[-1]] = node(', '.join(kept))
+    armed, voiced, faction_voices = {}, {}, set()
     for actor in sorted(a for a in allrules if not a.startswith('^')):
         try: r = resolve(allrules, actor)
         except (KeyError, ValueError): continue
         live = reachable(actor, r)
         for t, n in r.items():
-            if t.startswith('Armament') and live: armed.setdefault(n['children'].get('Weapon', node())['value'], actor)
+            if t.startswith('Armament') and live:
+                w = n['children'].get('Weapon', node())['value']
+                if armed.get(w) != 'faction': armed[w] = live
+            if t.split('@')[0] in ('Voiced', 'RTSAIVoiced') and live:
+                vs = n['children'].get('VoiceSet', node())['value']
+                if live == 'faction': faction_voices.add(vs)
+                else: voiced.setdefault(vs, actor)
         for path, names in sounds(r):
-            missing = [s for s in names if not shipped(s)]
-            if not missing: continue
-            if not live:
-                for s in missing: unreachable.setdefault(s, set()).add(actor)
-                continue
-            if any(s.lower() not in SOUND_FALLBACKS for s in missing):
-                problems.append(f'{actor} {".".join(path)}: {", ".join(s for s in missing if s.lower() not in SOUND_FALLBACKS)}')
-                continue
-            if len(path) != 2: problems.append(f'{actor} {".".join(path)}: a fallback can only replace a trait field'); continue
-            kept = [SOUND_FALLBACKS.get(s.lower(), s) if not shipped(s) else s for s in names]
-            kept = [s for s in kept if s]
-            if any(not shipped(s) for s in kept):
-                problems.append(f'{actor} {".".join(path)}: the fallback {", ".join(s for s in kept if not shipped(s))} is not shipped either'); continue
-            trait = overlay.setdefault(actor, {}).setdefault(path[0], {})
-            trait[('' if kept else '-') + path[1]] = ', '.join(kept)
+            fallback('Rules', actor, path, names, live, actor)
     for wname in sorted(w for w in weapons if not w.startswith('^')):
         try: w = resolve(weapons, wname)
         except (KeyError, ValueError): continue
         for path, names in sounds(w):
-            for s in (s for s in names if not shipped(s)):
-                if wname in armed: problems.append(f'weapon {wname} {".".join(path)} (carried by {armed[wname]}): {s}')
-                else: unreachable.setdefault(s, set()).add(f'weapon {wname}')
+            fallback('Weapons', wname, path, names, armed.get(wname), f'weapon {wname}')
+    # Voice sets of the actors only the editor offers (the factions' are contenttest's): the file a phrase plays is the
+    # set's default prefix + clip + default variant (neutral owners have no per-faction prefix or variant).
+    voices = {}
+    for name in manifest['Voices']['children']:
+        if name.startswith('ra2|'): merge(voices, parse((MOD/name.split('|')[1]).read_text(encoding='utf-8')))
+    # A set the factions also use (the Pentagon general speaks with the G.I.'s voice) is left alone: its per-faction
+    # files ship, and changing it would silence the factions; such gaps are listed, for the runtime to skip.
+    voice_clips, shared = {}, {}
+    for vname, actor in sorted(voiced.items()):
+        if vname not in voices: continue
+        v = resolve(voices, vname)
+        prefix, variant = v.get('DefaultPrefix', node())['value'], v.get('DefaultVariant', node('.aud'))['value'] or '.aud'
+        for phrase, n in v.get('Voices', node())['children'].items():
+            clips = [c.strip() for c in n['value'].split(',') if c.strip()]
+            files = [prefix + c + variant for c in clips]
+            if vname in faction_voices:
+                if any(not shipped(f) for f in files): shared.setdefault(f'{actor} ({vname})', set()).add(phrase)
+                continue
+            voice_clips.setdefault(vname, {})[phrase] = clips
+            fallback('Voices', vname, ('Voices', phrase), files, 'editor', f'{actor} voice {vname}')
     if problems:
         raise ValueError('sounds the public game can play that the build does not ship (add a file or a SOUND_FALLBACKS '
                          'entry):\n  ' + '\n  '.join(problems))
-    text = ''.join(f'{actor}:\n' + ''.join(f'\t{trait}:\n' + ''.join(f'\t\t{f}:{" " + v if v else ""}\n' for f, v in fields.items())
-                                           for trait, fields in traits.items()) for actor, traits in overlay.items())
-    out = OUT/'sound-fallbacks.yaml'
-    if text: out.write_text('# Generated by tools/prepare-content.py (SOUND_FALLBACKS): sounds the inputs do not ship.\n' + text, encoding='utf-8', newline='\n')
-    elif out.exists(): out.unlink()
-    print(f'sounds: {len(overlay)} actors given fallbacks ({", ".join(overlay)}); {len(unreachable)} missing sounds only on actors '
-          f'no public game has ({", ".join(sorted(unreachable))})')
+    for section, file in SOUND_FALLBACK_FILES.items():
+        out = OUT/file
+        if overlays[section]:
+            out.write_text(f'# Generated by tools/prepare-content.py (sound_check): {section.lower()} sounds the inputs do not ship.\n'
+                           + dump(overlays[section]), encoding='utf-8', newline='\n')
+        elif out.exists(): out.unlink()
+    print(f'sounds: fallbacks for {", ".join(overlays["Rules"]) or "no actor"}'
+          + (f'; editor-only actors fall silent where {len(dropped)} sounds are missing ({", ".join(sorted(dropped))})' if dropped else '')
+          + (f'; editor-only actors speaking with a faction voice set whose default files are missing (left to the runtime): '
+             + ', '.join(f'{k} {"/".join(sorted(v))}' for k, v in sorted(shared.items())) if shared else '')
+          + f'; {len(unreachable)} missing sounds only on actors no public game has'
+          + (f' ({", ".join(sorted(unreachable))})' if unreachable else ''))
 
 if __name__ == '__main__':
     OUT.mkdir(parents=True, exist_ok=True)
