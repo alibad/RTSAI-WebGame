@@ -3,6 +3,7 @@
 // Positional sounds are attenuated and panned against the camera (the listener), like the desktop OpenAL path.
 
 import { preferences } from "./preferences";
+import { store } from "./store";
 const NEAR = 450; // world px: full volume within this distance of the camera centre
 const FAR = 1900; // silent beyond this
 
@@ -51,7 +52,8 @@ export class AudioEngine {
     this.applyVolumes();
     // Browsers start audio suspended until the player interacts with the page. iOS Safari only lets the end of a touch
     // (touchend, then click) start audio, not its start (pointerdown), so those unlock it too.
-    const resume = () => { if (ctx.state === "suspended") ctx.resume(); };
+    // A paused match keeps its sound suspended (pause()): a click in the game menu must not bring it back.
+    const resume = () => { const s = store.get(); if (ctx.state === "suspended" && !(s.phase === "playing" && s.paused)) ctx.resume(); };
     for (const ev of ["pointerdown", "touchend", "click", "keydown"]) window.addEventListener(ev, resume, { capture: true });
     return ctx;
   }
