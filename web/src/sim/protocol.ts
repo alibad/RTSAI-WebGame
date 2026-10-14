@@ -224,7 +224,7 @@ export interface SetupData {
   factions: { id: string; name: string; side: string; description: string; random: boolean }[];
   bots: { type: string; name: string }[];
   /** `saved`: a player's map from the Earth studio (its Firestore id), mounted when first used (net/saved-maps.ts). */
-  maps: { id: string; uid: string; title: string; players: number; tileset: string; author: string; slots: string[]; saved?: string; place?: string; generated?: boolean; landscape?: string; gen?: string }[];
+  maps: { id: string; uid: string; title: string; players: number; tileset: string; author: string; slots: string[]; saved?: string; place?: string; generated?: boolean; landscape?: string; gen?: string; library?: boolean }[];
   options?: { id: string; name: string; default: string; values: { value: string; label: string }[] }[];
 }
 
@@ -335,6 +335,10 @@ export type ToWorker = (
   | { type: "view"; x0: number; y0: number; x1: number; y1: number }
   | { type: "select"; ids: number[]; additive: boolean; req: number }
   | { type: "command"; json: string; req: number }
+  | { type: "editorOpen"; json: string; req: number }
+  | { type: "catalog"; req: number }
+  | { type: "editor"; json: string; req: number }
+  | { type: "mountFiles"; dir: string; files: Record<string, ArrayBuffer>; req: number }
   | { type: "click"; x: number; y: number; button: number; mods: number; t: number }
   | { type: "cursor"; x: number; y: number; mods: number; seq: number }
   | { type: "icons"; names: string[] }
@@ -376,6 +380,7 @@ export type FromWorker = (
   | { type: "shroud"; cells: ArrayBuffer }
   | { type: "radar"; blips: ArrayBuffer }
   | { type: "reply"; req: number; json: string }
+  | { type: "terrainRows"; first: number; data: ArrayBuffer }
   | { type: "adviserReply"; req: number; code: number; message: string; payload: Uint8Array }
   | { type: "icon"; name: string; info: string }
   | { type: "modelbuffer"; id: number; data: ArrayBuffer }

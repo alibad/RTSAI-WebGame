@@ -10,11 +10,11 @@ Open `http://127.0.0.1:3490/?profile=public` with the local server running (`nod
 | Battlefield communication | A pending co-commander proposal | Owned-unit rings, intent arrows, focus and dismiss; remembered visible contacts are uncertain. |
 | Coaching & practice | Battlefield review | Timestamped native evidence; pause/seek/return live, drill links, exported scenario/evidence. |
 | Opponent personalities | Skirmish → Tactical personality | Standard, Raider, Sentinel, Adaptive; separate from difficulty and native economy/production. |
-| Scenario workshop | Main menu → Scenario workshop | Interpret a request, adjust both sides (combat units only, each faction's own roster first), see the battle paused behind the panel, then Start battle to command it. |
+| Battle simulator | Main menu → Battle simulator | Pick any map, drop units from each faction's roster (Faction Viewer cards), or describe the battle; Fight hands you one side with the full HUD while the engine's AI, at the chosen skill, commands the other. See [EDITOR-SIMULATOR.md](EDITOR-SIMULATOR.md). |
 
 Practice objectives use native simulation time and record measured survivors, shots and damage at completion. Repeat same seed & forces compares with the preceding identical exercise. Changing the seed, forces or objective intentionally starts a new comparison. Local storage holds only the latest practice result.
 
-The workshop creates two-force combat drills in the flat arena, rather than arbitrary campaign scripts. Coaching retains six minutes of sampled visible rendering; exported evidence is JSON, not a portable rendering replay or a saved world state. Opponent personalities only direct up to eight idle combat units every five seconds; the existing native bot still handles production, economy and difficulty. No bonus resources or model-based simulation decisions are introduced.
+The simulator places two forces on a real map, rather than arbitrary campaign scripts. Coaching retains six minutes of sampled visible rendering; exported evidence is JSON, not a portable rendering replay or a saved world state. Opponent personalities only direct up to eight idle combat units every five seconds; the existing native bot still handles production, economy and difficulty. No bonus resources or model-based simulation decisions are introduced.
 
 Verification commands:
 
@@ -23,7 +23,7 @@ cd C:/Users/Admin/Code/hq/games/RTSAI-WebGame
 node tools/ai-lab-unit-test.mjs
 dotnet build sim/OpenRA.WebSim.Native -c Release -p:WebProfile=public
 bin/OpenRA.WebSim.Native-public/Release/net10.0/websim.exe ailabtest --root "$env:LOCALAPPDATA/RTSAI-WebGame/scratch/vfs-native-public"
-node tools/ai-lab-browser-test.mjs
+node tools/battle-plan-unit-test.mjs
 node tools/strategy-test.mjs
 cd web
 npm run build

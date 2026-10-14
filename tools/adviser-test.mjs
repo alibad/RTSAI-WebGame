@@ -1,6 +1,7 @@
 // Node 22.18+ strips the pure adviser's TypeScript types. No browser, model or server needed.
 // The parity section also requires the sibling OpenRA-AI checkout (or OPENRA_AI_ROOT).
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { execFileSync } from 'node:child_process';
@@ -129,4 +130,20 @@ unknown.availableProduction = ['unknown'];
 unknown.actorNames.unknown = 'Uncatalogued structure';
 unknown.units = []; unknown.buildings = []; unknown.production = [];
 assert.equal(nextAdvice(unknown), null);
+// The shipped fallback tree (web/src/adviser-tree.json) names what the engine has not named yet: the opening factory
+// advice names a tank before any factory exists. Those names are the public game's own (RTSAI-Mod
+// mods/rtsai/standalone/names.ftl, b6794bd), never the stock RA2 names.
+const shippedTree = JSON.parse(fs.readFileSync(path.join(repo, 'web/src/adviser-tree.json'), 'utf8'));
+const byOrder = Object.keys(shippedTree).sort((a, b) => (shippedTree[a].order ?? 0) - (shippedTree[b].order ?? 0));
+const firstWith = (test) => byOrder.find(k => test(shippedTree[k]));
+const [power, refinery, barracks, factory] = [firstWith(i => i.provides?.includes('power')), firstWith(i => i.provides?.includes('refinery')),
+  firstWith(i => i.produces?.includes('infantry')), firstWith(i => i.produces?.includes('vehicle'))];
+const opening = { ...observation(parity[0]), units: [], production: [], visibleEnemies: [], visibleEnemyBuildings: [], rememberedEnemyBuildings: [],
+  buildings: [power, refinery, barracks].map((kind, i) => ({ actorId: i + 1, kind, cellX: 10, cellY: 10, idle: false, canAttack: false, hpPercent: 100 })),
+  availableProduction: [factory], actorNames: Object.fromEntries([power, refinery, barracks, factory].map(k => [k, shippedTree[k].name])), techTree: shippedTree };
+const factoryAdvice = nextAdvice(opening);
+assert.equal(factoryAdvice?.key, 'build:factory');
+assert.match(factoryAdvice.text, /it builds Battle Tanks\.$/, factoryAdvice.text);
+for (const stock of ['Grizzly', 'Rhino', 'Apocalypse', 'Kirov', 'Aegis', 'Typhoon', 'Tesla', 'Prism'])
+  assert(!Object.values(shippedTree).some(i => i.name.includes(stock)), `adviser-tree.json still names ${stock}`);
 console.log(JSON.stringify({ passed:true, pythonParityCases:parity.length, profiles:['rtsai','standalone','Classic'], coveredKeys:[...keys].sort() }, null, 2));

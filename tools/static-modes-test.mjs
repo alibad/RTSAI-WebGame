@@ -24,8 +24,8 @@ try {
     assert.equal(setup.phase, 'setup', setup.error); assert.equal(setup.isolated, true); assert.equal(setup.ccAvailable, true); assert.equal(setup.factions, 16); assert.equal(setup.missions, 6);
     // EA's notice for the original art: on the first screen of both modes and in the static root's NOTICE.
     setup.notice = await page.getByTestId('ea-notice').first().textContent({ timeout: 30000 }); assert.ok(setup.notice.includes('EA has not endorsed and does not support this product.'), setup.notice);
-    // The web build's Map studio is the website's Earth studio (no local map service).
-    if (mode === 'isometric') assert.equal(await page.getByRole('button', { name: /Map studio/ }).count(), 1);
+    // The map editor and battle simulator are in the game itself (no local map service).
+    if (mode === 'isometric') assert.equal(await page.getByRole('button', { name: /Map editor/ }).count(), 1);
     assert.equal(await page.getByRole('button', { name: 'Private multiplayer', exact: true }).count(), 0);
     assert.ok(await page.getByRole('button', { name: 'Multiplayer', exact:true }).count());
     // The menu offers only isometric (top-down shares its art); a top-down page opened by URL offers the way back.

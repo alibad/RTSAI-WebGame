@@ -448,7 +448,7 @@ function loop() {
 self.onmessage = async (e: MessageEvent<ToWorker>) => {
   const m = e.data;
   if (m.generation !== undefined) {
-    if (m.type === "start" || m.type === "end") {
+    if (m.type === "start" || m.type === "end" || m.type === "editorOpen") {
       if (m.generation < generation) return;
       generation = m.generation;
     } else if (m.generation !== generation) return;
@@ -521,6 +521,56 @@ self.onmessage = async (e: MessageEvent<ToWorker>) => {
       case "peerStop":
         if (network) { network.stopped = true; stopLoop(); post({ type: "networkStatus", frame: network.frame, latency: 0, error: m.error }); }
         break;
+      case "editorOpen": {
+        // The map editor: the engine's editor world (EditorHost.Open), drawn like a paused match that never ticks.
+        stopLoop();
+        relay?.close();
+        const t0 = performance.now();
+        post({ type: "progress", stage: "Opening the map" });
+        bake?.beginCapture();
+        const opened = JSON.parse(S.EditorOpen(m.json));
+        bake?.endCapture();
+        const terrain: Uint8Array = S.Terrain();
+        const tbuf = terrain.slice().buffer;
+        const radar: Uint8Array = S.RadarTerrain();
+        const rbuf = radar.slice().buffer;
+        lastUi = "";
+        paused = true;
+        replayEnd = null;
+        network = null;
+        post({ type: "started", info: opened.info, terrain: tbuf, radarTerrain: rbuf, startMs: performance.now() - t0, lazy: lazy?.stats }, [tbuf, rbuf]);
+        post({ type: "reply", req: m.req, json: JSON.stringify({ id: opened.id }) });
+        running = true;
+        refresh();
+        break;
+      }
+      case "catalog": post({ type: "reply", req: m.req, json: S.Catalog() }); break;
+      case "editor": {
+        let json: string;
+        try { json = S.EditorCall(m.json); } catch (err) { json = JSON.stringify({ error: String(err instanceof Error ? err.message : err) }); }
+        // Terrain the edit changed: only the rows it touched go to the page's terrain buffer.
+        const rows: Uint8Array = S.EditorTerrain();
+        if (rows.length > 4) {
+          const first = new DataView(rows.buffer, rows.byteOffset, 4).getInt32(0, true);
+          const data = rows.slice(4).buffer;
+          post({ type: "terrainRows", first, data }, [data]);
+        }
+        post({ type: "reply", req: m.req, json });
+        refresh();
+        break;
+      }
+      case "mountFiles": {
+        // A map's files (saved or uploaded in the editor) in the engine's file system, where SimHost.MapPath finds them.
+        if (!lazy || !/^\/vfs\/mods\/rtsai\/web\/content\/maps\/[a-z0-9-]+$/.test(m.dir)) { post({ type: "reply", req: m.req, json: JSON.stringify({ error: "Invalid map" }) }); break; }
+        // Ids hash the map's content: a map mounted under this id already has these files.
+        const mapId = m.dir.split("/").pop()!;
+        if (!mountedMaps.has(mapId)) {
+          for (const [name, buf] of Object.entries(m.files)) { const bytes = new Uint8Array(buf); lazy.add(`${m.dir}/${name}`, bytes.length, (s0, e0) => bytes.subarray(s0, e0)); }
+          mountedMaps.add(mapId);
+        }
+        post({ type: "reply", req: m.req, json: JSON.stringify({ ok: true }) });
+        break;
+      }
       case "refresh": refresh(); break;
       case "step": if (network) break; if (running && paused) tickOnce(); break;
       case "speed": if (network) break; tickMs = TICK_MS / Math.max(0.25, Math.min(8, m.speed)); break;
