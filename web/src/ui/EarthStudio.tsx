@@ -16,7 +16,7 @@ import { SearchSelect, type Option } from "../components/ui/fields";
 import { Flag } from "./Flag";
 import { GameButton } from "./kit/game";
 import { compileBattlefield } from "@site/lib/earth-battlefield";
-import { overpassFailure, terrainFeatures, terrainQuery } from "@site/lib/earth-evidence";
+import { overpassFailure, terrainBox, terrainFeatures, terrainQuery } from "@site/lib/earth-evidence";
 import type { Map as MapLibreMap } from "maplibre-gl";
 
 type DataSource = { setData(data: unknown): void };
@@ -230,7 +230,7 @@ export function EarthStudio({ game, editor, close, mission }: { game: Game; edit
       say("Reading the place's <b>roads, water and land</b>");
       const payload = await overpass(terrainQuery(place.lat, place.lon, fp.radius));
       if (overpassFailure(payload)) throw Error("This area is too dense; choose a smaller footprint.");
-      const features = terrainFeatures(payload);
+      const features = terrainFeatures(payload, terrainBox(place.lat, place.lon, fp.radius));
       say(`Compiling <b>${features.length}</b> features into terrain`);
       const title = place.name.split(",")[0].slice(0, 40);
       const bf = await compileBattlefield({ latitude: place.lat, longitude: place.lon, radius: fp.radius, seed: 42, size: fp.size, players: 2, title }, features);

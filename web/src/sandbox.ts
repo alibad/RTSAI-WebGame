@@ -55,7 +55,12 @@ export interface SandboxConfig {
 export interface SideSettings { order: SandboxOrder; destination: { u: number; v: number } | null; level: number }
 
 /** A placeable actor (Ui.UnitCatalog): `combat` is the engine's answer to "can it fight?" (it attacks with a weapon). */
-export interface SimUnit { name: string; label: string; queue: string; kind: string; cost: number; modern: boolean; combat?: boolean; footprint?: [number, number] }
+export interface SimUnit {
+  name: string; label: string; queue: string; kind: string; cost: number; modern: boolean; combat?: boolean; footprint?: [number, number];
+  /** Combat stats from the rules (Ui.AppendCombat), for balancing armies (strength.ts). */
+  hp?: number; armor?: string; targets?: string[];
+  weapons?: { dps: Record<string, number>; valid: string[]; invalid: string[] }[];
+}
 
 export interface SandboxState {
   mode: "edit" | "run";
