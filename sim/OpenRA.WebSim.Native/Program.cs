@@ -90,6 +90,12 @@ static class Program
 		var art = Path.Combine(Path.GetDirectoryName(Path.GetFullPath(opts["pack"])), "web-art.pack");
 		if (File.Exists(art))
 			Console.WriteLine($"unpacked {Pack.Unpack(File.ReadAllBytes(art), root)} art files");
+
+		// --audio: also the sounds and music the browser reads when first played (web-audio.pack), e.g. for contenttest's
+		// voice checks. The bake does not need them.
+		var audio = Path.Combine(Path.GetDirectoryName(Path.GetFullPath(opts["pack"])), "web-audio.pack");
+		if (opts.ContainsKey("audio") && File.Exists(audio))
+			Console.WriteLine($"unpacked {Pack.Unpack(File.ReadAllBytes(audio), root)} audio files");
 		if (opts.TryGetValue("private", out var priv))
 		{
 			var m = Pack.Unpack(File.ReadAllBytes(priv), root);

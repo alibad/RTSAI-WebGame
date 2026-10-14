@@ -83,6 +83,7 @@ static class ContentTest
 		for (var i = 0; i < 120; i++) { SimHost.Tick(); Snapshot.Build(); }
 		if (Snapshot.UnsupportedRenderables > 0) throw new Exception(faction + ": unsupported renderables");
 		var art = RenderArt(world, own, faction);
+		var voices = Voices(world, own, faction);
 		if (opts.TryGetValue("dump", out var dump))
 			File.WriteAllText(dump, JsonSerializer.Serialize(art.Report, new JsonSerializerOptions { WriteIndented = true }));
 		var compared = opts.TryGetValue("baseline", out var baselinePath) && !Originals.Contains(faction);
@@ -106,8 +107,116 @@ static class ContentTest
 		}
 
 		Console.WriteLine(JsonSerializer.Serialize(new { faction, signature, production = true, units = units.Select(a => a.Name), unsupported = Snapshot.UnsupportedRenderables,
-			originalArtActors = art.OriginalActors, originalArtTypes = art.OriginalTypes, baselineCompared = compared, passed = true }));
+			originalArtActors = art.OriginalActors, originalArtTypes = art.OriginalTypes, originalVoiceTypes = voices.OriginalTypes,
+			projectVoiceTypes = voices.ProjectTypes, originalClipsChecked = voices.Clips, baselineCompared = compared, passed = true }));
 		return 0;
+	}
+
+	/// <summary>
+	/// Original voices and sounds (public isometric bundles with web/ea/audio; unpack with --audio so the clips are on
+	/// disk): every own voiced actor has exactly one enabled voice; an original country's actor speaks with its original
+	/// voice set (Ea*) whenever it has one, a modern faction's only when the actor has no project voice (the Attack Dog);
+	/// every clip an enabled original voice set or any weapon names exists; a modern faction fires no weapon with original
+	/// sounds except the dog's bite.
+	/// </summary>
+	static (int OriginalTypes, int ProjectTypes, int Clips) Voices(World world, Player own, string faction)
+	{
+		var original = Originals.Contains(faction);
+		var fs = SimHost.ModData.DefaultFileSystem;
+		var voiceRules = world.Map.Rules.Voices;
+		static bool IsOriginalSet(string set) => set != null && set.StartsWith("ea", StringComparison.Ordinal);
+		var bundleHasOriginalVoices = voiceRules.Keys.Any(IsOriginalSet);
+		var originalTypes = new HashSet<string>();
+		var projectTypes = new HashSet<string>();
+		var checkedClips = new HashSet<string>();
+		void Check(string name, string where)
+		{
+			if (checkedClips.Add(name) && !fs.Exists(name))
+				throw new Exception(faction + ": " + where + " plays " + name + ", which the bundle does not carry");
+		}
+
+		foreach (var a in world.Actors.Where(a => a.Owner == own && a.IsInWorld && !a.IsDead).OrderBy(a => a.ActorID))
+		{
+			var all = a.TraitsImplementing<IVoiced>().ToList();
+			if (all.Count == 0)
+				continue;
+
+			var enabled = all.Where(v => !(v is ConditionalTrait<VoicedInfo> c && c.IsTraitDisabled)).ToList();
+			if (enabled.Count != 1)
+				throw new Exception(faction + ": " + a.Info.Name + " has " + enabled.Count + " enabled voices");
+
+			var set = enabled[0].VoiceSet;
+			var hasOriginal = all.Any(v => IsOriginalSet(v.VoiceSet));
+			var hasProject = all.Any(v => !IsOriginalSet(v.VoiceSet));
+			var expected = hasOriginal && (original || !hasProject);
+			if (IsOriginalSet(set) != expected)
+				throw new Exception(faction + ": " + a.Info.Name + " speaks with " + set + (expected ? ", not its original voice" : ", an original voice of another faction"));
+
+			if (!IsOriginalSet(set))
+			{
+				projectTypes.Add(a.Info.Name);
+				continue;
+			}
+
+			originalTypes.Add(a.Info.Name);
+			var rules = voiceRules[set];
+			foreach (var (phrase, clips) in rules.Voices)
+				foreach (var clip in clips)
+					Check(clip + rules.DefaultVariant, a.Info.Name + " (" + set + "." + phrase + ")");
+		}
+
+		// Weapons: every original sound a weapon names exists; a modern faction's own armaments play no original sound
+		// except the dog's bite.
+		var dogJaw = world.Map.Rules.Weapons["dogjaw"];
+		static bool IsOriginalSound(string s) => s.Contains("web/ea/", StringComparison.Ordinal);
+		var originalWeapons = 0;
+		foreach (var (key, weapon) in world.Map.Rules.Weapons)
+		{
+			var sounds = WeaponSounds(weapon).Where(IsOriginalSound).ToList();
+			foreach (var s in sounds)
+				Check(s, "weapon " + key);
+			originalWeapons += sounds.Count > 0 ? 1 : 0;
+		}
+
+		var originalFiring = new HashSet<string>();
+		foreach (var a in world.Actors.Where(a => a.Owner == own && a.IsInWorld && !a.IsDead))
+			foreach (var armament in a.TraitsImplementing<Armament>())
+				if (WeaponSounds(armament.Weapon).Any(IsOriginalSound))
+				{
+					if (!original && armament.Weapon != dogJaw)
+						throw new Exception(faction + ": " + a.Info.Name + " fires " + armament.Info.Weapon + " with original sounds");
+					originalFiring.Add(a.Info.Name);
+				}
+
+		if (bundleHasOriginalVoices)
+		{
+			if (!WeaponSounds(dogJaw).Any(IsOriginalSound))
+				throw new Exception("DogJaw keeps the project's sounds");
+
+			if (original && originalTypes.Count < 10)
+				throw new Exception(faction + ": only " + originalTypes.Count + " actor types speak with original voices");
+		}
+
+		Console.Error.WriteLine(faction + ": " + originalWeapons + " weapons with original sounds; own actors firing them: "
+			+ string.Join(",", originalFiring.OrderBy(x => x, StringComparer.Ordinal)));
+
+		Console.Error.WriteLine(faction + ": original voices " + string.Join(",", originalTypes.OrderBy(x => x, StringComparer.Ordinal))
+			+ "; project voices " + string.Join(",", projectTypes.OrderBy(x => x, StringComparer.Ordinal)));
+		return (originalTypes.Count, projectTypes.Count, checkedClips.Count);
+	}
+
+	/// <summary>The sounds a weapon plays: Report, StartBurstReport, AfterFireSound and its warheads' ImpactSounds.</summary>
+	static IEnumerable<string> WeaponSounds(OpenRA.GameRules.WeaponInfo weapon)
+	{
+		foreach (var list in new[] { weapon.Report, weapon.StartBurstReport, weapon.AfterFireSound })
+			if (!list.IsDefaultOrEmpty)
+				foreach (var s in list)
+					yield return s;
+
+		foreach (var warhead in weapon.Warheads.OfType<OpenRA.Mods.Common.Warheads.CreateEffectWarhead>())
+			if (!warhead.ImpactSounds.IsDefaultOrEmpty)
+				foreach (var s in warhead.ImpactSounds)
+					yield return s;
 	}
 
 	public sealed record ActorArt(string Image, string Voxel, string[] Sequences, string[] Palettes)

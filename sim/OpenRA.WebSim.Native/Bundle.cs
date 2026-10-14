@@ -22,7 +22,10 @@ using OpenRA.WebSim;
 /// Contains project and OpenRA (GPL) files. With --ea (public isometric only) it also carries original Westwood art for
 /// the nine original countries, under EA's free, non-commercial C&amp;C modding guidelines ("EA has not endorsed and
 /// does not support this product."): only the art files listed and hashed in the directory's EA-INPUTS.json, only
-/// .shp/.vxl/.hva/.pal (never EA audio, music or video), under mods/rtsai/web/ea/ with ea-content.json beside them.
+/// .shp/.vxl/.hva/.pal, under mods/rtsai/web/ea/ with ea-content.json beside them. When the generated content plays
+/// original unit voices (content/ea-audio.json, tools/ea_voices.py), exactly those clips, listed and hashed under
+/// "audio" in EA-INPUTS.json, go into web-audio.pack under mods/rtsai/web/ea/audio/ (fetched when first played): short
+/// .wav clips only, never archives, music (theme.mix or any score) or video.
 /// The private RA2 content of the local profile still never enters a bundle; it is mounted privately.
 /// </summary>
 static class Bundle
@@ -40,10 +43,18 @@ static class Bundle
 	static readonly HashSet<string> ArtExtensions = new(StringComparer.OrdinalIgnoreCase) { ".shp", ".png", ".tem", ".sno", ".urb" };
 	const int LazyArtMinBytes = 32 * 1024;
 
-	/// <summary>The only original (EA) files a bundle may carry: art. Never audio (.aud/.bag/.wav), music or video.</summary>
+	/// <summary>The only original (EA) files the core bundle may carry: art. Original voice and sound clips go to
+	/// web-audio.pack (<see cref="OriginalAudio"/>); never archives (.mix/.bag/.idx), music or video.</summary>
 	public static readonly HashSet<string> OriginalArtExtensions = new(StringComparer.OrdinalIgnoreCase) { ".shp", ".vxl", ".hva", ".pal" };
 	public const string OriginalArtDir = "mods/rtsai/web/ea/";
 	public const string OriginalArtNotice = "EA has not endorsed and does not support this product.";
+
+	/// <summary>Original unit voice and sound clips (RA2's audio.idx names, .wav, never EVA), read when first played.</summary>
+	public const string OriginalAudioDir = OriginalArtDir + "audio/";
+	public static readonly System.Text.RegularExpressions.Regex OriginalClipName = new(@"^(?!ceva)[a-z0-9][a-z0-9_-]{0,15}\.wav$");
+
+	/// <summary>A voice or sound clip is short; anything larger would be music or speech the build must not carry.</summary>
+	public const int OriginalClipMaxBytes = 512 * 1024;
 
 	public static int Build(Dictionary<string, string> opts)
 	{
@@ -66,6 +77,7 @@ static class Bundle
 		var lazyArt = !opts.ContainsKey("no-lazy-art");
 		var art = new List<(string Path, string File)>();
 		var originals = opts.TryGetValue("ea", out var eaDir) ? OriginalArt(eaDir, opts.TryGetValue("content", out var eaContent) ? eaContent : "content") : null;
+		var originalAudio = originals != null ? OriginalAudio(eaDir, opts.TryGetValue("content", out var audioContent) ? audioContent : "content") : null;
 		// The cursor art stays in the core bundle: the page draws the mod's cursors from the start of every game, and a
 		// host may serve web-art.pack late or not at all (it is a fallback for sprites the prebaked sheets lack).
 		var keepInCore = CursorSources(modDir);
@@ -150,17 +162,21 @@ static class Bundle
 						Add(path, bytes);
 				}
 
+				// The record is part of the bundle's identity, so the original clips (in web-audio.pack) are too.
 				var record = System.Text.Json.JsonSerializer.Serialize(new
 				{
 					notice = OriginalArtNotice,
-					guidelines = "EA's C&C Franchise Modding Guidelines (free, non-commercial)",
+					guidelines = "EA's C&C Franchise Modding Guidelines (free, non-commercial; no C&C music)",
 					files = originals.Select(o => new { name = o.Name, sha256 = o.Sha256, source = o.Source }),
+					audio = originalAudio?.Select(o => new { name = o.Name, sha256 = o.Sha256, source = o.Source }),
 				}, new System.Text.Json.JsonSerializerOptions { Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping });
 				Add(OriginalArtDir + "ea-content.json", Encoding.UTF8.GetBytes(record));
 				Console.WriteLine($"original art: {originals.Count} files ({originals.Sum(o => new FileInfo(o.File).Length) / 1048576.0:F1} MB)");
+				if (originalAudio != null)
+					Console.WriteLine($"original voices and sounds: {originalAudio.Count} clips ({originalAudio.Sum(o => new FileInfo(o.File).Length) / 1024.0:F0} KB, in web-audio.pack)");
 			}
 
-			Add("mods/rtsai/mod.yaml", Encoding.UTF8.GetBytes(WebModYaml(File.ReadAllText(Path.Combine(modDir, "mod.yaml")), !classic && publicProfile && Directory.Exists(content), false, originals != null)));
+			Add("mods/rtsai/mod.yaml", Encoding.UTF8.GetBytes(WebModYaml(File.ReadAllText(Path.Combine(modDir, "mod.yaml")), !classic && publicProfile && Directory.Exists(content), false, originals != null, originalAudio != null)));
 			if (classic)
 			{
 				foreach (var file in Files(primaryDir))
@@ -197,6 +213,10 @@ static class Bundle
 			.Where(f => AudioExtensions.Contains(Path.GetExtension(f)) && !HiddenWithin(modDir, f))
 			.OrderBy(f => f, StringComparer.Ordinal)
 			.Select(f => ("mods/rtsai/" + Rel(modDir, f), f));
+
+		// The original countries' unit voices and the dog's barks and bite: exactly the clips the content plays.
+		if (originalAudio != null)
+			audio = audio.Concat(originalAudio.Select(o => (OriginalAudioDir + o.Name, o.File)));
 		WriteLazyPack(Path.Combine(outDir, "web-audio.pack"), audio);
 		WriteLazyPack(Path.Combine(outDir, "web-art.pack"), art);
 		return 0;
@@ -230,6 +250,60 @@ static class Bundle
 		foreach (var f in drawn.RootElement.GetProperty("files").EnumerateArray())
 			if (!names.Contains(f.GetString()))
 				throw new InvalidDataException($"Generated content draws {f.GetString()}, which EA-INPUTS.json does not list");
+
+		return result.OrderBy(r => r.Name, StringComparer.Ordinal).ToList();
+	}
+
+	/// <summary>
+	/// The original voice and sound clips the generated content plays (content/ea-audio.json, tools/ea_voices.py), or null
+	/// when it plays none (original art only). Every clip must be listed under "audio" in EA-INPUTS.json with its hash,
+	/// be a short RIFF WAVE file with an allowlisted name, and be played: exactly the listed clips are bundled.
+	/// </summary>
+	static List<(string Name, string File, string Sha256, string Source)> OriginalAudio(string dir, string content)
+	{
+		var playedPath = Path.Combine(content, "ea-audio.json");
+		if (!File.Exists(playedPath))
+			return null;
+
+		using var manifest = System.Text.Json.JsonDocument.Parse(File.ReadAllText(Path.Combine(dir, "EA-INPUTS.json")));
+		if (!manifest.RootElement.TryGetProperty("audio", out var audio))
+			throw new InvalidDataException("The generated content plays original clips, but EA-INPUTS.json records none");
+
+		var folder = audio.GetProperty("folder").GetString();
+		if (folder != "audio")
+			throw new InvalidDataException($"Original clips in an unexpected folder {folder}");
+
+		var result = new List<(string Name, string File, string Sha256, string Source)>();
+		foreach (var f in audio.GetProperty("files").EnumerateArray())
+		{
+			var name = f.GetProperty("name").GetString();
+			var sha = f.GetProperty("sha256").GetString();
+			if (name == null || !OriginalClipName.IsMatch(name))
+				throw new InvalidDataException($"Original clip {name}: only unit voice and sound clips (.wav) may be bundled");
+
+			var file = Path.Combine(dir, folder, name);
+			var bytes = File.ReadAllBytes(file);
+			if (bytes.Length > OriginalClipMaxBytes)
+				throw new InvalidDataException($"Original clip {name}: {bytes.Length} bytes is not a voice or sound clip");
+
+			if (bytes.Length < 12 || Encoding.ASCII.GetString(bytes, 0, 4) != "RIFF" || Encoding.ASCII.GetString(bytes, 8, 4) != "WAVE")
+				throw new InvalidDataException($"Original clip {name} is not a RIFF WAVE file");
+
+			var actual = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(bytes)).ToLowerInvariant();
+			if (actual != sha)
+				throw new InvalidDataException($"Original clip {name} differs from EA-INPUTS.json");
+
+			result.Add((name, file, sha, f.GetProperty("source").GetString()));
+		}
+
+		using var played = System.Text.Json.JsonDocument.Parse(File.ReadAllText(playedPath));
+		var clips = played.RootElement.GetProperty("clips").EnumerateArray().Select(c => c.GetString()).ToHashSet(StringComparer.Ordinal);
+		var listed = result.Select(r => r.Name).ToHashSet(StringComparer.Ordinal);
+		foreach (var c in clips.Where(c => !listed.Contains(c)))
+			throw new InvalidDataException($"Generated content plays {c}, which EA-INPUTS.json does not list");
+
+		foreach (var c in listed.Where(c => !clips.Contains(c)))
+			throw new InvalidDataException($"EA-INPUTS.json lists {c}, which the generated content never plays");
 
 		return result.OrderBy(r => r.Name, StringComparer.Ordinal).ToList();
 	}
@@ -320,7 +394,7 @@ static class Bundle
 	/// The web mod.yaml: identical to the mod's (the AI co-commander's CompanionBridge included; the page's host relays
 	/// its RPCs) plus a small overlay for what the embedded host needs. Everything that affects the simulation is unchanged.
 	/// </summary>
-	static string WebModYaml(string yaml, bool expansion, bool classic = false, bool originals = false)
+	static string WebModYaml(string yaml, bool expansion, bool classic = false, bool originals = false, bool originalAudio = false)
 	{
 		yaml = yaml.Replace("\r\n", "\n");
 
@@ -359,6 +433,14 @@ static class Bundle
 			yaml = AppendToSection(yaml, "Rules", "ra2|web/content/ea-art.yaml");
 			yaml = AppendToSection(yaml, "Sequences", "ra2|web/content/ea-sequences.yaml");
 			yaml = AppendToSection(yaml, "ModelSequences", "ra2|web/content/ea-models.yaml");
+		}
+
+		// Original voices: the voice-only rules (after ea-art.yaml), the twin voice sets and the dog's bite Report.
+		if (originalAudio)
+		{
+			yaml = AppendToSection(yaml, "Rules", "ra2|web/content/ea-audio.yaml");
+			yaml = AppendToSection(yaml, "Voices", "ra2|web/content/ea-voices.yaml");
+			yaml = AppendToSection(yaml, "Weapons", "ra2|web/content/ea-weapons.yaml");
 		}
 
 		// Player-facing names (the standalone's), loaded last so they override the RA2 preview strings.

@@ -1,8 +1,9 @@
 """Original Westwood (EA) art for the nine original countries in the public isometric browser game.
 
 EA's Command & Conquer Franchise Modding Guidelines allow free, non-commercial use of the original art with the
-notice "EA has not endorsed and does not support this product." Only art files (.shp .vxl .hva .pal) are used;
-no EA audio, music or video ever enters the build.
+notice "EA has not endorsed and does not support this product." This module uses only art files (.shp .vxl .hva
+.pal); the original unit voices are tools/ea_voices.py's (short .wav clips), and no C&C music or video ever enters the
+build.
 
 The generator reads two views of the frozen RTSAI-Mod snapshot:
   * the REFERENCE view: the rules and sequences the classic add-on (mods/rtsai-classic) loads, which draw the original
@@ -26,7 +27,7 @@ COUNTRIES = ('america', 'germany', 'england', 'france', 'korea', 'cuba', 'libya'
 MODERN = ('china', 'iran', 'turkey', 'saudi', 'israel', 'yemen', 'hezbollah')
 # Soviet buildings whose standalone kit footprint differs from RA2's: they keep their stand-in art (owner decision).
 FOOTPRINT_EXCLUDED = ('napowr', 'nahand', 'nadept', 'natech', 'nanrct')
-# Only art. EA audio, music and video never enter the build.
+# Only art here (voice clips: tools/ea_voices.py). C&C music and video never enter the build.
 ALLOWED_EXTENSIONS = ('.shp', '.vxl', '.hva', '.pal')
 EA_PREFIX = 'ra2|web/ea/'
 # The palettes the original art is drawn with (from the original RA2 palette files).
