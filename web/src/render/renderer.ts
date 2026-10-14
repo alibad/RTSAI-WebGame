@@ -291,10 +291,15 @@ export class Renderer {
 
   /** Map editor: terrain rows the engine redrew (an edit), written over the same rows of the vertex buffer. */
   updateTerrainRows(first: number, data: ArrayBuffer) {
-    if (!this.info || !this.terrainBuffers.length) return;
+    if (!this.info) return;
+    const offset = first * this.info.vertexRowStride * 48;
+    // The copy a lost context is rebuilt from (rebuild) takes the edit too.
+    const copy = this.terrainCopy;
+    if (copy && offset + data.byteLength <= copy.byteLength) new Uint8Array(copy, offset, data.byteLength).set(new Uint8Array(data));
+    if (this.lost || !this.terrainBuffers.length) return;
     const gl = this.gl;
     gl.bindBuffer(gl.ARRAY_BUFFER, this.terrainBuffers[0]);
-    gl.bufferSubData(gl.ARRAY_BUFFER, first * this.info.vertexRowStride * 48, new Uint8Array(data));
+    gl.bufferSubData(gl.ARRAY_BUFFER, offset, new Uint8Array(data));
     gl.bindBuffer(gl.ARRAY_BUFFER, null);
     this.version++;
   }
@@ -483,6 +488,7 @@ export class Renderer {
    */
   renderTiles(tiles: (IconSprite & { x: number; y: number })[]): string | null {
     if (!tiles.length) return "";
+    if (this.lost) return null;
     const pictures: { c: HTMLCanvasElement; x: number; y: number }[] = [];
     for (const t of tiles) {
       const tex = this.textures.get(t.tex);

@@ -18,7 +18,7 @@ export function GraphicsState({ game }: { game: Game }) {
     if (graphics !== "failed") return;
     let alive = true;
     const { phase } = useStore.getState();
-    if (phase !== "playing" || game.multiplayer || game.replayMatch || game.sandbox) { setSaved("none"); return; }
+    if (phase !== "playing" || game.multiplayer || game.replayMatch || game.sandbox || game.editor?.active) { setSaved("none"); return; }
     void (async () => {
       try {
         const record = await recordMatch(game);
@@ -56,7 +56,7 @@ export function GraphicsState({ game }: { game: Game }) {
       <div>
         <LoaderCircle className="menu-spin" size={22} aria-hidden="true" />
         <b>Restoring graphics…</b>
-        <span>{game.multiplayer ? "The match goes on meanwhile." : "The match is paused until they are back."}</span>
+        <span>{game.multiplayer ? "The match goes on meanwhile." : game.editor?.active ? "Your map stays as it is meanwhile." : "The match is paused until they are back."}</span>
       </div>
     </div>
   );

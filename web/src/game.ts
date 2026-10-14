@@ -176,7 +176,7 @@ export class Game {
     this.renderer.lost = true;
     const s = store.get();
     store.set({ graphics: "lost" });
-    if (s.phase === "playing" && !this.multiplayer && !this.replayMatch && !s.paused) {
+    if (s.phase === "playing" && !this.multiplayer && !this.replayMatch && !this.editor?.active && !s.paused) {
       this.setPaused(true);
       this.pausedForGraphics = true;
     }
