@@ -158,3 +158,18 @@ html, body { cursor: var(--cursor-default, default); }
   :root .settings-slider input::-moz-range-thumb { width: 20px; height: 20px; }
   :root .settings-slider > span { margin-bottom: 0; }
 }
+
+/* Phones (upright or sideways): on the main menu, Saves & replays and Settings sit in a solid bar of their own and the
+   menu scrolls above it, so they never cover a card or the notice. Touch screens get 44 px buttons. */
+@media (pointer: coarse) {
+  :root .menu-utility > [data-slot="button"] { height: 44px; }
+}
+@media (max-width: 760px), (max-height: 500px) {
+  :root { --menu-bar-h: 53px; }
+  .menu-utility:has(~ .menu-root) { left: 0; right: 0; bottom: 0; padding: 8px 16px calc(8px + env(safe-area-inset-bottom, 0px)); border-top: 1px solid var(--hud-edge); background: linear-gradient(180deg, rgba(12, 15, 11, .97), #070907); }
+  .menu-utility ~ .menu-root { bottom: calc(var(--menu-bar-h) + env(safe-area-inset-bottom, 0px)); }
+  .menu-utility ~ .menu-root .menu-content { padding-bottom: 28px; }
+}
+@media (max-width: 760px) and (pointer: coarse), (max-height: 500px) and (pointer: coarse) {
+  :root { --menu-bar-h: 61px; }
+}
