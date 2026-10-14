@@ -994,6 +994,14 @@ SOUND_FALLBACKS = {
 EDITOR = (ROOT/'sim/OpenRA.WebSim/Editor.cs').is_file()
 SOUND_FALLBACK_FILES = {'Rules': 'sound-fallbacks.yaml', 'Weapons': 'sound-fallbacks-weapons.yaml',
                         'Voices': 'sound-fallbacks-voices.yaml'}
+SILENT_FILE = 'sound-silence.wav'
+SILENT_CLIP = 'ra2|web/content/sound-silence'  # a voice clip: the set's '.wav' suffix completes the path
+
+def silent_wav(seconds=0.05, rate=22050):
+    """A short silent clip (22.05 kHz mono 16-bit PCM) for voice phrases whose every file is missing."""
+    data = bytes(2 * round(seconds * rate))
+    return (b'RIFF' + struct.pack('<I', 36 + len(data)) + b'WAVEfmt ' + struct.pack('<IHHIIHH', 16, 1, 1, rate, 2 * rate, 2, 16)
+            + b'data' + struct.pack('<I', len(data)) + data)
 
 def sound_check(ea_clips=()):
     """Every sound file named in the rules, weapons and (for actors only the map editor offers) voice sets of the public
@@ -1004,6 +1012,7 @@ def sound_check(ea_clips=()):
     can play (an actor that is buildable or placed on a shipped map, or a weapon one of them carries). Sounds of actors
     no public game has are only reported. The factions' voices and notifications are contenttest's."""
     available = set()
+    (OUT/SILENT_FILE).unlink(missing_ok=True)  # written again below if a voice phrase needs it
     packages = parse((MOD/'mod.yaml').read_text(encoding='utf-8'))['FileSystem']['children']['Packages']['children']
     for key in list(packages) + (['$rtsai-topdown'] if CLASSIC_MODE else []):
         entry = key.lstrip('~')
@@ -1063,8 +1072,11 @@ def sound_check(ea_clips=()):
         if any(not shipped(s) for s in kept):
             problems.append(f'{what} {".".join(path)}: the fallback {", ".join(s for s in kept if not shipped(s))} is not shipped either'); return
         for s in strict: dropped.setdefault(s, set()).add(what)
-        if section == 'Voices':  # a phrase names clips: the voice set's suffix is added back by the engine
-            kept = [voice_clips[top][path[-1]][names.index(s)] for s in kept]
+        if section == 'Voices':
+            # A phrase names clips (the engine adds the set's suffix back). It must keep at least one: the engine throws
+            # "Can't find Die in voice pool" for a phrase a set lacks, so an all-missing phrase plays the shipped silence.
+            kept = [voice_clips[top][path[-1]][names.index(s)] for s in kept] or [SILENT_CLIP]
+            if not (OUT/SILENT_FILE).is_file(): (OUT/SILENT_FILE).write_bytes(silent_wav())
         at = overlays[section].setdefault(top, node())['children']
         if not kept and section == 'Rules' and path[0].split('@')[0] == 'AmbientSound':
             at['-' + path[0]] = node(); return  # its SoundFiles is required: the trait goes
@@ -1095,17 +1107,20 @@ def sound_check(ea_clips=()):
     voices = {}
     for name in manifest['Voices']['children']:
         if name.startswith('ra2|'): merge(voices, parse((MOD/name.split('|')[1]).read_text(encoding='utf-8')))
-    # A set the factions also use (the Pentagon general speaks with the G.I.'s voice) is left alone: its per-faction
-    # files ship, and changing it would silence the factions; such gaps are listed, for the runtime to skip.
+    # A set the factions also use is left alone (changing it would change their voices), and so is one with a prefix,
+    # per-faction prefixes or variants; such gaps are listed, for the runtime to skip.
     voice_clips, shared = {}, {}
     for vname, actor in sorted(voiced.items()):
         if vname not in voices: continue
         v = resolve(voices, vname)
         prefix, variant = v.get('DefaultPrefix', node())['value'], v.get('DefaultVariant', node('.aud'))['value'] or '.aud'
+        # The silent clip is a path (ra2|web/content/...) the engine completes with the set's suffix: only for a set
+        # that adds no prefix and plays .wav, for every owner.
+        plain = not prefix and variant == '.wav' and not v.get('Prefixes') and not v.get('Variants')
         for phrase, n in v.get('Voices', node())['children'].items():
             clips = [c.strip() for c in n['value'].split(',') if c.strip()]
             files = [prefix + c + variant for c in clips]
-            if vname in faction_voices:
+            if vname in faction_voices or not plain:
                 if any(not shipped(f) for f in files): shared.setdefault(f'{actor} ({vname})', set()).add(phrase)
                 continue
             voice_clips.setdefault(vname, {})[phrase] = clips
@@ -1121,7 +1136,7 @@ def sound_check(ea_clips=()):
         elif out.exists(): out.unlink()
     print(f'sounds: fallbacks for {", ".join(overlays["Rules"]) or "no actor"}'
           + (f'; editor-only actors fall silent where {len(dropped)} sounds are missing ({", ".join(sorted(dropped))})' if dropped else '')
-          + (f'; editor-only actors speaking with a faction voice set whose default files are missing (left to the runtime): '
+          + (f'; voice phrases of editor-only actors left to the runtime (a set the factions use, or one with per-faction prefixes): '
              + ', '.join(f'{k} {"/".join(sorted(v))}' for k, v in sorted(shared.items())) if shared else '')
           + f'; {len(unreachable)} missing sounds only on actors no public game has'
           + (f' ({", ".join(sorted(unreachable))})' if unreachable else ''))
