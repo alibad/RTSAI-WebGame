@@ -13,6 +13,7 @@ import { CameoTip } from "./CameoTip";
 import { PowerMeter } from "./PowerMeter";
 import { UnitPortrait } from "./UnitPortrait";
 import { ReplaySidePanel, replayOf } from "./Replay";
+import { keyFor } from "../preferences";
 
 function SupportPowers({ game }: { game: Game }) {
   const powers = useStore((s) => s.ui?.supportPowers) ?? [];
@@ -277,8 +278,8 @@ export function Sidebar({ game }: { game: Game }) {
       <div className="flex items-center justify-between gap-2 px-[2px]">
         <Credits />
         <div className="flex gap-[3px]">
-          <ModeButton active={mode === "repair"} title="Repair" hotkey="C" disabled={replay} onClick={() => game.setMode("repair")}><RepairIcon width={18} height={18} /></ModeButton>
-          <ModeButton active={mode === "sell"} title="Sell" hotkey="Z" disabled={replay} onClick={() => game.setMode("sell")}><SellIcon width={18} height={18} /></ModeButton>
+          <ModeButton active={mode === "repair"} title="Repair" hotkey={keyFor("repair").toUpperCase()} disabled={replay} onClick={() => game.setMode("repair")}><RepairIcon width={18} height={18} /></ModeButton>
+          <ModeButton active={mode === "sell"} title="Sell" hotkey={keyFor("sell").toUpperCase()} disabled={replay} onClick={() => game.setMode("sell")}><SellIcon width={18} height={18} /></ModeButton>
         </div>
       </div>
       {replay ? <ReplaySidePanel game={game} /> : <>
