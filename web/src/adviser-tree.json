@@ -1,6 +1,6 @@
 {
   "aegis": {
-    "name": "Aegis Cruiser",
+    "name": "Air Defense Cruiser",
     "kind": "unit",
     "queue": "Ship",
     "cost": 1200,
@@ -16,7 +16,7 @@
     "provides": []
   },
   "amradr": {
-    "name": "American Airforce Command Headquarters",
+    "name": "American Airfield",
     "kind": "building",
     "queue": "Building",
     "cost": 1000,
@@ -32,7 +32,7 @@
     ]
   },
   "atesla": {
-    "name": "Prism Tower",
+    "name": "Spectrum Tower",
     "kind": "building",
     "queue": "Support",
     "cost": 1500,
@@ -48,7 +48,7 @@
     "provides": []
   },
   "cleg": {
-    "name": "Chrono Legionnaire",
+    "name": "Phase Legionnaire",
     "kind": "unit",
     "queue": "Infantry",
     "cost": 1500,
@@ -72,7 +72,7 @@
     "provides": []
   },
   "dlph": {
-    "name": "Dolphin",
+    "name": "Scout Submersible",
     "kind": "unit",
     "queue": "Ship",
     "cost": 500,
@@ -126,7 +126,7 @@
     ]
   },
   "gacsph": {
-    "name": "Strategic Uplink",
+    "name": "Phasesphere",
     "kind": "building",
     "queue": "Support",
     "cost": 2500,
@@ -264,7 +264,7 @@
     ]
   },
   "jumpjet": {
-    "name": "Rocketeer",
+    "name": "Airborne Trooper",
     "kind": "unit",
     "queue": "Infantry",
     "cost": 600,
@@ -280,7 +280,7 @@
     "provides": []
   },
   "mgtk": {
-    "name": "Mirage Tank",
+    "name": "Camouflage Tank",
     "kind": "unit",
     "queue": "Vehicle",
     "cost": 1000,
@@ -288,7 +288,7 @@
     "provides": []
   },
   "mtnk": {
-    "name": "Grizzly Battle Tank",
+    "name": "Battle Tank",
     "kind": "unit",
     "queue": "Vehicle",
     "cost": 700,
@@ -304,7 +304,7 @@
     "provides": []
   },
   "orca": {
-    "name": "Harrier",
+    "name": "Strike Aircraft",
     "kind": "unit",
     "queue": "Aircraft",
     "cost": 1200,
@@ -328,7 +328,7 @@
     "provides": []
   },
   "sref": {
-    "name": "Prism Tank",
+    "name": "Spectrum Tank",
     "kind": "unit",
     "queue": "Vehicle",
     "cost": 1200,
@@ -336,7 +336,7 @@
     "provides": []
   },
   "tany": {
-    "name": "Tanya",
+    "name": "Commando",
     "kind": "unit",
     "queue": "Infantry",
     "cost": 1000,
@@ -520,7 +520,7 @@
     "provides": []
   },
   "apoc": {
-    "name": "Apocalypse Tank",
+    "name": "Heavy Assault Tank",
     "kind": "unit",
     "queue": "Vehicle",
     "cost": 1750,
@@ -528,7 +528,7 @@
     "provides": []
   },
   "dron": {
-    "name": "Terror Drone",
+    "name": "Attack Drone",
     "kind": "unit",
     "queue": "Vehicle",
     "cost": 500,
@@ -536,7 +536,7 @@
     "provides": []
   },
   "e2": {
-    "name": "Conscript",
+    "name": "Rifleman",
     "kind": "unit",
     "queue": "Infantry",
     "cost": 100,
@@ -568,7 +568,7 @@
     "provides": []
   },
   "htnk": {
-    "name": "Rhino Heavy Tank",
+    "name": "Heavy Tank",
     "kind": "unit",
     "queue": "Vehicle",
     "cost": 900,
@@ -584,7 +584,7 @@
     "provides": []
   },
   "ivan": {
-    "name": "Crazy Ivan",
+    "name": "Demolition Specialist",
     "kind": "unit",
     "queue": "Infantry",
     "cost": 600,
@@ -693,7 +693,7 @@
     ]
   },
   "napsis": {
-    "name": "Psychic Sensor",
+    "name": "Control Sensor",
     "kind": "building",
     "queue": "Support",
     "cost": 1000,
@@ -775,7 +775,7 @@
     "provides": []
   },
   "shk": {
-    "name": "Tesla Trooper",
+    "name": "Arc Trooper",
     "kind": "unit",
     "queue": "Infantry",
     "cost": 500,
@@ -791,7 +791,7 @@
     "provides": []
   },
   "sqd": {
-    "name": "Giant Squid",
+    "name": "Assault Submersible",
     "kind": "unit",
     "queue": "Ship",
     "cost": 1000,
@@ -799,7 +799,7 @@
     "provides": []
   },
   "sub": {
-    "name": "Typhoon Attack Sub",
+    "name": "Attack Submarine",
     "kind": "unit",
     "queue": "Ship",
     "cost": 1000,
@@ -815,7 +815,7 @@
     "provides": []
   },
   "tesla": {
-    "name": "Tesla Coil",
+    "name": "Arc Coil",
     "kind": "building",
     "queue": "Support",
     "cost": 1500,
@@ -823,7 +823,7 @@
     "provides": []
   },
   "yuri": {
-    "name": "Yuri",
+    "name": "Control Specialist",
     "kind": "unit",
     "queue": "Infantry",
     "cost": 1200,
@@ -831,7 +831,7 @@
     "provides": []
   },
   "zep": {
-    "name": "Kirov Airship",
+    "name": "Heavy Airship",
     "kind": "unit",
     "queue": "Vehicle",
     "cost": 2000,
@@ -1151,7 +1151,7 @@
     "provides": []
   },
   "deso": {
-    "name": "Desolator",
+    "name": "Area Denial Trooper",
     "kind": "unit",
     "queue": "Infantry",
     "cost": 600,
@@ -1303,7 +1303,7 @@
     "provides": []
   },
   "beag": {
-    "name": "Black Eagle",
+    "name": "Strike Fighter",
     "kind": "unit",
     "queue": "Aircraft",
     "cost": 1200,
@@ -1319,7 +1319,7 @@
     "provides": []
   },
   "ttnk": {
-    "name": "Tesla Tank",
+    "name": "Arc Tank",
     "kind": "unit",
     "queue": "Vehicle",
     "cost": 1200,

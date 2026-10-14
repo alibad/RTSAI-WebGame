@@ -118,14 +118,12 @@ const IS: Record<UnitClass, (u: UnitOption) => boolean> = {
   tank: u => u.queue === "Vehicle" && /\btank\b/i.test(u.label),
   vehicle: u => u.queue === "Vehicle",
 };
-/** The plain front-line pick of a class: a battle tank, a rifleman. */
-const MAINLINE: Partial<Record<UnitClass, RegExp>> = { tank: /\b(battle tank|mbt)\b/i, infantry: /\b(rifle(man|men)?|guard|basij|conscript|line fighter|infantry)\b|\bg\.i\./i };
+/** The plain front-line pick of a class: a battle tank (the Coalition's Battle Tank, the Union's Heavy Tank), a rifleman. */
+const MAINLINE: Partial<Record<UnitClass, RegExp>> = { tank: /\b(battle tank|heavy tank|mbt)\b/i, infantry: /\b(rifle(man|men)?|guard|basij|conscript|line fighter|infantry)\b|\bg\.i\./i };
 const TIME_WORD = /^(s|secs?|seconds?|m|mins?|minutes?)$/;
 /** Words that never name a particular unit on their own. */
 const STOP = new Set(["battle", "main", "medium", "heavy", "light", "mobile", "attack", "armed", "strike", "recon", "field", "forward", "portable", "combined", "combined-arms", "network", "phase", "area", "naval", "airborne", "elite", "demolition", "control", "anti-armor", "coastal", "escort", "rifle", "drone", "tank", "team", "rocket", "missile", "siege", "falcon", "line", "mountain", "fighter", "infantry", "vehicle", "carrier", "support", "command", "night", "spectrum", "camouflage", "flak", "mechanized", "precision", "national"]);
 
-/** "Heavy Assault Tank Tank" -> "Heavy Assault Tank" (the tooltip name repeated as its generic noun). */
-export const cleanLabel = (label: string) => label.replace(/\b(\w+)\s+\1$/i, "$1");
 export const unitClass = (u: UnitOption | undefined): UnitClass | null => u ? (Object.keys(IS) as UnitClass[]).find(c => IS[c](u)) ?? null : null;
 const canFight = (u: UnitOption | undefined) => !!u && u.combat !== false && u.queue !== "Ship";
 

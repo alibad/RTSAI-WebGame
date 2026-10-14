@@ -2,7 +2,7 @@
 // target, in map cells (MPos), and the simulator's "describe it" planner, which reads a request with the Scenario
 // workshop's own interpreter (ai-lab.ts) and places both sides at the map's start positions.
 
-import { cleanLabel, interpret, type PracticePlan, type Rosters, type UnitOption } from "./ai-lab";
+import { interpret, type PracticePlan, type Rosters, type UnitOption } from "./ai-lab";
 import type { Placement, SandboxOrder, SimUnit } from "./sandbox";
 
 export type Cell = { u: number; v: number };
@@ -55,7 +55,7 @@ export interface BattlePlan { fa: string; fb: string; placements: Placement[]; p
  * other's, facing it. Side A holds (you command it); side B follows the request's order.
  */
 export function planBattle(text: string, units: SimUnit[], rosters: Rosters, factions: { id: string; name: string }[], points: Cell[], previous?: PracticePlan): BattlePlan {
-  const options: UnitOption[] = units.filter((u) => !["building", "defense"].includes(u.kind)).map((u) => ({ name: u.name, label: cleanLabel(u.label), queue: u.queue, modern: u.modern, combat: u.combat }));
+  const options: UnitOption[] = units.filter((u) => !["building", "defense"].includes(u.kind)).map((u) => ({ name: u.name, label: u.label, queue: u.queue, modern: u.modern, combat: u.combat }));
   const names = Object.fromEntries(factions.map((f) => [f.id, f.name]));
   const { plan } = interpret(text, options, factions.map((f) => f.id), previous, rosters, names);
   const [a, b] = points.length >= 2 ? [points[0], points[1]] : [{ u: 40, v: 62 }, { u: 88, v: 62 }];
