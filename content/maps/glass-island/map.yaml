@@ -53,7 +53,7 @@ Actors:
 		Location: 34,6
 	MastRidge: naradr
 		Owner: Orion Group
-		Location: 50,-15
+		Location: 49,-16
 	MastCauseway: naradr
 		Owner: Orion Group
 		Location: 69,-28
@@ -71,13 +71,13 @@ Actors:
 		Location: 115,-60
 	Guard0: e2
 		Owner: Orion Group
-		Location: 72,-20
+		Location: 81,-24
 	Guard1: e2
 		Owner: Orion Group
-		Location: 77,-25
+		Location: 84,-29
 	Guard2: dog
 		Owner: Orion Group
-		Location: 76,-22
+		Location: 83,-23
 	Guard3: e2
 		Owner: Orion Group
 		Location: 44,0

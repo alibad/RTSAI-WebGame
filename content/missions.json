@@ -586,8 +586,8 @@
         "actor": "MastVaultNorth",
         "radius": 6,
         "sweep": [
-          11,
-          11
+          10,
+          14
         ],
         "offset": 0
       },
@@ -595,10 +595,10 @@
         "actor": "MastVaultSouth",
         "radius": 6,
         "sweep": [
-          11,
-          11
+          10,
+          14
         ],
-        "offset": 11
+        "offset": 12
       }
     ],
     "events": [
@@ -882,7 +882,7 @@
           "r2cnnetwork"
         ],
         "target": "CoreNode",
-        "radius": 3,
+        "radius": 4,
         "deploy": true
       },
       {
@@ -1049,8 +1049,7 @@
               "e2",
               "flakt",
               "e2",
-              "deso",
-              "shk"
+              "deso"
             ]
           }
         ]
@@ -1061,7 +1060,7 @@
           "event": "jamming-off"
         },
         "delay": 30,
-        "repeat": 35,
+        "repeat": 40,
         "spawn": [
           {
             "at": "WestDock",
@@ -1070,11 +1069,19 @@
               "e2",
               "e2",
               "flakt",
-              "e2",
-              "deso",
-              "shk"
+              "e2"
             ]
-          },
+          }
+        ]
+      },
+      {
+        "id": "counterattack-east",
+        "when": {
+          "event": "jamming-off"
+        },
+        "delay": 50,
+        "repeat": 40,
+        "spawn": [
           {
             "at": "EastDock",
             "to": "CurtainControl",
@@ -1082,9 +1089,7 @@
               "e2",
               "e2",
               "flakt",
-              "e2",
-              "deso",
-              "shk"
+              "e2"
             ]
           }
         ]
@@ -1259,9 +1264,9 @@
       {
         "id": "hub-wave",
         "when": {
-          "time": 210
+          "time": 180
         },
-        "repeat": 140,
+        "repeat": 120,
         "spawn": [
           {
             "at": "HubGate",
@@ -1272,7 +1277,8 @@
               "e2",
               "flakt",
               "ttnk",
-              "e2"
+              "e2",
+              "deso"
             ]
           }
         ]

@@ -50,7 +50,7 @@ static class MissionTest
 			var watch = def.Objectives.Select((o, i) => (o, i)).First(x => x.o.Kind == "undetected");
 			void Clear()
 			{
-				foreach (var a in world.Actors.Where(a => a.Owner.InternalName == def.Enemy && (a.TraitOrDefault<Mobile>() != null || a.TraitOrDefault<AttackBase>() != null)).ToArray())
+				foreach (var a in world.Actors.Where(a => a.Owner.InternalName == def.Enemy && (a.TraitOrDefault<Mobile>() != null || a.TraitsImplementing<AttackBase>().Any())).ToArray())
 					a.Kill(a);
 			}
 			Clear();

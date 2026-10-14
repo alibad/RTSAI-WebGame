@@ -87,10 +87,10 @@ Actors:
 	ScannerEast: naradr
 		Owner: Orion Group
 		Location: 75,-30
-	Guard0: nalasr
+	Guard0: e2
 		Owner: Orion Group
 		Location: 74,-17
-	Guard1: nalasr
+	Guard1: flakt
 		Owner: Orion Group
 		Location: 80,-23
 	Guard2: e2
@@ -207,3 +207,6 @@ Rules:
 			BorderColor: 00000080
 			BorderWidth: 5
 			RequiresCondition: sensor-tripped
+	nairon:
+		Health:
+			HP: 2000

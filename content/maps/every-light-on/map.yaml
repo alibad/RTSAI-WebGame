@@ -34,7 +34,7 @@ Players:
 Actors:
 	MissionSpawn: mpspawn
 		Owner: Neutral
-		Location: 138,-26
+		Location: 141,-28
 	SaudiConyard: gacnst
 		Owner: Saudi Arabia
 		Location: 135,-25
@@ -71,70 +71,49 @@ Actors:
 	Badr2: r2m1a2s
 		Owner: Saudi Arabia
 		Location: 141,-43
-	Badr3: r2m1a2s
+	Badr3: r2bradley
 		Owner: Saudi Arabia
 		Location: 144,-45
-	Badr4: r2m1a2s
+	Badr4: r2bradley
 		Owner: Saudi Arabia
 		Location: 145,-47
-	Badr5: r2bradley
+	Badr5: r2sads
 		Owner: Saudi Arabia
 		Location: 148,-49
-	Badr6: r2bradley
+	Badr6: r2sang
 		Owner: Saudi Arabia
 		Location: 138,-38
-	Badr7: r2bradley
+	Badr7: r2sang
 		Owner: Saudi Arabia
 		Location: 141,-40
-	Badr8: r2sads
+	Badr8: r2sang
 		Owner: Saudi Arabia
 		Location: 142,-42
 	Badr9: r2sang
 		Owner: Saudi Arabia
 		Location: 145,-44
-	Badr10: r2sang
+	Badr10: r2saat
 		Owner: Saudi Arabia
 		Location: 146,-46
-	Badr11: r2sang
+	Badr11: r2saat
 		Owner: Saudi Arabia
 		Location: 149,-48
-	Badr12: r2sang
+	Badr12: r2saat
 		Owner: Saudi Arabia
 		Location: 139,-37
-	Badr13: r2sang
+	Badr13: engineer
 		Owner: Saudi Arabia
 		Location: 142,-39
-	Badr14: r2sang
+	Badr14: engineer
 		Owner: Saudi Arabia
 		Location: 143,-41
-	Badr15: r2saat
-		Owner: Saudi Arabia
-		Location: 146,-43
-	Badr16: r2saat
-		Owner: Saudi Arabia
-		Location: 147,-45
-	Badr17: r2saat
-		Owner: Saudi Arabia
-		Location: 150,-47
-	Badr18: r2saat
-		Owner: Saudi Arabia
-		Location: 140,-36
-	Badr19: engineer
-		Owner: Saudi Arabia
-		Location: 143,-38
-	Badr20: engineer
-		Owner: Saudi Arabia
-		Location: 144,-40
-	Badr21: engineer
-		Owner: Saudi Arabia
-		Location: 147,-42
-	DomeWest: gaairc
+	DomeWest: amradr
 		Owner: Orion Group
 		Location: 97,-4
-	DomeNorth: gaairc
+	DomeNorth: amradr
 		Owner: Orion Group
 		Location: 111,-47
-	DomeEast: gaairc
+	DomeEast: amradr
 		Owner: Orion Group
 		Location: 147,-85
 	DomeWestGuard0: tesla
@@ -152,6 +131,18 @@ Actors:
 	DomeWestGuard4: htnk
 		Owner: Orion Group
 		Location: 105,-9
+	DomeWestGuard5: tesla
+		Owner: Orion Group
+		Location: 96,-1
+	DomeWestGuard6: flakt
+		Owner: Orion Group
+		Location: 97,-7
+	DomeWestGuard7: htnk
+		Owner: Orion Group
+		Location: 105,-12
+	DomeWestGuard8: deso
+		Owner: Orion Group
+		Location: 100,-5
 	DomeNorthGuard0: tesla
 		Owner: Orion Group
 		Location: 117,-48
@@ -167,6 +158,18 @@ Actors:
 	DomeNorthGuard4: htnk
 		Owner: Orion Group
 		Location: 115,-41
+	DomeNorthGuard5: tesla
+		Owner: Orion Group
+		Location: 107,-43
+	DomeNorthGuard6: ttnk
+		Owner: Orion Group
+		Location: 120,-47
+	DomeNorthGuard7: e2
+		Owner: Orion Group
+		Location: 119,-44
+	DomeNorthGuard8: deso
+		Owner: Orion Group
+		Location: 114,-44
 	DomeEastGuard0: tesla
 		Owner: Orion Group
 		Location: 147,-80
@@ -182,6 +185,18 @@ Actors:
 	DomeEastGuard4: ttnk
 		Owner: Orion Group
 		Location: 154,-81
+	DomeEastGuard5: tesla
+		Owner: Orion Group
+		Location: 151,-87
+	DomeEastGuard6: htnk
+		Owner: Orion Group
+		Location: 151,-77
+	DomeEastGuard7: e2
+		Owner: Orion Group
+		Location: 154,-83
+	DomeEastGuard8: deso
+		Owner: Orion Group
+		Location: 150,-82
 	Chronosphere: gacsph
 		Owner: Orion Group
 		Location: 177,-82
@@ -233,6 +248,33 @@ Actors:
 	Hub15: e2
 		Owner: Orion Group
 		Location: 182,-91
+	Hub16: tesla
+		Owner: Orion Group
+		Location: 172,-73
+	Hub17: tesla
+		Owner: Orion Group
+		Location: 172,-86
+	Hub18: apoc
+		Owner: Orion Group
+		Location: 182,-83
+	Hub19: htnk
+		Owner: Orion Group
+		Location: 167,-81
+	Hub20: ttnk
+		Owner: Orion Group
+		Location: 185,-92
+	Hub21: e2
+		Owner: Orion Group
+		Location: 177,-76
+	Hub22: e2
+		Owner: Orion Group
+		Location: 177,-89
+	Hub23: flakt
+		Owner: Orion Group
+		Location: 181,-89
+	Hub24: deso
+		Owner: Orion Group
+		Location: 176,-84
 	HubGate: waypoint
 		Owner: Neutral
 		Location: 168,-72
@@ -257,3 +299,6 @@ Rules:
 			Condition: sealed
 		Capturable:
 			RequiresCondition: !sealed
+	amradr:
+		Health:
+			HP: 1800

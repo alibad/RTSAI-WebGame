@@ -10,6 +10,7 @@ using OpenRA.WebSim;
 // usage: MissionProbe <vfs root> <scenario.json> <ticks> [plan] [difficulty] (see MissionProbe.csproj)
 // plan "idle": the player does nothing. plan "sweep": the whole force attack-moves through the named waypoints in
 // order (a crude stand-in for a player), moving on when the force is near each one or after a time limit.
+// plans "stealth", "boarding", "finale": the scripted players of Scripted.cs (Glass Island, Black Platform, Every Light On).
 static class Probe
 {
 	static int Main(string[] args)
@@ -24,12 +25,15 @@ static class Probe
 		var world = SimHost.World;
 		var human = world.LocalPlayer;
 		var named = world.WorldActor.Trait<SpawnMapActors>().Actors;
-		var watch = named.Keys.Where(k => k.Contains("Checkpoint") || k.Contains("Pier") || k.Contains("Clinic") || k.Contains("Watch") || k.Contains("Town")).ToArray();
-		var steps = plan == "idle" ? [] : plan.Split(',');
+		var watch = named.Keys.Where(k => k.Contains("Checkpoint") || k.Contains("Pier") || k.Contains("Clinic") || k.Contains("Watch") || k.Contains("Town")
+			|| k.StartsWith("Dome", StringComparison.Ordinal) || k.StartsWith("Gen", StringComparison.Ordinal) || k is "Tanya" or "Specialist" or "CurtainControl" or "PictureRelay" or "SaudiConyard").ToArray();
+		var script = Scripted.For(plan, world, human, named, Missions.Catalog.Single(m => m.Id == spec.Mission));
+		var steps = plan == "idle" || script != null ? [] : plan.Split(',');
 		var step = 0; var stepStart = 0;
 		var lastState = "";
 		for (var i = 0; i < ticks; i++)
 		{
+			script?.Invoke(i);
 			if (step < steps.Length)
 			{
 				var target = named[steps[step]];
@@ -56,7 +60,9 @@ static class Probe
 				var dead = watch.Where(n => named[n].IsDead || !named[n].IsInWorld).ToArray();
 				var units = world.Actors.Count(a => a.Owner == human && a.IsInWorld && !a.IsDead && a.TraitOrDefault<IMove>() != null);
 				var enemy = world.Actors.Count(a => a.Owner.InternalName == "Orion Group" && a.IsInWorld && !a.IsDead && a.TraitOrDefault<IMove>() != null);
-				Console.WriteLine($"{world.WorldTick / 1500.0:F2} min: {state} | units {units} vs {enemy} | down: {string.Join(",", dead)}");
+				var hurt = watch.Where(n => !named[n].IsDead && named[n].IsInWorld && named[n].TraitOrDefault<IHealth>() is { } h && h.HP < h.MaxHP)
+					.Select(n => $"{n} {100 * named[n].Trait<IHealth>().HP / named[n].Trait<IHealth>().MaxHP}%");
+				Console.WriteLine($"{world.WorldTick / 1500.0:F2} min: {state} | units {units} vs {enemy} | down: {string.Join(",", dead)} | hurt: {string.Join(",", hurt)} | events {string.Join(",", Missions.FiredEvents)}");
 				lastState = state;
 			}
 

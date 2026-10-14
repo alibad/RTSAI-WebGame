@@ -688,12 +688,12 @@ def glass_island():
     # Sensor masts: (name, u, v, sweep [on, off] seconds or always on, offset). The bluff and the causeway can only be
     # crossed while their sweep is off; the ridge mast never sleeps but leaves a strip along the cliff; the vault's two
     # masts take turns.
-    masts = [('MastBluff', 14, 40, [6, 14], 0), ('MastRidge', 32, 35, [], 0), ('MastCauseway', 48, 41, [8, 14], 4),
-             ('MastGate', 64, 57, [8, 12], 0), ('MastVaultNorth', 80, 50, [11, 11], 0), ('MastVaultSouth', 79, 59, [11, 11], 11)]
+    masts = [('MastBluff', 14, 40, [6, 14], 0), ('MastRidge', 32, 33, [], 0), ('MastCauseway', 48, 41, [8, 14], 4),
+             ('MastGate', 64, 57, [8, 12], 0), ('MastVaultNorth', 80, 50, [10, 14], 0), ('MastVaultSouth', 79, 59, [10, 14], 12)]
     for name, u, v, _, _ in masts: m.add(name, 'naradr', 'Orion Group', u, v)
     m.add('CoreNode', 'gatech', 'Orion Group', 87, 55)
     # Guards: they fight anyone they see, but only the masts raise the alarm.
-    for k, (kind, u, v) in enumerate([('e2', 46, 52), ('e2', 51, 52), ('dog', 49, 54), ('e2', 22, 44), ('flakt', 23, 45),
+    for k, (kind, u, v) in enumerate([('e2', 52, 57), ('e2', 56, 55), ('dog', 53, 60), ('e2', 22, 44), ('flakt', 23, 45),
                                       ('e2', 70, 51), ('flakt', 71, 58), ('deso', 85, 52), ('e2', 90, 53), ('e2', 89, 59),
                                       ('dog', 84, 58), ('shk', 92, 56)]):
         m.add(f'Guard{k}', kind, 'Orion Group', u, v)
@@ -729,7 +729,7 @@ def glass_island():
         adaptation='An original RTS AI chapter on the terrain of Haitan Network, with a new channel and new actors.')
     return chapter_entry(mission, [
         objective('Copy the routing logs: deploy the network specialist beside the core node.', 'reach', types=['r2cnnetwork'],
-                  target='CoreNode', radius=3, deploy=True),
+                  target='CoreNode', radius=4, deploy=True),
         objective('Bring the specialist and the logs to the boat at the north cove.', 'reach', types=['r2cnnetwork'],
                   target='ExtractionCove', radius=4, requires=[0]),
         objective("Stay out of the sensor masts' sight.", 'undetected', [name for name, *_ in masts], allowed=1),
@@ -762,7 +762,7 @@ def black_platform():
     # middle is out of their sight. If one sees the team, the deck crew comes running.
     scanners = [('ScannerWest', 43, 45, 0), ('ScannerEast', 52, 45, 8)]
     for name, u, v, _ in scanners: m.add(name, 'naradr', 'Orion Group', u, v)
-    guards = [('nalasr', 45, 57), ('nalasr', 51, 57), ('e2', 44, 53), ('e2', 52, 53), ('dog', 48, 55), ('deso', 45, 41),
+    guards = [('e2', 45, 57), ('flakt', 51, 57), ('e2', 44, 53), ('e2', 52, 53), ('dog', 48, 55), ('deso', 45, 41),
               ('e2', 51, 41), ('flakt', 48, 39), ('e2', 35, 40), ('e2', 35, 56), ('flakt', 36, 33), ('dog', 35, 60),
               ('e2', 61, 40), ('e2', 61, 56), ('flakt', 60, 33), ('e2', 61, 60), ('shk', 48, 26), ('e2', 44, 28), ('e2', 52, 28)]
     for k, (kind, u, v) in enumerate(guards): m.add(f'Guard{k}', kind, 'Orion Group', u, v)
@@ -775,19 +775,23 @@ def black_platform():
         if not m.reachable(a, b): raise ValueError(f'{m.id}: no deck route {a} -> {b}')
     for a, b in [('SeaWest', 'SeaWestStation'), ('SeaEast', 'SeaEastStation')]:
         if not m.reachable(a, b, water=True): raise ValueError(f'{m.id}: no sea route {a} -> {b}')
-    m.write('Black Platform', 'Saudi Arabia', 'saudi', '2E8B57', extra_rules=sensor_rules('naradr', 4))
+    # Mission rules: the control room's armoured core outlasts a few volleys while the team holds it.
+    m.write('Black Platform', 'Saudi Arabia', 'saudi', '2E8B57', extra_rules=sensor_rules('naradr', 4) + 'nairon:\n\tHealth:\n\t\tHP: 2000\n')
     crew = ['e2', 'e2', 'dog', 'e2', 'flakt']
-    counter = ['e2', 'e2', 'flakt', 'e2', 'deso', 'shk']
+    counter = ['e2', 'e2', 'flakt', 'e2']
     gen_names = [name for name, _, _ in gens]
     events = [dict(id='curtain', when=dict(time=0), grant=[dict(condition='invulnerability', actors=gen_names)]),
               dict(id='curtain-down', when=dict(objective=0), revoke=[dict(condition='invulnerability', actors=gen_names)]),
               dict(id='alarm', when=dict(detected='*'))]
     for name, *_ in scanners:
         events.append(dict(id=f'alarm-{name}', when=dict(detected=name), spawn=[dict(at='CrewQuarters', to=name, types=crew)]))
+    # When the jamming stops: the north dock's crew at once, then a boat-load at the west and east docks in turn.
     events += [dict(id='jamming-off', when=dict(objective=1), reveal=[dict(radius=0)],
-                    spawn=[dict(at='NorthDock', to='CurtainControl', types=counter)]),
-               dict(id='counterattack', when=dict(event='jamming-off'), delay=30, repeat=35,
-                    spawn=[dict(at='WestDock', to='CurtainControl', types=counter), dict(at='EastDock', to='CurtainControl', types=counter)]),
+                    spawn=[dict(at='NorthDock', to='CurtainControl', types=counter + ['deso'])]),
+               dict(id='counterattack', when=dict(event='jamming-off'), delay=30, repeat=40,
+                    spawn=[dict(at='WestDock', to='CurtainControl', types=counter)]),
+               dict(id='counterattack-east', when=dict(event='jamming-off'), delay=50, repeat=40,
+                    spawn=[dict(at='EastDock', to='CurtainControl', types=counter)]),
                dict(id='gunboats', when=dict(event='jamming-off'), delay=50,
                     spawn=[dict(at='SeaWest', to='SeaWestStation', types=['hyd']), dict(at='SeaEast', to='SeaEastStation', types=['hyd'])])]
     mission = dict(id=m.id, map=m, title='Black Platform', faction='saudi', campaign='Lines of Hope', slot='Saudi Arabia',
@@ -816,30 +820,35 @@ def every_light_on():
     chain's central landmass). Four other fronts are heard only on the radio; each is a mission event."""
     m = ChapterMap('straits-shield', 'every-light-on', art_check=True)
     # Colonel Badr's forward base in the south of the landmass.
-    m.add('MissionSpawn', 'mpspawn', 'Neutral', 82, 112)
+    m.add('MissionSpawn', 'mpspawn', 'Neutral', 84, 113)
     for name, kind, u, v in [('SaudiConyard', 'gacnst', 80, 110), ('SaudiPowerOne', 'gapowr', 76, 116), ('SaudiPowerTwo', 'gapowr', 79, 118),
                              ('SaudiPowerThree', 'gapowr', 82, 120), ('SaudiRefinery', 'garefn', 86, 106), ('SaudiBarracks', 'gapile', 72, 109),
                              ('SaudiFactory', 'gaweap', 86, 116), ('PictureRelay', 'gaairc', 71, 112)]:
         m.add(name, kind, 'Saudi Arabia', u, v)
     m.add('SaudiHarvester', 'harv', 'Saudi Arabia', 89, 110)
-    force = [('r2m1a2s', 5), ('r2bradley', 3), ('r2sads', 1), ('r2sang', 6), ('r2saat', 4), ('engineer', 3)]
+    force = [('r2m1a2s', 3), ('r2bradley', 2), ('r2sads', 1), ('r2sang', 4), ('r2saat', 3), ('engineer', 2)]
     i = 0
     for kind, count in force:
         for _ in range(count):
             m.add(f'Badr{i}', kind, 'Saudi Arabia', 88 + i % 6 * 2, 98 + i // 6 * 2 + (i % 2)); i += 1
     # The Directorate's three radar domes (the link to the regional network), each with a guard.
     domes = [('DomeWest', 50, 93), ('DomeNorth', 79, 64), ('DomeEast', 116, 62)]
-    for name, u, v in domes: m.add(name, 'gaairc', 'Orion Group', u, v)
-    guards = {'DomeWest': [('tesla', 54, 96), ('nalasr', 46, 94), ('e2', 54, 97), ('e2', 56, 92), ('htnk', 57, 96)],
-              'DomeNorth': [('tesla', 82, 69), ('nalasr', 75, 71), ('e2', 80, 72), ('flakt', 84, 66), ('htnk', 78, 74)],
-              'DomeEast': [('tesla', 113, 67), ('nalasr', 119, 68), ('e2', 115, 70), ('flakt', 112, 64), ('ttnk', 117, 73)]}
+    for name, u, v in domes: m.add(name, 'amradr', 'Orion Group', u, v)
+    guards = {'DomeWest': [('tesla', 54, 96), ('nalasr', 46, 94), ('e2', 54, 97), ('e2', 56, 92), ('htnk', 57, 96),
+                           ('tesla', 48, 95), ('flakt', 52, 90), ('htnk', 58, 93), ('deso', 52, 95)],
+              'DomeNorth': [('tesla', 82, 69), ('nalasr', 75, 71), ('e2', 80, 72), ('flakt', 84, 66), ('htnk', 78, 74),
+                            ('tesla', 75, 64), ('ttnk', 83, 73), ('e2', 81, 75), ('deso', 79, 70)],
+              'DomeEast': [('tesla', 113, 67), ('nalasr', 119, 68), ('e2', 115, 70), ('flakt', 112, 64), ('ttnk', 117, 73),
+                           ('tesla', 119, 64), ('htnk', 114, 74), ('e2', 118, 71), ('deso', 116, 68)]}
     for dome, items in guards.items():
         for k, (kind, u, v) in enumerate(items): m.add(f'{dome}Guard{k}', kind, 'Orion Group', u, v)
     # The hub at the eastern end: the rebuilt Chronosphere behind coils, sentry guns and a garrison.
     m.add('Chronosphere', 'gacsph', 'Orion Group', 129, 95)
     hub = [('tesla', 126, 88), ('tesla', 126, 96), ('tesla', 135, 90), ('tesla', 138, 98), ('nalasr', 128, 96),
            ('nalasr', 124, 92), ('naflak', 135, 91), ('naflak', 136, 96), ('apoc', 127, 92), ('htnk', 129, 101),
-           ('ttnk', 135, 100), ('e2', 129, 94), ('e2', 133, 95), ('flakt', 128, 86), ('deso', 135, 92), ('e2', 136, 91)]
+           ('ttnk', 135, 100), ('e2', 129, 94), ('e2', 133, 95), ('flakt', 128, 86), ('deso', 135, 92), ('e2', 136, 91),
+           ('tesla', 122, 99), ('tesla', 129, 86), ('apoc', 132, 99), ('htnk', 124, 86), ('ttnk', 138, 93),
+           ('e2', 126, 101), ('e2', 133, 88), ('flakt', 135, 92), ('deso', 130, 92)]
     for k, (kind, u, v) in enumerate(hub): m.add(f'Hub{k}', kind, 'Orion Group', u, v)
     # Wave routes: the hub's gate on land, the northern sea lane, and the water off the base's west shore.
     m.add('HubGate', 'waypoint', 'Neutral', 120, 96)
@@ -852,8 +861,10 @@ def every_light_on():
         if not m.reachable(a, b): raise ValueError(f'{m.id}: no land route {a} -> {b}')
     if not m.reachable('NorthLane', 'BaseShore', water=True): raise ValueError(f'{m.id}: no sea route for the gunboats')
     # The machine must be taken, not destroyed: the Iron Curtain holds it, and its capture is sealed until the strike.
+    # The domes are hardened: a raid has to stay on them.
     m.write('Every Light On', 'Saudi Arabia', 'saudi', '2E8B57',
-            extra_rules='gacsph:\n\tExternalCondition@sealed:\n\t\tCondition: sealed\n\tCapturable:\n\t\tRequiresCondition: !sealed\n')
+            extra_rules='gacsph:\n\tExternalCondition@sealed:\n\t\tCondition: sealed\n\tCapturable:\n\t\tRequiresCondition: !sealed\n'
+                        'amradr:\n\tHealth:\n\t\tHP: 1800\n')
     events = [
         # Lin keeps the picture alive: the whole map is visible while the relay stands.
         dict(id='picture', when=dict(time=0), reveal=[dict(radius=0)]),
@@ -866,8 +877,8 @@ def every_light_on():
         dict(id='naval-wave', when=dict(time=150), repeat=110, until='lane-closed',
              spawn=[dict(at='NorthLane', to='BaseShore', types=['hyd', 'dest', 'hyd'])]),
         dict(id='lane-closed', when=dict(time=480)),
-        dict(id='hub-wave', when=dict(time=210), repeat=140,
-             spawn=[dict(at='HubGate', to='SaudiConyard', types=['htnk', 'e2', 'e2', 'flakt', 'ttnk', 'e2'])]),
+        dict(id='hub-wave', when=dict(time=180), repeat=120,
+             spawn=[dict(at='HubGate', to='SaudiConyard', types=['htnk', 'e2', 'e2', 'flakt', 'ttnk', 'e2', 'deso'])]),
         dict(id='domes-down', when=dict(objective=0), reveal=[dict(at='Chronosphere', radius=12)]),
         # Nabil reports the mainland towns clear at ten minutes: the final strike unlocks.
         dict(id='towns-clear', when=dict(time=600), revoke=[dict(condition='sealed', actors=['Chronosphere'])],
