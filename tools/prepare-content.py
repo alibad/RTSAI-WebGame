@@ -709,7 +709,9 @@ def glass_island():
     if not m.reachable('BoatEntry', 'BoatLanding', water=True): raise ValueError(f'{m.id}: no sea route for the boat')
     m.write('Glass Island', 'China', 'china', '3B7DD8', extra_rules=sensor_rules('naradr', 6))
     hunters = ['e2', 'e2', 'dog', 'e2', 'flakt', 'dog']
-    events = [dict(id='alarm', when=dict(detected='*'))]
+    # Lantern's intel: every mast is in sight from the start, so its zone has something to circle.
+    events = [dict(id='intel', when=dict(time=0), reveal=[dict(at=name, radius=2) for name, *_ in masts]),
+              dict(id='alarm', when=dict(detected='*'))]
     for name, u, *_ in masts:
         garrison = 'GarrisonWest' if u < 40 else 'GarrisonEast'
         events += [dict(id=f'alarm-{name}', when=dict(detected=name), spawn=[dict(at=garrison, to=name, types=hunters)]),
@@ -782,6 +784,7 @@ def black_platform():
     gen_names = [name for name, _, _ in gens]
     events = [dict(id='curtain', when=dict(time=0), grant=[dict(condition='invulnerability', actors=gen_names)]),
               dict(id='curtain-down', when=dict(objective=0), revoke=[dict(condition='invulnerability', actors=gen_names)]),
+              dict(id='intel', when=dict(time=0), reveal=[dict(at=name, radius=2) for name, *_ in scanners]),
               dict(id='alarm', when=dict(detected='*'))]
     for name, *_ in scanners:
         events.append(dict(id=f'alarm-{name}', when=dict(detected=name), spawn=[dict(at='CrewQuarters', to=name, types=crew)]))
@@ -823,7 +826,8 @@ def every_light_on():
     m.add('MissionSpawn', 'mpspawn', 'Neutral', 84, 113)
     for name, kind, u, v in [('SaudiConyard', 'gacnst', 80, 110), ('SaudiPowerOne', 'gapowr', 76, 116), ('SaudiPowerTwo', 'gapowr', 79, 118),
                              ('SaudiPowerThree', 'gapowr', 82, 120), ('SaudiRefinery', 'garefn', 86, 106), ('SaudiBarracks', 'gapile', 72, 109),
-                             ('SaudiFactory', 'gaweap', 86, 116), ('PictureRelay', 'gaairc', 71, 112)]:
+                             ('SaudiFactory', 'gaweap', 86, 116), ('PictureRelay', 'gaairc', 71, 112),
+                             ('SaudiGuardNorth', 'r2saguard', 93, 106), ('SaudiGuardEast', 'r2saguard', 95, 113), ('SaudiTow', 'r2satow', 92, 118)]:
         m.add(name, kind, 'Saudi Arabia', u, v)
     m.add('SaudiHarvester', 'harv', 'Saudi Arabia', 89, 110)
     force = [('r2m1a2s', 3), ('r2bradley', 2), ('r2sads', 1), ('r2sang', 4), ('r2saat', 3), ('engineer', 2)]
@@ -877,8 +881,8 @@ def every_light_on():
         dict(id='naval-wave', when=dict(time=150), repeat=110, until='lane-closed',
              spawn=[dict(at='NorthLane', to='BaseShore', types=['hyd', 'dest', 'hyd'])]),
         dict(id='lane-closed', when=dict(time=480)),
-        dict(id='hub-wave', when=dict(time=180), repeat=120,
-             spawn=[dict(at='HubGate', to='SaudiConyard', types=['htnk', 'e2', 'e2', 'flakt', 'ttnk', 'e2', 'deso'])]),
+        dict(id='hub-wave', when=dict(time=240), repeat=150,
+             spawn=[dict(at='HubGate', to='SaudiConyard', types=['htnk', 'e2', 'e2', 'flakt', 'e2', 'ttnk'])]),
         dict(id='domes-down', when=dict(objective=0), reveal=[dict(at='Chronosphere', radius=12)]),
         # Nabil reports the mainland towns clear at ten minutes: the final strike unlocks.
         dict(id='towns-clear', when=dict(time=600), revoke=[dict(condition='sealed', actors=['Chronosphere'])],

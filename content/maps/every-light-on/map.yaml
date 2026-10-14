@@ -59,6 +59,15 @@ Actors:
 	PictureRelay: gaairc
 		Owner: Saudi Arabia
 		Location: 127,-15
+	SaudiGuardNorth: r2saguard
+		Owner: Saudi Arabia
+		Location: 146,-40
+	SaudiGuardEast: r2saguard
+		Owner: Saudi Arabia
+		Location: 152,-39
+	SaudiTow: r2satow
+		Owner: Saudi Arabia
+		Location: 151,-33
 	SaudiHarvester: harv
 		Owner: Saudi Arabia
 		Location: 144,-34

@@ -462,8 +462,10 @@ export class Renderer {
     const cap = cur.captured;
     if (!cap.batches.length || this.actorFilter) return;
     const gl = this.gl;
+    if (above && !cap.batches.some((b) => b.above)) return;
     gl.useProgram(this.terrainProg);
-    this.viewUniforms(this.terrainProg, cam);
+    // Annotations come back from UI space flat (z 0): over the shroud, with no depth test, z must not clip them.
+    this.viewUniforms(this.terrainProg, cam, above);
     gl.bindVertexArray(this.capVao);
     if (this.capUploaded !== cur) {
       gl.bindBuffer(gl.ARRAY_BUFFER, this.capVbo);
@@ -509,10 +511,11 @@ export class Renderer {
     return [Math.max(1, canvas.clientWidth) / zoom, Math.max(1, canvas.clientHeight) / zoom];
   }
 
-  private viewUniforms(prog: WebGLProgram, cam: Camera) {
+  /** The view's projection; flat: no depth (every z maps to 0), for passes drawn without a depth test. */
+  private viewUniforms(prog: WebGLProgram, cam: Camera, flat = false) {
     const gl = this.gl;
     const [W, H] = Renderer.viewSize(this.canvas, cam.zoom);
-    const depthOn = !!this.info?.depthBuffer;
+    const depthOn = !flat && !!this.info?.depthBuffer;
     const margin = this.info?.depthMargin ?? 0;
     const sx = cam.x - W / 2;
     const sy = cam.y - H / 2;

@@ -603,6 +603,38 @@
     ],
     "events": [
       {
+        "id": "intel",
+        "when": {
+          "time": 0
+        },
+        "reveal": [
+          {
+            "at": "MastBluff",
+            "radius": 2
+          },
+          {
+            "at": "MastRidge",
+            "radius": 2
+          },
+          {
+            "at": "MastCauseway",
+            "radius": 2
+          },
+          {
+            "at": "MastGate",
+            "radius": 2
+          },
+          {
+            "at": "MastVaultNorth",
+            "radius": 2
+          },
+          {
+            "at": "MastVaultSouth",
+            "radius": 2
+          }
+        ]
+      },
+      {
         "id": "alarm",
         "when": {
           "detected": "*"
@@ -987,6 +1019,22 @@
         ]
       },
       {
+        "id": "intel",
+        "when": {
+          "time": 0
+        },
+        "reveal": [
+          {
+            "at": "ScannerWest",
+            "radius": 2
+          },
+          {
+            "at": "ScannerEast",
+            "radius": 2
+          }
+        ]
+      },
+      {
         "id": "alarm",
         "when": {
           "detected": "*"
@@ -1264,9 +1312,9 @@
       {
         "id": "hub-wave",
         "when": {
-          "time": 180
+          "time": 240
         },
-        "repeat": 120,
+        "repeat": 150,
         "spawn": [
           {
             "at": "HubGate",
@@ -1276,9 +1324,8 @@
               "e2",
               "e2",
               "flakt",
-              "ttnk",
               "e2",
-              "deso"
+              "ttnk"
             ]
           }
         ]
