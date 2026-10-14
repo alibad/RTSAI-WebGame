@@ -1,0 +1,94 @@
+{
+  "mission": "haitan-network",
+  "chapter": "Broken Signals · Chapter 2",
+  "title": "Bring the Islands Online",
+  "music": "C:/Users/Admin/Code/hq/montage/out/reels/films/story-mv77pk3h/music.mp3",
+  "musicVolume": 0.55,
+  "segments": [
+    {
+      "src": "C:/Users/Admin/Code/hq/montage/out/reels/films/story-mv77pk3h/s01.mp4",
+      "kind": "cinema",
+      "voice": "C:/Users/Admin/Code/hq/montage/out/reels/films/story-mv77pk3h/n01.wav",
+      "line": "The command network is broken across the islands.",
+      "poster": true
+    },
+    {
+      "src": "D:/rtsai-campaign/footage-out/haitan-network/establishing.mp4",
+      "kind": "game",
+      "voice": "C:/Users/Admin/Code/hq/montage/out/reels/films/story-mv77pk3h/n02.wav",
+      "line": "Obsidian Directorate holds the approaches. The water gate is the only way in for your amphibious vehicles.",
+      "zoom": 1.1
+    },
+    {
+      "src": "C:/Users/Admin/Code/hq/montage/out/reels/films/story-mv77pk3h/s03.mp4",
+      "kind": "cinema",
+      "voice": "C:/Users/Admin/Code/hq/montage/out/reels/films/story-mv77pk3h/n03.wav",
+      "line": "Deploy your network specialist. Every restored link makes the next move possible."
+    },
+    {
+      "src": "C:/Users/Admin/Code/hq/montage/out/reels/films/story-mv77pk3h/s04.mp4",
+      "kind": "cinema",
+      "voice": "C:/Users/Admin/Code/hq/montage/out/reels/films/story-mv77pk3h/n04.wav",
+      "line": "Reconnaissance first. Then missiles, aircraft and ships, together."
+    },
+    {
+      "src": "D:/rtsai-campaign/footage-out/haitan-network/objective-1.mp4",
+      "kind": "game",
+      "dur": 4.2,
+      "zoom": 1.1,
+      "card": {
+        "kicker": "Objective 1",
+        "text": "Deploy a network specialist at the command node."
+      }
+    },
+    {
+      "src": "D:/rtsai-campaign/footage-out/haitan-network/objective-2.mp4",
+      "kind": "game",
+      "dur": 4.2,
+      "zoom": 1.1,
+      "card": {
+        "kicker": "Objective 2",
+        "text": "Sail two amphibious IFVs through the sea gate and land on the eastern beach."
+      }
+    },
+    {
+      "src": "D:/rtsai-campaign/footage-out/haitan-network/objective-3.mp4",
+      "kind": "game",
+      "dur": 4.2,
+      "zoom": 1.1,
+      "card": {
+        "kicker": "Objective 3",
+        "text": "Destroy the enemy control node."
+      }
+    },
+    {
+      "src": "D:/rtsai-campaign/footage-out/haitan-network/objective-4.mp4",
+      "kind": "game",
+      "dur": 4.2,
+      "zoom": 1.1,
+      "card": {
+        "kicker": "Bonus objective",
+        "text": "Protect the network relay."
+      }
+    },
+    {
+      "src": "C:/Users/Admin/Code/hq/montage/out/reels/films/story-mv77pk3h/s05.mp4",
+      "kind": "cinema",
+      "voice": "C:/Users/Admin/Code/hq/montage/out/reels/films/story-mv77pk3h/n05.wav",
+      "line": "Send the amphibious vehicles through the gate under covering fire."
+    },
+    {
+      "src": "D:/rtsai-campaign/footage-out/haitan-network/battle.mp4",
+      "kind": "game",
+      "in": 1.5,
+      "dur": 10,
+      "zoom": 1.25
+    },
+    {
+      "src": "C:/Users/Admin/Code/hq/montage/out/reels/films/story-mv77pk3h/s06.mp4",
+      "kind": "cinema",
+      "voice": "C:/Users/Admin/Code/hq/montage/out/reels/films/story-mv77pk3h/n06.wav",
+      "line": "Bring the islands online."
+    }
+  ]
+}

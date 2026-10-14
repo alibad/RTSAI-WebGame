@@ -35,7 +35,11 @@ const game = (file) => path.join(footageDir, file).replace(/\\/g, "/");
 const objectiveShots = () => {
   if (!footage) return [];
   const seen = new Set();
-  return footage.segments.filter((s) => s.objective && !seen.has(s.objective.index) && seen.add(s.objective.index)).map((s) => ({
+  // At most four, places before timers: a "survive" objective has nothing to show on the map.
+  const shots = footage.segments.filter((s) => s.objective && !seen.has(s.objective.index) && seen.add(s.objective.index));
+  const shown = [...shots.filter((s) => s.objective.kind !== "survive"), ...shots.filter((s) => s.objective.kind === "survive")].slice(0, 4)
+    .sort((a, b) => a.objective.index - b.objective.index);
+  return shown.map((s) => ({
     src: game(s.file), kind: "game", dur: 4.2, zoom: 1.1,
     card: { kicker: s.objective.secondary ? "Bonus objective" : `Objective ${s.objective.index}`, text: s.objective.text },
   }));
@@ -54,6 +58,13 @@ spec.shots.forEach((shot, i) => {
   }
   if (shot.id === "commander") segments.push(...objectiveShots());
 });
+// No briefing-table shot: the real battlefield follows the opening shot, captioned with the place (a card, so the film
+// keeps one narrator).
+if (footage && !spec.shots.some((s) => s.reference === "map")) {
+  const storyFile = opt("story", "D:/rtsai-campaign/RTSAI-Mod/resources/campaign-story.json");
+  const where = fs.existsSync(storyFile) ? JSON.parse(fs.readFileSync(storyFile, "utf8")).chapters?.[mission]?.location : null;
+  segments.splice(1, 0, { src: game("establishing.mp4"), kind: "game", dur: 6.5, zoom: 1.1, ...(where ? { card: { kicker: "Area of operations", text: where } } : {}) });
+}
 // No commander shot: the objectives follow the battlefield glide.
 if (footage && !spec.shots.some((s) => s.id === "commander")) {
   const at = segments.findIndex((s) => s.kind === "game") + 1 || 1;
