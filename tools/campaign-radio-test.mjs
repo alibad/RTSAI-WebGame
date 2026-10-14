@@ -92,6 +92,31 @@ try {
   await page.getByRole("heading", { name: missions.find((m) => launchable(m.id)).title, exact: true }).waitFor();
   console.log("Prologue film passed.");
 
+  // After the last act: the sequel's card stays locked; the epilogue's film (listed in the index) plays like the prologue,
+  // and its briefing points on to the sequel, which cannot start.
+  if (story.sequel) {
+    const sequel = page.locator(`.cp-mission.is-locked[data-chapter="${story.sequel.id}"]`);
+    await sequel.scrollIntoViewIfNeeded();
+    assert.equal(await sequel.evaluate((el) => el.tagName), "DIV");
+    assert.match(await sequel.textContent(), /Coming/);
+  }
+  const epilogue = story.epilogue ? page.getByRole("button", { name: `${story.epilogue.eyebrow ?? "Epilogue"}: ${story.epilogue.title}`, exact: true }) : null;
+  if (epilogue && await epilogue.count()) {
+    const lastArc = page.locator(`.cp-arc[data-arc="${story.arcs.at(-1).id}"]`);
+    assert(await lastArc.evaluate((a, b) => !!(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING), await epilogue.elementHandle()), "the epilogue card is not after the last act");
+    await epilogue.scrollIntoViewIfNeeded();
+    const fetchedEpilogue = page.waitForResponse((r) => r.url().endsWith(`${story.epilogue.id}/briefing.mp4`) && r.ok(), { timeout: 60000 });
+    await epilogue.click();
+    await fetchedEpilogue;
+    await page.waitForFunction(() => document.querySelector("video")?.readyState >= 2, null, { timeout: 60000 });
+    const ep = await page.locator("video").evaluate(async (v) => { v.muted = true; await v.play(); await new Promise((r) => setTimeout(r, 1500)); return { time: v.currentTime, src: v.currentSrc }; });
+    assert(ep.time > 0, JSON.stringify(ep));
+    if (story.sequel) assert(await page.getByRole("button", { name: `${story.sequel.eyebrow ?? "Next"} · ${story.sequel.title} · Coming` }).isDisabled(), "the sequel can be started");
+    await shot("epilogue-desktop");
+    await page.locator("video").evaluate((v) => v.pause());
+    console.log("Epilogue film passed; the sequel stays locked.");
+  } else console.log(`Epilogue: no published film, so no card${story.sequel ? "; the sequel card is locked" : ""}.`);
+
   // A chapter's briefing with its commander, then the launch.
   await page.getByRole("button", { name: /Jizan Corridor/ }).click();
   await page.locator(`.cp-voice[data-speaker="${story.chapters[MISSION].speaker}"] .cast-portrait img`).waitFor({ timeout: 30000 });
