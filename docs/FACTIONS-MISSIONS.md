@@ -75,7 +75,11 @@ scripted time on normal; an idle player loses Glass Island at 8:00 and Black Pla
 ### Act IV · Aftershocks
 
 Two more chapters on the same features, one per faction, on separate coasts (rule 3 of the story bible). They need no
-new simulation code: map rules (conditions on existing traits) and mission events do the rest.
+new simulation code: map rules (conditions on existing traits) and mission events do the rest. Unlike Act III, both give
+Orion a power station, so its tesla coils charge and fire; the coil's charge sound (`btespow.wav`) is not in the public
+build, and a missing file stops the browser simulation, so a map rule (`POWERED_TESLA`) charges them with the tesla
+trooper's sound. (A powered coil anywhere else, such as a Soviet-side skirmish base, would still ask for the missing
+file.)
 
 - **Sweet Water** (`sweet-water`, Iran, Colonel Arash Tavakoli): Jizan Corridor's terrain with a painted coast and dock,
   a salt flat (the tileset's sand) and the salt road across it. A road camp with a small column. Three roadblocks
