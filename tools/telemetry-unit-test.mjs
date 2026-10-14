@@ -74,6 +74,17 @@ const missionEnd = calls.find((c) => c.name === 'match_ended');
 assert.deepEqual([missionEnd.props.kind, missionEnd.props.result, missionEnd.props.map, missionEnd.props.faction], ['campaign', 'left', 'glass-island-mission', 'russia']);
 assert.equal(calls.filter((c) => c.name === 'game_loaded').length, 0, 'game_loaded is reported once');
 
+// Uncaught failures are counted without leaking arbitrary rejected values, error messages or URL queries.
+globalThis.location = { href: 'http://127.0.0.1/' };
+calls.length = 0;
+const failure = () => Object.assign(new Event('error'), { error: new TypeError('private diagnostic text'), filename: 'http://127.0.0.1/assets/game-abc.js?private=value', lineno: 42 });
+window.dispatchEvent(failure()); window.dispatchEvent(failure());
+window.dispatchEvent(Object.assign(new Event('unhandledrejection'), { reason: { private: 'never send this object' } }));
+assert.equal(calls.length, 2, 'duplicate page errors are suppressed');
+assert.deepEqual(calls[0], { name: 'game_error', props: { where: 'page', message: 'TypeError', file: 'game-abc.js', line: 42 } });
+assert.equal(calls[1].props.where, 'promise');
+assert.ok(!JSON.stringify(calls).includes('private'), 'no messages, arbitrary values or query strings in page diagnostics');
+
 // Without a configured account nothing is sent.
 globalThis.__account.configured = false;
 globalThis.__site.length = 0;
