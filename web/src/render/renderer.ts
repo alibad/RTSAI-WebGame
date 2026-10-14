@@ -229,6 +229,9 @@ export class Renderer {
     this.shroudTex = null;
     this.textures.clear();
     this.palette = null;
+    // The terrain's buffers died with the old context (deleting them on the new one is an INVALID_OPERATION).
+    this.terrainVao = null;
+    this.terrainBuffers = [];
     const pal = this.paletteCopy;
     if (pal) this.uploadTexture(pal.id, pal.version, pal.width, pal.height, 1, pal.data);
     for (const [id, t] of this.targetSizes) this.uploadTexture(id, t.version, t.width, t.height, 2, new ArrayBuffer(0));
