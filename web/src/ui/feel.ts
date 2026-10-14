@@ -4,6 +4,7 @@
 // every frame from the engine's choice); this only sets the CSS variables menus and the HUD read (styles.css).
 import { CURSOR_FRAME_MS, cursorFor, modCursor, modCursorsVersion } from "./cursors";
 import { preferences } from "../preferences";
+import { audioContextClass } from "../audio";
 
 const CLICKABLE = 'button:not(:disabled), a[href], [role="button"], [role="tab"], [role="option"], [role="menuitem"], [role="switch"], select, summary, input[type="range"], input[type="checkbox"], input[type="radio"], .cameo:not([data-disabled="true"])';
 /** Controls that tick when hovered: the menu's big choices. Every control inside [data-ui-sfx] clicks on press. */
@@ -67,8 +68,9 @@ export function installUiFeel(): () => void {
     animation = window.setInterval(step, CURSOR_FRAME_MS);
   };
   const press = (e: PointerEvent) => {
-    audio ??= new AudioContext({ latencyHint: "interactive" });
-    if (audio.state === "suspended") void audio.resume();
+    const Context = audioContextClass();
+    if (Context) audio ??= new Context({ latencyHint: "interactive" });
+    if (audio?.state === "suspended") void audio.resume();
     const target = (e.target as Element | null)?.closest<HTMLElement>(CLICKABLE);
     if (target && target.closest("[data-ui-sfx]")) tone("press");
   };
