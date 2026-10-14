@@ -30,6 +30,22 @@ selecting and deleting behave as in the desktop editor. Changed terrain rows go 
 - Save writes the map with the engine's `Map.Save` into IndexedDB (`rtsai-maps`) and mounts it, so it appears in
   the simulator and skirmish map lists; `.oramap` downloads the same package. Test in simulator opens it there.
 
+## Missions from a real place (operations)
+
+"Start mission" in the Earth studio opens the simulator with an operation (`web/src/mission.ts` `missionOperation`).
+Its briefing is written from the analyst's intel: the place's description, who holds it, who attacks and from where.
+The campaign's objective code runs it in the engine (`Missions.StartOperation`); the targets are named placements
+(`ConstructionYard`, `WarFactory`).
+
+- **You defend:** hold the site for 5:00 and keep the construction yard standing, with keeping the war factory as a
+  bonus. The attacker's waves come from the far start position. While the clock runs, the attacker is reinforced as
+  soon as it is down to its last few units, so the engine never ends the match early as a conquest. The garrison
+  starts 40% stronger than the first attack.
+- **You attack:** destroy the construction yard, with the war factory as a bonus. The defender's AI builds from its
+  base.
+- Radio calls play on the campaign's radio panel (`radio.ts` `setOperation`). The enemy skill sets the difficulty.
+  "Free battle" drops the objectives but keeps the forces.
+
 ## Battle simulator (`?mode=simulator`)
 
 - Pick a map (or a random one), each side's nation and the enemy AI's skill (Easy / Normal / Hard / Brutal: the
