@@ -487,7 +487,7 @@ export class Game {
     this.audio.stop(-1);
     this.info = null;
     this.ui = null;
-    store.set({ phase: "setup", info: null, ui: null, catalog: [], menuOpen: false, keysOpen: false, preparedMap: null });
+    store.set({ phase: "setup", info: null, ui: null, catalog: [], menuOpen: false, keysOpen: false, reviewOpen: false, preparedMap: null });
     // A replay watched at 4x must not speed up the next match (the worker keeps its speed between worlds).
     this.client.send({ type: "speed", speed: 1 });
   }

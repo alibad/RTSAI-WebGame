@@ -286,8 +286,8 @@ export function MissionHud({ game }: { game: Game }) {
   const mission = useStore((s) => s.ui?.mission);
   const win = useStore((s) => s.ui?.win);
   const catalog = useStore((s) => s.setup?.missions);
-  // Phones start with the objectives folded: the battlefield is small enough already.
-  const [expanded, setExpanded] = useState(() => innerWidth >= 700 && innerHeight >= 500);
+  // Phones and tablets start with the objectives folded (the header keeps the count): the battlefield is small enough.
+  const [expanded, setExpanded] = useState(() => innerWidth >= 700 && innerHeight >= 500 && !matchMedia("(pointer: coarse)").matches);
   useEffect(() => {
     if (mission && win === "Won") {
       try { localStorage.setItem("rtsai.missions.completed", JSON.stringify({ ...progress(), [mission.id]: mission.difficulty })); } catch { /* storage unavailable */ }

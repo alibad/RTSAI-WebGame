@@ -273,7 +273,7 @@ export function Sidebar({ game }: { game: Game }) {
   const radarSize = compact ? Math.max(96, Math.min(168, Math.floor(h * 0.3))) : 232;
   const paletteH = Math.max(80, availableHeight || h - radarSize - 8 - 44 - 36 - 28);
   return (
-    <aside className="hud-panel absolute right-0 top-0 flex h-full flex-col gap-[6px] p-[8px]" style={{ width: "var(--sidebar-w)" }} onContextMenu={(e) => e.preventDefault()}>
+    <aside className="hud-panel hud-sidebar absolute right-0 top-0 flex h-full flex-col gap-[6px] p-[8px]" style={{ width: "var(--sidebar-w)" }} onContextMenu={(e) => e.preventDefault()}>
       <Minimap game={game} size={radarSize} />
       <div className="flex items-center justify-between gap-2 px-[2px]">
         <Credits />

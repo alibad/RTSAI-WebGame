@@ -689,3 +689,50 @@
 .gx-restoring svg { color: var(--hud-gold); }
 .gx-restoring b { font-size: 16px; font-weight: 800; color: #f4ecd6; }
 .gx-restoring span { max-width: 32ch; font-size: 13px; line-height: 1.45; color: #b9c0ad; }
+
+/* ------------------------------------------------------------------ short screens: a phone held sideways
+   The battlefield is about 340 px tall there, so the HUD gives it back: the co-commander is its one strip at the top
+   right (a recommended order takes the strip's line, CoCommander.tsx), the radio call is compact and on top of what it
+   meets, the battlefield review lives in the game menu, the objectives start folded (Missions.tsx), the hints and
+   annotations are smaller, and the sidebar folds away from its handle. Desktop and tablets are unchanged. */
+.pm-item.pm-review { display: none; }
+.hud-sidebar-handle { display: none; }
+@media (max-height: 500px) {
+  :root { --mh-w: min(214px, calc(100vw - var(--sidebar-w) - 24px)); --mission-hud-top: 48px; }
+  :root .cc-root, :root .cc-root.has-mission { top: 6px; bottom: auto; left: auto; right: calc(var(--sidebar-w) + 6px); justify-content: flex-end; }
+  :root .cc-col { width: min(280px, calc(100vw - var(--sidebar-w) - var(--mh-w) - 60px)); max-height: calc(100dvh - 20px); }
+  :root .cc-root:not(.is-open) .cc-col { min-width: 200px; }
+  :root .cc-strip { height: 36px; gap: 6px; padding: 0 3px 0 5px; border-radius: 9px; }
+  :root .cc-avatar { width: 26px; height: 26px; }
+  :root .cc-threat { display: none; }
+  :root .cc-line { font-size: 12px; }
+  .cc-inline-offer { display: flex; min-width: 0; flex: 1; align-items: center; gap: 4px; }
+  .cc-inline-offer .cc-line { display: inline-flex; align-items: center; gap: 5px; color: #f6e7bd; }
+  .cc-inline-offer .cc-line svg { flex: none; color: var(--hud-gold); }
+  .cc-inline-offer .cc-apply { height: 30px; padding: 0 8px; gap: 4px; }
+  .cc-inline-offer .cc-cancel { width: 30px; height: 30px; }
+  :root .mh-stack { z-index: 32; gap: 6px; max-height: calc(100dvh - var(--mission-hud-top) - 8px); }
+  :root .mh-head { gap: 7px; padding: 5px 7px; }
+  :root .mh-icon { width: 20px; height: 20px; }
+  :root .mh-title { font-size: 12px; }
+  /* Folded, the objectives are just their header: no wider than it needs. */
+  :root .mh-panel:has(> .mh-head[aria-expanded="false"]) { align-self: flex-start; max-width: 100%; }
+  :root .mh-head[aria-expanded="false"] .mh-title { flex: 0 1 auto; max-width: 128px; }
+  :root .mh-objectives { max-height: 42vh; padding: 8px 10px 10px; }
+  :root .rd-call { gap: 6px; padding: 4px 22px 5px 5px; }
+  :root .rd-portrait { width: 26px; height: 26px; }
+  :root .rd-portrait .cast-initials { font-size: 11px; }
+  :root .rd-who b { font-size: 9.5px; letter-spacing: .1em; }
+  :root .rd-line { margin-top: 1px; font-size: 11px; line-height: 1.28; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  :root .cv-toggle { display: none; }
+  :root .cv-root { bottom: 8px; }
+  .pm-item.pm-review { display: flex; }
+  :root .an-card, :root .an-card.has-mission { width: min(190px, calc(100% - 16px)); padding: 7px 8px; gap: 3px; bottom: calc(var(--hud-console-h, 0px) + 12px); }
+  :root .an-card p { display: none; }
+  :root .an-head b { font-size: 12px; }
+  .hud-sidebar-handle { position: absolute; right: var(--sidebar-w); top: 50%; z-index: 25; display: grid; place-items: center; width: 26px; height: 56px; margin-top: -28px; border-radius: 9px 0 0 9px; border: 1px solid var(--hud-edge-hi); border-right: 0; background: linear-gradient(180deg, rgba(29, 35, 26, .96), rgba(11, 14, 10, .96)); color: var(--hud-gold); box-shadow: -6px 0 16px rgba(0, 0, 0, .4); }
+  /* A finger needs more than the handle's 26 px: an invisible margin widens what it can hit. */
+  .hud-sidebar-handle::before { content: ""; position: absolute; inset: -6px 0 -6px -18px; }
+  :root[data-sidebar="collapsed"] { --sidebar-w: 0px; }
+  :root[data-sidebar="collapsed"] .hud-sidebar { display: none; }
+}

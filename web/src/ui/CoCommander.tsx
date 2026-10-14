@@ -8,6 +8,7 @@ import type { FeedItem } from "../cocommander";
 import { useStore } from "../store";
 import { GameButton, Kbd } from "./kit/game";
 import { Strategies } from "./Strategies";
+import { SHORT_SCREEN, useMedia } from "./use-media";
 
 const THREAT = { calm: "var(--hud-green)", guarded: "var(--hud-yellow)", high: "#ff8a3d", critical: "var(--hud-red)" } as Record<string, string>;
 const IMPORTANCE = { routine: "#8f9886", important: "var(--hud-yellow)", critical: "var(--hud-red)" } as Record<string, string>;
@@ -60,6 +61,21 @@ function ProposalCard({ game, item }: { game: Game; item: FeedItem }) {
   );
 }
 
+/** The recommended order inside the strip (short screens): its text, Apply and Cancel on one line. */
+function InlineProposal({ game, item }: { game: Game; item: FeedItem }) {
+  const paused = useStore(s => s.paused);
+  const uncertain = useStore(s => !!s.cc.uncertainProposalId);
+  return (
+    <span className="cc-inline-offer">
+      <button type="button" className="cc-line" title={item.text} onClick={() => game.cc.setOpen(true)}><ArrowRight size={13} aria-hidden="true" />{item.text}</button>
+      {item.state === "pending" ? <>
+        <button type="button" className="cc-apply" disabled={uncertain || paused} onClick={() => game.cc.decide(item, true)} aria-label="Apply recommendation"><Check size={14} strokeWidth={3} />Apply</button>
+        <button type="button" className="cc-cancel" onClick={() => game.cc.decide(item, false)} aria-label="Cancel"><X /></button>
+      </> : <span className="cc-state">{item.state === "applying" ? "Applying…" : "Done"}</span>}
+    </span>
+  );
+}
+
 function Line({ game, item }: { game: Game; item: FeedItem }) {
   if (item.kind === "proposal") return <ProposalCard game={game} item={item} />;
   if (item.kind === "you") return <div className="cc-you">{item.text}</div>;
@@ -86,6 +102,8 @@ export function CoCommander({ game }: { game: Game }) {
   // A campaign operation's objectives sit at the top left (Missions.tsx): the strip moves beside them.
   const mission = useStore((s) => !!s.ui?.mission);
   const feedRef = useRef<HTMLDivElement>(null);
+  // Short screens: one line only; a recommended order takes the strip's line instead of a card under it.
+  const short = useMedia(SHORT_SCREEN);
   useEffect(() => { feedRef.current?.scrollTo({ top: 1e6 }); }, [cc.feed.length, cc.open]);
   if (!cc.enabled || !available || game.sandboxMatch || game.replayMatch) return null;
 
@@ -104,7 +122,8 @@ export function CoCommander({ game }: { game: Game }) {
         <div className="cc-strip">
           <Avatar state={state} />
           <Threat score={threat?.score ?? 0} level={threat?.level ?? "calm"} reason={threat?.reason ?? ""} />
-          <button type="button" onClick={() => game.cc.setOpen(!cc.open)} className="cc-line" title={line}>{line}</button>
+          {short && !cc.open && pending ? <InlineProposal game={game} item={pending} />
+            : <button type="button" onClick={() => game.cc.setOpen(!cc.open)} className="cc-line" title={line}>{line}</button>}
           {cc.mode !== "browser" && <button type="button" aria-label="Hold to talk (V)" data-tip="Hold to talk · V"
             onPointerDown={(e) => { e.preventDefault(); game.cc.startListening(); }} onPointerUp={() => game.cc.stopListening()} onPointerLeave={() => cc.listening && game.cc.stopListening()}
             className={`cc-icon${cc.listening ? " is-live" : ""}`}>
@@ -123,7 +142,7 @@ export function CoCommander({ game }: { game: Game }) {
           <span>The last order's outcome is unknown. Check the battlefield before asking for more.</span>
           <GameButton size="sm" onClick={() => game.cc.acknowledgeOutcome()}>I checked this outcome</GameButton>
         </div>}
-        {!cc.open && pending && <ProposalCard game={game} item={pending} />}
+        {!cc.open && pending && !short && <ProposalCard game={game} item={pending} />}
 
         {cc.open && (
           <div className="cc-feed hud-card">
