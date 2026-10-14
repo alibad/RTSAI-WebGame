@@ -507,7 +507,9 @@ def lights_in_the_water():
     for name, u in sites:
         v = coast[u]-3
         m.add(name, 'waypoint', 'Neutral', u, v)
-        for k, kind in enumerate(['civ1', 'civa', 'civ2'] if name != 'StrangerSite' else ['civb', 'civ3']):
+        # Engineers (workers in overalls) stand in for the fishing crews: the standalone's civilians are still
+        # placeholder art.
+        for k, kind in enumerate(['engineer'] * (3 if name != 'StrangerSite' else 2)):
             m.add(f'{name}Civilian{k}', kind, 'Survivors', u-2+k*2, v-1)
     m.add('Stranger', 'tany', 'Survivors', 87, coast[87]-5)
     # Orion patrols have reached each group: heavier the further east (the stranger is what Orion wants).
