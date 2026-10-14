@@ -55,15 +55,15 @@ Actors:
 	TownMissilesNorth: r2ycoastal
 		Owner: Yemen
 		Location: 57,1
+	TownMissilesWest: r2ycoastal
+		Owner: Yemen
+		Location: 39,15
 	TownBunkerEast: r2ybunker
 		Owner: Yemen
 		Location: 67,-1
 	TownMissilesEast: r2ycoastal
 		Owner: Yemen
 		Location: 68,4
-	TownMissilesWest: r2ycoastal
-		Owner: Yemen
-		Location: 39,15
 	TownClinic: cahosp
 		Owner: Yemen
 		Location: 48,16

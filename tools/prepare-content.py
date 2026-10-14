@@ -487,9 +487,11 @@ def lights_in_the_water():
     m.add('WatchBunker', 'r2ybunker', 'Yemen', 35, 50)
     m.add('TownBunkerNorth', 'r2ybunker', 'Yemen', 22, 56)
     m.add('TownMissilesNorth', 'r2ycoastal', 'Yemen', 28, 58)
+    # The north and west sites before the east ones: the columns reach the coast road (and the arriving
+    # transports) as late as possible.
+    m.add('TownMissilesWest', 'r2ycoastal', 'Yemen', 12, 54)
     m.add('TownBunkerEast', 'r2ybunker', 'Yemen', 34, 66)
     m.add('TownMissilesEast', 'r2ycoastal', 'Yemen', 32, 72)
-    m.add('TownMissilesWest', 'r2ycoastal', 'Yemen', 12, 54)
     m.add('TownClinic', 'cahosp', 'Yemen', 16, 64)
     m.add('TownPowerOne', 'napowr', 'Yemen', 10, 58)
     m.add('TownPowerTwo', 'napowr', 'Yemen', 8, 66)
