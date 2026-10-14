@@ -9,6 +9,70 @@ apply:
   built site (the game is built locally from the pinned inputs), so the root `vercel.json` turns Git deployments off.
   A Git deployment on 13 October served the raw repository and had to be rolled back.
 
+## Releasing
+
+Since 14 October 2026 every release of /play goes through one command, `tools/release-play.mjs`. Before it,
+releases were assembled by hand from scripts kept in each session's own folders. On 14 October a runtime built from a
+stale worktree shipped without a fix that was already on main. Pages built from branches would have dropped other
+sessions' shipped work.
+
+```sh
+node tools/release-play.mjs status
+node tools/release-play.mjs prepare --update "<what players get>" [--data <build-public output>] [--runtime rebuild] [--dry]
+node tools/release-play.mjs promote      # with the owner's approval
+node tools/release-play.mjs abort        # gives up a prepared release
+```
+
+`prepare` runs these steps in order and refuses as soon as one fails:
+1. **Source.** The checkout must be clean and at the freshly fetched `origin/main`, and the live page's commit must be
+   on main. Otherwise the release would drop it.
+2. **Runtime, only when needed.** It rebuilds when the runtime's source differs from the live runtime's. That source
+   is `sim/` without the native tools, plus the root build props, the engine pin from RTSAI-Mod `origin/main`, and the
+   data's mod snapshot.
+   - The live runtime's source comes from `runtimeSource` in the live BUILD.json, or from `knownRuntimes` in
+     `tools/release-play.json` for roots older than that field.
+   - The build uses a Git-free copy of the pinned engine, which must already be on `alibad/OpenRA` `rtsai/engine`.
+     It is stamped as `tools/public.py` stamps its copy.
+   - The mod snapshot is the `tools/prepare-inputs.py` output whose mod identity is the data's (`--inputs`, or the
+     folders listed in `inputsSearch`).
+   - After the build come `stamp-runtime.mjs` and `verify-runtime.mjs`, then the root, laid out and named exactly as
+     `build-public.mjs` does.
+3. **Page.** It is built against the Cloudflare roots.
+   - Part of the page is compiled from the website's source (RTSAI-Web; see `web/vite.config.ts`). That source comes
+     from a checkout of its `origin/main` that only the tool uses (`<work>/site`, with its own `node_modules`).
+   - The Faction viewer data is regenerated from that checkout on every release.
+   - The settings come from `tools/release-play.json` (`page`), and the Firebase web config from the work folder's
+     `firebase.env`.
+   - Stray `VITE_` keys in `web/.env*` are refused, because they would change the page behind those settings.
+   - BUILD.json records `runtimeSource`, `pageSettings` and `release` (with the website commit).
+4. **Cloudflare, only for new roots.** The shared folder (`cdn.dir`) must still hold every file of the live
+   `MANIFEST.json`, because wrangler replaces the whole site with the folder. A new runtime root gets its one header
+   rule. The tool checks the limits: at most 100 rules, under 20,000 files, at most 25 MiB a file. Then it deploys
+   with a new `MANIFEST.json`, and checks that Cloudflare serves every runtime file byte for byte with
+   `Content-Encoding: br`.
+5. **Smoke test.** The same page without the sign-in gate (`--mode nogate`) is served locally on the Cloudflare roots.
+   `tools/release-smoke.mjs` plays an isometric skirmish, the original-art battle and a Classic skirmish. Each must
+   start, tick and draw; quitting must free the match's textures; nothing may throw.
+6. **Vercel preview.** The preview keeps every live file by SHA and uploads only the new page files; a cache of live
+   file sizes stays in the work folder. Through `vercel curl`, the tool checks the preview's BUILD.json, index.html,
+   isolation headers and every script against the build.
+
+`promote` does these things in order:
+- It re-checks that production is still the deployment the release was prepared on. If not, another release went
+  out, so run `abort` and prepare again from the new main.
+- It checks the standard build machine and prints `vercel usage`.
+- It promotes the preview.
+- It checks that rtsai.net/play serves this release's BUILD.json with the isolation headers.
+- It writes a receipt and prints the lines for the release record.
+
+`<work>/release.json` is the release in progress, and it is also the lock: one release at a time. `--dry` builds and
+smoke-tests, serving new roots locally, and deploys nothing. It may run on unpushed commits on top of main, and it
+lists what would block the real release.
+
+New data roots still come from the pipeline below (`prepare-inputs.py`, `public.py`, the AOT publish,
+`build-public.mjs`). Give its output to `prepare --data <dir>`, which copies the data root to Cloudflare. Data roots
+need no header rules of their own.
+
 ## What gets published
 
 `node tools/build-public.mjs` writes `build/public-web/`. This is the standalone game: project art and audio, no
@@ -211,7 +275,7 @@ keeps China's voice and a China dog barks with the original clips, the only ones
 
 ## Frontend-only updates
 
-When only the page changes (runtime and data roots unchanged), a deployment can reuse every file of the current
+`tools/release-play.mjs` does this; the notes below explain what it does. When only the page changes (runtime and data roots unchanged), a deployment can reuse every file of the current
 production deployment by SHA and upload just `index.html`, `BUILD.json` and the new `assets/*` (about 2 MB):
 list the files with `vercel api /v6/deployments/<id>/files`, create a preview with `/v13/deployments`, check it,
 then `vercel promote`. Build the page with the current `rtRoot`/`dataRoot` from the live `BUILD.json`.
@@ -226,7 +290,7 @@ RTSAI-Web checkout (project rtsai-web) cleared it.
 Since 13 October the page at rtsai.net/play (Vercel) loads the runtime and data roots from the Cloudflare Pages project
 `rtsai-play-cdn` (https://rtsai-play-cdn.pages.dev). Cloudflare has an edge in Doha; Vercel answers players in Qatar
 from Mumbai. Measured from Qatar: about 4 ms per file against about 215 ms, and 18 ms against about 410 ms for a new
-connection. To publish new roots:
+connection. `tools/release-play.mjs` publishes new roots. By hand, the steps would be:
 1. Copy `rt-<hash>/` and `data-<hash>/` from the build into a folder with a `_headers` file. That file holds the build's
    `/rt-*` and `/data-*` rules (Cache-Control, `Content-Encoding: br`, Content-Type) plus `Access-Control-Allow-Origin: *`
    and `Cross-Origin-Resource-Policy: cross-origin` for every path. Cloudflare serves the pre-compressed files as they

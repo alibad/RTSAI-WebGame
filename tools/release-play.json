@@ -1,0 +1,52 @@
+{
+  "$comment": "Settings for tools/release-play.mjs. Page settings live here (not in a session's shell) so every release carries them. Change them by a commit on main.",
+  "work": "D:/rtsai-play-release",
+  "dotnet": "C:/Users/Admin/.dotnet/dotnet.exe",
+  "firebaseEnv": ["D:/rtsai-play-release/firebase.env", "web/.env.production.local"],
+  "page": {
+    "VITE_SITE_ORIGIN": "https://rtsai.net",
+    "VITE_CAMPAIGN_BASE": "https://rtsai-play-cdn.pages.dev/campaign-v2/"
+  },
+  "cdn": {
+    "host": "https://rtsai-play-cdn.pages.dev/",
+    "project": "rtsai-play-cdn",
+    "dir": "D:/rtsai-ea-build/play-cdn",
+    "keep": ["campaign-v2/index.json"]
+  },
+  "vercel": {
+    "team": "alibads-projects",
+    "teamId": "team_vyYwnzjzjg22op14xtC0QXwT",
+    "project": "rtsai-play",
+    "projectId": "prj_aYJ7Z22t1dOilSKc53zEDeGKMvJC",
+    "alias": "rtsai-play.vercel.app",
+    "public": "https://rtsai.net/play/"
+  },
+  "repos": {
+    "mod": "C:/Users/Admin/Code/hq/games/RTSAI-Mod",
+    "engine": "C:/Users/Admin/Code/hq/games/OpenRA",
+    "site": "C:/Users/Admin/Code/hq/games/RTSAI-Web",
+    "engineBranch": "fork/rtsai/engine"
+  },
+  "inputsSearch": ["D:/rtsai-play-release/inputs"],
+  "inputsRoots": ["D:/"],
+  "knownRuntimes": {
+    "rt-a628db97b644/": {
+      "$comment": "Built on 14 Oct 2026 before runtime provenance existed (RELEASE-20261014.md sixth update).",
+      "webgame": "f76aca6",
+      "engine": "53424ddb7954c9f30f6cb11f4f8163b86595bdf1",
+      "mod": "ac910741688875a7f55644871a84f46d5763b8abc7ded8a779e2744e2a927edf"
+    },
+    "rt-04dcc660ef36/": {
+      "$comment": "Built on 14 Oct 2026 from campaign/phase2 (RELEASE-20261014.md eighth update); its runtime source equals efba68d's.",
+      "webgame": "efba68d",
+      "engine": "53424ddb7954c9f30f6cb11f4f8163b86595bdf1",
+      "mod": "ac910741688875a7f55644871a84f46d5763b8abc7ded8a779e2744e2a927edf"
+    },
+    "rt-e41b29d7a092/": {
+      "$comment": "Built on 14 Oct 2026 from main's sim (unchanged 747ce0f..22570cf) with RTSAI-Mod b6794bd's inputs (RELEASE-20261014.md ninth update).",
+      "webgame": "22570cf",
+      "engine": "53424ddb7954c9f30f6cb11f4f8163b86595bdf1",
+      "mod": "de43103b08fb34cf10d662b81e9de816fbbcfd9b51215c34244b0c32cae4618b"
+    }
+  }
+}
