@@ -352,16 +352,22 @@ TILE = dict(water=1 if CLASSIC_MODE else 1015, rough=2 if CLASSIC_MODE else 1047
             road=3 if CLASSIC_MODE else 1031, beach=0 if CLASSIC_MODE else 1063, clear=0)
 MAP_RULES = 'World:\n\t-SpawnStartingUnits:\n\t-CrateSpawner:\n\t-StartGameNotification:\nPlayer:\n\t-ConquestVictoryConditions:\n'
 
-def chapter_players(slot, faction, color, extra=''):
+def chapter_players(slot, faction, color, extra='', ally=None):
+    allies = f'\tAllies: {ally}\n' if ally else ''
     return parse(f'PlayerReference@{slot}:\n\tName: {slot}\n\tAllowBots: False\n\tPlayable: True\n\tRequired: True\n'
                  f'\tLockFaction: True\n\tFaction: {faction}\n\tLockColor: True\n\tColor: {color}\n\tLockSpawn: True\n'
-                 f'\tLockTeam: True\n\tEnemies: Orion Group\n'
-                 'PlayerReference@Orion:\n\tName: Orion Group\n\tFaction: russia\n\tColor: 545D66\n\tEnemies: '+slot+'\n'
+                 f'\tLockTeam: True\n{allies}\tEnemies: Orion Group\n'
+                 'PlayerReference@Orion:\n\tName: Orion Group\n\tFaction: russia\n\tColor: 545D66\n\tEnemies: '+slot+(f', {ally}' if ally else '')+'\n'
                  'PlayerReference@Neutral:\n\tName: Neutral\n\tOwnsWorld: True\n\tNonCombatant: True\n\tFaction: china\n'+extra)
 
 # Stranded crews and the stranger: a non-combatant side nobody is hostile to. Its faction (one of the original
 # countries) only gives the stranger the original 1950s commando art in the isometric mode.
 SURVIVORS = 'PlayerReference@Survivors:\n\tName: Survivors\n\tNonCombatant: True\n\tFaction: america\n\tColor: D8D2C4\n'
+# Tanya with Colonel Aydin's defenders: her own allied side, not a Turkish unit. A modern faction fielding her would
+# change the original-art and original-voice overlays for everyone (tools/ea_originals.py and ea_voices.py follow
+# who fields an actor, missions included): her pistols would lose their original sound, and Turkey would draw her in
+# the original art.
+TANYA_SIDE = 'PlayerReference@Tanya:\n\tName: Tanya\n\tFaction: america\n\tColor: 3A8F5B\n\tAllies: Turkey\n\tEnemies: Orion Group\n'
 
 class ChapterMap:
     """A converted base map's terrain plus new actors; validates every placement against the terrain."""
@@ -436,11 +442,11 @@ class ChapterMap:
                     seen.add(n); todo.append(n)
         return False
 
-    def write(self, title, slot, faction, color, extra_rules='', extra_players=''):
+    def write(self, title, slot, faction, color, extra_rules='', extra_players='', ally=None):
         m = self.yaml
         m['Title'] = node(title); m['Author'] = node('RTS AI — Lines of Hope')
         m['Visibility'] = node('MissionSelector'); m['Categories'] = node('Campaign')
-        m['Players'] = node(children=chapter_players(slot, faction, color, extra_players))
+        m['Players'] = node(children=chapter_players(slot, faction, color, extra_players, ally))
         m['Actors'] = node(children=self.actors)
         m['Rules'] = node(children=parse(MAP_RULES+extra_rules))
         d = OUT/'maps'/self.id; d.mkdir(parents=True, exist_ok=True)
@@ -576,7 +582,7 @@ def hold_the_ferry_line():
                              ('TurkeyRefinery', 'garefn', 84, 78)]:
         m.add(name, kind, 'Turkey', u, v)
     m.add('MissionSpawn', 'mpspawn', 'Neutral', 80, 83)
-    m.add('Tanya', 'tany', 'Turkey', 78, 84)
+    m.add('Tanya', 'tany', 'Tanya', 78, 84)
     force = [('r2trrifle', 6), ('r2trat', 4), ('r2bozkir', 2), ('r2aras', 2), ('r2gokkalkan', 1)]
     i = 0
     for kind, count in force:
@@ -599,7 +605,7 @@ def hold_the_ferry_line():
                  ('OrionWaveEntry', 'FerryPierNorth'), ('OrionWaveEntry', 'TurkeyConyard')]:
         if not m.reachable(a, b): raise ValueError(f'{m.id}: no land route {a} -> {b}')
     # Mission rules: the ferries are slow civilian hulls (about two minutes across).
-    m.write('Hold the Ferry Line', 'Turkey', 'turkey', 'A73731', extra_rules='lcrf:\n\tMobile:\n\t\tSpeed: 50\n')
+    m.write('Hold the Ferry Line', 'Turkey', 'turkey', 'A73731', extra_players=TANYA_SIDE, ally='Tanya', extra_rules='lcrf:\n\tMobile:\n\t\tSpeed: 50\n')
     mission = dict(id=m.id, map=m, title='Hold the Ferry Line', faction='turkey', campaign='Lines of Hope', slot='Turkey',
         enemy='Orion Group', protect=['FerryPierNorth', 'FerryPierSouth'],
         briefing=('Colonel Kemal Aydın. The port on the far side of the strait is the last ferry line out, and Orion '
