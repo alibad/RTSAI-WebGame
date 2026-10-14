@@ -644,7 +644,8 @@
   :root .menu-subnav { top: 8px; }
   :root .menu-subnav button, :root .menu-subnav .scr-tabs > button { height: 44px; }
   :root .menu-subnav .scr-tabs { padding: 2px; }
-  :root .mp-launch { top: 8px; height: 44px; }
+  /* The mode tabs' frame makes the row 50 px tall: Multiplayer sits on its centre line like the row's buttons. */
+  :root .mp-launch { top: 11px; height: 44px; }
 }
 @media (pointer: coarse) and (max-width: 560px) {
   :root .menu-subnav .menu-subnav-back, :root .menu-subnav .menu-subnav-studio { width: 44px; }
