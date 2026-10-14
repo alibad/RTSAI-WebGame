@@ -7,7 +7,7 @@ using OpenRA.Mods.Common.Traits;
 using OpenRA.Traits;
 using OpenRA.WebSim;
 
-// usage: MissionProbe <vfs root> <scenario.json> <ticks> [plan] [difficulty] (see MissionProbe.csproj)
+// usage: Probe <vfs root> <scenario.json> <ticks> [plan]
 // plan "idle": the player does nothing. plan "sweep": the whole force attack-moves through the named waypoints in
 // order (a crude stand-in for a player), moving on when the force is near each one or after a time limit.
 static class Probe
@@ -56,7 +56,8 @@ static class Probe
 				var dead = watch.Where(n => named[n].IsDead || !named[n].IsInWorld).ToArray();
 				var units = world.Actors.Count(a => a.Owner == human && a.IsInWorld && !a.IsDead && a.TraitOrDefault<IMove>() != null);
 				var enemy = world.Actors.Count(a => a.Owner.InternalName == "Orion Group" && a.IsInWorld && !a.IsDead && a.TraitOrDefault<IMove>() != null);
-				Console.WriteLine($"{world.WorldTick / 1500.0:F2} min: {state} | units {units} vs {enemy} | down: {string.Join(",", dead)}");
+				var res = human.PlayerActor.Trait<PlayerResources>();
+				Console.WriteLine($"{world.WorldTick / 1500.0:F2} min: {state} | units {units} vs {enemy} | cash {res.Cash + res.Resources} | down: {string.Join(",", dead)}");
 				lastState = state;
 			}
 

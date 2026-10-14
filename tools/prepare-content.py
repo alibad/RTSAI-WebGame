@@ -562,20 +562,18 @@ def hold_the_ferry_line():
     m.add('OrionWaveEntry', 'waypoint', 'Neutral', 136, 94)
     # Three approaches, each held by a checkpoint. Missions.Wave sends each column at the first building still
     # standing, so Orion hits the north road, then the east road, then the south road, then the piers.
-    for name, (u, v), guns in [('NorthCheckpoint', (88, 66), [('r2hisar', 93, 67), ('r2hisar', 85, 64)]),
-                               ('EastCheckpoint', (104, 76), [('r2boran', 101, 74), ('r2hisar', 108, 80)]),
-                               ('SouthCheckpoint', (90, 110), [('r2hisar', 95, 112), ('r2hisar', 88, 107)])]:
+    for name, (u, v), guns in [('NorthCheckpoint', (88, 66), [('r2hisar', 93, 67)]),
+                               ('EastCheckpoint', (104, 76), [('r2boran', 101, 74)]),
+                               ('SouthCheckpoint', (90, 110), [('r2hisar', 95, 112)])]:
         m.add(name, 'caoutp', 'Turkey', u, v)
         for k, (kind, gu, gv) in enumerate(guns): m.add(f'{name}Gun{k}', kind, 'Turkey', gu, gv)
     # Then the two ferry piers, then the port base: once the checkpoints fall, the columns go for the piers.
     for name, kind, u, v in [('FerryPierNorth', 'caoutp', 77, 59), ('FerryPierSouth', 'caoutp', 67, 86),
-                             ('PierNorthGun', 'r2boran', 82, 62), ('PierSouthGun', 'r2hisar', 71, 84),
                              ('TurkeyConyard', 'gacnst', 73, 88), ('TurkeyPowerOne', 'gapowr', 79, 86), ('TurkeyPowerTwo', 'gapowr', 82, 89),
                              ('TurkeyPowerThree', 'gapowr', 79, 92), ('TurkeyBarracks', 'gapile', 82, 95), ('TurkeyFactory', 'gaweap', 61, 91),
                              ('TurkeyRefinery', 'garefn', 84, 78)]:
         m.add(name, kind, 'Turkey', u, v)
     m.add('MissionSpawn', 'mpspawn', 'Neutral', 80, 83)
-    m.add('TurkeyHarvester', 'harv', 'Turkey', 76, 82)
     m.add('Tanya', 'tany', 'Turkey', 78, 84)
     force = [('r2trrifle', 6), ('r2trat', 4), ('r2bozkir', 2), ('r2aras', 2), ('r2gokkalkan', 1)]
     i = 0
@@ -593,13 +591,13 @@ def hold_the_ferry_line():
         for j, (u, v) in enumerate(lane):
             name = f'Ferry{k}Start' if j == 0 else f'Ferry{k}Shore' if j == len(lane)-1 else f'Ferry{k}Way{j}'
             m.add(name, 'waypoint', 'Neutral', u, v, where='water'); names[-1].append(name)
-    for k, (u, v) in enumerate([(46, 87), (48, 89), (42, 88), (39, 86)]):
+    for k, (u, v) in enumerate([(46, 87), (48, 89)]):
         m.add(f'OrionPicket{k}', 'dest', 'Orion Group', u, v, where='water')
     for a, b in [('OrionWaveEntry', 'NorthCheckpoint'), ('OrionWaveEntry', 'EastCheckpoint'), ('OrionWaveEntry', 'SouthCheckpoint'),
                  ('OrionWaveEntry', 'FerryPierNorth'), ('OrionWaveEntry', 'TurkeyConyard')]:
         if not m.reachable(a, b): raise ValueError(f'{m.id}: no land route {a} -> {b}')
-    # Mission rules: the ferries are slow, unarmoured civilian hulls.
-    m.write('Hold the Ferry Line', 'Turkey', 'turkey', 'A73731', extra_rules='lcrf:\n\tMobile:\n\t\tSpeed: 50\n\tHealth:\n\t\tHP: 150\n')
+    # Mission rules: the ferries are slow civilian hulls (about two minutes across).
+    m.write('Hold the Ferry Line', 'Turkey', 'turkey', 'A73731', extra_rules='lcrf:\n\tMobile:\n\t\tSpeed: 50\n')
     mission = dict(id=m.id, map=m, title='Hold the Ferry Line', faction='turkey', campaign='Lines of Hope', slot='Turkey',
         enemy='Orion Group', protect=['FerryPierNorth', 'FerryPierSouth'],
         briefing=('Colonel Kemal Aydın. The port on the far side of the strait is the last ferry line out, and Orion '

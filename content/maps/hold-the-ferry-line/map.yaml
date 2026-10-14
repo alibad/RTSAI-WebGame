@@ -41,39 +41,24 @@ Actors:
 	NorthCheckpointGun0: r2hisar
 		Owner: Turkey
 		Location: 127,-60
-	NorthCheckpointGun1: r2hisar
-		Owner: Turkey
-		Location: 117,-53
 	EastCheckpoint: caoutp
 		Owner: Turkey
 		Location: 142,-66
 	EastCheckpointGun0: r2boran
 		Owner: Turkey
 		Location: 138,-64
-	EastCheckpointGun1: r2hisar
-		Owner: Turkey
-		Location: 148,-68
 	SouthCheckpoint: caoutp
 		Owner: Turkey
 		Location: 145,-35
 	SouthCheckpointGun0: r2hisar
 		Owner: Turkey
 		Location: 151,-39
-	SouthCheckpointGun1: r2hisar
-		Owner: Turkey
-		Location: 142,-35
 	FerryPierNorth: caoutp
 		Owner: Turkey
 		Location: 107,-48
 	FerryPierSouth: caoutp
 		Owner: Turkey
 		Location: 110,-24
-	PierNorthGun: r2boran
-		Owner: Turkey
-		Location: 113,-51
-	PierSouthGun: r2hisar
-		Owner: Turkey
-		Location: 113,-29
 	TurkeyConyard: gacnst
 		Owner: Turkey
 		Location: 117,-29
@@ -98,9 +83,6 @@ Actors:
 	MissionSpawn: mpspawn
 		Owner: Neutral
 		Location: 122,-39
-	TurkeyHarvester: harv
-		Owner: Turkey
-		Location: 117,-35
 	Tanya: tany
 		Owner: Turkey
 		Location: 120,-36
@@ -215,12 +197,6 @@ Actors:
 	OrionPicket1: dest
 		Owner: Orion Group
 		Location: 93,-4
-	OrionPicket2: dest
-		Owner: Orion Group
-		Location: 86,2
-	OrionPicket3: dest
-		Owner: Orion Group
-		Location: 82,4
 Rules:
 	World:
 		-SpawnStartingUnits:
@@ -231,5 +207,3 @@ Rules:
 	lcrf:
 		Mobile:
 			Speed: 50
-		Health:
-			HP: 150
