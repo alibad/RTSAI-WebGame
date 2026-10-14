@@ -88,6 +88,19 @@ try {
       assert.equal(s.mission.objectives[2].status, "active");
       await page.waitForTimeout(2500);
       await page.screenshot({ path: `${out}/${id}-alarm.png` });
+      // The alarm's radio call (keyed off ui.mission.events) comes on air once the calls before it are dismissed.
+      for (let i = 0; i < 40 && ![...radio].some((l) => /seen us/.test(l)); i++) {
+        const line = await page.locator(".rd-call .rd-line").textContent().catch(() => "");
+        if (line && !/seen us/.test(line)) await page.getByRole("button", { name: "Dismiss radio call" }).click().catch(() => {});
+        await page.waitForTimeout(500);
+      }
+      checks.alarmCall = [...radio].find((l) => /seen us/.test(l)) ?? null;
+      assert(checks.alarmCall, `the alarm call never came on air: ${[...radio].join(" | ")}`);
+      // Tanya, close up: the 1953 commando art (america faction) on the player's side.
+      const tanya = await page.evaluate(() => { const c = window.game.client; const a = c.cur.actors.find((x) => c.str(x.type) === "tany"); return a && { x: a.sx, y: a.sy }; });
+      await page.evaluate((m) => window.game.lookAt(m.x, m.y), tanya);
+      await page.waitForTimeout(800);
+      await page.screenshot({ path: `${out}/${id}-tanya.png`, clip: { x: 520, y: 300, width: 400, height: 300 } });
       await spawn(page, "e1", marker(s, "MastRidge"), 1, 30, 10);
       await until(page, () => ["Won", "Lost"].includes(window.store.getState().ui?.win), null, 120000);
       s = await state(page);
