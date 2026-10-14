@@ -1,11 +1,12 @@
-// Playtest of a campaign mission by the page's co-commander in Auto (the browser strategy adviser applying its own
-// recommendations: build, train, defend, attack), at a raised game speed, with the campaign's lobby options (fog on).
-// One browser at a time; each run is a fresh page. Prints the objectives every game minute and the outcome.
+// Playtest of a campaign mission by the page's co-commander in Auto (the browser adviser applying its own
+// recommendations: in a mission, the objective planner of web/src/mission-adviser.ts), at a raised game speed, with
+// the campaign's lobby options (fog on). One browser at a time; each run is a fresh page. Prints the objectives, the
+// orders applied and the co-commander's latest line every game minute, and the outcome (with the orders applied and
+// refused and the cash left).
 //   node tools/chapters-playtest.mjs <mission> <difficulty[,difficulty...]> [--runs 2] [--speed 4] [--url ...] [--out dir]
-//        [--director] [--map-yaml content/maps/<mission>/map.yaml]
-// The co-commander does not read mission objectives. --director adds what a player who read the briefing would do,
-// on top of Auto: the combat units are sent (attack-move, through the co-commander's own order channel) to each
-// mission goal in turn (DIRECTOR below), moving on when that goal's objective completes.
+//        [--limit 14] [--mode auto|suggest] [--director] [--map-yaml content/maps/<mission>/map.yaml]
+// --director adds scripted army moves on top of Auto (the combat units attack-move to each mission goal in turn,
+// DIRECTOR below): from before the co-commander read objectives, kept to compare against.
 import fs from "node:fs";
 import path from "node:path";
 import { chromium } from "../web/node_modules/playwright-core/index.mjs";
@@ -19,6 +20,7 @@ const url = opt("url", "http://127.0.0.1:3492/?profile=public");
 const out = opt("out", "D:/rtsai-campaign/playtest");
 const limitMinutes = Number(opt("limit", 14));
 const director = argv.includes("--director");
+const auto = opt("mode", "auto") !== "suggest";
 fs.mkdirSync(out, { recursive: true });
 // Mission goals in order: send the army to `goal` (a named actor) until objective `until` is complete.
 const DIRECTOR = {
@@ -44,9 +46,9 @@ for (const difficulty of diffs.split(",")) {
   for (let run = 1; run <= runs; run++) {
     const browser = await chromium.launch({ executablePath: exe, headless: true, args: ["--use-angle=d3d11", "--ignore-gpu-blocklist", "--autoplay-policy=no-user-gesture-required"] });
     const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
-    await context.addInitScript(() => {
-      try { localStorage.setItem("rtsai.cocommander", JSON.stringify({ enabled: true, mode: "browser", muted: true, auto: true, browserVersion: 1 })); } catch { /* about:blank */ }
-    });
+    await context.addInitScript((a) => {
+      try { localStorage.setItem("rtsai.cocommander", JSON.stringify({ enabled: true, mode: "browser", muted: true, auto: a, browserVersion: 1 })); } catch { /* about:blank */ }
+    }, auto);
     const page = await context.newPage();
     const errors = [];
     page.on("pageerror", (e) => errors.push(String(e)));
@@ -64,13 +66,24 @@ for (const difficulty of diffs.split(",")) {
       await page.evaluate((s) => window.game.start(JSON.stringify(s)), scenario);
       await page.waitForFunction((id) => window.store.getState().phase === "playing" && window.store.getState().ui?.mission?.id === id, mission, { timeout: 600000 });
       await page.evaluate((v) => window.game.client.send({ type: "speed", speed: v }), speed);
-      const state = () => page.evaluate(() => { const s = window.store.getState(); return { win: ["Won", "Lost"].includes(s.ui?.win) ? s.ui.win : "", tick: s.ui?.tick ?? 0, cash: s.ui?.cash ?? 0, m: s.ui?.mission }; });
-      let s = await state(), lastMin = -1, lastPush = 0, step = 0;
-      const timeline = [];
+      // The co-commander's feed: orders applied or refused, and its lines (new entries since the last look).
+      const state = () => page.evaluate(() => { const s = window.store.getState(); return { win: ["Won", "Lost"].includes(s.ui?.win) ? s.ui.win : "", tick: s.ui?.tick ?? 0, cash: s.ui?.cash ?? 0, m: s.ui?.mission,
+        feed: s.cc.feed.map((f) => ({ id: f.id, kind: f.kind, text: f.text, state: f.state })) }; });
+      let s = await state(), lastMin = -1, lastPush = 0, step = 0, seen = 0, applied = 0, refused = 0, line = "";
+      const timeline = [], lines = [], refusals = [];
+      const read = () => {
+        for (const f of s.feed.filter((x) => x.id > seen)) {
+          if (f.kind === "done") applied++;
+          if (f.kind === "rejected") { refused++; if (refusals.length < 20) refusals.push(`${(s.tick / 1500).toFixed(1)} ${f.text}`); }
+          if (f.kind === "ai") { line = f.text; lines.push(`${(s.tick / 1500).toFixed(1)} ${f.text}`); }
+        }
+        seen = Math.max(seen, ...s.feed.map((x) => x.id));
+      };
       const plan = director ? DIRECTOR[mission] ?? [] : [];
       while (!s.win && s.tick < limitMinutes * 1500) {
         await page.waitForTimeout(2000);
         s = await state();
+        read();
         while (step < plan.length && s.m.objectives[plan[step].until]?.status === "complete") step++;
         if (step < plan.length && Date.now() - lastPush > 8000) {
           lastPush = Date.now();
@@ -90,15 +103,18 @@ for (const difficulty of diffs.split(",")) {
         const min = Math.floor(s.tick / 1500);
         if (min !== lastMin) {
           lastMin = min;
-          const line = `${min} min $${s.cash}: ${s.m.objectives.map((o) => o.status[0] + (o.progress && !o.progress.includes("seconds") ? `(${o.progress})` : "")).join(" ")}`;
-          timeline.push(line); console.log(`  ${tag} ${line}`);
+          const entry = `${min} min $${s.cash}: ${s.m.objectives.map((o) => o.status[0] + (o.progress && !o.progress.includes("seconds") ? `(${o.progress})` : "")).join(" ")} | ${applied} orders | ${line}`;
+          timeline.push(entry); console.log(`  ${tag} ${entry}`);
         }
       }
+      s = await state(); read();
       await page.screenshot({ path: path.join(out, `${mission}-${difficulty}-${run}.png`) });
-      const result = { mission, difficulty, run, seed: scenario.seed, speed, win: s.win || "undecided", minutes: +(s.tick / 1500).toFixed(2),
-        objectives: s.m.objectives.map((o) => `${o.status}: ${o.text} ${o.progress ?? ""}`.trim()), timeline, errors };
+      const done = s.m.objectives.filter((o) => o.status === "complete").length;
+      const result = { mission, difficulty, run, seed: scenario.seed, speed, win: s.win || "undecided", minutes: +(s.tick / 1500).toFixed(2), cash: s.cash,
+        complete: `${done}/${s.m.objectives.length}`, events: s.m.events ?? [], applied, refused, refusals,
+        objectives: s.m.objectives.map((o) => `${o.status}: ${o.text} ${o.progress ?? ""}`.trim()), timeline, lines, errors };
       results.push(result);
-      console.log(`${tag}: ${result.win} at ${result.minutes} min${errors.length ? `, ${errors.length} page errors` : ""}`);
+      console.log(`${tag}: ${result.win} at ${result.minutes} min, objectives ${result.complete}, ${applied} orders (${refused} refused), $${s.cash}${errors.length ? `, ${errors.length} page errors` : ""}`);
     } catch (e) {
       results.push({ mission, difficulty, run, error: String(e), errors });
       console.log(`${tag}: error ${e}`);

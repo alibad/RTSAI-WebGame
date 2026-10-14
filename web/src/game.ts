@@ -67,6 +67,7 @@ export class Game {
     observe: () => this.client.adviserObserve(),
     execute: (id, commands, tick) => this.client.adviserExecute(id, commands, tick),
     status: (enabled, message) => this.client.adviserStatus(enabled, message),
+    missionMap: (mission) => this.client.missionMap(mission),
   });
   readonly coach = new Coach(this);
   private lastListener = 0;

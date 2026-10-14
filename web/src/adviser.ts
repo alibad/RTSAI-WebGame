@@ -15,6 +15,19 @@ export interface AdviserActor {
   canInfiltrate?: boolean;
   isDisguised?: boolean;
   detectsDisguise?: boolean;
+  /** The actor's centre in world units (WPos X, Y). */
+  x?: number;
+  y?: number;
+  /** Units: base speed (world units a tick), passengers carried (-1: not a transport). */
+  speed?: number;
+  passengers?: number;
+  /** Units: whether they can capture or demolish (C4), and the visible actors they can do it to now. */
+  canCapture?: boolean;
+  captureTargets?: number[];
+  canDemolish?: boolean;
+  demolishTargets?: number[];
+  /** Units: the actor they are attacking (0: none). */
+  targetId?: number;
 }
 
 /** Generated/native catalog metadata, never a separate hand-written roster. */
@@ -52,14 +65,20 @@ export interface AdviserObservation {
   actorNames: Record<string, string>;
   techTree?: Record<string, AdviserTechItem>;
   threatHeated?: boolean;
+  /** The engine's cell grid: mapHeight × mapWidth × channels float32 (terrain, height, ore, passable, fog, ...). */
+  spatial?: { channels: number; bytes: Uint8Array };
 }
 
 export interface AdviserCommand {
-  action: "deploy" | "place_building" | "build" | "train" | "attack_move";
+  action: "deploy" | "place_building" | "build" | "train" | "attack_move" | "move" | "attack" | "capture" | "demolish" | "stop";
   actor_id?: number;
+  /** attack, capture, demolish: the target actor. */
+  target_actor_id?: number;
   item_type?: string;
   target_x?: number;
   target_y?: number;
+  /** After the unit's current orders instead of replacing them (a route of waypoints). */
+  queued?: boolean;
 }
 
 export interface AdviserAdvice {

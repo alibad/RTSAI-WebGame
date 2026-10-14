@@ -6,7 +6,8 @@
 import type { CompanionEngineEvent } from "./sim/protocol";
 import { store } from "./store";
 import type { AudioEngine } from "./audio";
-import { nextAdvice, assessThreat, type AdviserThreat, type AdviserCommand, type AdviserObservation } from "./adviser";
+import { nextAdvice, assessThreat, type AdviserAdvice, type AdviserThreat, type AdviserCommand, type AdviserObservation } from "./adviser";
+import { MissionMemory, missionAdvice, parseMissionMap, type MissionAdvice, type MissionMap, type MissionSpec } from "./mission-adviser";
 import type { AdviserActionReceipt } from "./sim/adviser-rpc";
 import adviserTree from "./adviser-tree.json";
 import { track } from "./net/track";
@@ -15,6 +16,8 @@ export interface BrowserAdviser {
   observe(): Promise<AdviserObservation>;
   execute(id: string, commands: AdviserCommand[], tick: number): Promise<AdviserActionReceipt>;
   status(enabled: boolean, message?: string): Promise<boolean>;
+  /** A campaign mission's map.yaml, for its named places (mission-adviser.ts). */
+  missionMap?(mission: string): Promise<string>;
 }
 
 export type FeedKind = "you" | "ai" | "alert" | "proposal" | "done" | "rejected" | "system";
@@ -31,7 +34,7 @@ export interface FeedItem {
   importance?: string;
   commands?: PreviewCommand[];
 }
-export interface PreviewCommand { action: string; actor_id?: number; target_actor_id?: number; target_x?: number; target_y?: number; item_type?: string }
+export interface PreviewCommand { action: string; actor_id?: number; target_actor_id?: number; target_x?: number; target_y?: number; item_type?: string; queued?: boolean }
 
 export interface CoCommanderState {
   /** The player's choice (setup screen, Game settings), kept between visits. */
@@ -113,6 +116,8 @@ export class CoCommander {
   private browserLastLine = "";
   private browserDeciding = false;
   private browserReady = false;
+  /** Campaign missions: the mission map's named places and the planner's memory (mission-adviser.ts), per match. */
+  private mission: { id: string; map: MissionMap | null; memory: MissionMemory } | null = null;
 
   private interrupt() {
     if (!this.s.running || this.s.mode === "browser") return;
@@ -128,6 +133,7 @@ export class CoCommander {
   endMatch() {
     this.matchRevision++; this.strategyRevision++; this.requestRevision++;
     this.browserProposals.clear(); this.browserSuppressed = ""; this.browserLastLine = ""; this.browserDeciding = false; this.browserReady = false;
+    this.mission = null;
     this.interrupt(); this.receipts.clear();
     for (const request of this.requests) request.abort();
     this.requests.clear();
@@ -208,6 +214,7 @@ export class CoCommander {
   matchStarted() {
     this.matchRevision++;
     this.strategyRevision++;
+    this.mission = null;
     this.set({ feed: [], linked: false, ...(this.s.mode === "browser" ? { running: true, error: "" } : {}), thinking: false, strategies: null, strategyError: "", strategyBusy: false, strategyOpen: false, uncertainProposalId: "", browserThreat: null });
     this.push("system", this.s.mode === "browser" ? "Co-commander · Browser strategy adviser" : this.s.mode === "mock" ? "Co-commander online (scripted brain)" : "Co-commander online");
     if (!this.poll) this.poll = setInterval(() => { void this.offers(); }, 1000);
@@ -256,8 +263,30 @@ export class CoCommander {
     finally { if (match === this.matchRevision) this.polling = false; }
   }
 
-  private browserChoice(observation: AdviserObservation) {
-    return nextAdvice({ ...observation, techTree: adviserTree });
+  /**
+   * The recommendation for this observation: in a campaign mission the mission planner, which reads the objectives
+   * (setup.missions, ui.mission) and the map's named places; the skirmish adviser otherwise.
+   */
+  private browserChoice(observation: AdviserObservation): AdviserAdvice | null {
+    const s = store.get(), live = s.ui?.mission;
+    const spec = live ? s.setup?.missions?.find((m) => m.id === live.id) as unknown as MissionSpec | undefined : undefined;
+    if (!live || !spec) return nextAdvice({ ...observation, techTree: adviserTree });
+    if (this.mission?.id !== live.id) this.loadMission(live.id);
+    const map = this.mission?.map;
+    // The map is read once, a moment after the start; without its places the skirmish adviser still runs the base.
+    if (!map) return null;
+    if (!map.actors.length) return nextAdvice({ ...observation, techTree: adviserTree });
+    return missionAdvice(observation, { spec, live, map, memory: this.mission!.memory, techTree: adviserTree, catalog: s.catalog });
+  }
+
+  private loadMission(id: string) {
+    const match = this.matchRevision;
+    const mission = this.mission = { id, map: null as MissionMap | null, memory: new MissionMemory() };
+    const read = this.browser?.missionMap?.(id) ?? Promise.resolve("");
+    void read.catch(() => "").then((text) => {
+      if (match !== this.matchRevision || this.mission !== mission) return;
+      mission.map = parseMissionMap(text);
+    });
   }
 
   private choiceKey(advice: ReturnType<CoCommander["browserChoice"]>) {
@@ -329,6 +358,8 @@ export class CoCommander {
       const receipt = await this.browser.execute(id, advice.commands, observation.tick);
       if (match !== this.matchRevision) return;
       if (receipt.requestId !== id) throw Error("Mismatched native order receipt");
+      // The mission planner leaves units it has sent alone until they arrive.
+      if (receipt.accepted && advice.key.startsWith("mission:")) this.mission?.memory.record(advice as MissionAdvice, observation.tick);
       if (!this.receipts.has(id)) this.onEngine({ kind: "executed", id, accepted: receipt.accepted, detail: receipt.detail });
       this.browserSuppressed = key;
     } catch (error) {

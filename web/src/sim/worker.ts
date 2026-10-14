@@ -585,6 +585,13 @@ self.onmessage = async (e: MessageEvent<ToWorker>) => {
         if (m.value !== undefined) voiceLanguage = normalizeVoiceLanguage(m.value);
         post({ type: "reply", req: m.req, json: booted ? (m.value === undefined ? S.VoiceSettings() : S.SetVoiceLanguage(voiceLanguage)) : JSON.stringify({ language: voiceLanguage }) }); break;
       case "voicePreview": post({ type: "reply", req: m.req, json: booted ? S.PreviewVoice() : JSON.stringify({ error: "The runtime is still loading." }) }); break;
+      case "missionMap": {
+        // Mission maps are generated content (web/content/maps/<id>/, where SimHost.MapPath finds them first).
+        let text = "";
+        if (booted && /^[a-z0-9-]+$/.test(m.mission)) try { text = S.ReadText(`mods/rtsai/web/content/maps/${m.mission}/map.yaml`) ?? ""; } catch { /* missing */ }
+        post({ type: "reply", req: m.req, json: JSON.stringify({ text }) });
+        break;
+      }
       case "record": {
         const selection = (JSON.parse(S.UiState()).selection ?? []).map((a: { id: number }) => a.id);
         const groups = Array.from({ length: 10 }, (_, index) => JSON.parse(S.Command(JSON.stringify({ cmd: "group", action: "select", index }))).selection);

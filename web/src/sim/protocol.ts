@@ -344,6 +344,8 @@ export type ToWorker = (
   | { type: "record"; req: number }
   | { type: "voiceLanguage"; value?: string; req: number }
   | { type: "voicePreview"; req: number }
+  /** A mission's map.yaml from the game files (the co-commander reads its named places): replies { text }. */
+  | { type: "missionMap"; mission: string; req: number }
   | { type: "adviserRpc"; req: number; method: "Observe" | "ExecuteCompanionActions" | "UpdateCompanionStatus"; payload: Uint8Array }
   | { type: "resync" }) & { generation?: number };
 
