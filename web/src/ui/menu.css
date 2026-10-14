@@ -147,3 +147,14 @@ html, body { cursor: var(--cursor-default, default); }
 .cta-secondary { height: 44px; padding: 0 18px; border-radius: 4px; border: 1px solid rgba(241, 210, 139, .45); background: rgba(241, 210, 139, .06); color: var(--hud-gold); font-size: 13px; font-weight: 700; transition: background .15s, border-color .15s; }
 .cta-secondary:hover:not(:disabled) { background: rgba(241, 210, 139, .14); border-color: var(--hud-gold); }
 .cta-start:focus-visible, .cta-secondary:focus-visible { outline: 2px solid var(--hud-gold); outline-offset: 3px; }
+
+/* Touch screens: the volume and scroll sliders get a finger-sized hit area (44 px); the track stays a thin line. */
+@media (pointer: coarse) {
+  :root .settings-slider input { height: 44px; background: transparent; }
+  :root .settings-slider input::-webkit-slider-runnable-track { height: 6px; border-radius: 999px; background: linear-gradient(90deg, var(--hud-gold) var(--fill, 50%), #2a3126 var(--fill, 50%)); }
+  :root .settings-slider input::-webkit-slider-thumb { width: 26px; height: 26px; margin-top: -10px; }
+  :root .settings-slider input::-moz-range-track { height: 6px; border-radius: 999px; background: #2a3126; }
+  :root .settings-slider input::-moz-range-progress { height: 6px; border-radius: 999px; background: var(--hud-gold); }
+  :root .settings-slider input::-moz-range-thumb { width: 20px; height: 20px; }
+  :root .settings-slider > span { margin-bottom: 0; }
+}

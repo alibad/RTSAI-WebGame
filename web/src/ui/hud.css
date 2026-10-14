@@ -736,3 +736,20 @@
   :root[data-sidebar="collapsed"] { --sidebar-w: 0px; }
   :root[data-sidebar="collapsed"] .hud-sidebar { display: none; }
 }
+
+/* ------------------------------------------------------------------ touch screens: targets a finger can hit (44 px)
+   Production tabs, Repair and Sell, the unit commands and stances. On a phone held sideways the sidebar is 184 px wide,
+   so its six tabs stay one row: 44 px tall, as wide as the row allows (28 px); everywhere else two rows of three. */
+@media (pointer: coarse) {
+  :root .sb-tabs { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  :root .sb-tabs > button { height: 44px; }
+  :root .sb-mode { width: 44px; height: 44px; }
+  :root .sb-credits { font-size: 16px; }
+  :root .hud-cmd { width: 44px; height: 44px; }
+  :root .hud-stance { width: 44px; height: 44px; }
+}
+@media (pointer: coarse) and (max-height: 500px) {
+  :root .sb-tabs { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+  :root .sb-mode { width: 40px; }
+  :root .sb-credits { font-size: 15px; }
+}

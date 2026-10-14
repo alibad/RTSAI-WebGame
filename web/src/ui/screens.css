@@ -638,3 +638,19 @@
   .menu-subnav { gap: 6px; }
   .menu-subnav .scr-tabs > button { padding: 0 7px; letter-spacing: .03em; }
 }
+
+/* Touch screens: the sub-screens' Back, Skirmish / Campaign, Map studio and Multiplayer are finger-sized (44 px). */
+@media (pointer: coarse) {
+  :root .menu-subnav { top: 8px; }
+  :root .menu-subnav button, :root .menu-subnav .scr-tabs > button { height: 44px; }
+  :root .menu-subnav .scr-tabs { padding: 2px; }
+  :root .mp-launch { top: 8px; height: 44px; }
+}
+@media (pointer: coarse) and (max-width: 560px) {
+  :root .menu-subnav .menu-subnav-back, :root .menu-subnav .menu-subnav-studio { width: 44px; }
+  :root .mp-launch { width: 44px; }
+}
+@media (pointer: coarse) and (max-width: 360px) {
+  :root .menu-subnav .menu-subnav-back, :root .menu-subnav .menu-subnav-studio, :root .mp-launch { width: 40px; }
+  :root .menu-subnav .scr-tabs > button { padding: 0 6px; font-size: 11px; letter-spacing: .02em; }
+}

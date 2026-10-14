@@ -54,7 +54,7 @@ function Credits() {
     return () => cancelAnimationFrame(raf);
   }, []);
   return (
-    <div className="digits text-[19px] font-semibold tracking-wide text-[var(--hud-gold)] drop-shadow-[0_1px_0_#000]" title="Credits">
+    <div className="sb-credits digits text-[19px] font-semibold tracking-wide text-[var(--hud-gold)] drop-shadow-[0_1px_0_#000]" title="Credits">
       <span className="mr-1 text-[var(--hud-gold-dim)]">$</span>{shown.toLocaleString("en-US")}
     </div>
   );
@@ -151,7 +151,7 @@ function Tabs() {
   const tab = useStore((s) => s.tab);
   const set = useStore((s) => s.set);
   return (
-    <div className="grid grid-cols-6 gap-[3px]">
+    <div className="sb-tabs grid grid-cols-6 gap-[3px]">
       {catalog.map((q) => {
         const Icon = QUEUE_ICONS[q.type] ?? QUEUE_ICONS.Building;
         const state = queues?.find((x) => x.type === q.type);
@@ -242,7 +242,7 @@ function ModeButton({ active, title, hotkey, onClick, children, disabled }: { ac
       title={`${title} (${hotkey})`}
       disabled={disabled}
       onClick={onClick}
-      className={cn("hud-inset relative grid size-[30px] place-items-center text-[var(--muted-foreground)] hover:text-[var(--foreground)] disabled:opacity-35",
+      className={cn("sb-mode hud-inset relative grid size-[30px] place-items-center text-[var(--muted-foreground)] hover:text-[var(--foreground)] disabled:opacity-35",
         active && "text-[var(--hud-gold)] shadow-[inset_0_0_0_1px_var(--hud-gold),inset_0_0_10px_rgba(241,210,139,0.35)]")}
     >
       {children}
