@@ -572,224 +572,258 @@ const story: CampaignStory = {
       {
         "when": "start",
         "speaker": "lin",
-        "line": "Three of us, one island, and every mast is watching. We move only when the circle goes dark."
+        "line": "Three of us, one island, and every mast is watching. We move only when the circle goes dark.",
+        "audio": "glass-island/radio-1.mp3"
       },
       {
         "when": {
           "time": 20
         },
         "speaker": "lantern",
-        "line": "Commander, the masts sweep on a cycle. Each one sleeps for a few seconds, then wakes. Watch the rings."
+        "line": "Commander, the masts sweep on a cycle. Each one sleeps for a few seconds, then wakes. Watch the rings.",
+        "audio": "glass-island/radio-2.mp3"
       },
       {
         "when": {
           "event": "alarm"
         },
         "speaker": "tanya",
-        "line": "They've seen us. Keep moving, and don't give them a second look."
+        "line": "They've seen us. Keep moving, and don't give them a second look.",
+        "audio": "glass-island/radio-3.mp3"
       },
       {
         "when": {
           "time": 150
         },
         "speaker": "orlov",
-        "line": "Commander Lin. You came all this way for a picture of my island. I would have sold you a clearer one."
+        "line": "Commander Lin. You came all this way for a picture of my island. I would have sold you a clearer one.",
+        "audio": "glass-island/radio-4.mp3"
       },
       {
         "when": {
           "time": 360
         },
         "speaker": "lantern",
-        "line": "First light in two minutes, Commander. The boat can't wait for the sun."
+        "line": "First light in two minutes, Commander. The boat can't wait for the sun.",
+        "audio": "glass-island/radio-5.mp3"
       },
       {
         "when": {
           "time": 420
         },
         "speaker": "lin",
-        "line": "One minute to first light. Get the specialist to the cove."
+        "line": "One minute to first light. Get the specialist to the cove.",
+        "audio": "glass-island/radio-6.mp3"
       },
       {
         "when": {
           "objective": 0
         },
         "speaker": "lin",
-        "line": "Logs copied. There's something else in the vault: a film reel, labelled by hand. Nineteen fifty-three."
+        "line": "Logs copied. There's something else in the vault: a film reel, labelled by hand. Nineteen fifty-three.",
+        "audio": "glass-island/radio-7.mp3"
       },
       {
         "when": {
           "event": "boat"
         },
         "speaker": "lantern",
-        "line": "Your boat is in the north cove. The vault masts take turns; wait for the near one to sleep."
+        "line": "Your boat is in the north cove. The vault masts take turns; wait for the near one to sleep.",
+        "audio": "glass-island/radio-8.mp3"
       },
       {
         "when": "victory",
         "speaker": "einstein",
-        "line": "If you are hearing this, the echo has found you. It can be folded shut only once, the right way, from the place where it is anchored."
+        "line": "If you are hearing this, the echo has found you. It can be folded shut only once, the right way, from the place where it is anchored.",
+        "audio": "glass-island/radio-9.mp3"
       },
       {
         "when": "defeat",
         "speaker": "lin",
-        "line": "The island saw us. Back to the beach, and we try again."
+        "line": "The island saw us. Back to the beach, and we try again.",
+        "audio": "glass-island/radio-10.mp3"
       }
     ],
     "black-platform": [
       {
         "when": "start",
         "speaker": "turki",
-        "line": "Boarding team, quiet on the pad. The control room first: no charge will stick while that curtain is up."
+        "line": "Boarding team, quiet on the pad. The control room first: no charge will stick while that curtain is up.",
+        "audio": "black-platform/radio-1.mp3"
       },
       {
         "when": {
           "time": 15
         },
         "speaker": "lantern",
-        "line": "Commander, the two deck scanners take turns. The lane down the middle is blind to both."
+        "line": "Commander, the two deck scanners take turns. The lane down the middle is blind to both.",
+        "audio": "black-platform/radio-2.mp3"
       },
       {
         "when": {
           "event": "alarm"
         },
         "speaker": "tanya",
-        "line": "So much for quiet. Here comes the deck crew."
+        "line": "So much for quiet. Here comes the deck crew.",
+        "audio": "black-platform/radio-3.mp3"
       },
       {
         "when": {
           "time": 420
         },
         "speaker": "lantern",
-        "line": "Orion's relief flotilla is two minutes out. Get those charges in before it reaches the platform."
+        "line": "Orion's relief flotilla is two minutes out. Get those charges in before it reaches the platform.",
+        "audio": "black-platform/radio-4.mp3"
       },
       {
         "when": {
           "time": 480
         },
         "speaker": "turki",
-        "line": "One minute until that flotilla is alongside. Every generator, now."
+        "line": "One minute until that flotilla is alongside. Every generator, now.",
+        "audio": "black-platform/radio-5.mp3"
       },
       {
         "when": {
           "objective": 0
         },
         "speaker": "turki",
-        "line": "The control room is ours and the curtain is down. Tanya, every generator."
+        "line": "The control room is ours and the curtain is down. Tanya, every generator.",
+        "audio": "black-platform/radio-6.mp3"
       },
       {
         "when": {
           "objective": 1
         },
         "speaker": "tanya",
-        "line": "Four for four. Somebody turn the lights back on."
+        "line": "Four for four. Somebody turn the lights back on.",
+        "audio": "black-platform/radio-7.mp3"
       },
       {
         "when": {
           "event": "jamming-off"
         },
         "speaker": "lantern",
-        "line": "Every screen on the coast just lit up at once. I can see the hub. Hold that room, Commander."
+        "line": "Every screen on the coast just lit up at once. I can see the hub. Hold that room, Commander.",
+        "audio": "black-platform/radio-8.mp3"
       },
       {
         "when": {
           "event": "counterattack"
         },
         "speaker": "orlov",
-        "line": "To every commander on this coast: I can still give you the picture you want. You have only to ask."
+        "line": "To every commander on this coast: I can still give you the picture you want. You have only to ask.",
+        "audio": "black-platform/radio-9.mp3"
       },
       {
         "when": "victory",
         "speaker": "lantern",
-        "line": "Nobody answered him. Not one channel. The hub is on every screen now."
+        "line": "Nobody answered him. Not one channel. The hub is on every screen now.",
+        "audio": "black-platform/radio-10.mp3"
       },
       {
         "when": "defeat",
         "speaker": "turki",
-        "line": "The team is down and the jamming holds. We board again."
+        "line": "The team is down and the jamming holds. We board again.",
+        "audio": "black-platform/radio-11.mp3"
       }
     ],
     "every-light-on": [
       {
         "when": "start",
         "speaker": "badr",
-        "line": "This is where the silence started. Radar domes first, then the machine."
+        "line": "This is where the silence started. Radar domes first, then the machine.",
+        "audio": "every-light-on/radio-1.mp3"
       },
       {
         "when": {
           "time": 10
         },
         "speaker": "lin",
-        "line": "Colonel, Lin here. My network is feeding your radar relay. While it stands, you see everything."
+        "line": "Colonel, Lin here. My network is feeding your radar relay. While it stands, you see everything.",
+        "audio": "every-light-on/radio-2.mp3"
       },
       {
         "when": {
           "event": "platform-holds"
         },
         "speaker": "turki",
-        "line": "Platform holding, Colonel. Their jammers stay dark."
+        "line": "Platform holding, Colonel. Their jammers stay dark.",
+        "audio": "every-light-on/radio-3.mp3"
       },
       {
         "when": {
           "event": "naval-wave"
         },
         "speaker": "lantern",
-        "line": "Gunboats coming down the northern lane, heading for your shore."
+        "line": "Gunboats coming down the northern lane, heading for your shore.",
+        "audio": "every-light-on/radio-4.mp3"
       },
       {
         "when": {
           "event": "picture-lost"
         },
         "speaker": "lantern",
-        "line": "Your relay is down, Colonel. Lin's picture is gone; you're back in the fog."
+        "line": "Your relay is down, Colonel. Lin's picture is gone; you're back in the fog.",
+        "audio": "every-light-on/radio-5.mp3"
       },
       {
         "when": {
           "time": 300
         },
         "speaker": "orlov",
-        "line": "Colonel. The radar that went quiet on your coast? I can make it remember a different morning. Name your price."
+        "line": "Colonel. The radar that went quiet on your coast? I can make it remember a different morning. Name your price.",
+        "audio": "every-light-on/radio-6.mp3"
       },
       {
         "when": {
           "event": "lane-closed"
         },
         "speaker": "kemal",
-        "line": "The northern lane is closed. No more boats come through, Colonel."
+        "line": "The northern lane is closed. No more boats come through, Colonel.",
+        "audio": "every-light-on/radio-7.mp3"
       },
       {
         "when": {
           "objective": 0
         },
         "speaker": "badr",
-        "line": "Three domes down and the link is cut. Now we wait for Nabil."
+        "line": "Three domes down and the link is cut. Now we wait for Nabil.",
+        "audio": "every-light-on/radio-8.mp3"
       },
       {
         "when": {
           "event": "towns-clear"
         },
         "speaker": "nabil",
-        "line": "The mainland towns are clear, every family out. The strike is yours, Colonel."
+        "line": "The mainland towns are clear, every family out. The strike is yours, Colonel.",
+        "audio": "every-light-on/radio-9.mp3"
       },
       {
         "when": {
           "time": 570
         },
         "speaker": "tanya",
-        "line": "When that machine falls, he'll run for it. Let me be close when he does."
+        "line": "When that machine falls, he'll run for it. Let me be close when he does.",
+        "audio": "every-light-on/radio-10.mp3"
       },
       {
         "when": "victory",
         "speaker": "lantern",
-        "line": "Running Einstein's sequence now. Once, the right way. Every light is coming back on."
+        "line": "Running Einstein's sequence now. Once, the right way. Every light is coming back on.",
+        "audio": "every-light-on/radio-11.mp3"
       },
       {
         "when": "victory",
         "speaker": "tanya",
-        "line": "He's out there somewhere in time. Somebody who knows his face should be waiting."
+        "line": "He's out there somewhere in time. Somebody who knows his face should be waiting.",
+        "audio": "every-light-on/radio-12.mp3"
       },
       {
         "when": "defeat",
         "speaker": "badr",
-        "line": "Fall back to the yard. The machine is still running."
+        "line": "Fall back to the yard. The machine is still running.",
+        "audio": "every-light-on/radio-13.mp3"
       }
     ]
   }
