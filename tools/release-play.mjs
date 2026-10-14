@@ -517,7 +517,9 @@ function checkPreview(preview, pageDir, build) {
   const b = vcurl(preview.id, "/BUILD.json");
   if (b.status !== 200 || JSON.stringify(JSON.parse(b.body.toString())) !== JSON.stringify(build)) refuse("the preview's BUILD.json is not the one built");
   const index = vcurl(preview.id, "/");
-  if (index.status !== 200 || !index.body.equals(fs.readFileSync(path.join(pageDir, "index.html")))) refuse("the preview's index.html is not the one built");
+  // Vercel appends its feedback toolbar's script to a preview's HTML (never to production's): ignore exactly that.
+  const served = index.body.toString().replace(/\n?<script async data-explicit-opt-in="true" data-deployment-id="[^"]*" src="https:\/\/vercel\.live\/[^"]*"><\/script>\s*$/, "\n");
+  if (index.status !== 200 || served !== fs.readFileSync(path.join(pageDir, "index.html"), "utf8")) refuse("the preview's index.html is not the one built");
   for (const h of ["cross-origin-opener-policy: same-origin", "cross-origin-embedder-policy: require-corp"]) if (!index.headers.includes(h)) refuse(`the preview's page lacks ${h}`);
   const scripts = [...index.body.toString().matchAll(/(?:src|href)="\.?\/?(assets\/[^"]+\.js)"/g)].map((m) => m[1]);
   if (!scripts.length) refuse("no scripts found in the built index.html");
