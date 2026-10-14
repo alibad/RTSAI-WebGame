@@ -633,25 +633,32 @@
 .cp-film-card:hover .cp-film-card-play { transform: translate(-50%, -50%) scale(1.08); }
 .cp-film-card:focus-visible { outline: 2px solid var(--hud-gold); outline-offset: 3px; }
 
-/* Phones: like Back and Multiplayer, Map studio is its icon, so the row stops short of the Multiplayer button (on a
-   393 px iPhone its label covered most of that button, and a tap on it opened the Map studio). */
-@media (max-width: 560px) {
+/* Battle simulator and Map editor on the sub-screens' row must stop short of the Multiplayer button at the top right
+   (a label over it takes its taps: on a 393 px iPhone Map studio once did). Up to 1080 px they are their icons; on
+   phones the row has no room for even those, and both stay on the main menu, one tap back. */
+@media (max-width: 1080px) {
   .menu-subnav .menu-subnav-studio { width: 36px; padding: 0; justify-content: center; }
   .menu-subnav .menu-subnav-studio svg { display: block; }
   .menu-subnav .menu-subnav-studio span { display: none; }
+}
+@media (max-width: 560px) {
+  .menu-subnav .menu-subnav-studio { display: none; }
 }
 @media (max-width: 360px) {
   .menu-subnav { gap: 6px; }
   .menu-subnav .scr-tabs > button { padding: 0 7px; letter-spacing: .03em; }
 }
 
-/* Touch screens: the sub-screens' Back, Skirmish / Campaign, Map studio and Multiplayer are finger-sized (44 px). */
+/* Touch screens: the sub-screens' Back, Skirmish / Campaign, Battle simulator, Map editor and Multiplayer are finger-sized (44 px). */
 @media (pointer: coarse) {
   :root .menu-subnav { top: 8px; }
   :root .menu-subnav button, :root .menu-subnav .scr-tabs > button { height: 44px; }
   :root .menu-subnav .scr-tabs { padding: 2px; }
   /* The mode tabs' frame makes the row 50 px tall: Multiplayer sits on its centre line like the row's buttons. */
   :root .mp-launch { top: 11px; height: 44px; }
+}
+@media (pointer: coarse) and (max-width: 1080px) {
+  :root .menu-subnav .menu-subnav-studio { width: 44px; }
 }
 @media (pointer: coarse) and (max-width: 560px) {
   :root .menu-subnav .menu-subnav-back, :root .menu-subnav .menu-subnav-studio { width: 44px; }

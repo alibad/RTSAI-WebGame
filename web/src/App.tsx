@@ -294,8 +294,8 @@ export default function App() {
               <button type="button" aria-current={mode === "missions" ? "page" : undefined} onClick={() => setMode("missions")}>Campaign</button>
             </div>
             {/* Icons only on narrow screens (screens.css .menu-subnav-studio): the row also holds Multiplayer. */}
-            <button type="button" className="menu-subnav-studio" aria-label="Battle simulator" onClick={() => setMode("simulator")}><Crosshair size={15} aria-hidden="true" /><span>Battle simulator</span></button>
-            <button type="button" className="menu-subnav-studio" aria-label="Map editor" onClick={() => setMode("editor")}><MapIcon size={15} aria-hidden="true" /><span>Map editor</span></button>
+            <button type="button" className="menu-subnav-studio" aria-label="Battle simulator" title="Battle simulator" onClick={() => setMode("simulator")}><Crosshair size={15} aria-hidden="true" /><span>Battle simulator</span></button>
+            <button type="button" className="menu-subnav-studio" aria-label="Map editor" title="Map editor" onClick={() => setMode("editor")}><MapIcon size={15} aria-hidden="true" /><span>Map editor</span></button>
           </nav>
         </>}
       </>}
