@@ -120,6 +120,18 @@ on hard the strike group overruns the harbour during the hold (lost at 8:35). Pl
 straight at the relays, as the co-commander would) fires on the phantom in the school yard and loses at 0:36. An idle
 player loses Ghosts on the Glass at 16:00, first light.
 
+In the browser (`tools/chapters-browser-test.mjs`), both chapters launch from the campaign screen; in Sweet Water
+engineers take the plant by the player's own orders (the vault then opens and the recovery parties land) and an idle
+player loses at 10:00; in Ghosts on the Glass the rings are drawn over the shroud, an observer verifies the school-yard
+contact (its ring turns pale) and a tank ordered onto the unverified contact by the north shelter loses the mission
+(`struck-Contact7`). The page's co-commander in Auto (`tools/chapters-playtest.mjs`, one run each) does not play these
+chapters as written: in Sweet Water it clears the roadblocks and brings the trucks in on easy and hard (with the
+director) and on normal (without it; with it, the roadblocks were still standing at 10:00), but it never captures the
+plant (it trains no engineers and spends nothing after the first minutes), so those runs end undecided at 18 minutes or
+with the camp lost. In Ghosts on the Glass it treats every contact as an enemy and fires on a phantom within about a
+minute on every difficulty, with or without the director: this chapter needs the player's own judgement, or a
+co-commander that leaves unverified contacts to the observers.
+
 ### Mission features (JSON in `content/missions.json`)
 
 ```jsonc
