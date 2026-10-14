@@ -219,7 +219,7 @@ export default function App() {
 
   const playing = phase === "playing";
   return (
-    <div className="fixed inset-0" style={sandboxMode ? ({ "--sidebar-w": "300px" } as React.CSSProperties) : undefined}>
+    <div className="fixed inset-0" data-playing={playing || undefined} style={sandboxMode ? ({ "--sidebar-w": "300px" } as React.CSSProperties) : undefined}>
       <canvas ref={canvasRef} className="stage" tabIndex={0} style={{ right: playing ? "var(--sidebar-w)" : 0, width: playing ? "calc(100% - var(--sidebar-w))" : "100%", visibility: playing ? "visible" : "hidden" }} />
       {game && playing && !uiHidden && !practiceOpen && (sandboxMode ? <SandboxHud game={game} /> : <Hud game={game} />)}
       {game && phase === "setup" && !sandboxMode && !mapStudioOpen && <>
