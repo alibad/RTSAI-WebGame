@@ -977,31 +977,39 @@ def originals():
 # audit found in fields named *Sound* or *Report*, so the tesla coil's and the prism tower's charge sounds
 # (AttackTesla.ChargeAudio) never got one; runtimes up to rt-04dcc660ef36 then stopped the whole browser simulation the
 # first time a powered coil or tower charged (their lazy audio made the engine open the missing file). Every sound a
-# public game can play must ship: a sound listed here is replaced by a shipped project sound (or None: no sound) through
-# content/sound-fallbacks.yaml, which the bundle loads last in both modes, and any other missing one fails the build.
-# A fallback applies only while the inputs lack the file, so it falls away once the mod ships its own.
+# public game can play must ship: a sound listed here is replaced by a shipped project sound, or with None dropped (the
+# engine's own behaviour for a missing file: the tower charges silently), through content/sound-fallbacks.yaml, which
+# the bundle loads last in both modes; any other missing one fails the build. A fallback applies only while the inputs
+# lack the file, so it falls away once the mod ships its own. (The bare iteschaa.wav is the project's stand-in for the
+# tesla trooper's shot, a cannon-like report, so it is no charge sound; the original clip ships only in the isometric
+# mode, for the original countries' weapons.)
 SOUND_FALLBACKS = {
-    'btespow.wav': 'iteschaa.wav',  # Tesla Coil charging: the tesla trooper's charge
-    'bpripow.wav': None,            # Prism Tower charging: silent until the mod has its own
+    'btespow.wav': None,  # Tesla Coil charging
+    'bpripow.wav': None,  # Prism Tower charging
 }
 
 def sound_check(ea_clips=()):
     """Every sound file named in the rules and weapons of the public game, against the files the build ships: the folders
-    the mod mounts (its FileSystem packages, read by bare name), explicit 'ra2|' paths, and, in the isometric mode with
-    original voices, the original clips. Writes content/sound-fallbacks.yaml for SOUND_FALLBACKS; raises for any other
-    missing sound that a public game can play (an actor that is buildable or placed on a shipped map, or a weapon one of
-    them carries). Missing sounds of actors no public game has (animals, civilian flags) are only reported."""
-    available = {c.lower() for c in ea_clips}
+    the mod mounts (its FileSystem packages, read by bare name), explicit 'ra2|' paths (the mod's files, the web content,
+    and in the isometric mode with original voices the original clips under web/ea/audio). Writes
+    content/sound-fallbacks.yaml for SOUND_FALLBACKS; raises for any other missing sound that a public game can play (an
+    actor that is buildable or placed on a shipped map, or a weapon one of them carries). Missing sounds of actors no
+    public game has (animals, civilian flags) are only reported. Voices and notifications are contenttest's."""
+    available = set()
     packages = parse((MOD/'mod.yaml').read_text(encoding='utf-8'))['FileSystem']['children']['Packages']['children']
     for key in list(packages) + (['$rtsai-topdown'] if CLASSIC_MODE else []):
         entry = key.lstrip('~')
         folder = {'$rtsai': MOD, '$rtsai-topdown': MOD.parent/'rtsai-topdown'}.get(entry) or (MOD/entry.split('|', 1)[1] if entry.startswith('ra2|') else None)
         if folder is not None and folder.is_dir():
             available |= {f.name.lower() for f in folder.iterdir() if f.is_file()}
+    clips = {c.lower() for c in ea_clips}
     def shipped(name):
         if '|' in name:
             alias, path = name.split('|', 1)
-            return alias == 'ra2' and (MOD/path).is_file()
+            if alias != 'ra2': return False
+            if path.startswith('web/ea/audio/'): return path.rsplit('/', 1)[1].lower() in clips
+            if path.startswith('web/content/'): return (OUT/path[len('web/content/'):]).is_file()
+            return (MOD/path).is_file()
         return name.lower() in available
     # The rules as the public game loads them: the mod's, Classic's own file, the web content overlays, and map rules.
     allrules = copy.deepcopy(rules)
