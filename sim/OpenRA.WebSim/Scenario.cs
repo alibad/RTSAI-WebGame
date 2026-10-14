@@ -24,6 +24,12 @@ namespace OpenRA.WebSim
 		public string Color = "E04444";
 		public int Team;
 		public int SpawnPoint;
+
+		/// <summary>Handicap percent (0-95): the mod's handicap multipliers weaken the player's firepower, armour and production.</summary>
+		public int Handicap;
+
+		/// <summary>Credits given on top of the lobby's starting cash (the simulator's AI skill levels).</summary>
+		public int Cash;
 	}
 
 	public sealed class SpawnSpec
@@ -69,6 +75,9 @@ namespace OpenRA.WebSim
 
 		/// <summary>A battle-sandbox run: track the results readout (shots, damage, kills, survivors).</summary>
 		public bool Sandbox;
+
+		/// <summary>No starting units: the map's start positions stay empty and only the scenario's spawns exist (the simulator on any map).</summary>
+		public bool Bare;
 		public string Objective;
 		public int Duration = 120;
 
@@ -90,6 +99,7 @@ namespace OpenRA.WebSim
 				DefaultHealth = Int(root, "health", 100),
 				DefaultOrder = Str(root, "order", null),
 				Sandbox = root.TryGetProperty("sandbox", out var sbx) && sbx.ValueKind == JsonValueKind.True,
+				Bare = root.TryGetProperty("bare", out var bare) && bare.ValueKind == JsonValueKind.True,
 			};
 
 			if (root.TryGetProperty("players", out var players))
@@ -106,6 +116,8 @@ namespace OpenRA.WebSim
 						Color = Str(p, "color", "E04444"),
 						Team = Int(p, "team", 0),
 						SpawnPoint = Int(p, "spawn", 0),
+						Handicap = System.Math.Clamp(Int(p, "handicap", 0), 0, 95),
+						Cash = System.Math.Max(0, Int(p, "cash", 0)),
 					});
 				}
 			}

@@ -29,7 +29,7 @@ function HealthBar({ hp, max }: { hp: number; max: number }) {
   return <div className="hud-hp"><div style={{ width: `${f * 100}%`, background: col, boxShadow: `0 0 5px ${col}` }} /></div>;
 }
 
-function Rank({ rank }: { rank: number }) {
+export function Rank({ rank }: { rank: number }) {
   if (rank <= 0) return null;
   const color = rank >= 2 ? "#ff8a3d" : "var(--hud-gold)";
   return (

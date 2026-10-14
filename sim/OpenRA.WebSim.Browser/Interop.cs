@@ -217,6 +217,37 @@ namespace OpenRA.WebSim.Browser
 			return Snapshot.StartInfoJson(out terrain);
 		}
 
+		/// <summary>Opens the map editor on a map (or a new blank one): {"id", "info"} like Start's start info.</summary>
+		[JSExport]
+		public static string EditorOpen(string json)
+		{
+			Snapshot.Reset();
+			Ui.Resync();
+			var id = EditorHost.Open(json);
+			var info = Snapshot.StartInfoJson(out terrain);
+			return $"{{\"id\":{Snapshot.Json(id)},\"info\":{info}}}";
+		}
+
+		/// <summary>One map editor request (EditorHost.Call): brush, pointer, undo, redo, delete, save, catalog.</summary>
+		[JSExport]
+		public static string EditorCall(string json) => EditorHost.Call(json);
+
+		/// <summary>Terrain vertex rows the editor changed since the last call: [first row][vertices], or empty.</summary>
+		[JSExport]
+		public static byte[] EditorTerrain() => EditorHost.TerrainChanges();
+
+		/// <summary>
+		/// Everything a player can build and each faction's roster, from the mod's rules (no world needed): the battle
+		/// simulator's drawer and the Earth missions read it once.
+		/// </summary>
+		[JSExport]
+		public static string Catalog()
+		{
+			var units = Ui.UnitCatalog(SimHost.ModData.DefaultRules);
+			var rosters = Ui.Rosters(SimHost.ModData.DefaultRules);
+			return "{" + units[1..^1] + "," + rosters[1..^1] + "}";
+		}
+
 		/// <summary>Factions, maps and bot types for the setup screen.</summary>
 		[JSExport]
 		public static string Setup() => SetupInfo.Json();

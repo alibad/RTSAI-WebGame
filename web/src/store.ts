@@ -5,6 +5,8 @@ import { initialCoCommander, type CoCommanderState } from "./cocommander";
 import { create } from "zustand";
 import type { CatalogQueue, LazyStats, SetupData, StartInfo, UiState } from "./sim/protocol";
 import type { SandboxState } from "./sandbox";
+import type { EditorState } from "./editor";
+import type { MissionSpec } from "./mission";
 
 export type Phase = "boot" | "setup" | "loading" | "playing" | "error";
 
@@ -74,6 +76,10 @@ export interface Store {
   perf: Perf;
   verify: string;
   sandbox: SandboxState | null;
+  /** The map editor (editor.ts); null until it is first opened. */
+  editor: EditorState | null;
+  /** A mission from the Earth studio, waiting for the battle simulator to place it (App.tsx). */
+  pendingMission: MissionSpec | null;
   /** ?shot=1: project art only (screenshots that may leave this machine): no terrain, map previews or EA cameos. */
   publicShot: boolean;
   /** The WebGL context: ok; lost (waiting for the browser); restoring (rebuilding, sheets on their way); failed. */
@@ -123,6 +129,8 @@ export const useStore = create<Store>((set) => ({
   perf: { fps: 0, frameMs: 0, simTickMs: 0, engineTickMs: 0, buildMs: 0, tps: 0, lateTicks: 0, draws: 0, heapMB: 0, managedMB: 0, tick: 0, syncHash: 0, latency: [], missed: 0 },
   verify: "",
   sandbox: null,
+  editor: null,
+  pendingMission: null,
   publicShot: new URLSearchParams(typeof location !== "undefined" ? location.search : "").get("shot") === "1",
   graphics: "ok",
   reviewOpen: false,
