@@ -97,6 +97,10 @@ namespace OpenRA.WebSim
 			TexturesOfInterest.Clear();
 			ModelBufferVersionsSent.Clear();
 			Capture.ModelBuffers.Clear();
+			// The last build's renderables and actors: until the next build they kept the ended world reachable.
+			Renderables.Clear();
+			Others.Clear();
+			ViewActors.Clear();
 			lastPalette = null;
 			viewSet = false;
 		}
