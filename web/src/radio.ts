@@ -6,7 +6,7 @@ import { useStore, type Store } from "./store";
 // Radio calls in campaign missions (the story's "radio" sets): a portrait, a caption and an optional voice, played one at
 // a time from a queue. Triggers read the page's copy of the match state (store.ui, sent every tick by Ui.cs), so the sim
 // needs nothing new: game time is the world tick (it stops while paused and follows the game speed), objectives are
-// ui.mission.objectives[n].status, the outcome is ui.win.
+// ui.mission.objectives[n].status, mission events are the ids in ui.mission.events, the outcome is ui.win.
 
 /** World ticks per second of game time at the default speed (OpenRA's 40 ms timestep; Lua's DateTime.Seconds). */
 export const TICKS_PER_SECOND = 25;
@@ -64,6 +64,7 @@ export class Radio {
       if (when === "start") return true;
       if (when === "victory" || when === "defeat") return when === outcome;
       if ("time" in when) return !outcome && seconds >= when.time;
+      if ("event" in when) return !outcome && !!mission.events?.includes(when.event);
       return !outcome && mission.objectives[when.objective]?.status === "complete";
     });
     if (!due.length) return;

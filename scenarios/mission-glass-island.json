@@ -1,0 +1,18 @@
+{
+  "map": "glass-island",
+  "mission": "glass-island",
+  "seed": 2026,
+  "players": [
+    {
+      "slot": "China",
+      "faction": "china",
+      "color": "2A6FDB"
+    }
+  ],
+  "options": {
+    "startingcash": "10000",
+    "difficulty": "normal",
+    "fog": "True",
+    "explored": "False"
+  }
+}

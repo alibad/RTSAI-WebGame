@@ -1,0 +1,161 @@
+MapFormat: 12
+RequiresMod: rtsai
+Title: Glass Island
+Author: RTS AI — Lines of Hope
+Tileset: TEMPERATE
+MapSize: 96,96
+Bounds: 1,1,94,94
+Visibility: MissionSelector
+Categories: Campaign
+LockPreview: True
+Players:
+	PlayerReference@China:
+		Name: China
+		AllowBots: False
+		Playable: True
+		Required: True
+		LockFaction: True
+		Faction: china
+		LockColor: True
+		Color: 3B7DD8
+		LockSpawn: True
+		LockTeam: True
+		Enemies: Orion Group
+	PlayerReference@Orion:
+		Name: Orion Group
+		Faction: russia
+		Color: 545D66
+		Enemies: China
+	PlayerReference@Neutral:
+		Name: Neutral
+		OwnsWorld: True
+		NonCombatant: True
+		Faction: china
+Actors:
+	MissionSpawn: mpspawn
+		Owner: Neutral
+		Location: 23,16
+	LandingBeach: waypoint
+		Owner: Neutral
+		Location: 23,16
+	Tanya: tany
+		Owner: China
+		Location: 23,15
+		Faction: america
+	Specialist: r2cnnetwork
+		Owner: China
+		Location: 23,17
+	RedSpear: r2redspear
+		Owner: China
+		Location: 25,16
+	MastBluff: naradr
+		Owner: Orion Group
+		Location: 34,6
+	MastRidge: naradr
+		Owner: Orion Group
+		Location: 50,-15
+	MastCauseway: naradr
+		Owner: Orion Group
+		Location: 69,-28
+	MastGate: naradr
+		Owner: Orion Group
+		Location: 93,-36
+	MastVaultNorth: naradr
+		Owner: Orion Group
+		Location: 105,-55
+	MastVaultSouth: naradr
+		Owner: Orion Group
+		Location: 109,-50
+	CoreNode: gatech
+		Owner: Orion Group
+		Location: 115,-60
+	Guard0: e2
+		Owner: Orion Group
+		Location: 72,-20
+	Guard1: e2
+		Owner: Orion Group
+		Location: 77,-25
+	Guard2: dog
+		Owner: Orion Group
+		Location: 76,-22
+	Guard3: e2
+		Owner: Orion Group
+		Location: 44,0
+	Guard4: flakt
+		Owner: Orion Group
+		Location: 46,-1
+	Guard5: e2
+		Owner: Orion Group
+		Location: 96,-45
+	Guard6: flakt
+		Owner: Orion Group
+		Location: 100,-42
+	Guard7: deso
+		Owner: Orion Group
+		Location: 111,-59
+	Guard8: e2
+		Owner: Orion Group
+		Location: 117,-64
+	Guard9: e2
+		Owner: Orion Group
+		Location: 119,-60
+	Guard10: dog
+		Owner: Orion Group
+		Location: 113,-55
+	Guard11: shk
+		Owner: Orion Group
+		Location: 120,-64
+	GarrisonWest: waypoint
+		Owner: Neutral
+		Location: 40,-9
+	GarrisonEast: waypoint
+		Owner: Neutral
+		Location: 104,-44
+	ExtractionCove: waypoint
+		Owner: Neutral
+		Location: 104,-57
+	BoatLanding: waypoint
+		Owner: Neutral
+		Location: 98,-58
+	BoatEntry: waypoint
+		Owner: Neutral
+		Location: 111,-75
+Rules:
+	World:
+		-SpawnStartingUnits:
+		-CrateSpawner:
+		-StartGameNotification:
+	Player:
+		-ConquestVictoryConditions:
+	naradr:
+		ExternalCondition@sensor-on:
+			Condition: sensor-on
+		ExternalCondition@sensor-tripped:
+			Condition: sensor-tripped
+		WithRangeCircle@sensor-on:
+			Range: 6c0
+			Visible: Always
+			ValidRelationships: Ally, Neutral, Enemy
+			Color: FFB53CF0
+			Width: 2
+			BorderColor: 00000080
+			BorderWidth: 4
+			RequiresCondition: sensor-on && !sensor-tripped
+		WithRangeCircle@sensor-off:
+			Range: 6c0
+			Visible: Always
+			ValidRelationships: Ally, Neutral, Enemy
+			Color: 8FB4C878
+			Width: 1
+			BorderColor: 00000080
+			BorderWidth: 3
+			RequiresCondition: !sensor-on && !sensor-tripped
+		WithRangeCircle@sensor-tripped:
+			Range: 6c0
+			Visible: Always
+			ValidRelationships: Ally, Neutral, Enemy
+			Color: FF3A2AF0
+			Width: 3
+			BorderColor: 00000080
+			BorderWidth: 5
+			RequiresCondition: sensor-tripped

@@ -130,7 +130,7 @@ const story: CampaignStory = {
     "glass-island": {
       "title": "Glass Island",
       "location": "The uncharted island",
-      "status": "coming",
+      "status": "playable",
       "speaker": "lin",
       "intro": "The island no chart names is real, and its masts see everything. A three-unit team with Tanya lands at night, stays out of every sensor's sight, copies the routing logs, and leaves by boat.",
       "tactics": "Watch the sensor masts' sweep before you move. Nothing on this island should ever see you.",
@@ -140,17 +140,17 @@ const story: CampaignStory = {
     "black-platform": {
       "title": "Black Platform",
       "location": "Directorate jamming platform, open sea",
-      "status": "coming",
+      "status": "playable",
       "speaker": "turki",
-      "intro": "While the platform jams, no one can see the hub, and its generators run on an Iron Curtain prototype. Board it with Tanya and a small team, place charges on every generator, and hold the control room until the picture comes back.",
-      "tactics": "There are no reinforcements. Clear each deck before you plant a charge, and keep the team together.",
+      "intro": "While the platform jams, no one can see the hub, and its generators run on an Iron Curtain prototype. Board it with Tanya and a small team, take the control room to drop the curtain, place charges on every generator, and hold the room until the picture comes back.",
+      "tactics": "There are no reinforcements, and only an engineer can take the control room. Clear each deck before you plant a charge, and keep the team together.",
       "victory": "Every screen on the coast lights up at once. The hub is exposed, and the Broker makes his offer to everyone at the same time. Nobody answers.",
       "defeat": "The boarding team is lost and the jamming holds. Clear each deck before moving on."
     },
     "every-light-on": {
       "title": "Every Light On",
       "location": "The Directorate hub",
-      "status": "coming",
+      "status": "playable",
       "speaker": "badr",
       "intro": "The Directorate hub stands on a fortified island chain, with the rebuilt Chronosphere at its heart. Cut its radar domes to sever the link, wait for the civilians to be clear, then capture the machine before Orlov uses it to edit the region into war.",
       "tactics": "Take the radar domes before you go for the core. The final strike waits for the all-clear from the mainland towns.",
@@ -566,6 +566,202 @@ const story: CampaignStory = {
         "speaker": "kemal",
         "line": "The line broke. Spread out across all three roads.",
         "audio": "hold-the-ferry-line/radio-8.mp3"
+      }
+    ],
+    "glass-island": [
+      {
+        "when": "start",
+        "speaker": "lin",
+        "line": "Three of us, one island, and every mast is watching. We move only when the circle goes dark."
+      },
+      {
+        "when": {
+          "time": 20
+        },
+        "speaker": "lantern",
+        "line": "Commander, the masts sweep on a cycle. Each one sleeps for a few seconds, then wakes. Watch the rings."
+      },
+      {
+        "when": {
+          "event": "alarm"
+        },
+        "speaker": "tanya",
+        "line": "They've seen us. Keep moving, and don't give them a second look."
+      },
+      {
+        "when": {
+          "time": 150
+        },
+        "speaker": "orlov",
+        "line": "Commander Lin. You came all this way for a picture of my island. I would have sold you a clearer one."
+      },
+      {
+        "when": {
+          "objective": 0
+        },
+        "speaker": "lin",
+        "line": "Logs copied. There's something else in the vault: a film reel, labelled by hand. Nineteen fifty-three."
+      },
+      {
+        "when": {
+          "event": "boat"
+        },
+        "speaker": "lantern",
+        "line": "Your boat is in the north cove. The vault masts take turns; wait for the near one to sleep."
+      },
+      {
+        "when": "victory",
+        "speaker": "einstein",
+        "line": "If you are hearing this, the echo has found you. It can be folded shut only once, the right way, from the place where it is anchored."
+      },
+      {
+        "when": "defeat",
+        "speaker": "lin",
+        "line": "The island saw us. Back to the beach, and we try again."
+      }
+    ],
+    "black-platform": [
+      {
+        "when": "start",
+        "speaker": "turki",
+        "line": "Boarding team, quiet on the pad. The control room first: no charge will stick while that curtain is up."
+      },
+      {
+        "when": {
+          "time": 15
+        },
+        "speaker": "lantern",
+        "line": "Commander, the two deck scanners take turns. The lane down the middle is blind to both."
+      },
+      {
+        "when": {
+          "event": "alarm"
+        },
+        "speaker": "tanya",
+        "line": "So much for quiet. Here comes the deck crew."
+      },
+      {
+        "when": {
+          "objective": 0
+        },
+        "speaker": "turki",
+        "line": "The control room is ours and the curtain is down. Tanya, every generator."
+      },
+      {
+        "when": {
+          "objective": 1
+        },
+        "speaker": "tanya",
+        "line": "Four for four. Somebody turn the lights back on."
+      },
+      {
+        "when": {
+          "event": "jamming-off"
+        },
+        "speaker": "lantern",
+        "line": "Every screen on the coast just lit up at once. I can see the hub. Hold that room, Commander."
+      },
+      {
+        "when": {
+          "event": "counterattack"
+        },
+        "speaker": "orlov",
+        "line": "To every commander on this coast: I can still give you the picture you want. You have only to ask."
+      },
+      {
+        "when": "victory",
+        "speaker": "lantern",
+        "line": "Nobody answered him. Not one channel. The hub is on every screen now."
+      },
+      {
+        "when": "defeat",
+        "speaker": "turki",
+        "line": "The team is down and the jamming holds. We board again."
+      }
+    ],
+    "every-light-on": [
+      {
+        "when": "start",
+        "speaker": "badr",
+        "line": "This is where the silence started. Radar domes first, then the machine."
+      },
+      {
+        "when": {
+          "time": 10
+        },
+        "speaker": "lin",
+        "line": "Colonel, Lin here. My network is feeding your radar relay. While it stands, you see everything."
+      },
+      {
+        "when": {
+          "event": "platform-holds"
+        },
+        "speaker": "turki",
+        "line": "Platform holding, Colonel. Their jammers stay dark."
+      },
+      {
+        "when": {
+          "event": "naval-wave"
+        },
+        "speaker": "lantern",
+        "line": "Gunboats coming down the northern lane, heading for your shore."
+      },
+      {
+        "when": {
+          "event": "picture-lost"
+        },
+        "speaker": "lantern",
+        "line": "Your relay is down, Colonel. Lin's picture is gone; you're back in the fog."
+      },
+      {
+        "when": {
+          "time": 300
+        },
+        "speaker": "orlov",
+        "line": "Colonel. The radar that went quiet on your coast? I can make it remember a different morning. Name your price."
+      },
+      {
+        "when": {
+          "event": "lane-closed"
+        },
+        "speaker": "kemal",
+        "line": "The northern lane is closed. No more boats come through, Colonel."
+      },
+      {
+        "when": {
+          "objective": 0
+        },
+        "speaker": "badr",
+        "line": "Three domes down and the link is cut. Now we wait for Nabil."
+      },
+      {
+        "when": {
+          "event": "towns-clear"
+        },
+        "speaker": "nabil",
+        "line": "The mainland towns are clear, every family out. The strike is yours, Colonel."
+      },
+      {
+        "when": {
+          "time": 570
+        },
+        "speaker": "tanya",
+        "line": "When that machine falls, he'll run for it. Let me be close when he does."
+      },
+      {
+        "when": "victory",
+        "speaker": "lantern",
+        "line": "Running Einstein's sequence now. Once, the right way. Every light is coming back on."
+      },
+      {
+        "when": "victory",
+        "speaker": "tanya",
+        "line": "He's out there somewhere in time. Somebody who knows his face should be waiting."
+      },
+      {
+        "when": "defeat",
+        "speaker": "badr",
+        "line": "Fall back to the yard. The machine is still running."
       }
     ]
   }

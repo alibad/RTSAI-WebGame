@@ -458,7 +458,7 @@ export class Renderer {
     this.models.run(s.captured.modelCmds, s.header.modelCmds, (id) => this.textures.get(id)?.tex ?? null, this.palette.tex, this.paletteRows);
   }
 
-  private drawCaptured(cur: Snapshot, cam: Camera, ground = false) {
+  private drawCaptured(cur: Snapshot, cam: Camera, ground = false, above = false) {
     const cap = cur.captured;
     if (!cap.batches.length || this.actorFilter) return;
     const gl = this.gl;
@@ -480,7 +480,7 @@ export class Renderer {
       this.capUploaded = cur;
     }
     for (const b of cap.batches) {
-      if (b.ground !== ground) continue;
+      if (b.ground !== ground || b.above !== above) continue;
       let ok = true;
       for (let i = 0; i < 8; i++) {
         const id = b.textures[i];
@@ -598,6 +598,7 @@ export class Renderer {
     if (cur) this.drawCaptured(cur, cam);
     if (depthOn) gl.disable(gl.DEPTH_TEST);
     this.drawShroud(cam);
+    if (cur) this.drawCaptured(cur, cam, false, true); // above the shroud: always-visible range circles (sensor zones)
     if (cur) this.drawSprites(cur, prev, cam, now, true); // above the shroud: placement previews, rally points
     if (cur) this.drawOverlay(cur, prev, cam, overlay, now);
     gl.bindVertexArray(null);

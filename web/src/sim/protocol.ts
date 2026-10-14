@@ -37,7 +37,7 @@ export interface Header {
 /** Engine renderer output recorded by Capture.cs: beams, lines, contrails, voxel model sprites (+ model passes). */
 export interface Captured {
   vertices: Uint8Array; // capVertices * 48 bytes (copied)
-  batches: { start: number; count: number; blend: number; ui: boolean; ground: boolean; textures: number[] }[];
+  batches: { start: number; count: number; blend: number; ui: boolean; ground: boolean; above: boolean; textures: number[] }[];
   modelCmds: DataView; // modelCmds * 136 bytes (copied)
 }
 
@@ -175,7 +175,7 @@ export function parseSnapshot(bytes: Uint8Array, receivedAt: number): Snapshot {
   for (let k = 0; k < header.capBatches; k++, p += CAPTURE_BATCH_BYTES) {
     const tex: number[] = [];
     for (let t = 0; t < 8; t++) tex.push(i(p + 12 + 4 * t));
-    batches.push({ start: i(p), count: i(p + 4), blend: dv.getUint8(p + 8), ui: dv.getUint8(p + 9) === 1, ground: dv.getUint8(p + 10) === 1, textures: tex });
+    batches.push({ start: i(p), count: i(p + 4), blend: dv.getUint8(p + 8), ui: dv.getUint8(p + 9) === 1, ground: dv.getUint8(p + 10) === 1, above: dv.getUint8(p + 11) === 1, textures: tex });
   }
   const mEnd = p + header.modelCmds * MODEL_CMD_BYTES;
   const modelCmds = new DataView(bytes.slice(p, mEnd).buffer);
@@ -257,7 +257,14 @@ export interface MissionDefinition {
 
 export interface MissionState {
   id: string; title: string; difficulty: string;
-  objectives: { text: string; secondary: boolean; status: "active" | "complete" | "failed"; progress: string; markers?: { name: string; x: number; y: number }[] }[];
+  /** The mission's events that have fired, in order (Missions.cs): the radio's { event: id } calls key off them. */
+  events?: string[];
+  objectives: {
+    text: string; secondary: boolean; status: "active" | "complete" | "failed"; progress: string;
+    /** Active but not counting yet: an objective or event it waits for has not happened. */
+    waiting?: boolean;
+    markers?: { name: string; x: number; y: number }[];
+  }[];
 }
 
 /** The battle sandbox readout (sim/OpenRA.WebSim/Sandbox.cs). Times in seconds of game time. */

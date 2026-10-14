@@ -512,6 +512,23 @@ namespace OpenRA.WebSim
 				}
 
 				Game.Renderer.Flush();
+
+				// Range circles the rules show at all times (WithRangeCircle Visible: Always, such as a mission's sensor
+				// zones): the desktop draws these annotations over the shroud, and so does the page with this pass.
+				Capture.AboveShroud = true;
+				foreach (var t in world.ActorsWithTrait<IRenderAnnotations>())
+				{
+					if (!t.Actor.IsInWorld || t.Actor.Disposed || t.Trait.GetType().Name != "WithRangeCircle")
+						continue;
+					foreach (var r in t.Trait.RenderAnnotations(t.Actor, wr))
+					{
+						try { r.PrepareRender(wr).Render(wr); }
+						catch (Exception) { UnsupportedRenderables++; }
+					}
+				}
+
+				Game.Renderer.Flush();
+				Capture.AboveShroud = false;
 			}
 			finally
 			{

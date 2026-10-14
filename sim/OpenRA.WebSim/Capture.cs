@@ -33,6 +33,9 @@ namespace OpenRA.WebSim
 
 		public static bool GroundPass { get; set; }
 
+		/// <summary>Annotations the page draws over the shroud, as the desktop does (always-visible range circles).</summary>
+		public static bool AboveShroud { get; set; }
+
 		static byte[] vertices = new byte[64 * 1024];
 		static int vertexCount;
 		static byte[] batches = new byte[16 * 1024];
@@ -57,6 +60,7 @@ namespace OpenRA.WebSim
 		{
 			Active = true;
 			GroundPass = false;
+			AboveShroud = false;
 			vertexCount = 0;
 			batchCount = 0;
 			modelCmdCount = 0;
@@ -120,7 +124,7 @@ namespace OpenRA.WebSim
 			b[8] = (byte)blend;
 			b[9] = (byte)(shader.UiSpace ? 1 : 0);
 			b[10] = (byte)(GroundPass ? 1 : 0);
-			b[11] = 0;
+			b[11] = (byte)(AboveShroud ? 1 : 0);
 			for (var i = 0; i < 8; i++)
 			{
 				var id = shader.TextureId("Texture" + i);

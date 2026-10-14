@@ -402,6 +402,8 @@
 .mh-objectives li[data-status="complete"] .mh-text > span { text-decoration: line-through; text-decoration-color: rgba(147, 162, 140, .6); }
 .mh-objectives li[data-status="failed"] { color: #e7a595; }
 .mh-objectives li[data-status="failed"] .mh-mark { color: var(--hud-red); }
+.mh-objectives li[data-waiting] { color: #8f9886; }
+.mh-objectives li[data-waiting] .mh-mark { color: #8f9886; }
 .mh-progress { margin-left: 6px; color: var(--hud-gold); font-size: 11px; }
 .mh-text em { margin-left: 6px; padding: 0 4px; font-size: 9px; }
 .mh-markers { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 5px; }

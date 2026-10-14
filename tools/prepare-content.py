@@ -81,6 +81,24 @@ def resolve(allnodes, key, visiting=()):
 COUNTRIES = {'america':'saudi','germany':'china','england':'turkey','france':'israel','korea':'china',
              'cuba':'hezbollah','libya':'yemen','iraq':'iran','russia':'iran'}
 
+# Each country's signature keeps its original rules, weapon, cost and prerequisites; its stand-in art comes from a
+# project unit (isometric mode).
+COUNTRY_ART = {
+    'e1':'r2cnrifle','e2':'r2basij','snipe':'r2wadighost','ghost':'r2ilrifle','ccomand':'r2ilrifle',
+    'ptroop':'r2falcon','tany':'r2ilrifle','jumpjet':'r2falcon','cleg':'r2cnnetwork',
+    'flakt':'r2yrpg','shk':'r2cnportable','terror':'r2hzrifle','deso':'r2hzat','ivan':'r2dronecontrol',
+    'civan':'r2dronecontrol','yuri':'r2cnnetwork','yuripr':'r2cnnetwork',
+    'mtnk':'r2m1a2s','tnkd':'r2qilin','fv':'r2aras','sref':'r2merkava','mgtk':'r2zbd',
+    'htnk':'r2karrar','apoc':'r2karrar','ttnk':'r2qilin','dtruck':'r2ymlr','dron':'r2lynx',
+    'dest':'r2ege','aegis':'r2luyang','dlph':'r2jiaolong','carrier':'r2haiwang',
+    'sub':'r2jiaolong','hyd':'r2ege','sqd':'r2jiaolong',
+    'shad':'r2crane','zep':'r2cloud','orca':'r2haiying','beag':'r2skyspear',
+    'pdplane':'r2haiying','hornet':'r2haiying','asw':'r2crane',
+    'gapill':'r2saguard','gagun':'r2saguard','gagt':'r2saguard','nasam':'r2iraasite',
+    'naflak':'r2iraasite','tesla':'r2spectrum','atesla':'r2spectrum','gtur':'r2saguard',
+    'nalasr':'r2hzbunker','naftur':'r2hzbunker','tesl':'r2spectrum','gtgcan':'r2bastion',
+}
+
 def countries():
     overlay = parse((MOD.parent/'rtsai-classic/rules/factions.yaml').read_text())
     # The public world selects from all sixteen real countries.
@@ -94,24 +112,8 @@ def countries():
         if images:
             target = overlay.setdefault(actor,node())['children'].setdefault('RenderSprites',node())['children']
             target['FactionImages'] = node(children={f:copy.deepcopy(images.get(d, next(iter(images.values())))) for f,d in COUNTRIES.items()})
-    # Each country's signature keeps its original rules, weapon, cost and prerequisites.
-    art = {
-        'e1':'r2cnrifle','e2':'r2basij','snipe':'r2wadighost','ghost':'r2ilrifle','ccomand':'r2ilrifle',
-        'ptroop':'r2falcon','tany':'r2ilrifle','jumpjet':'r2falcon','cleg':'r2cnnetwork',
-        'flakt':'r2yrpg','shk':'r2cnportable','terror':'r2hzrifle','deso':'r2hzat','ivan':'r2dronecontrol',
-        'civan':'r2dronecontrol','yuri':'r2cnnetwork','yuripr':'r2cnnetwork',
-        'mtnk':'r2m1a2s','tnkd':'r2qilin','fv':'r2aras','sref':'r2merkava','mgtk':'r2zbd',
-        'htnk':'r2karrar','apoc':'r2karrar','ttnk':'r2qilin','dtruck':'r2ymlr','dron':'r2lynx',
-        'dest':'r2ege','aegis':'r2luyang','dlph':'r2jiaolong','carrier':'r2haiwang',
-        'sub':'r2jiaolong','hyd':'r2ege','sqd':'r2jiaolong',
-        'shad':'r2crane','zep':'r2cloud','orca':'r2haiying','beag':'r2skyspear',
-        'pdplane':'r2haiying','hornet':'r2haiying','asw':'r2crane',
-        'gapill':'r2saguard','gagun':'r2saguard','gagt':'r2saguard','nasam':'r2iraasite',
-        'naflak':'r2iraasite','tesla':'r2spectrum','atesla':'r2spectrum','gtur':'r2saguard',
-        'nalasr':'r2hzbunker','naftur':'r2hzbunker','tesl':'r2spectrum','gtgcan':'r2bastion',
-    }
     seqout = {}
-    for actor,donor in art.items():
+    for actor,donor in COUNTRY_ART.items():
         if actor not in rules or donor not in rules or donor not in sequences: continue
         orig = resolve(rules,actor); source = resolve(rules,donor)
         traits = overlay.setdefault(actor,node())['children']
@@ -364,9 +366,10 @@ def chapter_players(slot, faction, color, extra=''):
 SURVIVORS = 'PlayerReference@Survivors:\n\tName: Survivors\n\tNonCombatant: True\n\tFaction: america\n\tColor: D8D2C4\n'
 
 class ChapterMap:
-    """A converted base map's terrain plus new actors; validates every placement against the terrain."""
-    def __init__(self, base, mission_id):
-        self.id = mission_id
+    """A converted base map's terrain plus new actors; validates every placement against the terrain.
+    With art_check, write() also refuses actors the public game would draw with the standalone's stand-ins."""
+    def __init__(self, base, mission_id, art_check=False):
+        self.id = mission_id; self.art_check = art_check
         self.yaml = parse((OUT/'maps'/base/'map.yaml').read_text(encoding='utf-8'))
         self.raw = bytearray((OUT/'maps'/base/'map.bin').read_bytes())
         _, self.w, self.h, self.tiles, _, self.res = struct.unpack_from('<BHHIII', self.raw)
@@ -378,6 +381,11 @@ class ChapterMap:
         if not (0 <= u < self.w and 0 <= v < self.h): return
         struct.pack_into('<HB', self.raw, self.tiles+(u*self.h+v)*3, TILE[kind], 0)
         if kind in ('water', 'beach') and self.res: struct.pack_into('<BB', self.raw, self.res+(u*self.h+v)*2, 0, 0)
+    def fill(self, u0, v0, u1, v1, kind):
+        for u in range(u0, u1+1):
+            for v in range(v0, v1+1): self.paint(u, v, kind)
+    def clear_ore(self):
+        if self.res: self.raw[self.res:self.res+self.w*self.h*2] = bytes(self.w*self.h*2)
 
     def cpos(self, u, v):
         off = v & 1
@@ -386,7 +394,7 @@ class ChapterMap:
         if CLASSIC_MODE: return x, y
         v = x+y; return (x-y-(v & 1))//2, v
 
-    def add(self, name, kind, owner, u, v, where='land'):
+    def add(self, name, kind, owner, u, v, where='land', **inits):
         if name in self.actors: raise ValueError(f'{self.id}: duplicate actor {name}')
         if kind not in rules: raise ValueError(f'{self.id}: unknown actor type {kind} ({name})')
         x, y = self.cpos(u, v)
@@ -418,10 +426,10 @@ class ChapterMap:
                 raise ValueError(f'{self.id}: waypoint {name} at {u},{v} must be on water')
             elif where == 'land' and t == TILE['water']:
                 raise ValueError(f'{self.id}: waypoint {name} at {u},{v} is on water')
-        self.actors[name] = node(kind, values(Owner=owner, Location=f'{x},{y}'))
+        self.actors[name] = node(kind, values(Owner=owner, Location=f'{x},{y}', **inits))
 
-    def reachable(self, a, b):
-        """Land connectivity between two actors' cells (8-neighbour flood fill over non-water map cells)."""
+    def reachable(self, a, b, water=False):
+        """Land (or sea) connectivity between two actors' cells (8-neighbour flood fill over the map's land or water cells)."""
         start = self.mpos(*map(int, self.actors[a]['children']['Location']['value'].split(',')))
         goal = self.mpos(*map(int, self.actors[b]['children']['Location']['value'].split(',')))
         seen = {start}; todo = [start]
@@ -432,7 +440,7 @@ class ChapterMap:
             near += [(u-1, v-1), (u-1, v+1)] if not v & 1 else [(u+1, v-1), (u+1, v+1)]
             if CLASSIC_MODE: near = [(u+du, v+dv) for du in (-1, 0, 1) for dv in (-1, 0, 1) if du or dv]
             for n in near:
-                if n not in seen and 0 <= n[0] < self.w and 0 <= n[1] < self.h and self.tile(*n) != TILE['water']:
+                if n not in seen and 0 <= n[0] < self.w and 0 <= n[1] < self.h and (self.tile(*n) == TILE['water']) == water:
                     seen.add(n); todo.append(n)
         return False
 
@@ -443,6 +451,12 @@ class ChapterMap:
         m['Players'] = node(children=chapter_players(slot, faction, color, extra_players))
         m['Actors'] = node(children=self.actors)
         m['Rules'] = node(children=parse(MAP_RULES+extra_rules))
+        if self.art_check:
+            factions = {n['children']['Name']['value']: n['children'].get('Faction', node('china'))['value'] for n in m['Players']['children'].values()}
+            for name, a in self.actors.items():
+                faction = a['children'].get('Faction', node(factions[a['children']['Owner']['value']]))['value']
+                if a['value'] != 'waypoint' and stand_in_art(a['value'], faction):
+                    raise ValueError(f'{self.id}: {name} ({a["value"]}, {faction}) has only stand-in art in the public game')
         d = OUT/'maps'/self.id; d.mkdir(parents=True, exist_ok=True)
         (d/'map.yaml').write_text(dump(m), encoding='utf-8', newline='\n'); (d/'map.bin').write_bytes(self.raw)
         w, h = self.w, self.h
@@ -456,6 +470,32 @@ class ChapterMap:
                     if x < img.width: img.putpixel((x, v), color)
         img.save(d/'map.png')
 
+def stand_in_art(kind, faction):
+    """True when every sprite the actor's image draws for that faction is one of the standalone's code-drawn stand-ins
+    (standalone/placeholders: the civilians, the campaign outpost), ignoring the original art the isometric mode adds."""
+    if kind in COUNTRY_ART and not CLASSIC_MODE: return False
+    images = resolve(rules, kind).get('RenderSprites', node())['children']
+    image = (images.get('FactionImages', node())['children'].get(COUNTRIES.get(faction, faction), node())['value']
+             or images.get('Image', node())['value'] or kind)
+    seq = resolve(sequences, image) if image in sequences else {}
+    default = seq.get('Defaults', node())['children'].get('Filename', node())['value']
+    files = {n['children'].get('Filename', node())['value'] or default or image+'.shp' for k, n in seq.items() if k not in ('Defaults', 'icon')}
+    def stand_in(f):
+        f = f.split('|')[-1]
+        return '/' not in f and (MOD/'standalone/placeholders'/f).exists() and not any(
+            (MOD/d/f).exists() for d in ('standalone/effects', 'standalone/units', 'standalone/base', 'bits', 'bits/cameos'))
+    return not files or all(stand_in(f) for f in files)
+
+def sensor_rules(kind, radius):
+    """Map rules showing a detection zone (Missions.Sensor) around every actor of a type: an amber circle while its
+    sweep is on, a dim one while off, red once tripped. The campaign host grants the two conditions."""
+    def circle(name, color, width, when):
+        return (f'\tWithRangeCircle@{name}:\n\t\tRange: {radius}c0\n\t\tVisible: Always\n\t\tValidRelationships: Ally, Neutral, Enemy\n'
+                f'\t\tColor: {color}\n\t\tWidth: {width}\n\t\tBorderColor: 00000080\n\t\tBorderWidth: {width+2}\n\t\tRequiresCondition: {when}\n')
+    return (f'{kind}:\n\tExternalCondition@sensor-on:\n\t\tCondition: sensor-on\n\tExternalCondition@sensor-tripped:\n'
+            '\t\tCondition: sensor-tripped\n' + circle('sensor-on', 'FFB53CF0', 2, 'sensor-on && !sensor-tripped')
+            + circle('sensor-off', '8FB4C878', 1, '!sensor-on && !sensor-tripped') + circle('sensor-tripped', 'FF3A2AF0', 3, 'sensor-tripped'))
+
 def chapter_entry(mission, objectives):
     named = set(mission.pop('map').actors)
     for obj in objectives:
@@ -465,6 +505,20 @@ def chapter_entry(mission, objectives):
             if ref not in named: raise ValueError(f"{mission['id']}: unknown objective actor {ref}")
     for name in mission['protect']:
         if name not in named: raise ValueError(f"{mission['id']}: unknown protected actor {name}")
+    # Sensors and events (Missions.cs): every actor, actor type and event they name must exist.
+    ids = {e['id'] for e in mission.get('events', [])}
+    refs = [x['actor'] for x in mission.get('sensors', [])]
+    for e in mission.get('events', []):
+        refs += [sp.get(k) for sp in e.get('spawn', []) for k in ('at', 'to')] + [r.get('at') for r in e.get('reveal', [])]
+        refs += [a for g in e.get('grant', [])+e.get('revoke', []) for a in g['actors']] + [e['when'].get('killed'), e['when'].get('detected')]
+        for ref in e.get('conceal', [])+[e.get('until'), e['when'].get('event')]:
+            if ref and ref not in ids: raise ValueError(f"{mission['id']}: unknown event {ref}")
+        for kind in (k for sp in e.get('spawn', []) for k in sp['types']):
+            if kind not in rules: raise ValueError(f"{mission['id']}: unknown actor type {kind} in event {e['id']}")
+    for ref in refs:
+        if ref and ref != '*' and ref not in named: raise ValueError(f"{mission['id']}: unknown event or sensor actor {ref}")
+    for ref in (r for obj in objectives for r in obj.get('after', [])):
+        if ref not in ids: raise ValueError(f"{mission['id']}: an objective waits for unknown event {ref}")
     mission['objectives'] = objectives
     (SCENARIOS/('mission-'+mission['id']+'.json')).write_text(json.dumps(dict(map=mission['id'], mission=mission['id'], seed=2026,
         players=[dict(slot=mission['slot'], faction=mission['faction'], color='2A6FDB')],
@@ -617,8 +671,226 @@ def hold_the_ferry_line():
         objective('Hold the ferry line for 12 minutes.', 'survive', seconds=720),
         objective('Keep both ferry piers standing.', 'protect', ['FerryPierNorth', 'FerryPierSouth'])])
 
+def glass_island():
+    """Act III, chapter 3: an infiltration past sweeping sensor masts (terrain of Haitan Network, its ore cleared and the
+    plateau cut off from the lowland by a tidal channel with one causeway)."""
+    m = ChapterMap('haitan-network', 'glass-island', art_check=True)
+    m.clear_ore()
+    for u in range(33, 62):
+        for v in range(46, 49): m.paint(u, v, 'road' if 47 <= u <= 50 else 'water')
+    # Lin's team lands on the western beach: Tanya (her 1953 commando art comes with the america faction), the network
+    # specialist who copies the logs, and one Red Spear.
+    m.add('MissionSpawn', 'mpspawn', 'Neutral', 3, 39)
+    m.add('LandingBeach', 'waypoint', 'Neutral', 3, 39)
+    m.add('Tanya', 'tany', 'China', 4, 38, Faction='america')
+    m.add('Specialist', 'r2cnnetwork', 'China', 3, 40)
+    m.add('RedSpear', 'r2redspear', 'China', 4, 41)
+    # Sensor masts: (name, u, v, sweep [on, off] seconds or always on, offset). The bluff and the causeway can only be
+    # crossed while their sweep is off; the ridge mast never sleeps but leaves a strip along the cliff; the vault's two
+    # masts take turns.
+    masts = [('MastBluff', 14, 40, [6, 14], 0), ('MastRidge', 32, 35, [], 0), ('MastCauseway', 48, 41, [8, 14], 4),
+             ('MastGate', 64, 57, [8, 12], 0), ('MastVaultNorth', 80, 50, [11, 11], 0), ('MastVaultSouth', 79, 59, [11, 11], 11)]
+    for name, u, v, _, _ in masts: m.add(name, 'naradr', 'Orion Group', u, v)
+    m.add('CoreNode', 'gatech', 'Orion Group', 87, 55)
+    # Guards: they fight anyone they see, but only the masts raise the alarm.
+    for k, (kind, u, v) in enumerate([('e2', 46, 52), ('e2', 51, 52), ('dog', 49, 54), ('e2', 22, 44), ('flakt', 23, 45),
+                                      ('e2', 70, 51), ('flakt', 71, 58), ('deso', 85, 52), ('e2', 90, 53), ('e2', 89, 59),
+                                      ('dog', 84, 58), ('shk', 92, 56)]):
+        m.add(f'Guard{k}', kind, 'Orion Group', u, v)
+    # Where the hunters come from when a mast trips or goes dark.
+    m.add('GarrisonWest', 'waypoint', 'Neutral', 24, 31)
+    m.add('GarrisonEast', 'waypoint', 'Neutral', 74, 60)
+    # The way out: a boat comes for the team at the north cove once the logs are copied.
+    m.add('ExtractionCove', 'waypoint', 'Neutral', 80, 47)
+    m.add('BoatLanding', 'waypoint', 'Neutral', 78, 40, where='water')
+    m.add('BoatEntry', 'waypoint', 'Neutral', 93, 36, where='water')
+    for a, b in [('LandingBeach', 'CoreNode'), ('CoreNode', 'ExtractionCove'), ('GarrisonWest', 'MastBluff'), ('GarrisonEast', 'MastVaultNorth')]:
+        if not m.reachable(a, b): raise ValueError(f'{m.id}: no land route {a} -> {b}')
+    if not m.reachable('BoatEntry', 'BoatLanding', water=True): raise ValueError(f'{m.id}: no sea route for the boat')
+    m.write('Glass Island', 'China', 'china', '3B7DD8', extra_rules=sensor_rules('naradr', 6))
+    hunters = ['e2', 'e2', 'dog', 'e2', 'flakt', 'dog']
+    events = [dict(id='alarm', when=dict(detected='*'))]
+    for name, u, *_ in masts:
+        garrison = 'GarrisonWest' if u < 40 else 'GarrisonEast'
+        events += [dict(id=f'alarm-{name}', when=dict(detected=name), spawn=[dict(at=garrison, to=name, types=hunters)]),
+                   dict(id=f'dark-{name}', when=dict(killed=name), spawn=[dict(at=garrison, to=name, types=hunters)])]
+    events.append(dict(id='boat', when=dict(objective=0), spawn=[dict(owner='China', at='BoatEntry', to='BoatLanding', types=['r2haiying'])],
+                       reveal=[dict(at='ExtractionCove', radius=6)]))
+    mission = dict(id=m.id, map=m, title='Glass Island', faction='china', campaign='Lines of Hope', slot='China',
+        enemy='Orion Group', protect=[],
+        sensors=[dict(actor=name, radius=6, **(dict(sweep=sweep, offset=offset) if sweep else {})) for name, _, _, sweep, offset in masts],
+        events=events,
+        briefing=('Commander Lin Haoran. The island no chart names is real, and the Obsidian Directorate watches it with '
+                  'sensor masts. Tonight a three-man team lands on its western beach: Tanya, a network specialist and '
+                  'one Red Spear.\n\nEach mast sees a circle around it. Some sweep and sleep; watch the circle dim before '
+                  'you cross. Reach the core node in the east, deploy the specialist to copy the routing logs, then '
+                  'bring him to the boat at the north cove. Every mast that sees you, or goes dark, sends the garrison '
+                  'to look.\n\nIf the island sees you too often, or Tanya or the specialist falls, the operation fails.'),
+        adaptation='An original RTS AI chapter on the terrain of Haitan Network, with a new channel and new actors.')
+    return chapter_entry(mission, [
+        objective('Copy the routing logs: deploy the network specialist beside the core node.', 'reach', types=['r2cnnetwork'],
+                  target='CoreNode', radius=3, deploy=True),
+        objective('Bring the specialist and the logs to the boat at the north cove.', 'reach', types=['r2cnnetwork'],
+                  target='ExtractionCove', radius=4, requires=[0]),
+        objective("Stay out of the sensor masts' sight.", 'undetected', [name for name, *_ in masts], allowed=1),
+        objective('Keep Tanya and the specialist alive.', 'protect', ['Tanya', 'Specialist'])])
+
+def black_platform():
+    """Act III, chapter 4: a boarding action on a jamming platform in open sea (the Bab al-Mandab map's frame, its land
+    painted over: concrete deck modules joined by catwalks)."""
+    m = ChapterMap('bab-al-mandab-passage', 'black-platform', art_check=True)
+    m.clear_ore()
+    m.fill(0, 0, m.w-1, m.h-1, 'water')
+    # Decks (u0, v0, u1, v1): the landing pad, the control deck, the two generator wings and the crew deck; then the
+    # catwalks between them.
+    for box in [(44, 68, 52, 77), (42, 38, 54, 58), (33, 25, 37, 70), (59, 25, 63, 70), (42, 23, 54, 32),
+                (47, 59, 49, 67), (38, 47, 41, 50), (55, 47, 58, 50), (38, 27, 41, 29), (55, 27, 58, 29),
+                (47, 33, 49, 37), (38, 72, 43, 74), (53, 72, 58, 74)]:
+        m.fill(*box, 'road')
+    # Commander Turki's boarding team on the landing pad: no base, no reinforcements.
+    m.add('MissionSpawn', 'mpspawn', 'Neutral', 48, 73)
+    m.add('LandingPad', 'waypoint', 'Neutral', 48, 73)
+    team = [('Tanya', 'tany', 47, 70), ('Falcon1', 'r2falcon', 45, 71), ('Falcon2', 'r2falcon', 51, 71),
+            ('Rifle1', 'r2sang', 45, 74), ('Rifle2', 'r2sang', 48, 75), ('Rifle3', 'r2sang', 51, 74), ('Lancer', 'r2saat', 49, 72),
+            ('Engineer1', 'engineer', 46, 76), ('Engineer2', 'engineer', 50, 76)]
+    for name, kind, u, v in team: m.add(name, kind, 'Saudi Arabia', u, v, **(dict(Faction='america') if kind == 'tany' else {}))
+    # The Iron Curtain prototype in the control room keeps the four jammer generators untouchable until it is taken.
+    m.add('CurtainControl', 'nairon', 'Orion Group', 47, 47)
+    gens = [('GenNW', 34, 28), ('GenNE', 60, 28), ('GenSW', 34, 64), ('GenSE', 60, 64)]
+    for name, u, v in gens: m.add(name, 'gapowr', 'Orion Group', u, v)
+    # Two deck scanners take turns sweeping the control deck's sides and the catwalks to the wings; the lane down the
+    # middle is out of their sight. If one sees the team, the deck crew comes running.
+    scanners = [('ScannerWest', 43, 45, 0), ('ScannerEast', 52, 45, 8)]
+    for name, u, v, _ in scanners: m.add(name, 'naradr', 'Orion Group', u, v)
+    guards = [('nalasr', 45, 57), ('nalasr', 51, 57), ('e2', 44, 53), ('e2', 52, 53), ('dog', 48, 55), ('deso', 45, 41),
+              ('e2', 51, 41), ('flakt', 48, 39), ('e2', 35, 40), ('e2', 35, 56), ('flakt', 36, 33), ('dog', 35, 60),
+              ('e2', 61, 40), ('e2', 61, 56), ('flakt', 60, 33), ('e2', 61, 60), ('shk', 48, 26), ('e2', 44, 28), ('e2', 52, 28)]
+    for k, (kind, u, v) in enumerate(guards): m.add(f'Guard{k}', kind, 'Orion Group', u, v)
+    # Where the deck crew and the counterattack come from: the crew deck, the three docks, and the open sea.
+    for name, u, v in [('CrewQuarters', 48, 30), ('NorthDock', 48, 24), ('WestDock', 34, 48), ('EastDock', 62, 48)]:
+        m.add(name, 'waypoint', 'Neutral', u, v)
+    for name, u, v in [('SeaWest', 10, 48), ('SeaEast', 86, 48), ('SeaWestStation', 28, 48), ('SeaEastStation', 68, 48)]:
+        m.add(name, 'waypoint', 'Neutral', u, v, where='water')
+    for a, b in [('LandingPad', 'CurtainControl'), ('LandingPad', 'GenNW'), ('LandingPad', 'GenSE'), ('NorthDock', 'GenSW')]:
+        if not m.reachable(a, b): raise ValueError(f'{m.id}: no deck route {a} -> {b}')
+    for a, b in [('SeaWest', 'SeaWestStation'), ('SeaEast', 'SeaEastStation')]:
+        if not m.reachable(a, b, water=True): raise ValueError(f'{m.id}: no sea route {a} -> {b}')
+    m.write('Black Platform', 'Saudi Arabia', 'saudi', '2E8B57', extra_rules=sensor_rules('naradr', 4))
+    crew = ['e2', 'e2', 'dog', 'e2', 'flakt']
+    counter = ['e2', 'e2', 'flakt', 'e2', 'deso', 'shk']
+    gen_names = [name for name, _, _ in gens]
+    events = [dict(id='curtain', when=dict(time=0), grant=[dict(condition='invulnerability', actors=gen_names)]),
+              dict(id='curtain-down', when=dict(objective=0), revoke=[dict(condition='invulnerability', actors=gen_names)]),
+              dict(id='alarm', when=dict(detected='*'))]
+    for name, *_ in scanners:
+        events.append(dict(id=f'alarm-{name}', when=dict(detected=name), spawn=[dict(at='CrewQuarters', to=name, types=crew)]))
+    events += [dict(id='jamming-off', when=dict(objective=1), reveal=[dict(radius=0)],
+                    spawn=[dict(at='NorthDock', to='CurtainControl', types=counter)]),
+               dict(id='counterattack', when=dict(event='jamming-off'), delay=30, repeat=35,
+                    spawn=[dict(at='WestDock', to='CurtainControl', types=counter), dict(at='EastDock', to='CurtainControl', types=counter)]),
+               dict(id='gunboats', when=dict(event='jamming-off'), delay=50,
+                    spawn=[dict(at='SeaWest', to='SeaWestStation', types=['hyd']), dict(at='SeaEast', to='SeaEastStation', types=['hyd'])])]
+    mission = dict(id=m.id, map=m, title='Black Platform', faction='saudi', campaign='Lines of Hope', slot='Saudi Arabia',
+        enemy='Orion Group', protect=['CurtainControl'],
+        sensors=[dict(actor=name, radius=4, sweep=[8, 8], offset=offset) for name, _, _, offset in scanners],
+        events=events,
+        briefing=('Commander Turki Al-Zahrani. While this platform jams, no one can see the Directorate hub. Its four '
+                  'jammer generators sit under an Iron Curtain prototype: nothing can touch them while the curtain '
+                  'control room runs it.\n\nYour boarding team lands on the south pad with Tanya, two engineers and no '
+                  'reinforcements. Clear the control deck, take the control room with an engineer to drop the curtain, '
+                  'then let Tanya place charges on every generator out on the wings. When the jamming stops, Orion will '
+                  'come from the docks and the sea: hold the control room until the picture comes back. The two deck '
+                  'scanners take turns; the lane down the middle is out of their sight.\n\nIf Tanya falls, the control '
+                  'room is destroyed, or both engineers are lost before it is taken, the operation fails.'),
+        adaptation='An original RTS AI chapter on the frame of the Bab al-Mandab Passage map, repainted as open sea with a platform.')
+    return chapter_entry(mission, [
+        objective('Take the curtain control room with an engineer.', 'capture', ['CurtainControl']),
+        objective('Place charges on all four jammer generators.', 'destroy', gen_names, requires=[0]),
+        objective('Hold the control room until the picture comes back.', 'survive', seconds=120, requires=[1]),
+        objective('Keep Tanya alive.', 'protect', ['Tanya']),
+        objective('Keep an engineer alive until the control room is taken.', 'squad', ['Engineer1', 'Engineer2'], count=1, until=0),
+        objective('Stay clear of the deck scanners.', 'undetected', [name for name, *_ in scanners], allowed=0, secondary=True)])
+
+def every_light_on():
+    """Act III, chapter 5, the finale: a full base against the Directorate hub (terrain of Straits Shield, the island
+    chain's central landmass). Four other fronts are heard only on the radio; each is a mission event."""
+    m = ChapterMap('straits-shield', 'every-light-on', art_check=True)
+    # Colonel Badr's forward base in the south of the landmass.
+    m.add('MissionSpawn', 'mpspawn', 'Neutral', 82, 112)
+    for name, kind, u, v in [('SaudiConyard', 'gacnst', 80, 110), ('SaudiPowerOne', 'gapowr', 76, 116), ('SaudiPowerTwo', 'gapowr', 79, 118),
+                             ('SaudiPowerThree', 'gapowr', 82, 120), ('SaudiRefinery', 'garefn', 86, 106), ('SaudiBarracks', 'gapile', 72, 109),
+                             ('SaudiFactory', 'gaweap', 86, 116), ('PictureRelay', 'gaairc', 71, 112)]:
+        m.add(name, kind, 'Saudi Arabia', u, v)
+    m.add('SaudiHarvester', 'harv', 'Saudi Arabia', 89, 110)
+    force = [('r2m1a2s', 5), ('r2bradley', 3), ('r2sads', 1), ('r2sang', 6), ('r2saat', 4), ('engineer', 3)]
+    i = 0
+    for kind, count in force:
+        for _ in range(count):
+            m.add(f'Badr{i}', kind, 'Saudi Arabia', 88 + i % 6 * 2, 98 + i // 6 * 2 + (i % 2)); i += 1
+    # The Directorate's three radar domes (the link to the regional network), each with a guard.
+    domes = [('DomeWest', 50, 93), ('DomeNorth', 79, 64), ('DomeEast', 116, 62)]
+    for name, u, v in domes: m.add(name, 'gaairc', 'Orion Group', u, v)
+    guards = {'DomeWest': [('tesla', 54, 96), ('nalasr', 46, 94), ('e2', 54, 97), ('e2', 56, 92), ('htnk', 57, 96)],
+              'DomeNorth': [('tesla', 82, 69), ('nalasr', 75, 71), ('e2', 80, 72), ('flakt', 84, 66), ('htnk', 78, 74)],
+              'DomeEast': [('tesla', 113, 67), ('nalasr', 119, 68), ('e2', 115, 70), ('flakt', 112, 64), ('ttnk', 117, 73)]}
+    for dome, items in guards.items():
+        for k, (kind, u, v) in enumerate(items): m.add(f'{dome}Guard{k}', kind, 'Orion Group', u, v)
+    # The hub at the eastern end: the rebuilt Chronosphere behind coils, sentry guns and a garrison.
+    m.add('Chronosphere', 'gacsph', 'Orion Group', 129, 95)
+    hub = [('tesla', 126, 88), ('tesla', 126, 96), ('tesla', 135, 90), ('tesla', 138, 98), ('nalasr', 128, 96),
+           ('nalasr', 124, 92), ('naflak', 135, 91), ('naflak', 136, 96), ('apoc', 127, 92), ('htnk', 129, 101),
+           ('ttnk', 135, 100), ('e2', 129, 94), ('e2', 133, 95), ('flakt', 128, 86), ('deso', 135, 92), ('e2', 136, 91)]
+    for k, (kind, u, v) in enumerate(hub): m.add(f'Hub{k}', kind, 'Orion Group', u, v)
+    # Wave routes: the hub's gate on land, the northern sea lane, and the water off the base's west shore.
+    m.add('HubGate', 'waypoint', 'Neutral', 120, 96)
+    m.add('NorthLane', 'waypoint', 'Neutral', 65, 38, where='water')
+    m.add('BaseShore', 'waypoint', 'Neutral', 64, 112, where='water')
+    # Where the strike team lands once the mainland towns are clear.
+    m.add('StrikeLanding', 'waypoint', 'Neutral', 112, 100)
+    for a, b in [('SaudiConyard', 'DomeWest'), ('SaudiConyard', 'DomeNorth'), ('SaudiConyard', 'DomeEast'),
+                 ('SaudiConyard', 'Chronosphere'), ('HubGate', 'SaudiConyard'), ('StrikeLanding', 'Chronosphere')]:
+        if not m.reachable(a, b): raise ValueError(f'{m.id}: no land route {a} -> {b}')
+    if not m.reachable('NorthLane', 'BaseShore', water=True): raise ValueError(f'{m.id}: no sea route for the gunboats')
+    # The machine must be taken, not destroyed: the Iron Curtain holds it, and its capture is sealed until the strike.
+    m.write('Every Light On', 'Saudi Arabia', 'saudi', '2E8B57',
+            extra_rules='gacsph:\n\tExternalCondition@sealed:\n\t\tCondition: sealed\n\tCapturable:\n\t\tRequiresCondition: !sealed\n')
+    events = [
+        # Lin keeps the picture alive: the whole map is visible while the relay stands.
+        dict(id='picture', when=dict(time=0), reveal=[dict(radius=0)]),
+        dict(id='picture-lost', when=dict(killed='PictureRelay'), conceal=['picture']),
+        dict(id='hub-sealed', when=dict(time=0), grant=[dict(condition='invulnerability', actors=['Chronosphere']),
+                                                         dict(condition='sealed', actors=['Chronosphere'])]),
+        # Turki holds the platform: the jamming stays off (radio only).
+        dict(id='platform-holds', when=dict(time=75)),
+        # Kemal closes the northern lane at eight minutes; until then Orion's gunboats come down it.
+        dict(id='naval-wave', when=dict(time=150), repeat=110, until='lane-closed',
+             spawn=[dict(at='NorthLane', to='BaseShore', types=['hyd', 'dest', 'hyd'])]),
+        dict(id='lane-closed', when=dict(time=480)),
+        dict(id='hub-wave', when=dict(time=210), repeat=140,
+             spawn=[dict(at='HubGate', to='SaudiConyard', types=['htnk', 'e2', 'e2', 'flakt', 'ttnk', 'e2'])]),
+        dict(id='domes-down', when=dict(objective=0), reveal=[dict(at='Chronosphere', radius=12)]),
+        # Nabil reports the mainland towns clear at ten minutes: the final strike unlocks.
+        dict(id='towns-clear', when=dict(time=600), revoke=[dict(condition='sealed', actors=['Chronosphere'])],
+             spawn=[dict(owner='Saudi Arabia', at='StrikeLanding', to='StrikeLanding', types=['engineer', 'engineer', 'r2bradley', 'r2bradley'])]),
+    ]
+    mission = dict(id=m.id, map=m, title='Every Light On', faction='saudi', campaign='Lines of Hope', slot='Saudi Arabia',
+        enemy='Orion Group', protect=['SaudiConyard'], events=events,
+        briefing=('Colonel Badr Al-Shammari. The Directorate hub stands at the eastern end of this island, with the rebuilt '
+                  'Chronosphere at its heart. Three radar domes link it to every screen on the coast: destroy them first.\n\n'
+                  'You are not alone tonight, but the other fronts are only voices on the radio. Commander Lin keeps the '
+                  'picture alive through your radar relay; lose the relay and the fog comes back. Commander Turki holds '
+                  'the jamming platform. Colonel Kemal is closing the northern sea lane; until he does, gunboats will come '
+                  'down it. Captain Nabil is clearing the mainland towns, and the final strike waits for his word: the '
+                  'Chronosphere cannot be taken before then.\n\nCapture the Chronosphere with an engineer. It is shielded: '
+                  'it cannot be destroyed, only taken. If the construction yard falls, the operation fails.'),
+        adaptation='An original RTS AI chapter on the terrain of Straits Shield, with new actors.')
+    return chapter_entry(mission, [
+        objective('Destroy the three radar domes to sever the Directorate link.', 'destroy', [name for name, _, _ in domes]),
+        objective('Capture the Chronosphere once the mainland towns are clear.', 'capture', ['Chronosphere'], requires=[0], after=['towns-clear']),
+        objective('Keep the radar relay standing.', 'protect', ['PictureRelay'], secondary=True)])
+
 def chapters():
-    return [lights_in_the_water(), hold_the_ferry_line()]
+    return [lights_in_the_water(), hold_the_ferry_line(), glass_island(), black_platform(), every_light_on()]
 
 def originals():
     """Original art for the nine original countries (isometric only): content/ea-art.yaml, ea-sequences.yaml,

@@ -4,8 +4,9 @@
 
 import story from "./campaign-story";
 
-/** When a radio call plays: at the start, after so many seconds of game time, when objective N completes, or at the end. */
-export type RadioWhen = "start" | "victory" | "defeat" | { time: number } | { objective: number };
+/** When a radio call plays: at the start, after so many seconds of game time, when objective N completes, when the
+ * mission's event with that id fires (ui.mission.events: an alarm, reinforcements, the lights coming on), or at the end. */
+export type RadioWhen = "start" | "victory" | "defeat" | { time: number } | { objective: number } | { event: string };
 export interface RadioCall { when: RadioWhen; speaker: string; line: string; /** <mission>/radio-1.mp3 under the CDN base. */ audio?: string }
 export interface CastMember { name: string; role?: string; /** cast/<id>.webp under the CDN base. */ portrait?: string }
 export interface Chapter {

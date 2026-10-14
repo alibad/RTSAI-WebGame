@@ -20,7 +20,7 @@ for mid, calls in story.get('radio', {}).items():
     if mid not in story['chapters']: problems.append(f'radio {mid}: no such chapter')
     for call in calls:
         when = call.get('when')
-        if not (when in ('start', 'victory', 'defeat') or (isinstance(when, dict) and len(when) == 1 and isinstance(when.get('time', when.get('objective')), (int, float)))):
+        if not (when in ('start', 'victory', 'defeat') or (isinstance(when, dict) and len(when) == 1 and (isinstance(when.get('time', when.get('objective')), (int, float)) or isinstance(when.get('event'), str)))):
             problems.append(f'radio {mid}: when {when!r}')
         if call.get('speaker') not in cast: problems.append(f'radio {mid}: speaker {call.get("speaker")!r} is not in the cast')
 if problems: raise SystemExit('campaign-story.json:\n  ' + '\n  '.join(problems))

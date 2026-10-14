@@ -314,8 +314,8 @@ export function MissionHud({ game }: { game: Game }) {
         <ChevronDown className="mh-chevron" size={15} aria-hidden="true" />
       </button>
       {expanded && <ul className="mh-objectives" aria-label="Mission objectives">
-        {mission.objectives.map((o, i) => <li key={i} data-status={o.status} data-bonus={o.secondary}>
-          <span className="mh-mark" aria-hidden="true">{o.status === "complete" ? <CircleCheck size={14} /> : o.status === "failed" ? <CircleX size={14} /> : <Diamond size={11} />}</span>
+        {mission.objectives.map((o, i) => <li key={i} data-status={o.status} data-bonus={o.secondary} data-waiting={o.waiting || undefined}>
+          <span className="mh-mark" aria-hidden="true">{o.status === "complete" ? <CircleCheck size={14} /> : o.status === "failed" ? <CircleX size={14} /> : o.waiting ? <Lock size={11} /> : <Diamond size={11} />}</span>
           <div className="mh-text">
             <span>{o.text}{o.progress && <b className="mh-progress digits">{o.progress}</b>}{o.secondary && <em>Bonus</em>}</span>
             {o.status === "active" && !!o.markers?.length && <div className="mh-markers">{o.markers.map((m) => <button key={m.name} type="button" onClick={() => game.lookAt(m.x, m.y)}><LocateFixed size={11} aria-hidden="true" />Locate {m.name.replace(/([a-z])([A-Z])/g, "$1 $2")}</button>)}</div>}

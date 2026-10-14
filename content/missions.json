@@ -541,5 +541,815 @@
         ]
       }
     ]
+  },
+  {
+    "id": "glass-island",
+    "title": "Glass Island",
+    "faction": "china",
+    "campaign": "Lines of Hope",
+    "slot": "China",
+    "enemy": "Orion Group",
+    "protect": [],
+    "sensors": [
+      {
+        "actor": "MastBluff",
+        "radius": 6,
+        "sweep": [
+          6,
+          14
+        ],
+        "offset": 0
+      },
+      {
+        "actor": "MastRidge",
+        "radius": 6
+      },
+      {
+        "actor": "MastCauseway",
+        "radius": 6,
+        "sweep": [
+          8,
+          14
+        ],
+        "offset": 4
+      },
+      {
+        "actor": "MastGate",
+        "radius": 6,
+        "sweep": [
+          8,
+          12
+        ],
+        "offset": 0
+      },
+      {
+        "actor": "MastVaultNorth",
+        "radius": 6,
+        "sweep": [
+          11,
+          11
+        ],
+        "offset": 0
+      },
+      {
+        "actor": "MastVaultSouth",
+        "radius": 6,
+        "sweep": [
+          11,
+          11
+        ],
+        "offset": 11
+      }
+    ],
+    "events": [
+      {
+        "id": "alarm",
+        "when": {
+          "detected": "*"
+        }
+      },
+      {
+        "id": "alarm-MastBluff",
+        "when": {
+          "detected": "MastBluff"
+        },
+        "spawn": [
+          {
+            "at": "GarrisonWest",
+            "to": "MastBluff",
+            "types": [
+              "e2",
+              "e2",
+              "dog",
+              "e2",
+              "flakt",
+              "dog"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "dark-MastBluff",
+        "when": {
+          "killed": "MastBluff"
+        },
+        "spawn": [
+          {
+            "at": "GarrisonWest",
+            "to": "MastBluff",
+            "types": [
+              "e2",
+              "e2",
+              "dog",
+              "e2",
+              "flakt",
+              "dog"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "alarm-MastRidge",
+        "when": {
+          "detected": "MastRidge"
+        },
+        "spawn": [
+          {
+            "at": "GarrisonWest",
+            "to": "MastRidge",
+            "types": [
+              "e2",
+              "e2",
+              "dog",
+              "e2",
+              "flakt",
+              "dog"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "dark-MastRidge",
+        "when": {
+          "killed": "MastRidge"
+        },
+        "spawn": [
+          {
+            "at": "GarrisonWest",
+            "to": "MastRidge",
+            "types": [
+              "e2",
+              "e2",
+              "dog",
+              "e2",
+              "flakt",
+              "dog"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "alarm-MastCauseway",
+        "when": {
+          "detected": "MastCauseway"
+        },
+        "spawn": [
+          {
+            "at": "GarrisonEast",
+            "to": "MastCauseway",
+            "types": [
+              "e2",
+              "e2",
+              "dog",
+              "e2",
+              "flakt",
+              "dog"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "dark-MastCauseway",
+        "when": {
+          "killed": "MastCauseway"
+        },
+        "spawn": [
+          {
+            "at": "GarrisonEast",
+            "to": "MastCauseway",
+            "types": [
+              "e2",
+              "e2",
+              "dog",
+              "e2",
+              "flakt",
+              "dog"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "alarm-MastGate",
+        "when": {
+          "detected": "MastGate"
+        },
+        "spawn": [
+          {
+            "at": "GarrisonEast",
+            "to": "MastGate",
+            "types": [
+              "e2",
+              "e2",
+              "dog",
+              "e2",
+              "flakt",
+              "dog"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "dark-MastGate",
+        "when": {
+          "killed": "MastGate"
+        },
+        "spawn": [
+          {
+            "at": "GarrisonEast",
+            "to": "MastGate",
+            "types": [
+              "e2",
+              "e2",
+              "dog",
+              "e2",
+              "flakt",
+              "dog"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "alarm-MastVaultNorth",
+        "when": {
+          "detected": "MastVaultNorth"
+        },
+        "spawn": [
+          {
+            "at": "GarrisonEast",
+            "to": "MastVaultNorth",
+            "types": [
+              "e2",
+              "e2",
+              "dog",
+              "e2",
+              "flakt",
+              "dog"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "dark-MastVaultNorth",
+        "when": {
+          "killed": "MastVaultNorth"
+        },
+        "spawn": [
+          {
+            "at": "GarrisonEast",
+            "to": "MastVaultNorth",
+            "types": [
+              "e2",
+              "e2",
+              "dog",
+              "e2",
+              "flakt",
+              "dog"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "alarm-MastVaultSouth",
+        "when": {
+          "detected": "MastVaultSouth"
+        },
+        "spawn": [
+          {
+            "at": "GarrisonEast",
+            "to": "MastVaultSouth",
+            "types": [
+              "e2",
+              "e2",
+              "dog",
+              "e2",
+              "flakt",
+              "dog"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "dark-MastVaultSouth",
+        "when": {
+          "killed": "MastVaultSouth"
+        },
+        "spawn": [
+          {
+            "at": "GarrisonEast",
+            "to": "MastVaultSouth",
+            "types": [
+              "e2",
+              "e2",
+              "dog",
+              "e2",
+              "flakt",
+              "dog"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "boat",
+        "when": {
+          "objective": 0
+        },
+        "spawn": [
+          {
+            "owner": "China",
+            "at": "BoatEntry",
+            "to": "BoatLanding",
+            "types": [
+              "r2haiying"
+            ]
+          }
+        ],
+        "reveal": [
+          {
+            "at": "ExtractionCove",
+            "radius": 6
+          }
+        ]
+      }
+    ],
+    "briefing": "Commander Lin Haoran. The island no chart names is real, and the Obsidian Directorate watches it with sensor masts. Tonight a three-man team lands on its western beach: Tanya, a network specialist and one Red Spear.\n\nEach mast sees a circle around it. Some sweep and sleep; watch the circle dim before you cross. Reach the core node in the east, deploy the specialist to copy the routing logs, then bring him to the boat at the north cove. Every mast that sees you, or goes dark, sends the garrison to look.\n\nIf the island sees you too often, or Tanya or the specialist falls, the operation fails.",
+    "adaptation": "An original RTS AI chapter on the terrain of Haitan Network, with a new channel and new actors.",
+    "objectives": [
+      {
+        "text": "Copy the routing logs: deploy the network specialist beside the core node.",
+        "kind": "reach",
+        "targets": [],
+        "types": [
+          "r2cnnetwork"
+        ],
+        "target": "CoreNode",
+        "radius": 3,
+        "deploy": true
+      },
+      {
+        "text": "Bring the specialist and the logs to the boat at the north cove.",
+        "kind": "reach",
+        "targets": [],
+        "types": [
+          "r2cnnetwork"
+        ],
+        "target": "ExtractionCove",
+        "radius": 4,
+        "requires": [
+          0
+        ]
+      },
+      {
+        "text": "Stay out of the sensor masts' sight.",
+        "kind": "undetected",
+        "targets": [
+          "MastBluff",
+          "MastRidge",
+          "MastCauseway",
+          "MastGate",
+          "MastVaultNorth",
+          "MastVaultSouth"
+        ],
+        "allowed": 1
+      },
+      {
+        "text": "Keep Tanya and the specialist alive.",
+        "kind": "protect",
+        "targets": [
+          "Tanya",
+          "Specialist"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "black-platform",
+    "title": "Black Platform",
+    "faction": "saudi",
+    "campaign": "Lines of Hope",
+    "slot": "Saudi Arabia",
+    "enemy": "Orion Group",
+    "protect": [
+      "CurtainControl"
+    ],
+    "sensors": [
+      {
+        "actor": "ScannerWest",
+        "radius": 4,
+        "sweep": [
+          8,
+          8
+        ],
+        "offset": 0
+      },
+      {
+        "actor": "ScannerEast",
+        "radius": 4,
+        "sweep": [
+          8,
+          8
+        ],
+        "offset": 8
+      }
+    ],
+    "events": [
+      {
+        "id": "curtain",
+        "when": {
+          "time": 0
+        },
+        "grant": [
+          {
+            "condition": "invulnerability",
+            "actors": [
+              "GenNW",
+              "GenNE",
+              "GenSW",
+              "GenSE"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "curtain-down",
+        "when": {
+          "objective": 0
+        },
+        "revoke": [
+          {
+            "condition": "invulnerability",
+            "actors": [
+              "GenNW",
+              "GenNE",
+              "GenSW",
+              "GenSE"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "alarm",
+        "when": {
+          "detected": "*"
+        }
+      },
+      {
+        "id": "alarm-ScannerWest",
+        "when": {
+          "detected": "ScannerWest"
+        },
+        "spawn": [
+          {
+            "at": "CrewQuarters",
+            "to": "ScannerWest",
+            "types": [
+              "e2",
+              "e2",
+              "dog",
+              "e2",
+              "flakt"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "alarm-ScannerEast",
+        "when": {
+          "detected": "ScannerEast"
+        },
+        "spawn": [
+          {
+            "at": "CrewQuarters",
+            "to": "ScannerEast",
+            "types": [
+              "e2",
+              "e2",
+              "dog",
+              "e2",
+              "flakt"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "jamming-off",
+        "when": {
+          "objective": 1
+        },
+        "reveal": [
+          {
+            "radius": 0
+          }
+        ],
+        "spawn": [
+          {
+            "at": "NorthDock",
+            "to": "CurtainControl",
+            "types": [
+              "e2",
+              "e2",
+              "flakt",
+              "e2",
+              "deso",
+              "shk"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "counterattack",
+        "when": {
+          "event": "jamming-off"
+        },
+        "delay": 30,
+        "repeat": 35,
+        "spawn": [
+          {
+            "at": "WestDock",
+            "to": "CurtainControl",
+            "types": [
+              "e2",
+              "e2",
+              "flakt",
+              "e2",
+              "deso",
+              "shk"
+            ]
+          },
+          {
+            "at": "EastDock",
+            "to": "CurtainControl",
+            "types": [
+              "e2",
+              "e2",
+              "flakt",
+              "e2",
+              "deso",
+              "shk"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "gunboats",
+        "when": {
+          "event": "jamming-off"
+        },
+        "delay": 50,
+        "spawn": [
+          {
+            "at": "SeaWest",
+            "to": "SeaWestStation",
+            "types": [
+              "hyd"
+            ]
+          },
+          {
+            "at": "SeaEast",
+            "to": "SeaEastStation",
+            "types": [
+              "hyd"
+            ]
+          }
+        ]
+      }
+    ],
+    "briefing": "Commander Turki Al-Zahrani. While this platform jams, no one can see the Directorate hub. Its four jammer generators sit under an Iron Curtain prototype: nothing can touch them while the curtain control room runs it.\n\nYour boarding team lands on the south pad with Tanya, two engineers and no reinforcements. Clear the control deck, take the control room with an engineer to drop the curtain, then let Tanya place charges on every generator out on the wings. When the jamming stops, Orion will come from the docks and the sea: hold the control room until the picture comes back. The two deck scanners take turns; the lane down the middle is out of their sight.\n\nIf Tanya falls, the control room is destroyed, or both engineers are lost before it is taken, the operation fails.",
+    "adaptation": "An original RTS AI chapter on the frame of the Bab al-Mandab Passage map, repainted as open sea with a platform.",
+    "objectives": [
+      {
+        "text": "Take the curtain control room with an engineer.",
+        "kind": "capture",
+        "targets": [
+          "CurtainControl"
+        ]
+      },
+      {
+        "text": "Place charges on all four jammer generators.",
+        "kind": "destroy",
+        "targets": [
+          "GenNW",
+          "GenNE",
+          "GenSW",
+          "GenSE"
+        ],
+        "requires": [
+          0
+        ]
+      },
+      {
+        "text": "Hold the control room until the picture comes back.",
+        "kind": "survive",
+        "targets": [],
+        "seconds": 120,
+        "requires": [
+          1
+        ]
+      },
+      {
+        "text": "Keep Tanya alive.",
+        "kind": "protect",
+        "targets": [
+          "Tanya"
+        ]
+      },
+      {
+        "text": "Keep an engineer alive until the control room is taken.",
+        "kind": "squad",
+        "targets": [
+          "Engineer1",
+          "Engineer2"
+        ],
+        "count": 1,
+        "until": 0
+      },
+      {
+        "text": "Stay clear of the deck scanners.",
+        "kind": "undetected",
+        "targets": [
+          "ScannerWest",
+          "ScannerEast"
+        ],
+        "allowed": 0,
+        "secondary": true
+      }
+    ]
+  },
+  {
+    "id": "every-light-on",
+    "title": "Every Light On",
+    "faction": "saudi",
+    "campaign": "Lines of Hope",
+    "slot": "Saudi Arabia",
+    "enemy": "Orion Group",
+    "protect": [
+      "SaudiConyard"
+    ],
+    "events": [
+      {
+        "id": "picture",
+        "when": {
+          "time": 0
+        },
+        "reveal": [
+          {
+            "radius": 0
+          }
+        ]
+      },
+      {
+        "id": "picture-lost",
+        "when": {
+          "killed": "PictureRelay"
+        },
+        "conceal": [
+          "picture"
+        ]
+      },
+      {
+        "id": "hub-sealed",
+        "when": {
+          "time": 0
+        },
+        "grant": [
+          {
+            "condition": "invulnerability",
+            "actors": [
+              "Chronosphere"
+            ]
+          },
+          {
+            "condition": "sealed",
+            "actors": [
+              "Chronosphere"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "platform-holds",
+        "when": {
+          "time": 75
+        }
+      },
+      {
+        "id": "naval-wave",
+        "when": {
+          "time": 150
+        },
+        "repeat": 110,
+        "until": "lane-closed",
+        "spawn": [
+          {
+            "at": "NorthLane",
+            "to": "BaseShore",
+            "types": [
+              "hyd",
+              "dest",
+              "hyd"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "lane-closed",
+        "when": {
+          "time": 480
+        }
+      },
+      {
+        "id": "hub-wave",
+        "when": {
+          "time": 210
+        },
+        "repeat": 140,
+        "spawn": [
+          {
+            "at": "HubGate",
+            "to": "SaudiConyard",
+            "types": [
+              "htnk",
+              "e2",
+              "e2",
+              "flakt",
+              "ttnk",
+              "e2"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "domes-down",
+        "when": {
+          "objective": 0
+        },
+        "reveal": [
+          {
+            "at": "Chronosphere",
+            "radius": 12
+          }
+        ]
+      },
+      {
+        "id": "towns-clear",
+        "when": {
+          "time": 600
+        },
+        "revoke": [
+          {
+            "condition": "sealed",
+            "actors": [
+              "Chronosphere"
+            ]
+          }
+        ],
+        "spawn": [
+          {
+            "owner": "Saudi Arabia",
+            "at": "StrikeLanding",
+            "to": "StrikeLanding",
+            "types": [
+              "engineer",
+              "engineer",
+              "r2bradley",
+              "r2bradley"
+            ]
+          }
+        ]
+      }
+    ],
+    "briefing": "Colonel Badr Al-Shammari. The Directorate hub stands at the eastern end of this island, with the rebuilt Chronosphere at its heart. Three radar domes link it to every screen on the coast: destroy them first.\n\nYou are not alone tonight, but the other fronts are only voices on the radio. Commander Lin keeps the picture alive through your radar relay; lose the relay and the fog comes back. Commander Turki holds the jamming platform. Colonel Kemal is closing the northern sea lane; until he does, gunboats will come down it. Captain Nabil is clearing the mainland towns, and the final strike waits for his word: the Chronosphere cannot be taken before then.\n\nCapture the Chronosphere with an engineer. It is shielded: it cannot be destroyed, only taken. If the construction yard falls, the operation fails.",
+    "adaptation": "An original RTS AI chapter on the terrain of Straits Shield, with new actors.",
+    "objectives": [
+      {
+        "text": "Destroy the three radar domes to sever the Directorate link.",
+        "kind": "destroy",
+        "targets": [
+          "DomeWest",
+          "DomeNorth",
+          "DomeEast"
+        ]
+      },
+      {
+        "text": "Capture the Chronosphere once the mainland towns are clear.",
+        "kind": "capture",
+        "targets": [
+          "Chronosphere"
+        ],
+        "requires": [
+          0
+        ],
+        "after": [
+          "towns-clear"
+        ]
+      },
+      {
+        "text": "Keep the radar relay standing.",
+        "kind": "protect",
+        "targets": [
+          "PictureRelay"
+        ],
+        "secondary": true
+      }
+    ]
   }
 ]
