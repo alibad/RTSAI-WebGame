@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Credits &amp; licenses · RTS AI</title>
+  <style>
+    :root { color-scheme: dark; font: 16px/1.65 system-ui, sans-serif; background: #10130f; color: #e4e6dc; }
+    body { max-width: 880px; margin: auto; padding: 40px 24px 80px; }
+    h1, h2 { line-height: 1.2; color: #f1d28b; } h1 { font-size: clamp(30px, 6vw, 48px); }
+    h2 { margin-top: 40px; font-size: 24px; } a { color: #f1d28b; text-underline-offset: 4px; }
+    a:focus-visible { outline: 2px solid #f1d28b; outline-offset: 5px; }
+    p, li { max-width: 75ch; } .eyebrow { text-transform: uppercase; letter-spacing: .14em; font-size: 12px; color: #a7ae9a; }
+    table { width: 100%; border-collapse: collapse; } th, td { padding: 12px 8px; text-align: left; border-bottom: 1px solid #363d30; vertical-align: top; }
+    small { color: #a7ae9a; } @media (max-width: 500px) { body { padding: 24px 16px 56px; } table { font-size: 14px; } }
+  </style>
+</head>
+<body>
+  <nav aria-label="Game"><a href="./">Back to RTS AI</a></nav>
+  <main>
+    <p class="eyebrow">The people, tools and sources behind the game</p>
+    <h1>Credits &amp; licenses</h1>
+    <p>RTS AI is built by the RTS AI contributors on OpenRA, with project-made artwork, procedural sound effects, synthetic character voices and generated instrumental music.</p>
+    <h2>Game and engine</h2>
+    <p><a href="https://github.com/OpenRA/OpenRA">OpenRA</a> and the <a href="https://github.com/alibad/RTSAI-Mod">RTS AI mod</a> carry GNU GPL version 3 licenses. Engine contributors are credited in OpenRA's <a href="https://github.com/OpenRA/OpenRA/blob/bleed/AUTHORS">AUTHORS</a> file. Content has its own provenance and license records.</p>
+    <h2>Project voices and music</h2>
+    <p>The character voices are synthetic. The recorded voice-production process uses generated speaker references rather than recordings of real people. Native-speaker review is still pending for some faction lines.</p>
+    <table>
+      <thead><tr><th scope="col">Source</th><th scope="col">Use</th><th scope="col">Recorded code / model license</th></tr></thead>
+      <tbody>
+        <tr><td><a href="https://huggingface.co/hexgrad/Kokoro-82M">Kokoro-82M</a></td><td>English voices and synthetic speaker references</td><td>Apache-2.0</td></tr>
+        <tr><td><a href="https://huggingface.co/ResembleAI/chatterbox">Chatterbox</a></td><td>Multilingual faction voices</td><td>MIT</td></tr>
+        <tr><td><a href="https://huggingface.co/nimaaaAI/MOSS-TTS-Nano-Persian">MOSS-TTS-Nano Persian</a></td><td>Persian faction voices</td><td>Apache-2.0</td></tr>
+        <tr><td><a href="https://github.com/ace-step/ACE-Step-1.5">ACE-Step 1.5</a></td><td>Original instrumental music</td><td>MIT; associated text encoder Apache-2.0</td></tr>
+        <tr><td>RTS AI sound generators</td><td>Procedural effects, UI cues and replacement shared-unit audio</td><td>Project code GPL-3.0; per-file output records apply</td></tr>
+      </tbody>
+    </table>
+    <p>These are credits for the generation tools and model licenses. Individual audio records describe the output, source, processing and any additional conditions. See the <a href="https://github.com/alibad/RTSAI-Mod/blob/main/docs/audio-provenance.md">audio provenance documentation</a> and <a href="audio-credits.json" download>download the project audio inventory</a>, including filenames, SHA-256 hashes and pinned voice-model revisions.</p>
+    <p><small>The inventory covers project audio available to both modes; a particular browser build may use a subset.</small></p>
+    <h2>Artwork and typography</h2>
+    <p>The modern faction sprites and cameos come from the project's model and render pipeline. Flags are drawn from code. Cameo labels use Kenney Pixel under CC0; the <a href="https://github.com/alibad/RTSAI-Mod/blob/main/docs/art-provenance.md">art provenance documentation</a> records individual asset sources.</p>
+    <h2>Original Command &amp; Conquer content</h2>
+    <p>Where present in the isometric browser build, original Command &amp; Conquer art, unit voices and sounds are used under EA's free, non-commercial modding guidelines. EA has not endorsed and does not support this product. No Command &amp; Conquer music is included. This content is separate from the project audio inventory.</p>
+  </main>
+</body>
+</html>
