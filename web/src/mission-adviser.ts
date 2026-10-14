@@ -456,6 +456,21 @@ class World {
       || (this.ctx.map.named[s.name]?.type === baseType(e.kind) && Math.hypot(wx(cellOf(e)) - s.at.x, wy(cellOf(e)) - s.at.y) <= 1.5));
   }
 
+  /** Where to look for something last seen at p: the open ground out of sight nearest to it (and to `from`). */
+  searchSpot(p: Pt, from: Pt): Pt | null {
+    const grid = this.grid;
+    if (!grid) return null;
+    let best: Pt | null = null, score = Infinity;
+    for (let dv = -40; dv <= 40; dv += 2)
+      for (let du = -20; du <= 20; du += 2) {
+        const q = { u: p.u + du, v: p.v + dv };
+        if (!grid.pass(q) || grid.seen(q)) continue;
+        const s = dist(q, p) + dist(q, from) * 0.3;
+        if (s < score) { score = s; best = q; }
+      }
+    return best;
+  }
+
   /** An enemy we may fire on: not a contact, or a verified one that is armed (a verified phantom is harmless). */
   mayFire(e: AdviserActor) { return !this.isContact(e) || (!this.isContact(e, true) && e.canAttack); }
 
@@ -808,9 +823,12 @@ function focusOf(w: World): Focus | null {
     return p ? dist(p, army) : 999;
   };
   const army0 = (o: Objective) => o.status === "active" && !passiveKinds.has(o.kind) && !["build", "disperse", "scout"].includes(o.kind) && !special(o);
-  const open = w.objectives.filter((o) => army0(o) && !o.waiting)
-    .sort((a, b) => ((a.secondary ? 1000 : 0) + (a.kind === "survive" ? 500 : 0) + (a.limit ? -100 : 0) + far(a) / 10)
-      - ((b.secondary ? 1000 : 0) + (b.kind === "survive" ? 500 : 0) + (b.limit ? -100 : 0) + far(b) / 10) || a.i - b.i);
+  // Targets all out at sea are for ships: an army with none takes them last.
+  const ships = w.fighters.some((u) => !w.onLand(u));
+  const atSea = (o: Objective) => !ships && !!w.grid && (o.kind === "destroy" || o.kind === "capture") && (o.targets ?? []).length > 0
+    && (o.targets ?? []).every((t) => { const p = w.where(t); return !p || !w.grid!.pass(p); });
+  const rank = (o: Objective) => (o.secondary ? 1000 : 0) + (o.kind === "survive" ? 500 : 0) + (atSea(o) ? 400 : 0) + (o.limit ? -100 : 0) + far(o) / 10;
+  const open = w.objectives.filter((o) => army0(o) && !o.waiting).sort((a, b) => rank(a) - rank(b) || a.i - b.i);
   const upcoming = w.objectives.filter((o) => army0(o) && o.waiting);
   if (open.length && open[0].kind !== "survive") return { o: open[0], prepare: false };
   if (upcoming.length) return { o: upcoming[0], prepare: true };
@@ -962,6 +980,8 @@ function go(w: World, army: AdviserActor[], to: Pt, goal: string, say: (n: numbe
 /** The army's errand for the focus objective. */
 function armyTask(w: World, f: Focus, army: AdviserActor[]): MissionAdvice | null {
   const o = f.o, prepare = f.prepare, fixed = !w.hasBase;
+  // Out of money with nothing being built: no more is coming, so the army goes with what it has.
+  const broke = w.obs.cash < 500 && !w.obs.production.length && army.length >= 3;
   const units = (n: number) => plural(n, "unit");
   const gather = (target: Pt | null, why: string) => {
     const home = w.base();
@@ -1026,16 +1046,24 @@ function armyTask(w: World, f: Focus, army: AdviserActor[]): MissionAdvice | nul
         if (commands.length) return advice(`Place charges on ${commands.length === 1 ? placeName(Object.values(goals)[0].slice(3)) : `${commands.length} targets`} now${left !== null ? ` (${clock(left)} left)` : ""}.`,
           `Demolish ${plural(commands.length, "target")}`, commands, `c4:${o.i}:${commands.map((c) => `${c.actor_id}>${c.target_actor_id}`).join(",")}`, { goal: `c4:${o.i}`, goals });
       }
-      if (prepare || (!fixed && army.length < strength(w) && !army.some((u) => dist(cellOf(u), next.p) < 14))) return gather(next.p, `strike ${label}`);
+      if (prepare || (!fixed && !broke && army.length < strength(w) && !army.some((u) => dist(cellOf(u), next.p) < 14))) return gather(next.p, `strike ${label}`);
       // Unverified contacts about (no attack-moves): near the target, units are put onto the guards in sight first.
       if (w.unverified().length) { const e = engage(w, army.filter((u) => dist(cellOf(u), next.p) <= 14), next.p, `hit:${next.t}`, label); if (e) return e; }
       // A target in sight: units near it that are not shooting at anything are put onto it (attack-move fights what
       // shoots back but walks past a building that does not).
       if (next.a && w.enemies.concat(w.obs.visibleEnemyBuildings).some((e) => e.actorId === next.a!.actorId)) {
         const goal = `hit:${next.t}`;
-        const idle = army.filter((u) => dist(cellOf(u), next.p) <= 12 && !u.targetId && !(w.memory.heading.get(u.actorId)?.goal === goal && w.tick - w.memory.heading.get(u.actorId)!.tick < 250));
+        // Not a unit on a charge run (its C4 would be called off).
+        const busy = (u: AdviserActor) => { const h = w.memory.heading.get(u.actorId); return !!h && ((h.goal === goal && w.tick - h.tick < 250) || (h.goal.startsWith("c4:") && w.tick - h.tick < 500)); };
+        const idle = army.filter((u) => dist(cellOf(u), next.p) <= 12 && !u.targetId && !busy(u));
         if (idle.length) return advice(`Focus fire on ${label}: put ${units(Math.min(MAX, idle.length))} on it.`, `Attack ${label} with ${units(Math.min(MAX, idle.length))}`,
           idle.sort(byId).slice(0, MAX).map((u) => ({ action: "attack" as const, actor_id: u.actorId, target_actor_id: next.a!.actorId })), goal, { goal });
+      }
+      // A target that moved out of sight: search round where it was last seen, the nearest ground not in sight first.
+      if (!next.a && w.memory.named.get(next.t)?.lost !== undefined && army.some((u) => dist(cellOf(u), next.p) <= 6)) {
+        const spot = w.searchSpot(next.p, from);
+        if (spot) return go(w, army, spot, `search:${next.t}:${spot.u},${spot.v}`, (n) => [`Find ${label}: it moved out of sight; search round where it was seen with ${units(n)}.`,
+          `Attack-move ${units(n)} to search for ${label}`], 4);
       }
       // Units put onto the target (or charging it) are on it already.
       const onIt = (u: AdviserActor) => { const h = w.memory.heading.get(u.actorId); return !!h && (h.goal === `hit:${next.t}` || h.goal === `c4:${next.t}`) && (!u.idle || w.tick - h.tick < 250); };
@@ -1072,7 +1100,7 @@ function armyTask(w: World, f: Focus, army: AdviserActor[]): MissionAdvice | nul
         if (walkers.length) return advice(`The army holds ${label}: bring ${plural(walkers.length, w.name(walkers[0].kind))} up behind it.`,
           `Move ${units(walkers.length)} up to ${label}`, sendAll(walkers, "move", stand), goal, { goal });
       }
-      if (!fixed && army.length < strength(w) && !army.some((u) => dist(cellOf(u), next.p) < 14)) return gather(next.p, `clear ${label}`);
+      if (!fixed && !broke && army.length < strength(w) && !army.some((u) => dist(cellOf(u), next.p) < 14)) return gather(next.p, `clear ${label}`);
       const sealed = o.waiting || prepare;
       return go(w, army, next.p, `clear:${o.i}`, (n) => [sealed ? `Clear the defences around ${label} before it can be taken: send ${units(n)}.`
         : `Clear ${label} for the ${engineers.length ? w.name(engineers[0].kind) : "engineer"}: send ${units(n)}.`, `Attack-move ${units(n)} to ${label}`], 6);
