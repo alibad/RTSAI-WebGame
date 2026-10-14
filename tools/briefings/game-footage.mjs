@@ -556,14 +556,14 @@ async function shootBattle() {
       await page.evaluate(([x, y]) => window.__fx.follow(x, y, 0.95), target);
       while ((await now()) < start + cutSeconds * 1000 - 400) {
         const q = await action();
-        if (q.fight) seen.push({ at: +(((await now()) - start) / 1000).toFixed(1), cell: q.fight.cell, size: q.fight.size });
+        if (q.fight) seen.push({ at: +(((await now()) - start) / 1000).toFixed(1), cell: q.fight.cell, size: q.fight.size, hits: q.fight.hits });
         const look = q.fight?.at ?? movingArmy(q.obs) ?? (battle.pushes.length ? army(q.obs) : null);
         if (look) await page.evaluate(([x, y]) => window.__fx.follow(x, y, 0.95), look);
         await sleep(450);
       }
     }, { shows: `Battle cut ${k}: real play, the camera following the fighting (the player's side played by the co-commander in Auto${battle.pushes.length ? ", its army sent at " + battle.pushes.map((p) => p.target).join(", then ") : ""}; the enemy is the mission's own forces${hasWaves ? " and scripted waves" : ""}).`,
       camera: { follow: "critically damped spring to the densest engagement (else the army on the move), capped at 260 world px/s, zoom 0.95" }, startTick });
-    seg.fight = seen.length ? { first: seen[0], last: seen.at(-1), samples: seen.length } : null;
+    seg.fight = seen.length ? { first: seen[0], last: seen.at(-1), samples: seen.length, score: seen.reduce((n, x) => n + x.size + 2 * (x.hits ?? 0), 0) } : null;
     files.push(`battle-${k}.mp4`);
     if (k < cuts) { await page.evaluate(() => window.__fx.stopAll()); await sleep(3000); }
   }
@@ -571,7 +571,8 @@ async function shootBattle() {
   fs.writeFileSync(path.join(out, "battle-list.txt"), files.map((f) => `file '${f}'`).join("\n") + "\n");
   execFileSync("ffmpeg", ["-y", "-v", "error", "-f", "concat", "-safe", "0", "-i", "battle-list.txt", "-c", "copy", "-movflags", "+faststart", "battle.mp4"], { cwd: out });
   fs.unlinkSync(path.join(out, "battle-list.txt"));
-  const best = segments.filter((s) => s.file.startsWith("battle-")).sort((a, b) => (b.fight?.samples ?? 0) - (a.fight?.samples ?? 0))[0];
+  // battle.png: the key frame of the cut with the most fighting in view (engaged actors, hits counted double).
+  const best = segments.filter((s) => s.file.startsWith("battle-")).sort((a, b) => (b.fight?.score ?? 0) - (a.fight?.score ?? 0))[0];
   if (best) fs.copyFileSync(path.join(out, best.keyFrame), path.join(framesDir, "battle.png"));
   segments.push({ file: "battle.mp4", keyFrame: "frames/battle.png", ...probe(path.join(out, "battle.mp4")), shows: `The ${files.length} battle cuts joined: ${files.join(", ")}.`, cuts: files });
 }
