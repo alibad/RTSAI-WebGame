@@ -345,6 +345,10 @@
 .cp-film { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; }
 .cp-film-player { width: 100%; overflow: hidden; border-radius: 8px; border: 1px solid var(--hud-edge-hi); background: #000; box-shadow: 0 14px 30px rgba(0, 0, 0, .55); animation: menu-rise .3s ease-out; }
 .cp-film-player video { display: block; width: 100%; max-height: 54vh; background: #000; }
+.cp-film-loading { position: relative; aspect-ratio: 16 / 9; max-height: 54vh; display: grid; place-items: center; }
+.cp-film-loading img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; filter: brightness(.45) saturate(.8); }
+.cp-film-loading span { position: relative; display: inline-flex; align-items: center; gap: 8px; padding: 8px 14px; border-radius: 999px; background: rgba(8, 10, 12, .7); color: var(--gold, #e8c66a); font-size: 14px; letter-spacing: .04em; }
+.cp-film-loading .spin { animation: spin 1s linear infinite; }
 .cp-film-foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; min-height: 36px; padding: 6px 12px; background: #0a0d09; color: #8a9381; font-size: 11px; }
 .cp-film-error { margin: 0; padding: 18px 16px; color: #d9ddcf; font-size: 13px; line-height: 1.5; }
 .cp-cols { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 14px; }

@@ -7,7 +7,7 @@ import { actLabel, campaign as story, castMember, launchable, nextChapter } from
 import { EA_NOTICE } from "../legal";
 import { EmptyState, GameButton } from "./kit/game";
 import { Brackets, Meter, ScreenBackdrop, Segmented } from "./screen-parts";
-import { filmLength, useBriefings } from "../briefings";
+import { filmLength, useBriefings, useWholeFile } from "../briefings";
 import { CastPortrait, LazyImage } from "./Portrait";
 import { RadioPanel } from "./Radio";
 
@@ -61,6 +61,7 @@ export function Missions({ game }: { game: Game }) {
   const filmId = prologueOpen ? prologueId : mission?.id;
   useEffect(() => { setShowFilm(playOnOpen.current); playOnOpen.current = false; setFilmError(false); setDeployAfterFilm(false); }, [filmId]);
   const briefing = filmId ? briefings[filmId] : undefined;
+  const filmSrc = useWholeFile(showFilm && briefing ? briefing.video : null);
   // The chosen operation is prepared while its briefing is read; with the prologue open, the first one (Begin is instant).
   const target = mission ?? first;
   useEffect(() => {
@@ -225,8 +226,9 @@ export function Missions({ game }: { game: Game }) {
                     </button>
                   : <GameButton size="sm" icon={showFilm ? <X size={14} /> : <Film size={14} />} onClick={() => { setDeployAfterFilm(false); setShowFilm(!showFilm); }}>{showFilm ? `Close ${filmName}` : `Watch ${filmName}`}</GameButton>}
                 {showFilm && filmId && <div className="cp-film-player">
-                  {!filmError ? <video key={`${filmId}-${deployAfterFilm}-${briefing ? "cdn" : "local"}`} controls playsInline autoPlay={deployAfterFilm || !!briefing} preload="metadata" crossOrigin={briefing ? "anonymous" : undefined} poster={briefing?.poster} aria-label={prologueOpen ? `${prologue!.eyebrow ?? "Prologue"}: ${prologue!.title}` : `${mission!.title} story introduction`} onEnded={() => { if (deployAfterFilm) deploy(); }} onError={() => setFilmError(true)}>
-                    <source src={briefing ? briefing.video : `${import.meta.env.BASE_URL}campaign-video/${filmId}.mp4`} type="video/mp4" onError={() => setFilmError(true)} />
+                  {!filmError && briefing && !filmSrc ? <div className="cp-film-loading" role="status"><img src={briefing.poster} alt="" draggable={false} crossOrigin="anonymous" /><span><LoaderCircle size={18} className="spin" aria-hidden="true" /> Loading film…</span></div>
+                  : !filmError ? <video key={`${filmId}-${deployAfterFilm}-${briefing ? "cdn" : "local"}`} controls playsInline autoPlay={deployAfterFilm || !!briefing} preload="metadata" crossOrigin={briefing ? "anonymous" : undefined} poster={briefing?.poster} aria-label={prologueOpen ? `${prologue!.eyebrow ?? "Prologue"}: ${prologue!.title}` : `${mission!.title} story introduction`} onEnded={() => { if (deployAfterFilm) deploy(); }} onError={() => setFilmError(true)}>
+                    <source src={briefing ? filmSrc! : `${import.meta.env.BASE_URL}campaign-video/${filmId}.mp4`} type="video/mp4" onError={() => setFilmError(true)} />
                     <track kind="captions" src={briefing ? briefing.captions : `${import.meta.env.BASE_URL}campaign-video/${filmId}.vtt`} srcLang="en" label="English" default />
                   </video> : <p role="status" className="cp-film-error">{prologueOpen ? "The film could not load. The prologue is written above." : "The video could not load. The complete story is written above; you can still launch the mission."}</p>}
                   <div className="cp-film-foot">

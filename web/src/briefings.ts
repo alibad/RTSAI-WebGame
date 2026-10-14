@@ -32,4 +32,25 @@ export function useBriefings() {
 }
 
 /** m:ss for a film's length. */
+/**
+ * A film as one downloaded file, while it is open. The CDN (Cloudflare Pages) answers no byte-range requests, and a
+ * browser cannot seek in a video served that way, so the film is fetched whole (7–11 MB) and played from memory, then
+ * released when it closes. If the download fails, the plain URL is used (it still plays, without seeking).
+ */
+export function useWholeFile(url: string | null) {
+  const [src, setSrc] = useState<string | null>(null);
+  useEffect(() => {
+    setSrc(null);
+    if (!url) return;
+    let alive = true;
+    let objectUrl: string | null = null;
+    fetch(url, { mode: "cors" })
+      .then((r) => (r.ok ? r.blob() : Promise.reject(new Error(`HTTP ${r.status}`))))
+      .then((blob) => { if (!alive) return; objectUrl = URL.createObjectURL(blob); setSrc(objectUrl); })
+      .catch(() => { if (alive) setSrc(url); });
+    return () => { alive = false; if (objectUrl) URL.revokeObjectURL(objectUrl); };
+  }, [url]);
+  return src;
+}
+
 export const filmLength = (seconds: number) => `${Math.floor(seconds / 60)}:${String(Math.round(seconds % 60)).padStart(2, "0")}`;
