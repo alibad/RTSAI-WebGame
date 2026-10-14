@@ -219,6 +219,12 @@ static class Bundle
 		// The original countries' unit voices and the dog's barks and bite: exactly the clips the content plays.
 		if (originalAudio != null)
 			audio = audio.Concat(originalAudio.Select(o => (OriginalAudioDir + o.Name, o.File)));
+
+		// The sound check's silent clip (tools/prepare-content.py SILENT_FILE): voice phrases whose every file is missing
+		// play it (ra2|web/content/sound-silence.wav), since a voice set must keep each phrase.
+		var silence = Path.Combine(opts.TryGetValue("content", out var silenceContent) ? silenceContent : "content", "sound-silence.wav");
+		if (File.Exists(Path.Combine(modDir, "standalone", "base-kit.yaml")) && File.Exists(silence))
+			audio = audio.Append(("mods/rtsai/web/content/sound-silence.wav", silence));
 		WriteLazyPack(Path.Combine(outDir, "web-audio.pack"), audio);
 		WriteLazyPack(Path.Combine(outDir, "web-art.pack"), art);
 		return 0;
