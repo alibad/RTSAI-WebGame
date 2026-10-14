@@ -168,6 +168,7 @@ export class EditorController {
   setCategory(category: string) { this.patch({ category }); }
   setOwner(owner: string) { this.patch({ owner }); }
   setTitle(title: string) { this.patch({ title, dirty: true }); }
+  fail(error: string) { this.patch({ error }); }
 
   brushTile(id: number) { void this.call({ op: "brush", brush: "tile", id }).then((h) => this.history(h)); }
   brushResource(type: string) { void this.call({ op: "brush", brush: "resource", type }).then((h) => this.history(h)); }

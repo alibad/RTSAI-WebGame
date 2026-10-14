@@ -182,6 +182,12 @@ function Palette({ game, editor }: { game: Game; editor: EditorController }) {
 function Editing({ game, editor, test }: { game: Game; editor: EditorController; test: (map: string) => void }) {
   const st = useStore((s) => s.editor)!;
   const back = () => { if (!st.dirty || confirm("Leave without saving?")) editor.close(); };
+  // A battle needs a start position for each side.
+  const testSaved = (id: string) => {
+    const players = useStore.getState().setup?.maps.find((m) => m.id === id)?.players ?? 0;
+    if (players >= 2) test(id);
+    else editor.fail("Add two start positions (the flag tool) before testing it in the simulator.");
+  };
   return (
     <>
       <header className="ed-top hud-panel" data-ui-sfx>
@@ -195,7 +201,7 @@ function Editing({ game, editor, test }: { game: Game; editor: EditorController;
         <span className="ed-sep" />
         <GameButton size="sm" icon={<Save size={14} />} onClick={() => void editor.save()} data-testid="ed-save">{st.saving ? "Saving…" : st.dirty || !st.saved ? "Save" : "Saved"}</GameButton>
         <GameButton size="sm" icon={<Download size={14} />} onClick={() => void editor.download()}>.oramap</GameButton>
-        <GameButton size="sm" variant="primary" icon={<Swords size={14} />} onClick={() => void editor.save().then((id) => { if (id) test(id); })} data-testid="ed-test">Test in simulator</GameButton>
+        <GameButton size="sm" variant="primary" icon={<Swords size={14} />} onClick={() => void editor.save().then((id) => { if (id) testSaved(id); })} data-testid="ed-test">Test in simulator</GameButton>
       </header>
       {st.error && <p className="ed-error ed-error-float" role="alert">{st.error}</p>}
       <nav className="ed-tools hud-panel" aria-label="Tools">
