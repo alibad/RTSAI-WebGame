@@ -46,8 +46,10 @@ export function useWholeFile(url: string | null) {
     if (!url) return;
     let alive = true;
     let objectUrl: string | null = null;
-    fetch(url, { mode: "cors" })
-      .then((r) => (r.ok ? r.blob() : Promise.reject(new Error(`HTTP ${r.status}`))))
+    // Played from memory, never by range (the CDN answers none, and Safari plays only what it can range): one retry
+    // before falling back to the plain URL (which plays without seeking where the browser can, and fails in Safari).
+    const whole = () => fetch(url, { mode: "cors" }).then((r) => (r.ok ? r.blob() : Promise.reject(new Error(`HTTP ${r.status}`))));
+    whole().catch(() => new Promise<Blob>((ok, fail) => setTimeout(() => whole().then(ok, fail), 1500)))
       .then((blob) => { if (!alive) return; objectUrl = URL.createObjectURL(blob); setHeld({ url, src: objectUrl }); })
       .catch(() => { if (alive) setHeld({ url, src: url }); });
     return () => { alive = false; if (objectUrl) URL.revokeObjectURL(objectUrl); };

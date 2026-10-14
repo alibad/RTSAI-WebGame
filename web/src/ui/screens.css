@@ -663,3 +663,10 @@
   .cp-detail { position: sticky; top: 72px; z-index: 2; max-height: calc(100dvh - 176px); }
   .cp-detail > .cp-body { min-height: 0; overflow-y: auto; scrollbar-color: #4a5443 transparent; scrollbar-width: thin; }
 }
+
+/* A film the browser would not start by itself (Safari: autoplay only right after a tap): a clear button over it. */
+.cp-film-frame { position: relative; }
+.cp-film-tap { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; background: rgba(5, 7, 5, .45); color: #f4ecd6; font-size: 14px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; text-shadow: 0 1px 2px #000; }
+.cp-film-tap > span { display: grid; place-items: center; width: 72px; height: 72px; border-radius: 50%; background: linear-gradient(180deg, #f6dc9c, #c9a253); color: #1a160c; box-shadow: 0 0 0 6px rgba(241, 210, 139, .2), 0 10px 26px rgba(0, 0, 0, .6); }
+.cp-film-tap:hover > span, .cp-film-tap:focus-visible > span { filter: brightness(1.08); }
+.cp-film-tap:focus-visible { outline: 2px solid var(--hud-gold); outline-offset: -2px; }
