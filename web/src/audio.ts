@@ -49,9 +49,10 @@ export class AudioEngine {
     this.buses.voice.connect(this.master);
     this.ctx = ctx;
     this.applyVolumes();
-    // Browsers start audio suspended until the player interacts with the page.
+    // Browsers start audio suspended until the player interacts with the page. iOS Safari only lets the end of a touch
+    // (touchend, then click) start audio, not its start (pointerdown), so those unlock it too.
     const resume = () => { if (ctx.state === "suspended") ctx.resume(); };
-    for (const ev of ["pointerdown", "keydown"]) window.addEventListener(ev, resume, { capture: true });
+    for (const ev of ["pointerdown", "touchend", "click", "keydown"]) window.addEventListener(ev, resume, { capture: true });
     return ctx;
   }
 
