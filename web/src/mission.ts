@@ -114,7 +114,9 @@ export function missionPlacements(spec: MissionSpec, units: SimUnit[], rosters: 
   const toArmy = (ids: string[], sizes: number[]): Army =>
     ids.flatMap((id, i) => { const u = units.find((x) => x.name === id); return u && sizes[i] ? [[u, sizes[i]] as [SimUnit, number]] : []; });
   const even = evenScale(toArmy(defend, defendSizes), toArmy(attack, attackSizes)) ?? value(attack, attackSizes) / Math.max(1, value(defend, defendSizes));
-  const scale = Math.min(3, Math.max(0.5, even));
+  // Defending a site against waves, the garrison starts 40% stronger than the first attack (in strength: k² scales it).
+  const edge = spec.youDefend ? Math.sqrt(1.4) : 1;
+  const scale = Math.min(3, Math.max(0.5, even * edge));
   army(defender, defend, between(site, from, 0.24), from, "hold", defendSizes.map((n) => Math.max(n ? 1 : 0, Math.round(n * scale))));
   army(attacker, attack, between(from, site, 0.12), site, "engage", attackSizes);
   return placements;
@@ -174,7 +176,7 @@ export function missionOperation(spec: MissionSpec, placements: Placement[], nam
       objectives: [
         { text: `Hold ${site} for ${HOLD_SECONDS / 60}:00`, kind: "survive", seconds: HOLD_SECONDS },
         { text: "Keep the Construction Yard standing", kind: "protect", targets: ["ConstructionYard"] },
-        { text: `Destroy ${A}'s attack force`, kind: "defeat", secondary: true },
+        { text: "Keep the War Factory standing", kind: "protect", targets: ["WarFactory"], secondary: true },
       ],
       victory: `${site} holds. ${A}'s attack is broken.`,
       defeat: `${site} has fallen to ${A}.`,
@@ -183,7 +185,7 @@ export function missionOperation(spec: MissionSpec, placements: Placement[], nam
         { when: "start", speaker: command, line: `Contact: ${A} armour moving on ${site} from the ${dir}. Hold the base.` },
         { when: { time: 70 }, speaker: command, line: `More ${A} units inbound from the ${dir}. Keep the construction yard covered.` },
         { when: { time: Math.round(HOLD_SECONDS / 2) }, speaker: command, line: "Halfway there. Hold the line." },
-        { when: { objective: 0 }, speaker: command, line: `They're breaking off. ${site} holds.` },
+        { when: { time: HOLD_SECONDS - 30 }, speaker: command, line: "Thirty seconds. Keep them off the yard." },
         { when: "victory", speaker: command, line: `Well done. ${site} is secure.` },
         { when: "defeat", speaker: command, line: `We've lost ${site}. All units, fall back.` },
       ],

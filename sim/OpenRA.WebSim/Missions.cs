@@ -146,6 +146,7 @@ namespace OpenRA.WebSim
 		static Player human;
 		static string difficulty;
 		static int nextWave;
+		static int lastWave;
 
 		public static Definition[] Catalog
 		{
@@ -215,6 +216,7 @@ namespace OpenRA.WebSim
 			states = current.Objectives.Select(o => new State { Spec = o }).ToList();
 			difficulty = SimHost.Scenario.Options.GetValueOrDefault("difficulty", "normal");
 			nextWave = current.WaveUnits.Length == 0 ? int.MaxValue : difficulty == "easy" ? 2250 : difficulty == "hard" ? 1000 : 1500;
+			lastWave = 0;
 		}
 
 		static bool Alive(Actor a) => a != null && a.IsInWorld && !a.IsDead;
@@ -330,7 +332,14 @@ namespace OpenRA.WebSim
 				foreach (var s in states.Where(s => Passive(s.Spec.Kind) && s.Status == "active")) s.Status = "complete";
 				Finish(world, true); return;
 			}
-			if (world.WorldTick >= nextWave) { Wave(world); nextWave += difficulty == "easy" ? 2000 : difficulty == "hard" ? 850 : 1400; }
+			if (world.WorldTick >= nextWave) { Wave(world); lastWave = world.WorldTick; nextWave += difficulty == "easy" ? 2000 : difficulty == "hard" ? 850 : 1400; }
+			else if (current.WaveUnits.Length > 0 && world.WorldTick >= lastWave + 250 && EnemyStrength(world) <= 3)
+			{
+				// An operation's attacker is never wiped out before the clock runs down: its next wave comes as soon as its
+				// force is down to its last few (otherwise the engine would end the match as a conquest at once).
+				Wave(world);
+				lastWave = world.WorldTick;
+			}
 		}
 
 		static bool InArea(World world, Actor a, int[] area)
@@ -491,6 +500,12 @@ namespace OpenRA.WebSim
 			}
 		}
 
+		static int EnemyStrength(World world)
+		{
+			var enemy = world.Players.FirstOrDefault(p => p.InternalName == current.Enemy);
+			return enemy == null ? int.MaxValue : world.Actors.Count(a => a.Owner == enemy && Alive(a) && a.TraitOrDefault<MustBeDestroyed>() != null);
+		}
+
 		/// <summary>An operation's wave: its units from where the definition says, attack-moving on the human's base.</summary>
 		static void OperationWave(World world)
 		{
@@ -520,7 +535,7 @@ namespace OpenRA.WebSim
 			return JsonSerializer.Serialize(new
 			{
 				current.Id, current.Title, Difficulty = difficulty, Events = fired, current.Victory, current.Defeat,
-				Objectives = states.Select(s => new { s.Spec.Text, s.Status, s.Spec.Secondary, Waiting = s.Status == "active" && !Open(s.Spec),
+				Objectives = states.Select(s => new { s.Spec.Text, Status = Shown(s), s.Spec.Secondary, Waiting = s.Status == "active" && !Open(s.Spec),
 					Progress = Progress(s), Markers = Markers(s.Spec) })
 			}, JsonOptions);
 		}
@@ -547,6 +562,13 @@ namespace OpenRA.WebSim
 					return left >= 0 ? $"{left / 60}:{left % 60:00} left" : "";
 			}
 		}
+
+		/// <summary>
+		/// An objective's status as shown. An operation won by wiping the attacker out before the clock ran down (the
+		/// engine's conquest) has held: its open objectives read as complete.
+		/// </summary>
+		static string Shown(State s) =>
+			s.Status == "active" && current.WaveUnits.Length > 0 && human?.WinState == WinState.Won ? "complete" : s.Status;
 
 		static IEnumerable<object> Markers(Objective o)
 		{

@@ -15,7 +15,7 @@ export function clock(ticks: number) {
 }
 
 export interface ScenarioLike {
-  map?: unknown; mission?: unknown; multiplayer?: unknown; sandbox?: unknown; placements?: unknown[];
+  map?: unknown; mission?: unknown; multiplayer?: unknown; sandbox?: unknown; placements?: unknown[]; operation?: unknown;
   players?: { faction?: string; bot?: string; color?: string; client?: number }[];
   webReplay?: { readonly?: boolean; end?: number; tick?: number };
 }
@@ -41,10 +41,11 @@ export function matchTitle(scenario: ScenarioLike, setup: SetupData | null, know
   return setup?.maps.find((m) => m.id === id)?.title ?? (known || (id.startsWith("gen-") ? "Random map" : prettify(id)));
 }
 
-/** "Skirmish", "Campaign", "Practice battle" or "Multiplayer". */
+/** "Skirmish", "Campaign", "Operation" (a mission from a real place), "Practice battle" or "Multiplayer". */
 export function matchKind(scenario: ScenarioLike) {
   if (scenario.multiplayer === true) return "Multiplayer";
   if (typeof scenario.mission === "string") return "Campaign";
+  if (scenario.operation) return "Operation";
   if (scenario.sandbox === true || scenario.placements?.length) return "Practice battle";
   return "Skirmish";
 }

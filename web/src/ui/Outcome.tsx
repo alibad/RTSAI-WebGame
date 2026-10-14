@@ -156,7 +156,9 @@ export function Outcome({ game }: { game: Game }) {
         <div ref={actions} className="oc-actions">
           {canKeep && <GameButton icon={<Film size={16} />} disabled={busy} onClick={() => void watch()} data-sfx-hover>Watch replay</GameButton>}
           {canKeep && <GameButton variant="ghost" icon={saved ? <Check size={16} /> : <Save size={16} />} disabled={busy || !!saved} onClick={() => void keep()}>{saved || "Save replay"}</GameButton>}
-          {mission
+          {mission && game.sandbox
+            ? <GameButton onClick={() => void game.sandbox!.backToEdit()}>Back to the simulator</GameButton>
+            : mission
             ? <GameButton onClick={() => game.quit()}>Campaign menu</GameButton>
             : <GameButton variant="primary" size="lg" onClick={() => game.quit()} data-sfx-hover>Continue</GameButton>}
         </div>
