@@ -206,6 +206,16 @@ export class MissionMemory {
   deployed = new Map<number, number>();
   /** Convoy routes swept so far (escorts whose trucks the observation does not show). */
   swept = new Map<number, number>();
+  /** When each objective was first seen open (a game tick): gated timers count from then. */
+  opened = new Map<number, number>();
+  /** Contacts a unit of ours has been close enough to verify; places a scout could not get close enough to. */
+  verified = new Set<string>();
+  unreachable = new Set<string>();
+  /** Units were set to return fire only, while unverified contacts were about; when each stance was last set. */
+  calmed = false;
+  stanced = new Map<number, number>();
+  /** Stance orders a unit has had: one that keeps its stance after two (it has no choice of stance) is left alone. */
+  stanceTries = new Map<number, number>();
   offset: number | null = null;
   lastKind: "unit" | "economy" | "" = "";
   /** When something the mission protects (or the base) was last under attack (a game tick). */
@@ -222,6 +232,8 @@ export class MissionMemory {
     if (units.length) this.said = { text: advice.text, tick };
     for (const c of units) {
       if (c.action === "deploy") { this.deployed.set(c.actor_id!, tick); continue; }
+      // A stance is not an errand: the unit keeps the one it has.
+      if (c.action === "set_stance") { this.stanced.set(c.actor_id!, tick); this.stanceTries.set(c.actor_id!, (this.stanceTries.get(c.actor_id!) ?? 0) + 1); continue; }
       this.deployed.delete(c.actor_id!);
       const to = c.target_x !== undefined && c.target_y !== undefined ? { u: c.target_x, v: c.target_y } : undefined;
       const before = this.heading.get(c.actor_id!);
@@ -423,6 +435,25 @@ class World {
     return open ? seen / open : 1;
   }
 
+  /**
+   * Contacts: sensors that are enemy units rather than masts or markers. What one is shows only once a unit of ours
+   * has been within its radius (Ghosts on the Glass: six of nine are phantoms, and firing on an unverified phantom
+   * fails the mission), so until then nothing may fire on it.
+   */
+  unverified(): Sensor[] {
+    return this.sensors.filter((s) => {
+      const type = this.ctx.map.named[s.name]?.type ?? "";
+      return s.live && !s.tripped && !this.memory.verified.has(s.name) && !["waypoint", "mpspawn"].includes(type)
+        && this.ctx.techTree[type]?.kind !== "building" && !this.memory.named.get(s.name)?.dead;
+    });
+  }
+
+  /** A contact the observation shows (by id, or its type standing where the contact is). */
+  isContact(e: AdviserActor) {
+    return this.sensors.some((s) => this.idOf(s.name) === e.actorId
+      || (this.ctx.map.named[s.name]?.type === baseType(e.kind) && Math.hypot(wx(cellOf(e)) - s.at.x, wy(cellOf(e)) - s.at.y) <= 1.5));
+  }
+
   /** Staying out of sight is required (not a bonus objective). */
   strictStealth() { return this.objectives.some((o) => o.kind === "undetected" && o.status === "active" && !o.secondary); }
 
@@ -498,6 +529,44 @@ const ticksPerCell = (u: AdviserActor) => 1024 / Math.max(20, u.speed || 50) * 1
 interface Leg { commands: AdviserCommand[]; text: string; summary: string; key: string }
 
 /**
+ * Whether a unit sent from a to b keeps to open ground and out of the zones it is not meant to cross. The engine walks
+ * its own path between two points: diagonal steps and straight ones, in either order, so both of those bent paths
+ * (and the straight line between) must be clear.
+ */
+function openWay(grid: Grid, sensors: Sensor[], a: Pt, b: Pt, crossing = new Set<Sensor>()) {
+  const clear = (q: Pt) => grid.pass(q) && !sensors.some((s) => !crossing.has(s) && inZone(s, q));
+  const n = Math.ceil(dist(a, b) * 2);
+  for (let k = 1; k < n; k++) if (!clear(lerp(a, b, k / n))) return false;
+  const ca = toC(a), cb = toC(b), dx = cb.x - ca.x, dy = cb.y - ca.y;
+  const diagonal = Math.min(Math.abs(dx), Math.abs(dy)), rest = Math.abs(Math.abs(dx) - Math.abs(dy)), sx = Math.sign(dx), sy = Math.sign(dy);
+  const straight = Math.abs(dx) > Math.abs(dy) ? [sx, 0] : [0, sy];
+  for (const first of [true, false]) {
+    let x = ca.x, y = ca.y;
+    for (let k = 0; k < diagonal + rest; k++) {
+      const diag = first ? k < diagonal : k >= rest;
+      x += diag ? sx : straight[0]; y += diag ? sy : straight[1];
+      if (!clear(fromC(x, y))) return false;
+    }
+  }
+  return true;
+}
+
+/** A short step away from an enemy (toward `toward` when given) that walks into no sensor zone. */
+function safeStep(w: World, from: Pt, enemy: Pt, toward?: Pt): Pt | null {
+  const grid = w.grid, sensors = w.watching();
+  if (!grid) return null;
+  let best: Pt | null = null, score = -Infinity;
+  for (let r = 3; r <= 7; r++)
+    for (let k = 0; k < 16; k++) {
+      const q = point(wx(from) + r * Math.cos(k * Math.PI / 8), wy(from) + r * Math.sin(k * Math.PI / 8));
+      if (!grid.pass(q) || sensors.some((s) => inZone(s, q)) || !openWay(grid, sensors, from, q)) continue;
+      const s = dist(q, enemy) - (toward ? dist(q, toward) * 0.5 : 0);
+      if (s > score) { score = s; best = q; }
+    }
+  return best && dist(best, enemy) > dist(from, enemy) ? best : null;
+}
+
+/**
  * Moves a group toward `goal` without tripping a sensor: plans a path that never enters a zone that never sleeps and
  * prefers to go round sweeping ones; walks it to the edge of the next zone, and crosses only when every sweep on the
  * way stays asleep until the group is through (the slowest unit, plus the time the order takes to reach the game).
@@ -531,23 +600,7 @@ function stealthLeg(w: World, group: AdviserActor[], goal: Pt, action: "move" | 
   // Waypoints: the fewest that keep the way between them on open ground and out of the zones it is not meant to cross.
   // The engine walks its own path between waypoints: diagonal steps and straight ones, in either order, so both of
   // those bent paths (and the straight line between) must be clear.
-  const clear = (q: Pt, crossing: Set<Sensor>) => grid.pass(q) && !sensors.some((s) => !crossing.has(s) && inZone(s, q));
-  const open = (a: Pt, b: Pt, crossing: Set<Sensor>) => {
-    const n = Math.ceil(dist(a, b) * 2);
-    for (let k = 1; k < n; k++) if (!clear(lerp(a, b, k / n), crossing)) return false;
-    const ca = toC(a), cb = toC(b), dx = cb.x - ca.x, dy = cb.y - ca.y;
-    const diagonal = Math.min(Math.abs(dx), Math.abs(dy)), sx = Math.sign(dx), sy = Math.sign(dy);
-    const straight: [number, number] = Math.abs(dx) > Math.abs(dy) ? [sx, 0] : [0, sy];
-    for (const order of [0, 1]) {
-      let x = ca.x, y = ca.y;
-      for (let k = 0; k < diagonal + Math.abs(Math.abs(dx) - Math.abs(dy)); k++) {
-        const diag = order === 0 ? k < diagonal : k >= Math.abs(Math.abs(dx) - Math.abs(dy));
-        x += diag ? sx : straight[0]; y += diag ? sy : straight[1];
-        if (!clear(fromC(x, y), crossing)) return false;
-      }
-    }
-    return true;
-  };
+  const open = (a: Pt, b: Pt, crossing: Set<Sensor>) => openWay(grid, sensors, a, b, crossing);
   const waypoints = (route: Pt[], to: number, crossing: Set<Sensor>) => {
     const out: Pt[] = [];
     for (let i = 0; i < to;) {
@@ -653,7 +706,8 @@ function assets(w: World) {
   const out: { at: Pt; name: string; vital: boolean }[] = [];
   const names = new Set([...w.ctx.spec.protect ?? [], ...w.objectives.filter((o) => o.kind === "protect" && o.status === "active").flatMap((o) => o.targets ?? [])]);
   for (const name of names) {
-    if (w.hostile(name)) continue;
+    // A marker protected by the rules (Ghosts on the Glass: a strike on a phantom "kills" the picture) is not a place.
+    if (w.hostile(name) || ["waypoint", "mpspawn"].includes(w.ctx.map.named[name]?.type ?? "")) continue;
     const a = w.find(name);
     // Units the mission needs alive move with the army and pull back when hurt (heroes) instead.
     if (a && w.units.includes(a)) continue;
@@ -669,7 +723,9 @@ function defend(w: World, busy: Set<number>): MissionAdvice | null {
   const places = assets(w);
   if (!places.length || !w.enemies.length) return null;
   let best: { enemy: AdviserActor; place: (typeof places)[number]; score: number } | null = null;
-  for (const enemy of [...w.enemies].sort(byId))
+  // Unverified contacts are not attackers until shown to be real.
+  const careful = w.unverified().length > 0;
+  for (const enemy of [...w.enemies].sort(byId).filter((e) => !careful || !w.isContact(e)))
     for (const place of places) {
       const d = dist(cellOf(enemy), place.at);
       if (d > (place.vital ? 12 : 9)) continue;
@@ -684,7 +740,9 @@ function defend(w: World, busy: Set<number>): MissionAdvice | null {
   const reach = place.vital ? (w.hasBase ? 34 : 20) : 26;
   const responders = w.fighters.filter((u) => !busy.has(u.actorId) && !w.heroes.has(u.actorId) && dist(cellOf(u), contact) <= reach && needsOrder(w, u, goal, contact, 3));
   if (!responders.length) return null;
-  const commands = sendAll(responders, "attack_move", contact);
+  // With unverified contacts about, at that attacker only (an attack-move could open fire on a phantom on the way).
+  const commands = careful ? responders.sort(byId).slice(0, MAX).map((u) => ({ action: "attack" as const, actor_id: u.actorId, target_actor_id: best!.enemy.actorId }))
+    : sendAll(responders, "attack_move", contact);
   const where = place.name === "base" ? "the base" : place.name === "convoy" ? "the convoy" : placeName(place.name);
   return advice(`Enemies are at ${where}; send ${plural(commands.length, "unit")} at them now.`, `Attack-move ${plural(commands.length, "unit")} to the attackers`, commands, goal, { goal, reactive: true });
 }
@@ -696,16 +754,18 @@ function disperse(w: World): MissionAdvice | null {
   const [u0, v0, u1, v1] = o.area!;
   const inside = (p: Pt) => p.u >= u0 - 1 && p.v >= v0 - 2 && p.u <= u1 + 1 && p.v <= v1 + 2;
   const allowed = o.allowed ?? 1;
+  // Every unit out (the allowance is a margin, not a plan), whatever else it was doing: the sweep fails the mission.
   const there = w.movable().filter((u) => inside(cellOf(u))).sort(byId);
-  if (there.length <= Math.max(0, allowed - 1)) return null;
+  if (!there.length) return null;
   const goal = `disperse:${o.i}`;
   const commands: AdviserCommand[] = [];
   for (const u of there) {
-    const p = cellOf(u);
+    const p = cellOf(u), h = w.memory.heading.get(u.actorId);
+    if (h?.goal === goal && (!u.idle || w.tick - h.tick < 50)) continue;
     // Out through the nearest side, a few cells clear of it.
     const sides: Pt[] = [{ u: u0 - 4, v: p.v }, { u: u1 + 4, v: p.v }, { u: p.u, v: v0 - 8 }, { u: p.u, v: v1 + 8 }].sort((a, b) => dist(p, a) - dist(p, b));
     const to = sides.map((s) => grid.near(s, 8, inside)).find((s): s is Pt => !!s);
-    if (to && needsOrder(w, u, goal, to, 1) && commands.length < MAX) commands.push({ action: "move", actor_id: u.actorId, target_x: to.u, target_y: to.v });
+    if (to && commands.length < MAX) commands.push({ action: "move", actor_id: u.actorId, target_x: to.u, target_y: to.v });
   }
   if (!commands.length) return null;
   return advice(`Move ${plural(commands.length, "unit")} out of the marked surveillance zone before the sweep; at most ${allowed} may stay.`,
@@ -792,10 +852,9 @@ function reachSpecial(w: World, o: Objective, units: AdviserActor[], escorts: Ad
     for (const u of units) {
       const h = w.memory.heading.get(u.actorId);
       if (dist(cellOf(u), e) <= 8 && !(h?.goal === "back" && !u.idle) && w.grid) {
-        // Close: back toward the fighters (or straight away), to a cell outside every zone.
+        // Close: a few cells back (toward the fighters when they are behind), by a way that enters no sensor zone.
         const fighters = centroid(team.map(cellOf)), p = cellOf(u);
-        const toward = dist(fighters, e) > dist(p, e) + 2 ? fighters : point(wx(p) + (wx(p) - wx(e)) * 0.8, wy(p) + (wy(p) - wy(e)) * 0.8);
-        const safe = w.grid.near(toward, 8, (q) => w.watching().some((s) => inZone(s, q)));
+        const safe = safeStep(w, p, e, dist(fighters, e) > dist(p, e) + 2 ? fighters : undefined);
         if (!safe || commands.length >= MAX) continue;
         commands.push({ action: "move", actor_id: u.actorId, target_x: safe.u, target_y: safe.v });
         goals[u.actorId] = "back";
@@ -907,7 +966,9 @@ function armyTask(w: World, f: Focus, army: AdviserActor[]): MissionAdvice | nul
       // another charge run (one the mission needs alive only when no one else can).
       if (!prepare) {
         const commands: AdviserCommand[] = [], goals: Record<number, string> = {}, taken = new Set<number>();
-        const sappers = w.units.filter((u) => u.canDemolish).sort((a, b) => Number(w.heroes.has(a.actorId)) - Number(w.heroes.has(b.actorId)) || a.actorId - b.actorId);
+        // Not a hurt hero (pulling back is its errand now).
+        const sappers = w.units.filter((u) => u.canDemolish && !(w.heroes.has(u.actorId) && ((u.hpPercent ?? 1) < 0.5 || w.memory.heading.get(u.actorId)?.goal === "retreat")))
+          .sort((a, b) => Number(w.heroes.has(a.actorId)) - Number(w.heroes.has(b.actorId)) || a.actorId - b.actorId);
         for (const x of all) {
           if (!x.a) continue;
           const run = `c4:${x.t}`;
@@ -943,7 +1004,12 @@ function armyTask(w: World, f: Focus, army: AdviserActor[]): MissionAdvice | nul
       return go(w, army.filter((u) => !onIt(u)), next.p, `destroy:${next.t}`, (n) => [`Destroy ${label}: send ${units(n)}${left !== null ? ` (${clock(left)} left)` : ""}.`, `Attack-move ${units(n)} to ${label}`], 5);
     }
     case "capture": {
-      const next = targetsOf()[0];
+      // The places not ours yet: the least defended first (enemy buildings seen around it: taking a power station
+      // first can leave the guns at the next one dark), then the nearest to the army.
+      const from = army.length ? centroid(army.map(cellOf)) : w.base() ?? { u: 0, v: 0 };
+      const guarded = (p: Pt) => [...w.obs.visibleEnemyBuildings, ...w.obs.rememberedEnemyBuildings ?? []].filter((b) => dist(cellOf(b), p) <= 8).length;
+      const next = targetsOf().filter((x) => !w.obs.buildings.some((b) => b.actorId === x.a?.actorId))
+        .sort((a, b) => guarded(a.p) - guarded(b.p) || dist(a.p, from) - dist(b.p, from) || a.t.localeCompare(b.t))[0];
       if (!next) return null;
       const label = placeName(next.t), id = w.idOf(next.t);
       const guards = w.enemies.filter((e) => dist(cellOf(e), next.p) <= 7);
@@ -1004,20 +1070,37 @@ function armyTask(w: World, f: Focus, army: AdviserActor[]): MissionAdvice | nul
 
 /** Scouting: one quick unit to each place not seen yet, while the army does the rest. */
 function scouting(w: World, army: AdviserActor[]): MissionAdvice | null {
-  for (const o of w.objectives.filter((x) => x.kind === "scout" && x.status === "active" && !x.waiting)) {
-    const targets = o.targets ?? [];
+  // Places to see: the scout objectives', and every contact not verified yet (a unit within its radius shows what it is).
+  const lists = w.objectives.filter((x) => x.kind === "scout" && x.status === "active" && !x.waiting)
+    .map((o) => ({ targets: o.targets ?? [], done: (t: string) => w.memory.scouted.has(t) || w.memory.verified.has(t), verify: false }));
+  const contacts = w.unverified().map((s) => s.name);
+  if (contacts.length) lists.unshift({ targets: contacts, done: (t: string) => w.memory.verified.has(t), verify: true });
+  const allContacts = w.sensors.length - w.sensors.filter((s) => ["waypoint", "mpspawn"].includes(w.ctx.map.named[s.name]?.type ?? "")
+    || w.ctx.techTree[w.ctx.map.named[s.name]?.type ?? ""]?.kind === "building").length;
+  for (const o of lists) {
+    const targets = o.targets;
     const from = w.base() ?? (army.length ? centroid(army.map(cellOf)) : { u: 0, v: 0 });
-    const left = targets.filter((t) => !w.memory.scouted.has(t)).map((t) => ({ t, p: w.where(t) })).filter((x): x is { t: string; p: Pt } => !!x.p)
+    const left = targets.filter((t) => !o.done(t) && !w.memory.unreachable.has(t)).map((t) => ({ t, p: w.where(t) })).filter((x): x is { t: string; p: Pt } => !!x.p)
       .sort((a, b) => dist(a.p, from) - dist(b.p, from) || a.t.localeCompare(b.t));
     for (const next of left) {
       const goal = `scout:${next.t}`;
-      if (army.some((u) => w.memory.heading.get(u.actorId)?.goal === goal && !u.idle)) continue;
-      const scout = [...army].filter((u) => !w.heroes.has(u.actorId) && !w.memory.heading.get(u.actorId)?.goal.startsWith("scout:") && w.onLand(u))
-        .sort((a, b) => (b.speed ?? 0) - (a.speed ?? 0) || a.actorId - b.actorId)[0];
-      if (!scout) return null;
-      const to = w.land(next.p);
-      return advice(`Scout ${placeName(next.t)}: send your ${w.name(scout.kind)} to look (${targets.length - left.length} of ${targets.length} seen).`,
-        `Send 1 ${w.name(scout.kind)} to scout ${placeName(next.t)}`, [{ action: "move", actor_id: scout.actorId, target_x: to.u, target_y: to.v }], goal, { goal });
+      const sent = w.units.filter((u) => w.memory.heading.get(u.actorId)?.goal === goal);
+      if (sent.some((u) => !u.idle)) continue;
+      // Got as close as it could and still not there (a contact out at sea): out of reach, not tried again.
+      if (sent.some((u) => w.tick - w.memory.heading.get(u.actorId)!.tick > 150)) { w.memory.unreachable.add(next.t); continue; }
+      // The unit there soonest that is not already looking somewhere: ships for a place at sea.
+      const wet = w.grid ? !w.grid.pass(next.p) && !w.grid.near(next.p, 2) : false;
+      const eta = (u: AdviserActor) => dist(cellOf(u), next.p) / Math.max(20, u.speed || 50);
+      const scout = [...army].filter((u) => !w.heroes.has(u.actorId) && !(w.memory.heading.get(u.actorId)?.goal.startsWith("scout:") && !u.idle) && w.onLand(u) !== wet)
+        .sort((a, b) => eta(a) - eta(b) || a.actorId - b.actorId)[0];
+      if (!scout) continue;
+      const to = wet ? next.p : w.land(next.p);
+      const seen = o.verify ? `${allContacts - contacts.length} of ${allContacts} verified` : `${targets.length - left.length} of ${targets.length} seen`;
+      return o.verify
+        ? advice(`Verify ${placeName(next.t)} before anyone fires on it: send your ${w.name(scout.kind)} close enough to see what it is (${seen}).`,
+          `Send 1 ${w.name(scout.kind)} to verify ${placeName(next.t)}`, [{ action: "move", actor_id: scout.actorId, target_x: to.u, target_y: to.v }], goal, { goal })
+        : advice(`Scout ${placeName(next.t)}: send your ${w.name(scout.kind)} to look (${seen}).`,
+          `Send 1 ${w.name(scout.kind)} to scout ${placeName(next.t)}`, [{ action: "move", actor_id: scout.actorId, target_x: to.u, target_y: to.v }], goal, { goal });
     }
   }
   return null;
@@ -1046,9 +1129,9 @@ function heroes(w: World): MissionAdvice | null {
     const p = cellOf(u), away = centroid(near.map(cellOf));
     const h = w.memory.heading.get(u.actorId);
     if ((h?.goal === "retreat" || h?.goal === "back") && (!u.idle || w.tick - h.tick < 150)) continue;
-    // Away from the enemy, and never into a sensor zone.
-    const from = point(wx(p) + (wx(p) - wx(away)) * 0.8, wy(p) + (wy(p) - wy(away)) * 0.8);
-    const to = w.grid?.near(from, 8, (q) => w.watching().some((s) => inZone(s, q))) ?? w.land(from, 8);
+    // Away from the enemy, by a way that enters no sensor zone.
+    const to = safeStep(w, p, away);
+    if (!to) continue;
     return advice(`${capital(w.who(u))} is badly hurt and the mission needs this unit alive: pull back out of the fight.`, `Pull ${w.who(u)} back`,
       [{ action: "move", actor_id: u.actorId, target_x: to.u, target_y: to.v }], `retreat:${u.actorId}`, { goal: "retreat", reactive: true });
   }
@@ -1083,11 +1166,14 @@ function missionProduction(w: World): MissionAdvice | null {
           return eco(`Build ${article(req.label)} first: the ${w.name(type)} needs it.`, `Build ${article(req.label)}`, [{ action: "build", item_type: req.name }], `build:${req.name}`);
       }
     }
-  if (open.some((x) => x.kind === "capture") && !w.engineers.length) {
-    const engineer = [...available].find((x) => baseType(x) === "engineer" || /engineer/i.test(w.name(x)));
-    if (engineer && !queued.has(baseType(engineer)) && !busy(engineer))
-      return eco(`Train ${article(w.name(engineer))}: only an engineer can capture the objective.`, `Train 1 ${w.name(engineer)}`, [{ action: "train", item_type: engineer }], "train:engineer");
-  }
+  // An engineer for every place still to capture (an engineer goes into the building it takes), now or behind a gate.
+  const toTake = open.filter((x) => x.kind === "capture").flatMap((x) => x.targets ?? [])
+    .filter((t) => { const a = w.find(t); return !w.memory.named.get(t)?.dead && !(a && o.buildings.some((b) => b.actorId === a.actorId)); }).length;
+  const engineer = [...available].find((x) => baseType(x) === "engineer" || /engineer/i.test(w.name(x)));
+  const training = o.production.filter((p) => engineer && baseType(p.item) === baseType(engineer)).length;
+  if (engineer && w.engineers.length + training < Math.min(3, toTake) && !training && !busy(engineer))
+    return eco(`Train ${article(w.name(engineer))}: only an engineer can capture ${toTake === 1 ? "the objective" : `the ${toTake} places to take`}.`, `Train 1 ${w.name(engineer)}`,
+      [{ action: "train", item_type: engineer }], "train:engineer");
   for (const r of open.filter((x) => x.kind === "reach")) {
     const types = r.types ?? [];
     const need = w.difficulty === "easy" ? 1 : r.count ?? 1;
@@ -1106,6 +1192,8 @@ const notDefence = /\bAA\b|air|flak|patriot|\bsam\b|missile|coastal|wall|relay|w
 /** A base that has to hold (a survive or protect objective, or attacks on it lately) builds a few ground defences. */
 function defences(w: World): MissionAdvice | null {
   const o = w.obs, tree = w.ctx.techTree;
+  // A gun fires on whatever comes in range: none while unverified contacts are about.
+  if (w.unverified().length) return null;
   const holding = w.objectives.some((x) => (x.kind === "survive" || x.kind === "protect") && x.status === "active")
     || w.tick - (w.memory.attacked ?? -9999) < 1500;
   if (!holding || o.cash < 1200) return null;
@@ -1123,6 +1211,19 @@ function defences(w: World): MissionAdvice | null {
 
 /** The base: the skirmish adviser's economy and the objectives' needs, then spending what piles up on a bigger army. */
 function economy(w: World): MissionAdvice | null {
+  const a = economyStep(w);
+  // A surveillance sweep due soon over our own factories: nothing new rolls out into it.
+  const sweep = w.objectives.find((x) => x.kind === "disperse" && x.status === "active" && !x.waiting && (x.area ?? []).length === 4);
+  if (a && sweep && a.commands.some((c) => c.action === "train")) {
+    const [u0, v0, u1, v1] = sweep.area!;
+    const opened = (sweep.requires ?? []).length || (sweep.after ?? []).length ? w.memory.opened.get(sweep.i) ?? w.tick : 0;
+    const inside = w.obs.buildings.some((b) => b.cellX >= u0 && b.cellY >= v0 && b.cellX <= u1 && b.cellY <= v1 && (w.ctx.techTree[baseType(b.kind)]?.produces ?? []).length);
+    if (inside && opened + (sweep.seconds ?? 120) * 25 - w.tick < 1750) return null;
+  }
+  return a;
+}
+
+function economyStep(w: World): MissionAdvice | null {
   if (!w.hasBase) return null;
   const o = w.obs, tree = w.ctx.techTree;
   const base = nextAdvice({ ...o, techTree: tree }, { buildFocus: true });
@@ -1147,7 +1248,7 @@ function economy(w: World): MissionAdvice | null {
       Array.from({ length: 5 }, () => ({ action: "train" as const, item_type: infantry })), "eco:train:more-infantry");
   const factories = o.buildings.filter((b) => produces(b.kind, "vehicle")).length;
   const factory = available.find((x) => produces(x, "vehicle") && !x.endsWith("f"));
-  if (factory && factories > 0 && factories < 3 && o.cash >= 4500 && !busy.has("building"))
+  if (factory && factories > 0 && factories < 3 && o.cash >= 6000 && o.harvesterCount >= 2 && !busy.has("building"))
     return advice(`Money is piling up ($${Math.round(o.cash / 100) * 100}): another ${w.name(factory)} builds the army faster.`, `Build ${article(w.name(factory))}`,
       [{ action: "build", item_type: factory }], "eco:build:factory");
   return null;
@@ -1177,6 +1278,9 @@ function observe(w: World, now: number) {
   }
   if (w.tick !== memory.pace.tick) { memory.pace.tick = w.tick; memory.pace.at = now; }
   for (const id of [...memory.deployed.keys()]) if (!w.units.some((u) => u.actorId === id)) memory.deployed.delete(id);
+  for (const o of w.objectives) if (o.status === "active" && !o.waiting && !memory.opened.has(o.i)) memory.opened.set(o.i, w.tick);
+  for (const s of w.unverified())
+    if (w.units.some((u) => Math.hypot(wx(cellOf(u)) - s.at.x, wy(cellOf(u)) - s.at.y) <= s.radius - 0.5)) memory.verified.add(s.name);
 }
 
 /** The next recommendation in a campaign mission (null: nothing to say). */
@@ -1184,6 +1288,36 @@ export function missionAdvice(o: AdviserObservation, ctx: MissionContext): Missi
   if (o.done) return advice(`The mission is over (${o.result || "finished"}); there is nothing left to do.`, "", [], "done");
   const w = new World(o, ctx);
   observe(w, ctx.now ?? Date.now());
+  // Unverified contacts about: every armed unit on return fire, so no one opens fire on a phantom by itself, and units
+  // move instead of attack-moving (which fires on whatever hostile it meets).
+  const careful = w.unverified().length > 0;
+  const stance = stances(w, careful);
+  if (stance) return stance;
+  const a = step(w, o, ctx);
+  if (!careful || !a) return a;
+  return { ...a, commands: a.commands.map((c) => (c.action === "attack_move" ? { ...c, action: "move" as const } : c)), summary: a.summary.replace(/^Attack-move/, "Move") };
+}
+
+/** Armed units to return fire only while unverified contacts are about; back to their usual stance after. */
+function stances(w: World, careful: boolean): MissionAdvice | null {
+  const armed = w.units.filter((u) => u.canAttack && u.stance !== undefined && !nonCombat.has(baseType(u.kind))).sort(byId);
+  const recent = (u: AdviserActor) => w.tick - (w.memory.stanced.get(u.actorId) ?? -999) < 50;
+  if (careful) {
+    const loose = armed.filter((u) => u.stance! > 1 && !recent(u) && (w.memory.stanceTries.get(u.actorId) ?? 0) < 2).slice(0, MAX);
+    if (!loose.length) return null;
+    w.memory.calmed = true;
+    return advice(`Unverified contacts on the picture: set ${plural(loose.length, "unit")} to return fire only, so no one fires on a contact until it is verified.`,
+      `Set ${plural(loose.length, "unit")} to return fire`, loose.map((u) => ({ action: "set_stance" as const, actor_id: u.actorId, target_x: 1 })), `stance:${loose.map((u) => u.actorId).join(",")}`,
+      {});
+  }
+  if (!w.memory.calmed) return null;
+  const held = armed.filter((u) => u.stance === 1 && !recent(u)).slice(0, MAX);
+  if (!held.length) { w.memory.calmed = false; return null; }
+  return advice(`Every contact is verified: let ${plural(held.length, "unit")} fire at will again.`, `Set ${plural(held.length, "unit")} to attack anything`,
+    held.map((u) => ({ action: "set_stance" as const, actor_id: u.actorId, target_x: 3 })), `stance:free:${held.map((u) => u.actorId).join(",")}`);
+}
+
+function step(w: World, o: AdviserObservation, ctx: MissionContext): MissionAdvice | null {
   // A mission that starts with a construction vehicle and no base: deploy it first.
   if (!o.buildings.length && o.units.some((u) => /mcv$/.test(baseType(u.kind)))) {
     const first = nextAdvice({ ...o, techTree: ctx.techTree }, { buildFocus: true });
@@ -1196,7 +1330,8 @@ export function missionAdvice(o: AdviserObservation, ctx: MissionContext): Missi
   const own = new Set<number>(w.engineers.map((e) => e.actorId));
   for (const r of errands) for (const u of w.units) if ((r.types ?? []).includes(baseType(u.kind))) own.add(u.actorId);
   for (const u of w.units) { const h = w.memory.heading.get(u.actorId); if (h?.goal.startsWith("scout:") && !u.idle) own.add(u.actorId); }
-  const army = w.fighters.filter((u) => !own.has(u.actorId));
+  // A badly hurt unit the mission needs alive stays out of the fighting.
+  const army = w.fighters.filter((u) => !own.has(u.actorId) && !(w.heroes.has(u.actorId) && (u.hpPercent ?? 1) < 0.5));
   const guard = defend(w, own);
   if (guard) return guard;
   // A mission with a base alternates between the economy and the army, so neither starves the other.

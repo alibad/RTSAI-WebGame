@@ -62,7 +62,7 @@ function actor(f: Fields, building = false): AdviserActor {
     hpPercent: number(f, building ? 5 : 7), x: number(f, 3), y: number(f, 4),
     ...(building ? {} : { canDisguise: !!number(f, 22), canInfiltrate: !!number(f, 23), isDisguised: !!number(f, 20), detectsDisguise: !!number(f, 26),
       // Campaign missions (mission-adviser.ts): speed, cargo, the special orders' valid targets and the current target.
-      speed: number(f, 16), passengers: number(f, 18), canCapture: !!number(f, 29), captureTargets: uints(f, 30),
+      speed: number(f, 16), stance: number(f, 15), passengers: number(f, 18), canCapture: !!number(f, 29), captureTargets: uints(f, 30),
       canDemolish: !!number(f, 27), demolishTargets: uints(f, 28), targetId: number(f, 39) >>> 0 }) };
 }
 

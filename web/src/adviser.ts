@@ -20,6 +20,8 @@ export interface AdviserActor {
   y?: number;
   /** Units: base speed (world units a tick), passengers carried (-1: not a transport). */
   speed?: number;
+  /** Units: 0 hold fire, 1 return fire, 2 defend, 3 attack anything. */
+  stance?: number;
   passengers?: number;
   /** Units: whether they can capture or demolish (C4), and the visible actors they can do it to now. */
   canCapture?: boolean;
@@ -70,7 +72,7 @@ export interface AdviserObservation {
 }
 
 export interface AdviserCommand {
-  action: "deploy" | "place_building" | "build" | "train" | "attack_move" | "move" | "attack" | "capture" | "demolish" | "stop";
+  action: "deploy" | "place_building" | "build" | "train" | "attack_move" | "move" | "attack" | "capture" | "demolish" | "stop" | "set_stance";
   actor_id?: number;
   /** attack, capture, demolish: the target actor. */
   target_actor_id?: number;

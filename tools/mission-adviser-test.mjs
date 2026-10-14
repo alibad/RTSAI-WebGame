@@ -187,6 +187,33 @@ test("defend what the mission protects", () => {
   assert.equal(a.commands.length, 2);
 });
 
+test("unverified contacts: return fire only, verify by going close, never fire on them", () => {
+  const map = parseMissionMap(yaml([["Picture", "waypoint", "Neutral", 30, 50], ["Shelter", "gapile", "Civilians", 20, 30], ["Contact1", "htnk", "Contacts", 22, 36],
+    ["Relay", "naradr", "Them", 50, 100]]));
+  const spec = { id: "t", slot: "Me", enemy: "Them", sensors: [{ actor: "Contact1", radius: 3 }],
+    objectives: [{ text: "Fire on nothing you have not verified.", kind: "protect", targets: ["Picture"] }, { text: "Destroy the relay.", kind: "destroy", targets: ["Relay"] },
+      { text: "Keep the shelter standing.", kind: "protect", targets: ["Shelter"] }, { text: "Verify every contact.", kind: "scout", targets: ["Contact1"], radius: 3, secondary: true }] };
+  const memory = new MissionMemory();
+  const contact = unit(30, "htnk", 22, 36, { canAttack: false });
+  const tanks = (stance, extra = {}) => [unit(1, "r2merkava", 10, 10, { stance, speed: 80, ...extra }), unit(2, "r2merkava", 11, 10, { stance, ...extra })];
+  // First: everyone to return fire.
+  const a = plan(spec, map, observe({ units: tanks(3), visibleEnemies: [contact] }), memory);
+  assert.deepEqual(a.commands, [{ action: "set_stance", actor_id: 1, target_x: 1 }, { action: "set_stance", actor_id: 2, target_x: 1 }]);
+  memory.record(a, 1000);
+  // Then a unit goes to see what the contact is (a move, not an attack), though it stands by the shelter.
+  const b = plan(spec, map, observe({ tick: 1100, units: tanks(1), visibleEnemies: [contact] }), memory);
+  assert.equal(b.commands.length, 1);
+  assert.equal(b.commands[0].action, "move");
+  assert.match(b.text, /Verify/);
+  memory.record(b, 1100);
+  // The relay strike moves (no attack-move) while the contact is unverified.
+  const c = plan(spec, map, observe({ tick: 1200, units: [tanks(1)[0], unit(2, "r2merkava", 11, 10, { stance: 1 })], visibleEnemies: [contact] }), memory);
+  assert(c.commands.every((x) => x.action !== "attack_move" && x.target_actor_id !== 30), JSON.stringify(c));
+  // Verified (a unit within its radius): fire at will again.
+  const d = plan(spec, map, observe({ tick: 1300, units: [unit(1, "r2merkava", 22, 38, { stance: 1 }), unit(2, "r2merkava", 11, 10, { stance: 1 })], visibleEnemies: [contact] }), memory);
+  assert.deepEqual(d.commands.map((x) => [x.action, x.target_x]), [["set_stance", 3], ["set_stance", 3]]);
+});
+
 test("orders on the wire: the target actor (field 3) and queued (field 7)", () => {
   const bytes = encodeAdviserActions("mission-test-1", 100, [{ action: "demolish", actor_id: 5, target_actor_id: 9, queued: true }]);
   // The request: 1 id (16 bytes), 2 tick (2), then 3 the command { 1 action 24, 2 actor, 3 target actor, 7 queued }.

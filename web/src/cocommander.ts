@@ -217,8 +217,17 @@ export class CoCommander {
     this.mission = null;
     this.set({ feed: [], linked: false, ...(this.s.mode === "browser" ? { running: true, error: "" } : {}), thinking: false, strategies: null, strategyError: "", strategyBusy: false, strategyOpen: false, uncertainProposalId: "", browserThreat: null });
     this.push("system", this.s.mode === "browser" ? "Co-commander · Browser strategy adviser" : this.s.mode === "mock" ? "Co-commander online (scripted brain)" : "Co-commander online");
-    if (!this.poll) this.poll = setInterval(() => { void this.offers(); }, 1000);
+    this.lastPoll = 0; this.pace = { tick: 0, at: 0, speed: 1 };
+    // A 250 ms clock: at the usual one look a second it fires every fourth tick, as the old one-second timer did.
+    if (!this.poll) this.poll = setInterval(() => { if (Date.now() - this.lastPoll >= this.pollEvery() - 125) { this.lastPoll = Date.now(); void this.offers(); } }, 250);
   }
+
+  private lastPoll = 0;
+  /** The game's speed (game seconds a second), from the observations' ticks. */
+  private pace = { tick: 0, at: 0, speed: 1 };
+
+  /** A look every second; in a campaign mission, every game second, so it keeps up when the game runs faster. */
+  private pollEvery() { return this.s.mode === "browser" && store.get().ui?.mission ? 1000 / Math.max(1, Math.min(4, this.pace.speed)) : 1000; }
 
   /**
    * Orders the co-commander offers by itself (e.g. "the Power Plant is ready; I can place it"): the desktop game
@@ -302,6 +311,10 @@ export class CoCommander {
       const observation = await this.browser.observe();
       if (match !== this.matchRevision || !this.s.enabled || this.browserDeciding || this.s.uncertainProposalId || store.get().paused || !this.canIssue() || store.get().phase !== "playing") return;
       this.set({ linked: true, error: "", browserThreat: assessThreat(observation) });
+      const now = Date.now();
+      if (observation.tick > this.pace.tick && this.pace.at && now - this.pace.at > 200)
+        this.pace.speed = this.pace.speed * 0.5 + (observation.tick - this.pace.tick) / (now - this.pace.at) / 0.025 * 0.5;
+      if (observation.tick !== this.pace.tick) this.pace = { ...this.pace, tick: observation.tick, at: now };
       if (!this.browserReady) {
         this.browserReady = true;
         await this.browser.status(true, "Browser strategy adviser ready");
