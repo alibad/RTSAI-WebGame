@@ -17,6 +17,9 @@ const out='artifacts/campaign-story';fs.mkdirSync(out,{recursive:true});
 const browser=await chromium.launch({executablePath:path.join(process.env.LOCALAPPDATA,'ms-playwright/chromium-1228/chrome-win64/chrome.exe'),headless:true,args:['--use-angle=d3d11','--ignore-gpu-blocklist']});
 const page=await browser.newPage({viewport:{width:1440,height:1000}});const errors=[];const media=[];
 page.on('pageerror',e=>errors.push(String(e)));
+// The briefings index the page reads (campaign/index.json under its campaign base, if it has one): the epilogue's card
+// shows only once its film is listed there.
+const indexes=[];page.on('response',r=>{if(/\/index\.json(\?|$)/.test(r.url()))r.json().then(j=>indexes.push(j)).catch(()=>{});});
 page.on('requestfailed',r=>console.log('Request failed:',r.url(),r.failure()?.errorText));
 page.on('console',m=>{if(['error','warning'].includes(m.type()))console.log('Browser:',m.text());});
 try {
@@ -32,7 +35,34 @@ try {
     assert.match(await card.textContent(),/In production/);
   }
   console.log('Locked chapters passed.');
-  for(const id of order.filter(launchable)){
+  // After the last act: the epilogue's film card (only once its film is published) and the sequel's locked card.
+  await page.waitForTimeout(1500);
+  const lastAct=page.locator(`.cp-arc[data-arc="${story.arcs.at(-1).id}"]`);
+  const after=(a,b)=>a.evaluate((x,y)=>!!(x.compareDocumentPosition(y)&Node.DOCUMENT_POSITION_FOLLOWING),b);
+  const epilogueListed=!!story.epilogue&&indexes.some(i=>(i.briefings??[]).some(b=>b.mission===story.epilogue.id));
+  const epilogueCard=story.epilogue?page.getByRole('button',{name:`${story.epilogue.eyebrow??'Epilogue'}: ${story.epilogue.title}`,exact:true}):null;
+  if(story.epilogue){
+    assert.equal(await epilogueCard.count(),epilogueListed?1:0,`epilogue card ${epilogueListed?'missing':'shown without its film'}`);
+    if(epilogueListed)assert(await after(await lastAct.elementHandle(),await epilogueCard.elementHandle()),'the epilogue card is not after the last act');
+  }
+  if(story.sequel){
+    const sequel=page.locator(`.cp-mission.is-locked[data-chapter="${story.sequel.id}"]`);
+    await sequel.waitFor();
+    assert.equal(await sequel.evaluate(el=>el.tagName),'DIV');
+    assert.equal(await sequel.getAttribute('aria-disabled'),'true');
+    const text=await sequel.textContent();
+    assert(text.includes(story.sequel.title)&&/Coming/.test(text),text);
+    assert(await after(await lastAct.elementHandle(),await sequel.elementHandle()),'the sequel card is not after the last act');
+    if(epilogueListed)assert(await after(await epilogueCard.elementHandle(),await sequel.elementHandle()),'the sequel card is not after the epilogue');
+  }
+  console.log(`Epilogue card ${epilogueListed?'shown after the last act':'hidden (no published film)'}; sequel card locked${story.sequel?'':' (none in the story)'}.`);
+  // A chapter's film: the narrated introduction bundled with the page, or its briefing published under the campaign base.
+  // Chapters with neither (new ones whose films are still to make) keep their written briefing only.
+  const bundled=new Set(JSON.parse(fs.readFileSync('web/public/campaign-video/manifest.json','utf8')).videos.map(v=>v.id));
+  const published=new Set(indexes.flatMap(i=>(i.briefings??[]).map(b=>b.mission)));
+  const unfilmed=order.filter(launchable).filter(id=>!bundled.has(id)&&!published.has(id));
+  if(unfilmed.length)console.log('No film yet (written briefing only):',unfilmed.join(', '));
+  for(const id of order.filter(launchable).filter(id=>!unfilmed.includes(id))){
     const m=missions.find(m=>m.id===id);
     await page.getByRole('button',{name:new RegExp(m.title)}).click();
     await page.getByRole('button',{name:'Watch story introduction',exact:true}).click();
@@ -75,6 +105,6 @@ try {
   await page.getByRole('heading',{name:'Hodeidah Lifeline',exact:true}).waitFor({timeout:600000});
   assert.equal(await page.getByRole('button',{name:/Jizan Corridor/}).getAttribute('aria-pressed'),'false');
   assert.equal(errors.length,0,JSON.stringify(errors));
-  fs.writeFileSync(`${out}/acceptance.json`,JSON.stringify({passed:true,media,realMissionLaunch:'jizan-corridor',launchAfterVideo:true,syntheticOutcomeUi:['loss-does-not-complete','victory-saves','next-chapter','reload-persists'],videoFailureFallback:true,errors},null,2));
+  fs.writeFileSync(`${out}/acceptance.json`,JSON.stringify({passed:true,media,unfilmed,epilogueCard:epilogueListed,sequelCard:!!story.sequel,realMissionLaunch:'jizan-corridor',launchAfterVideo:true,syntheticOutcomeUi:['loss-does-not-complete','victory-saves','next-chapter','reload-persists'],videoFailureFallback:true,errors},null,2));
   console.log(`${media.length} movies played and sought with captions; real mission launched; synthetic debrief/navigation and reload checks passed.`);
 }finally{await browser.close();}

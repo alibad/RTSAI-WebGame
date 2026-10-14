@@ -12,8 +12,9 @@ import { CastPortrait, LazyImage } from "./Portrait";
 import { RadioPanel } from "./Radio";
 
 // The campaign as a story: the prologue's film first, then the acts with their chapters (maps, commanders, progress;
-// chapters still in production locked), the chosen chapter's briefing, objectives and film, then Start mission (or the
-// film first). MissionHud is the operation's objectives panel during the match, with its radio calls under it.
+// chapters still in production locked), the epilogue's film after the last act and the next part's locked card; the
+// chosen chapter's briefing, objectives and film, then Start mission (or the film first). MissionHud is the operation's
+// objectives panel during the match, with its radio calls under it.
 
 function progress(): Record<string, string> {
   try { return JSON.parse(localStorage.getItem("rtsai.missions.completed") ?? "{}"); } catch { return {}; }
@@ -49,18 +50,25 @@ export function Missions({ game }: { game: Game }) {
   const publicShot = useStore((s) => s.publicShot);
   const detail = useRef<HTMLElement>(null);
   const completed = progress();
-  // The prologue shows once its film is published (in the briefings index under the mission id "prologue").
+  // The prologue and the epilogue show once their films are published (in the briefings index under their ids,
+  // "prologue" and "epilogue"); either one open is a film part, not an operation.
   const prologueId = story.prologue?.id ?? "prologue";
   const prologueFilm = story.prologue ? briefings[prologueId] : undefined;
   const prologue = prologueFilm ? story.prologue : undefined;
-  const prologueOpen = !!prologue && selected === prologueId;
-  const mission = prologueOpen ? undefined : startable.find((m) => m.id === selected) ?? first;
+  const epilogueId = story.epilogue?.id ?? "epilogue";
+  const epilogueFilm = story.epilogue ? briefings[epilogueId] : undefined;
+  const epilogue = epilogueFilm ? story.epilogue : undefined;
+  const part = prologue && selected === prologueId ? prologue : epilogue && selected === epilogueId ? epilogue : undefined;
+  const partFilm = part ? briefings[part.id] : undefined;
+  const partOpen = !!part;
+  const partEyebrow = part?.eyebrow ?? (part === epilogue ? "Epilogue" : "Prologue");
+  const mission = partOpen ? undefined : startable.find((m) => m.id === selected) ?? first;
   const chapter = mission ? story.chapters[mission.id] : undefined;
   const arcIndex = story.arcs.findIndex((a) => a.missions.includes(mission?.id ?? ""));
   const arc = story.arcs[arcIndex];
   const chapterNumber = arc ? arc.missions.indexOf(mission?.id ?? "") + 1 : 0;
   const speaker = castMember(chapter?.speaker);
-  const filmId = prologueOpen ? prologueId : mission?.id;
+  const filmId = part ? part.id : mission?.id;
   useEffect(() => { setShowFilm(playOnOpen.current); playOnOpen.current = false; setFilmError(false); setFilmPlain(false); setDeployAfterFilm(false); }, [filmId]);
   const briefing = filmId ? briefings[filmId] : undefined;
   const filmSrc = useWholeFile(showFilm && briefing ? briefing.video : null);
@@ -149,11 +157,22 @@ export function Missions({ game }: { game: Game }) {
       </li>
     );
   };
-  const filmName = prologueOpen ? "the prologue" : "story introduction";
+  const filmName = partOpen ? `the ${partEyebrow.toLowerCase()}` : "story introduction";
+  // The films around the acts: a poster card that opens the part and plays it.
+  const partCard = (p: NonNullable<typeof part>, film: NonNullable<typeof partFilm>, fallback: string, className: string) => (
+    <button type="button" className={className} aria-pressed={selected === p.id} aria-label={`${p.eyebrow ?? fallback}: ${p.title}`} data-sfx-hover onClick={() => choose(p.id, true)}>
+      <LazyImage src={film.poster} crossOrigin="anonymous" className="cp-prologue-art" />
+      <span className="cp-prologue-play" aria-hidden="true"><Play size={20} fill="currentColor" /></span>
+      <span className="cp-prologue-text"><small>{p.eyebrow ?? fallback}</small><b>{p.title}</b></span>
+      <span className="cp-prologue-meta"><Film size={12} aria-hidden="true" />{filmLength(film.seconds)}</span>
+      <Brackets />
+    </button>
+  );
+  const sequel = story.sequel;
 
   return (
     <div className="scr-root cp-root" data-ui-sfx>
-      <ScreenBackdrop image={prologueOpen ? prologueFilm!.poster : mission && preview(mission.id) ? preview(mission.id) : "menu/campaign.webp"} soft={prologueOpen || !!(mission && preview(mission.id))} />
+      <ScreenBackdrop image={partOpen ? partFilm!.poster : mission && preview(mission.id) ? preview(mission.id) : "menu/campaign.webp"} soft={partOpen || !!(mission && preview(mission.id))} />
       <div className="scr-topbar" aria-hidden="true" />
       <main className="scr-content cp-layout">
         <aside className="cp-side">
@@ -165,13 +184,7 @@ export function Missions({ game }: { game: Game }) {
               <span><b>{done}</b> / {startable.length} operations</span>
             </div>}
           </header>
-          {prologue && <button type="button" className="cp-prologue" aria-pressed={prologueOpen} aria-label={`${prologue.eyebrow ?? "Prologue"}: ${prologue.title}`} data-sfx-hover onClick={() => choose(prologueId, true)}>
-            <LazyImage src={prologueFilm!.poster} crossOrigin="anonymous" className="cp-prologue-art" />
-            <span className="cp-prologue-play" aria-hidden="true"><Play size={20} fill="currentColor" /></span>
-            <span className="cp-prologue-text"><small>{prologue.eyebrow ?? "Prologue"}</small><b>{prologue.title}</b></span>
-            <span className="cp-prologue-meta"><Film size={12} aria-hidden="true" />{filmLength(prologueFilm!.seconds)}</span>
-            <Brackets />
-          </button>}
+          {prologue && partCard(prologue, prologueFilm!, "Prologue", "cp-prologue")}
           {story.arcs.map((part, index) => {
             const chapters = part.missions.filter((id) => story.chapters[id] || ids.includes(id));
             if (!chapters.length) return null;
@@ -195,22 +208,32 @@ export function Missions({ game }: { game: Game }) {
               </section>
             );
           })}
+          {epilogue && partCard(epilogue, epilogueFilm!, "Epilogue", "cp-prologue cp-epilogue")}
+          {sequel && <section className="cp-arc cp-coda" data-arc={sequel.id} aria-label={`${sequel.eyebrow ?? "Next"}: ${sequel.title}`}>
+            <div className="cp-mission is-locked cp-sequel" data-chapter={sequel.id} aria-disabled="true">
+              <span className="cp-mission-art"><Lock size={16} aria-hidden="true" /></span>
+              <span className="cp-mission-text">
+                <span className="cp-mission-label"><small>{sequel.eyebrow ?? "Next"}</small><span className="cp-mission-soon"><Clapperboard size={10} aria-hidden="true" />Coming</span></span>
+                <b>{sequel.title}</b><span className="cp-mission-teaser">{teaser(sequel.premise)}</span>
+              </span>
+            </div>
+          </section>}
           {loose.length > 0 && <section className="cp-arc" aria-label="More operations">
             <ol className="cp-missions">{loose.map((m) => missionButton(m, m.campaign))}</ol>
           </section>}
           {!startable.length && <EmptyState icon={<Target size={20} />} title="No campaign in this game">This game profile has no compatible missions. Use the public RTS AI profile.</EmptyState>}
         </aside>
 
-        {(mission || prologueOpen) && <section ref={detail} className="cp-detail" aria-label={prologueOpen ? "Prologue" : "Operation"}>
-          {prologueOpen ? <div className="cp-hero" key={prologueId}>
+        {(mission || partOpen) && <section ref={detail} className="cp-detail" aria-label={partOpen ? partEyebrow : "Operation"}>
+          {part ? <div className="cp-hero" key={part.id}>
             <div className="cp-hero-map cp-hero-poster">
-              <LazyImage src={prologueFilm!.poster} crossOrigin="anonymous" />
+              <LazyImage src={partFilm!.poster} crossOrigin="anonymous" />
               <Brackets className="always" />
             </div>
             <div className="cp-hero-text">
-              <span className="menu-eyebrow">{prologue!.eyebrow ?? "Prologue"} · {story.title}</span>
-              <h2>{prologue!.title}</h2>
-              <div className="scr-chips"><span className="scr-chip"><Film size={12} aria-hidden="true" />Film · {filmLength(prologueFilm!.seconds)}</span></div>
+              <span className="menu-eyebrow">{partEyebrow} · {story.title}</span>
+              <h2>{part.title}</h2>
+              <div className="scr-chips"><span className="scr-chip"><Film size={12} aria-hidden="true" />Film · {filmLength(partFilm!.seconds)}</span></div>
             </div>
           </div> : mission && <div className="cp-hero" key={mission.id}>
             <div className="cp-hero-map">
@@ -230,12 +253,12 @@ export function Missions({ game }: { game: Game }) {
           </div>}
 
           <div className="cp-body">
-            {(chapter || prologueOpen) && <>
+            {(chapter || partOpen) && <>
               <div className="cp-voice" data-speaker={chapter?.speaker}>
                 {chapter?.speaker && <CastPortrait id={chapter.speaker} className="cp-voice-portrait" />}
                 <div className="cp-voice-text">
                   {speaker && <span className="cp-voice-who"><b>{speaker.name}</b>{speaker.role && <small>{speaker.role}</small>}</span>}
-                  <p className="cp-intro">{prologueOpen ? prologue!.intro : chapter!.intro}</p>
+                  <p className="cp-intro">{part ? part.intro : chapter!.intro}</p>
                 </div>
               </div>
               <div className="cp-film">
@@ -243,19 +266,19 @@ export function Missions({ game }: { game: Game }) {
                   ? <button type="button" className="cp-film-card" aria-label={`Watch ${filmName}`} data-sfx-hover onClick={() => { setDeployAfterFilm(false); setShowFilm(true); }}>
                       <img src={briefing.poster} alt="" draggable={false} crossOrigin="anonymous" />
                       <span className="cp-film-card-play" aria-hidden="true"><Play size={26} fill="currentColor" /></span>
-                      <span className="cp-film-card-meta"><Film size={13} aria-hidden="true" />{prologueOpen ? "Prologue" : "Briefing"} · {filmLength(briefing.seconds)}</span>
+                      <span className="cp-film-card-meta"><Film size={13} aria-hidden="true" />{partOpen ? partEyebrow : "Briefing"} · {filmLength(briefing.seconds)}</span>
                     </button>
                   : <GameButton size="sm" icon={showFilm ? <X size={14} /> : <Film size={14} />} onClick={() => { setDeployAfterFilm(false); setShowFilm(!showFilm); }}>{showFilm ? `Close ${filmName}` : `Watch ${filmName}`}</GameButton>}
                 {showFilm && filmId && <div className="cp-film-player">
                   {!filmError && briefing && !filmSrc ? <div className="cp-film-loading" role="status"><img src={briefing.poster} alt="" draggable={false} crossOrigin="anonymous" /><span><LoaderCircle size={18} className="spin" aria-hidden="true" /> Loading film…</span></div>
-                  : !filmError ? <div className="cp-film-frame"><video ref={video} key={`${filmId}-${deployAfterFilm}-${briefing ? "cdn" : "local"}-${filmPlain}`} controls playsInline preload="metadata" crossOrigin={briefing ? "anonymous" : undefined} poster={briefing?.poster} aria-label={prologueOpen ? `${prologue!.eyebrow ?? "Prologue"}: ${prologue!.title}` : `${mission!.title} story introduction`} onPlay={() => setTapToPlay(false)} onLoadedMetadata={(e) => showCaptions(e.currentTarget)} onEnded={() => { if (deployAfterFilm) deploy(); }} onError={filmFailed}>
+                  : !filmError ? <div className="cp-film-frame"><video ref={video} key={`${filmId}-${deployAfterFilm}-${briefing ? "cdn" : "local"}-${filmPlain}`} controls playsInline preload="metadata" crossOrigin={briefing ? "anonymous" : undefined} poster={briefing?.poster} aria-label={part ? `${partEyebrow}: ${part.title}` : `${mission!.title} story introduction`} onPlay={() => setTapToPlay(false)} onLoadedMetadata={(e) => showCaptions(e.currentTarget)} onEnded={() => { if (deployAfterFilm) deploy(); }} onError={filmFailed}>
                     <source src={briefing ? (filmPlain ? briefing.video : filmSrc!) : `${import.meta.env.BASE_URL}campaign-video/${filmId}.mp4`} type="video/mp4" onError={filmFailed} />
                     <track kind="captions" src={briefing ? briefing.captions : `${import.meta.env.BASE_URL}campaign-video/${filmId}.vtt`} srcLang="en" label="English" default />
                   </video>
-                  {tapToPlay && <button type="button" className="cp-film-tap" onClick={playFilm}><span aria-hidden="true"><Play size={28} fill="currentColor" /></span>Play {prologueOpen ? "the prologue" : "the film"}</button>}
-                  </div> : <p role="status" className="cp-film-error">{prologueOpen ? "The film could not load. The prologue is written above." : "The video could not load. The complete story is written above; you can still launch the mission."}</p>}
+                  {tapToPlay && <button type="button" className="cp-film-tap" onClick={playFilm}><span aria-hidden="true"><Play size={28} fill="currentColor" /></span>Play {partOpen ? `the ${partEyebrow.toLowerCase()}` : "the film"}</button>}
+                  </div> : <p role="status" className="cp-film-error">{partOpen ? `The film could not load. The ${partEyebrow.toLowerCase()} is written above.` : "The video could not load. The complete story is written above; you can still launch the mission."}</p>}
                   <div className="cp-film-foot">
-                    <span>{briefing ? `${prologueOpen ? "Prologue" : "Briefing"} · ${filmLength(briefing.seconds)} · captions` : "Narrated operations map · captions available · playback is optional"}</span>
+                    <span>{briefing ? `${partOpen ? partEyebrow : "Briefing"} · ${filmLength(briefing.seconds)} · captions` : "Narrated operations map · captions available · playback is optional"}</span>
                     {deployAfterFilm ? <GameButton variant="ghost" size="sm" disabled={!ready} onClick={deploy}>Skip introduction and deploy</GameButton>
                       : briefing && <GameButton variant="ghost" size="sm" icon={<X size={14} />} onClick={() => setShowFilm(false)}>Close</GameButton>}
                   </div>
@@ -290,6 +313,12 @@ export function Missions({ game }: { game: Game }) {
               <GameButton variant="primary" size="lg" className="scr-cta cp-start" disabled={!ready} onClick={deploy}
                 icon={ready ? <Rocket size={17} aria-hidden="true" /> : <LoaderCircle className="menu-spin" size={17} aria-hidden="true" />}>{ready ? "Start mission" : "Preparing mission…"}</GameButton>
             </span>
+          </div> : part && part === epilogue ? sequel && <div className="scr-command cp-command cp-command-begin">
+            <span className="cp-launch">
+              <GameButton size="lg" className="cp-next-part" disabled icon={<Lock size={15} aria-hidden="true" />}>
+                {sequel.eyebrow ?? "Next"} · {sequel.title} · Coming
+              </GameButton>
+            </span>
           </div> : first && <div className="scr-command cp-command cp-command-begin">
             <span className="cp-launch">
               <GameButton variant="primary" size="lg" className="scr-cta cp-begin" icon={<ChevronRight size={17} aria-hidden="true" />} onClick={() => choose(first.id)}>
@@ -309,6 +338,7 @@ export function MissionHud({ game }: { game: Game }) {
   const mission = useStore((s) => s.ui?.mission);
   const win = useStore((s) => s.ui?.win);
   const catalog = useStore((s) => s.setup?.missions);
+  const briefings = useBriefings();
   // Phones and tablets start with the objectives folded (the header keeps the count): the battlefield is small enough.
   const [expanded, setExpanded] = useState(() => innerWidth >= 700 && innerHeight >= 500 && !matchMedia("(pointer: coarse)").matches);
   useEffect(() => {
@@ -319,8 +349,10 @@ export function MissionHud({ game }: { game: Game }) {
   useEffect(() => { if (win === "Won" || win === "Lost") setExpanded(true); }, [win]);
   if (!mission) return null;
   const chapter = story.chapters[mission.id];
-  // The story runs on across acts; chapters still in production are skipped.
-  const next = nextChapter(mission.id, (catalog ?? []).map((m) => m.id));
+  // The story runs on across acts; chapters still in production are skipped. After the last one, the epilogue's film.
+  const epilogueNext = story.epilogue && briefings[story.epilogue.id] && story.arcs.at(-1)?.missions.includes(mission.id) ? story.epilogue : undefined;
+  const next = nextChapter(mission.id, (catalog ?? []).map((m) => m.id)) ?? epilogueNext?.id;
+  const nextLabel = epilogueNext && next === epilogueNext.id ? `Watch the ${(epilogueNext.eyebrow ?? "epilogue").toLowerCase()}` : "Continue to next chapter";
   const returnTo = (id: string) => {
     try { sessionStorage.setItem("rtsai.campaign.next", id); } catch { /* storage unavailable */ }
     game.quit();
@@ -348,7 +380,7 @@ export function MissionHud({ game }: { game: Game }) {
       {over && <section className="mh-debrief" aria-label="Campaign debrief">
         <div className="mh-debrief-head"><span className="mh-debrief-icon" aria-hidden="true">{win === "Won" ? <Trophy size={16} /> : <Target size={16} />}</span><h2>{win === "Won" ? "Operation complete" : "Regroup and retry"}</h2></div>
         <p>{chapter ? (win === "Won" ? chapter.victory : chapter.defeat) : "Return to the campaign to choose an operation."}</p>
-        <GameButton variant="primary" size="sm" onClick={() => returnTo(win === "Won" && next ? next : mission.id)}>{win === "Won" && next ? "Continue to next chapter" : win === "Lost" ? "Retry this chapter" : "Return to campaign"}</GameButton>
+        <GameButton variant="primary" size="sm" onClick={() => returnTo(win === "Won" && next ? next : mission.id)}>{win === "Won" && next ? nextLabel : win === "Lost" ? "Retry this chapter" : "Return to campaign"}</GameButton>
       </section>}
     </aside>
     <RadioPanel game={game} />

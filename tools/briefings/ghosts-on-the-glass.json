@@ -1,0 +1,43 @@
+{
+  "mission": "ghosts-on-the-glass",
+  "chapter": "Aftershocks · Chapter 2",
+  "title": "Ghosts on the Glass",
+  "style": "Cinematic painted key art for a modern real-time strategy game, the look of classic Command and Conquer box art: dramatic light, rich colour, crisp detail, wide 16:9 composition, no text, no logos, no letters, no flags, no insignia.",
+  "music": {
+    "caption": "tense nocturnal electronic underscore, soft synth pulses like a radar sweep, low strings and a distant piano motif, a held breath, rising to a firm resolve at the end, no vocals",
+    "seconds": 60
+  },
+  "shots": [
+    {
+      "id": "harbour-night",
+      "prompt": "A harbour city on a calm bay at night: warm lights along the quay reflected on the water, fishing boats moored at a pier, a low dark headland across the bay with three faint cold white strobe lights on tall masts, quiet but uneasy, wide establishing shot.",
+      "line": "Two days later, on another coast, a harbour city's picture starts to fill.",
+      "motion": "push-in"
+    },
+    {
+      "id": "picture",
+      "prompt": "Close-up of a green military radar display in a dark command room: a harbour coastline drawn in thin glowing lines and nine bright contact markers converging on it, one marker flickering like an old film frame, reflections of a seated operator on the glass.",
+      "line": "Nine contacts are closing on the harbour. Most of them are not there.",
+      "motion": "zoom-target"
+    },
+    {
+      "id": "shelter",
+      "prompt": "Families with children and elderly people walking calmly down lit concrete steps into a public shelter in a harbour city at night, a volunteer in a plain jacket holding the door, warm light inside, orderly and safe, seen from a respectful distance.",
+      "line": "The families go down to the shelters. Above them, nobody fires until somebody has looked.",
+      "motion": "push-in-slow"
+    },
+    {
+      "id": "commander",
+      "prompt": "Portrait of a fictional Israeli army lieutenant colonel, a woman in her forties, dark hair in a low knot, olive field uniform, a headset around her neck and binoculars on a strap, standing in a harbour command room at night lit by green screens, focused and sceptical expression, looking at the viewer, cinematic rim light, painted portrait.",
+      "line": "Lieutenant Colonel Maya Ronen trusts nothing she has not seen twice.",
+      "motion": "push-in-slow"
+    },
+    {
+      "id": "relays",
+      "prompt": "Three matte black glass relay masts on a dark rocky headland across a bay at night, each with a single cold white strobe light, faint ghostly shapes of ships shimmering in the air above the water between them like an old film frame, ominous.",
+      "line": "Find what paints the ghosts. Verify, then strike.",
+      "motion": "pan-right",
+      "title": true
+    }
+  ]
+}
