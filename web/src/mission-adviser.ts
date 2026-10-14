@@ -212,6 +212,8 @@ export class MissionMemory {
   verified = new Set<string>();
   unreachable = new Set<string>();
   scoutTries = new Map<string, number>();
+  /** Where the army is looking for a target that moved out of sight, and how many places it has tried. */
+  search = new Map<string, { spot: Pt; n: number }>();
   /** Units were set to return fire only, while unverified contacts were about; when each stance was last set. */
   calmed = false;
   stanced = new Map<number, number>();
@@ -1059,11 +1061,21 @@ function armyTask(w: World, f: Focus, army: AdviserActor[]): MissionAdvice | nul
         if (idle.length) return advice(`Focus fire on ${label}: put ${units(Math.min(MAX, idle.length))} on it.`, `Attack ${label} with ${units(Math.min(MAX, idle.length))}`,
           idle.sort(byId).slice(0, MAX).map((u) => ({ action: "attack" as const, actor_id: u.actorId, target_actor_id: next.a!.actorId })), goal, { goal });
       }
-      // A target that moved out of sight: search round where it was last seen, the nearest ground not in sight first.
+      // A target that moved out of sight: search round where it was last seen, the nearest ground not in sight first, one
+      // place at a time (kept until reached or in sight), and not for ever.
       if (!next.a && w.memory.named.get(next.t)?.lost !== undefined && army.some((u) => dist(cellOf(u), next.p) <= 6)) {
-        const spot = w.searchSpot(next.p, from);
-        if (spot) return go(w, army, spot, `search:${next.t}:${spot.u},${spot.v}`, (n) => [`Find ${label}: it moved out of sight; search round where it was seen with ${units(n)}.`,
-          `Attack-move ${units(n)} to search for ${label}`], 4);
+        let look = w.memory.search.get(next.t);
+        if (!look || w.grid?.seen(look.spot) || army.some((u) => dist(cellOf(u), look!.spot) <= 4)) {
+          const spot = (look?.n ?? 0) < 6 ? w.searchSpot(next.p, from) : null;
+          look = spot ? { spot, n: (look?.n ?? 0) + 1 } : undefined;
+          if (look) w.memory.search.set(next.t, look);
+        }
+        if (look) {
+          const spot = look.spot;
+          const sent = go(w, army, spot, `search:${next.t}:${spot.u},${spot.v}`, (n) => [`Find ${label}: it moved out of sight; search round where it was seen with ${units(n)}.`,
+            `Attack-move ${units(n)} to search for ${label}`], 4);
+          if (sent) return sent;
+        }
       }
       // Units put onto the target (or charging it) are on it already.
       const onIt = (u: AdviserActor) => { const h = w.memory.heading.get(u.actorId); return !!h && (h.goal === `hit:${next.t}` || h.goal === `c4:${next.t}`) && (!u.idle || w.tick - h.tick < 250); };
