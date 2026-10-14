@@ -203,7 +203,7 @@ export class Renderer {
     gl.bindVertexArray(vao);
     const vb = gl.createBuffer()!;
     gl.bindBuffer(gl.ARRAY_BUFFER, vb);
-    gl.bufferData(gl.ARRAY_BUFFER, terrain, gl.STATIC_DRAW);
+    gl.bufferData(gl.ARRAY_BUFFER, terrain, gl.DYNAMIC_DRAW);
     gl.enableVertexAttribArray(0);
     gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 48, 0);
     gl.enableVertexAttribArray(1);
@@ -225,6 +225,16 @@ export class Renderer {
     this.terrainVao = vao;
     this.terrainBuffers = [vb, ib];
     this.terrainIndexCount = idx.length;
+    this.version++;
+  }
+
+  /** Map editor: terrain rows the engine redrew (an edit), written over the same rows of the vertex buffer. */
+  updateTerrainRows(first: number, data: ArrayBuffer) {
+    if (!this.info || !this.terrainBuffers.length) return;
+    const gl = this.gl;
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.terrainBuffers[0]);
+    gl.bufferSubData(gl.ARRAY_BUFFER, first * this.info.vertexRowStride * 48, new Uint8Array(data));
+    gl.bindBuffer(gl.ARRAY_BUFFER, null);
     this.version++;
   }
 
@@ -392,6 +402,32 @@ export class Renderer {
     const k = t?.rowScale ?? 1;
     const sprite = k === 1 ? s : { ...s, uv: [s.uv[0], s.uv[1] * k, s.uv[2], s.uv[3] * k] as IconSprite["uv"] };
     return this.iconRaster.render(sprite, t?.tex, this.palette?.tex, this.paletteRows);
+  }
+
+  /**
+   * A terrain template as a PNG data URL: its tiles' sprites (from the engine's tile sheets) composed at their isometric
+   * offsets, the map editor's tile palette. null until the sheets and the palette are on the GPU.
+   */
+  renderTiles(tiles: (IconSprite & { x: number; y: number })[]): string | null {
+    if (!tiles.length) return "";
+    const pictures: { c: HTMLCanvasElement; x: number; y: number }[] = [];
+    for (const t of tiles) {
+      const tex = this.textures.get(t.tex);
+      if (!tex) { this.onMissingTexture(t.tex); return null; }
+      const k = tex.rowScale ?? 1;
+      const s = k === 1 ? t : { ...t, uv: [t.uv[0], t.uv[1] * k, t.uv[2], t.uv[3] * k] as IconSprite["uv"] };
+      const c = this.iconRaster.raster(s, tex.tex, this.palette?.tex, this.paletteRows);
+      if (!c) return null;
+      pictures.push({ c, x: t.x, y: t.y });
+    }
+    const l = Math.min(...pictures.map((p) => p.x)), t0 = Math.min(...pictures.map((p) => p.y));
+    const r = Math.max(...pictures.map((p) => p.x + p.c.width)), b = Math.max(...pictures.map((p) => p.y + p.c.height));
+    const out = document.createElement("canvas");
+    out.width = Math.max(1, Math.ceil(r - l));
+    out.height = Math.max(1, Math.ceil(b - t0));
+    const g = out.getContext("2d")!;
+    for (const p of pictures) g.drawImage(p.c, Math.round(p.x - l), Math.round(p.y - t0));
+    return out.toDataURL("image/png");
   }
 
   /**

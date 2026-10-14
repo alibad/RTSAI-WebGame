@@ -72,7 +72,7 @@ export function CoachPanel({ game }: { game: Game }) {
                 <button type="button" className="cv-time" disabled={game.multiplayer || e.tick < first} onClick={() => { c.seek(e.tick); render((n) => n + 1); }} aria-label={`Review ${time(e.tick)}`}>{time(e.tick)}</button>
                 <span className="cv-event-kind inline-flex items-center gap-1.5 text-[var(--hud-gold)]">{KIND_ICONS[e.kind]}<span className="text-[#f2ecdc]">{KIND_NAMES[e.kind] ?? e.kind}</span></span>
                 <p>{e.text}</p>
-                <a href={`?profile=public&mode=practice&prompt=${encodeURIComponent(e.practice)}`} target="_blank" rel="noreferrer">Practice this<ArrowRight /></a>
+                <a href={`?profile=public&mode=simulator&prompt=${encodeURIComponent(e.practice)}`} target="_blank" rel="noreferrer">Practice this<ArrowRight /></a>
               </article>
             ))}
           </div>

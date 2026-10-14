@@ -89,7 +89,7 @@ export class SimClient {
   }
 
   /** A command that answers with JSON (selection, control groups, production...). */
-  request<T = Record<string, unknown>>(m: { type: "command"; json: string } | { type: "record" } | { type: "select"; ids: number[]; additive: boolean } | { type: "voiceLanguage"; value?: string } | { type: "voicePreview" }): Promise<T> {
+  request<T = Record<string, unknown>>(m: { type: "command"; json: string } | { type: "editorOpen"; json: string } | { type: "catalog" } | { type: "editor"; json: string } | { type: "mountFiles"; dir: string; files: Record<string, ArrayBuffer> } | { type: "record" } | { type: "select"; ids: number[]; additive: boolean } | { type: "voiceLanguage"; value?: string } | { type: "voicePreview" }): Promise<T> {
     const req = this.nextReq++;
     return new Promise((resolve) => {
       this.replies.set(req, (json) => resolve(JSON.parse(json) as T));
@@ -99,6 +99,35 @@ export class SimClient {
 
   command<T = Record<string, unknown>>(cmd: Record<string, unknown>) {
     return this.request<T>({ type: "command", json: JSON.stringify(cmd) });
+  }
+
+  /** Everything buildable and each faction's roster, from the rules (no world needed). */
+  catalog<T = Record<string, unknown>>() {
+    return this.request<T>({ type: "catalog" });
+  }
+
+  /** Opens the map editor's world (EditorHost.Open); the world arrives as a normal "started" message. */
+  editorOpen<T = Record<string, unknown>>(spec: Record<string, unknown>) {
+    // A new world, like start: nothing of the previous one stays drawable.
+    this.generation++;
+    this.active = false;
+    this.cancelReplies();
+    this.cur = this.prev = null;
+    this.lastSeq = this.header ? Atomics.load(this.header, 0) : 0;
+    this.strings = [];
+    this.pending = [];
+    this.renderer.resetSprites();
+    return this.request<T>({ type: "editorOpen", json: JSON.stringify(spec) });
+  }
+
+  /** One map editor request (EditorHost.Call). */
+  editor<T = Record<string, unknown>>(op: Record<string, unknown>) {
+    return this.request<T>({ type: "editor", json: JSON.stringify(op) });
+  }
+
+  /** Files mounted in the engine's file system under `dir` (a map the player saved or uploaded). */
+  mountFiles(dir: string, files: Record<string, ArrayBuffer>) {
+    return this.request<{ ok?: boolean }>({ type: "mountFiles", dir, files });
   }
 
   voiceLanguage(value?: string) {
