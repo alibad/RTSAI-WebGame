@@ -103,9 +103,18 @@ new simulation code: map rules (conditions on existing traits) and mission event
   wider sensors (radius 9, on waypoints) fire `warn-*` events for the radio before a column reaches the contacts on the
   city road and the bay head. Destroying the three relay towers (`naradr`; 16:00 on normal) grants `spoof-off` to every
   contact (all phantoms fade, real ones turn red) and reveals the map; the strike group then lands and the harbour must
-  hold 2:30. The families' three shelters (`gapile`, a non-combatant Civilians side) must stand. Orion lands on the beach
-  north of the harbour every 2:30 from 4:00 until the relays fall. Bonus: verify all nine contacts. The generator checks
+  hold 3:00. The families' three shelters (`gapile`, a non-combatant Civilians side) must stand. Orion lands on the beach
+  north of the harbour every 2:30 from 3:30 until the relays fall. Bonus: verify all nine contacts. The generator checks
   that every phantom starts beyond twelve cells of every armed unit and gun of the player's.
+
+Scripted players (`tools/mission-probe/Scripted.cs`): plan `water` (the column regroups before each roadblock, takes the
+power station before the plant's guns, a guard of six stays at the camp) wins Sweet Water at 7:55 on easy, normal and
+hard (roadblocks down at 1:50, trucks in at 2:45, plant retaken at 6:15); an idle player loses at 10:00, when the trucks
+are due. Plan `verify` (everyone on Return fire, observers to the contacts on the city road and the bay head, then the
+relays) wins Ghosts on the Glass at 10:10 on easy and 10:04 on normal (contacts verified by 0:45, relays down at 7:05);
+on hard the strike group overruns the harbour during the hold (lost at 8:35). Plan `careless` (the column attack-moves
+straight at the relays, as the co-commander would) fires on the phantom in the school yard and loses at 0:36. An idle
+player loses Ghosts on the Glass at 16:00, first light.
 
 ### Mission features (JSON in `content/missions.json`)
 
