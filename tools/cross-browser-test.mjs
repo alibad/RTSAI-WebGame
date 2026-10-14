@@ -44,6 +44,11 @@ for (const [name, browserType, options, contextOptions] of [
         const response = await page.request.get(new URL(await link.getAttribute("href"), page.url()).href);
         assert.equal(response.status(), 200);
         assert.match(await response.text(), /audio-credits\.json/);
+        // Both modes must be reachable from the menu, in either direction, without knowing a query-string URL.
+        await page.getByRole("button", { name: "Classic / top-down", exact: true }).click();
+        await page.waitForFunction(() => window.store?.getState().phase === "setup" && window.store.getState().profile === "public-classic", null, { timeout: 120000 });
+        await page.getByRole("button", { name: "Isometric", exact: true }).click();
+        await page.waitForFunction(() => window.store?.getState().phase === "setup" && window.store.getState().profile === "public", null, { timeout: 120000 });
       }
       const scenario = JSON.parse(fs.readFileSync(new URL(`../scenarios/${scenarioFile}.json`, import.meta.url), "utf8"));
       await page.evaluate(map => window.game.prepare(map), scenario.map);

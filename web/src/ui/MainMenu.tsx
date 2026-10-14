@@ -13,11 +13,6 @@ const VIEWS: View[] = [
   { id: "classic", name: "Classic / top-down", hint: "Square grid · the original Red Alert look", image: "menu/classic.webp" },
 ];
 
-// Top-down draws the same unit and building art as isometric (only the ground changes), so players saw two choices
-// that looked the same. The menu leaves it out until it has its own art; ?game=classic still opens it, and from there
-// the menu offers the way back.
-const IN_MENU: View["id"][] = ["isometric"];
-
 /** A static build only offers the modes it was built with (tools/build-public.mjs, VITE_GAME_MODES). */
 function offered(view: View) {
   if (import.meta.env.VITE_STATIC_BUILD !== "1") return true;
@@ -54,7 +49,7 @@ export function MainMenu({ onSkirmish, onCampaign, onSimulator, onEditor }: { on
   const profile = useStore((s) => s.profile);
   const current = profile === "public-classic" ? "classic" : "isometric";
   const [switching, setSwitching] = useState<View["id"] | null>(null);
-  const views = VIEWS.filter((view) => offered(view) && (IN_MENU.includes(view.id) || view.id === current));
+  const views = VIEWS.filter(offered);
 
   // A different view is a different game profile: the page reloads into it.
   function choose(view: View) {
