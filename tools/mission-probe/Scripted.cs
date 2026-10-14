@@ -19,6 +19,9 @@ static class Scripted
 		"stealth" => new Stealth(world, human, named, def).Tick,
 		"boarding" => new Boarding(world, human, named).Tick,
 		"finale" => new Finale(world, human, named).Tick,
+		"water" => new Water(world, human, named).Tick,
+		"verify" => new Verify(world, human, named, careless: false).Tick,
+		"careless" => new Verify(world, human, named, careless: true).Tick,
 		_ => null,
 	};
 
@@ -208,6 +211,237 @@ static class Scripted
 					Issue("AttackMove", Tanya, Target.FromCell(world, Cell(world, 48, 53)));
 					Next(i, "generators down: everyone back to hold the control room");
 					break;
+			}
+		}
+	}
+
+	/// <summary>Sweet Water: the road camp keeps training tanks and riflemen; the column clears the roadblocks west to east,
+	/// regrouping before each; then it takes the power station north of the plant with an engineer (the plant's coils go
+	/// dark), clears the guns on the plant, and engineers take the pumps and, once its lock is cut, the vault; the column
+	/// then holds the vault against the recovery parties.</summary>
+	sealed class Water
+	{
+		readonly World world; readonly Player human; readonly Dictionary<string, Actor> named;
+		readonly string[] targets = ["RoadblockWestGun", "RoadblockMidGun", "RoadblockEastGun", "PlantPower", "PlantTeslaNorth", "PlantGun", "PlantTeslaSouth", "CoilVault"];
+		readonly Dictionary<string, Actor> sent = [];
+		readonly HashSet<uint> column = [];
+		/// <summary>Column strength to wait for before each target (by index).</summary>
+		static readonly int[] Need = [0, 12, 14, 16, 0, 0, 0, 0];
+		int target = -1, started, regroup = -1;
+		CPos Rally;
+
+		public Water(World world, Player human, Dictionary<string, Actor> named) { this.world = world; this.human = human; this.named = named; }
+
+		Actor[] Fighters => world.Actors.Where(a => Alive(a) && a.Owner == human && a.TraitOrDefault<Mobile>() != null
+			&& a.TraitsImplementing<AttackBase>().Any() && a.Info.Name != "harv").ToArray();
+		/// <summary>The column: the starting force. Units trained later guard the road camp until the column reaches the
+		/// plant, then all but four join it, a minute at a time.</summary>
+		Actor[] Army => Fighters.Where(a => column.Contains(a.ActorID)).ToArray();
+		Actor[] Engineers => world.Actors.Where(a => Alive(a) && a.Owner == human && a.Info.Name == "engineer").ToArray();
+
+		public void Tick(int i)
+		{
+			if (i == 0) foreach (var a in Fighters) column.Add(a.ActorID);
+			// Units trained since: all but a guard of six at the camp join the column every thirty seconds.
+			if (target >= 0 && i % (25 * 30) == 0)
+			{
+				var home = named["IranConyard"].CenterPosition;
+				var join = Fighters.Where(a => !column.Contains(a.ActorID)).OrderBy(a => Dist2(a.CenterPosition, home)).Skip(6).ToArray();
+				var to = regroup >= 0 ? Rally : named[targets[target]].Location;
+				foreach (var a in join) { column.Add(a.ActorID); Issue("AttackMove", a, Target.FromCell(world, to)); }
+				if (join.Length > 0) Log(world, $"{join.Length} reinforcements join the column");
+			}
+			if (i % (25 * 20) == 0)
+			{
+				Ui.Command("{\"cmd\":\"produce\",\"queue\":\"Vehicle\",\"item\":\"r2karrar\",\"count\":2}");
+				Ui.Command("{\"cmd\":\"produce\",\"queue\":\"Infantry\",\"item\":\"r2basij\",\"count\":2}");
+			}
+			if (i % (25 * 30) == 0 && Engineers.Length < 2)
+				Ui.Command("{\"cmd\":\"produce\",\"queue\":\"Infantry\",\"item\":\"engineer\",\"count\":1}");
+			var last = target == targets.Length - 1;
+			// Engineers: to the town gate once the roadblocks are down; then one to the power station once the column is at
+			// it, one to the pumps once the power station is taken, and one to the vault once its lock is cut.
+			var power = named["PlantPower"].CenterPosition;
+			var atPower = target == 3 && (i - started > 25 * 60 || Enemies(world, human).Count(e => e.TraitsImplementing<AttackBase>().Any()
+				&& Dist2(e.CenterPosition, power) < 8L * 8 * 1024 * 1024) <= 1);
+			if ((target > 3 || atPower) && regroup < 0 && i % 250 == 0)
+			{
+				var goals = new[] { "PlantPower" }.Concat(named["PlantPower"].Owner == human ? new[] { "WaterPlant" } : [])
+					.Concat(Missions.FiredEvents.Contains("vault-open") ? new[] { "CoilVault" } : []);
+				foreach (var goal in goals.Where(g => named[g].Owner != human))
+				{
+					if (sent.TryGetValue(goal, out var e) && Alive(e) && !e.IsIdle) continue;
+					var engineer = Engineers.Where(x => x.IsIdle && !sent.Values.Contains(x)).OrderBy(x => Dist2(x.CenterPosition, named[goal].CenterPosition)).FirstOrDefault();
+					if (engineer == null) break;
+					sent[goal] = engineer;
+					Issue("CaptureActor", engineer, Target.FromActor(named[goal]));
+					Log(world, $"an engineer goes for {goal}");
+				}
+			}
+			else if (target >= 2 && i % 250 == 0)
+				foreach (var e in Engineers.Where(x => x.IsIdle)) Issue("Move", e, Target.FromCell(world, named["TownGate"].Location));
+			// Between objectives the column regroups at the last one's site until it is strong enough (or has waited
+			// ninety seconds), as a careful player would before the next roadblock and before the plant.
+			if (regroup >= 0)
+			{
+				if (Army.Length < Need[Math.Min(target + 1, Need.Length - 1)] && i - regroup < 25 * 90) return;
+				Log(world, $"regrouped: {Army.Length} units after {(i - regroup) / 25} s");
+				regroup = -1;
+				do target++; while (target < targets.Length - 1 && !Alive(named[targets[target]]));
+				started = i;
+				foreach (var a in Army) Issue("AttackMove", a, Target.FromCell(world, named[targets[target]].Location));
+				Log(world, $"army ({Army.Length}) to {targets[target]}");
+				return;
+			}
+			var current = target >= 0 ? named[targets[target]] : null;
+			// The power station is taken, not destroyed.
+			var capture = current != null && current.Info.Name == "nanrct";
+			var down = current != null && !last && (capture ? current.Owner == human : !Alive(current));
+			if (target < 0)
+			{
+				target = 0; started = i;
+				foreach (var a in Army) Issue("AttackMove", a, Target.FromCell(world, current?.Location ?? named[targets[0]].Location));
+				Log(world, $"army ({Army.Length}) to {targets[0]}");
+			}
+			else if (down || (!last && i - started > 25 * 180))
+			{
+				Log(world, $"{targets[target]} {(down ? "down" : "timed out")}");
+				Rally = current.Location;
+				// The roadblocks and the plant's first gun: regroup before the next; the plant's other guns follow at once.
+				if (target <= 2) { regroup = i; foreach (var a in Army) Issue("AttackMove", a, Target.FromCell(world, Rally)); }
+				else
+				{
+					do target++; while (target < targets.Length - 1 && !Alive(named[targets[target]]));
+					started = i;
+					foreach (var a in Army) Issue("AttackMove", a, Target.FromCell(world, named[targets[target]].Location));
+					Log(world, $"army ({Army.Length}) to {targets[target]}");
+				}
+			}
+			else if (i % (25 * 10) == 0)
+			{
+				var guns = Enemies(world, human).Where(e => e.TraitsImplementing<AttackBase>().Any()).ToArray();
+				foreach (var a in Army)
+				{
+					var gun = guns.Where(e => Dist2(a.CenterPosition, e.CenterPosition) < 10L * 10 * 1024 * 1024).OrderBy(e => Dist2(a.CenterPosition, e.CenterPosition)).FirstOrDefault();
+					if (!last && !capture && Alive(current) && Dist2(a.CenterPosition, current.CenterPosition) < 12L * 12 * 1024 * 1024) Issue("Attack", a, Target.FromActor(current));
+					else if (a.IsIdle && gun != null) Issue("Attack", a, Target.FromActor(gun));
+					else if (a.IsIdle) Issue("AttackMove", a, Target.FromCell(world, current.Location));
+				}
+			}
+		}
+	}
+
+	/// <summary>Ghosts on the Glass. The careful player sets every unit to Return fire and sends the forward observers to
+	/// the contacts on the city's road and the bay head (the patrol craft to those at sea) before the column moves; once the
+	/// road is verified, the column goes round the bay head on Aggressive, attacks the relays in turn, then falls back to
+	/// hold the harbour. The careless player attack-moves the column straight at the relays, as the co-commander would.</summary>
+	sealed class Verify
+	{
+		readonly World world; readonly Player human; readonly Dictionary<string, Actor> named; readonly bool careless;
+		readonly string[] relays = ["RelayNorth", "CellPower", "RelayCape", "RelaySouth"];
+		readonly HashSet<uint> column = [];
+		int phase, started, relay = -1;
+
+		public Verify(World world, Player human, Dictionary<string, Actor> named, bool careless)
+		{
+			this.world = world; this.human = human; this.named = named; this.careless = careless;
+		}
+
+		Actor[] Mine => world.Actors.Where(a => Alive(a) && a.Owner == human && a.TraitOrDefault<Mobile>() != null).ToArray();
+		Actor[] Observers => Mine.Where(a => a.Info.Name == "r2ilobserver").ToArray();
+		Actor[] Boats => Mine.Where(a => a.Info.Name == "r2ilpatrol").ToArray();
+		Actor[] Fighters => Mine.Where(a => a.TraitsImplementing<AttackBase>().Any() && a.Info.Name is not ("r2ilobserver" or "r2ilpatrol" or "engineer" or "harv")).ToArray();
+		/// <summary>The column: the starting force. Units trained later guard the harbour until the column reaches the cape.</summary>
+		Actor[] Army => Fighters.Where(a => column.Contains(a.ActorID)).ToArray();
+		Actor[] Reserve => Fighters.Where(a => !column.Contains(a.ActorID)).ToArray();
+
+		static void Stance(IEnumerable<Actor> actors, UnitStance stance)
+		{
+			foreach (var a in actors) SimHost.IssueScripted(new Order("SetUnitStance", a, false) { ExtraData = (uint)stance });
+		}
+
+		void Go(IEnumerable<Actor> actors, string order, int u, int v)
+		{
+			foreach (var a in actors) Issue(order, a, Target.FromCell(world, Cell(world, u, v)));
+		}
+
+		void Next(int i, string what) { Log(world, what); phase++; started = i; }
+		bool Fired(string e) => Missions.FiredEvents.Contains(e);
+
+		public void Tick(int i)
+		{
+			if (i % (25 * 25) == 0 && i > 0)
+			{
+				Ui.Command("{\"cmd\":\"produce\",\"queue\":\"Vehicle\",\"item\":\"r2merkava\",\"count\":1}");
+				Ui.Command("{\"cmd\":\"produce\",\"queue\":\"Infantry\",\"item\":\"r2ilrifle\",\"count\":2}");
+			}
+			if (careless)
+			{
+				if (phase == 0) { Go(Fighters, "AttackMove", 76, 18); Next(i, "the column attack-moves straight for the relays"); }
+				return;
+			}
+			var obs = Observers;
+			switch (phase)
+			{
+				case 0:
+					foreach (var a in Fighters) column.Add(a.ActorID);
+					Stance(Mine, UnitStance.ReturnFire);
+					if (obs.Length > 0) Issue("Move", obs[0], Target.FromCell(world, Cell(world, 14, 36)));
+					if (obs.Length > 1) Issue("Move", obs[1], Target.FromCell(world, Cell(world, 12, 20)));
+					if (obs.Length > 2) Issue("Move", obs[2], Target.FromCell(world, Cell(world, 28, 35)));
+					var boats = Boats;
+					if (boats.Length > 0) { Issue("Move", boats[0], Target.FromCell(world, Cell(world, 46, 85))); Issue("Move", boats[0], Target.FromCell(world, Cell(world, 41, 60)), true); }
+					if (boats.Length > 1) Issue("Move", boats[1], Target.FromCell(world, Cell(world, 38, 46)));
+					Go(Army, "Move", 14, 46);
+					Next(i, "everyone on Return fire; observers to the school yard, the north shelter and the quay; the column to the school road");
+					break;
+				case 1:
+					if (!(Fired("ghost-school") && Fired("ghost-north")) && i - started < 25 * 120) break;
+					if (obs.Length > 0) { Issue("Move", obs[0], Target.FromCell(world, Cell(world, 33, 8))); Issue("Move", obs[0], Target.FromCell(world, Cell(world, 52, 8)), true); }
+					Go(Army, "Move", 16, 9);
+					Next(i, "the city road is clear: the column to the bay head, an observer ahead along the road");
+					break;
+				case 2:
+					if (!Fired("ghost-bridge") && i - started < 25 * 120) break;
+					Stance(Army, UnitStance.AttackAnything);
+					Next(i, "the bay-head road is verified: the column goes Aggressive for the cape");
+					break;
+				case 3:
+				{
+					// Each relay until it falls (or three minutes), attacking the guns met on the way.
+					var current = relay >= 0 ? named[relays[relay]] : null;
+					if (Fired("picture-clean"))
+					{
+						Go(Fighters, "AttackMove", 9, 74);
+						Next(i, "the relays are down: everyone back to hold the harbour");
+						break;
+					}
+					if (relay < 0 || !Alive(current) || i - started > 25 * 180)
+					{
+						do relay++; while (relay < relays.Length - 1 && !Alive(named[relays[relay]]));
+						if (relay >= relays.Length) relay = relays.Length - 1;
+						started = i;
+						Go(Army, "AttackMove", named[relays[relay]].Location.ToMPos(world.Map).U, named[relays[relay]].Location.ToMPos(world.Map).V);
+						Log(world, $"army ({Army.Length}) to {relays[relay]}");
+					}
+					else if (i % (25 * 10) == 0)
+					{
+						foreach (var a in Army)
+						{
+							if (Dist2(a.CenterPosition, current.CenterPosition) < 12L * 12 * 1024 * 1024) Issue("Attack", a, Target.FromActor(current));
+							else if (a.IsIdle) Issue("AttackMove", a, Target.FromCell(world, current.Location));
+						}
+					}
+					// Every minute the harbour's reserve beyond a guard of four joins the column.
+					if (i % (25 * 60) == 0)
+					{
+						var home = named["IsraelConyard"].CenterPosition;
+						var join = Reserve.OrderBy(a => Dist2(a.CenterPosition, home)).Skip(4).ToArray();
+						foreach (var a in join) { column.Add(a.ActorID); Issue("AttackMove", a, Target.FromCell(world, current.Location)); }
+						if (join.Length > 0) Log(world, $"{join.Length} reinforcements join the column");
+					}
+					break;
+				}
 			}
 		}
 	}

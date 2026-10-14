@@ -1,5 +1,6 @@
-// Lines of Hope, Act III chapters in the browser: each mission is listed by the campaign screen, launches through the
-// player UI, shows its objectives, completes one objective (or, for Glass Island, trips the sensor masts), then runs
+// Lines of Hope, Act III and IV chapters in the browser: each mission is listed by the campaign screen, launches through
+// the player UI, shows its objectives, completes one objective (or, for Glass Island, trips the sensor masts; for Ghosts
+// on the Glass, verifies one contact and then fires on an unverified one, which loses the mission), then runs
 // forward at 8x with an idle player until the match ends (the failure path) or the time limit. Radio captions shown
 // during the run are recorded. Serve a static page and data root first (tools/static-serve.mjs).
 //   node tools/chapters-browser-test.mjs [mission-id]   (env CHAPTERS_TEST_URL, CHAPTERS_SHOTS, CHAPTERS_LIMIT minutes)
@@ -11,7 +12,8 @@ import { chromium } from "../web/node_modules/playwright-core/index.mjs";
 const url = process.env.CHAPTERS_TEST_URL ?? "http://127.0.0.1:3492/?mode=missions&profile=public";
 const out = process.env.CHAPTERS_SHOTS ?? "artifacts/chapters";
 fs.mkdirSync(out, { recursive: true });
-const ids = ["lights-in-the-water", "hold-the-ferry-line", "glass-island", "black-platform", "every-light-on"].filter((id) => !process.argv[2] || id === process.argv[2]);
+const ids = ["lights-in-the-water", "hold-the-ferry-line", "glass-island", "black-platform", "every-light-on", "sweet-water", "ghosts-on-the-glass"]
+  .filter((id) => !process.argv[2] || id === process.argv[2]);
 const catalog = JSON.parse(fs.readFileSync("content/missions.json", "utf8"));
 const exe = path.join(process.env.LOCALAPPDATA, "ms-playwright/chromium-1228/chrome-win64/chrome.exe");
 const browser = await chromium.launch({ executablePath: exe, headless: true, args: ["--use-angle=d3d11", "--ignore-gpu-blocklist"] });
@@ -130,6 +132,67 @@ try {
       await page.waitForTimeout(1500);
       await page.screenshot({ path: `${out}/${id}-curtain-down.png` });
       await page.evaluate(() => window.game.client.send({ type: "speed", speed: 8 }));
+    } else if (id === "sweet-water") {
+      s = await state(page);
+      assert(["plant-held", "intel"].every((e) => s.mission.events.includes(e)), JSON.stringify(s.mission.events));
+      assert(s.mission.objectives[1].waiting && s.mission.objectives[3].waiting, "the trucks and the vault are not waiting");
+      // Engineers beside the plant take its power station and its pumps through the player's own orders.
+      for (const target of ["PlantPower", "WaterPlant"]) {
+        const at = marker(s, target);
+        await page.evaluate((m) => window.game.lookAt(m.x, m.y), at);
+        await spawn(page, "engineer", at, 1, 0, 70);
+        await page.waitForTimeout(800);
+        const engineer = await page.evaluate(() => { const c = window.game.client; const me = c.cur.players.findIndex((p) => p.flags & 1); return c.cur.actors.filter((a) => c.str(a.type) === "engineer" && a.owner === me).map((a) => a.id).at(-1); });
+        await page.evaluate((id) => window.game.select([id]), engineer);
+        await page.waitForTimeout(300);
+        await page.evaluate((m) => window.game.orderAt(m.x, m.y), at);
+        await page.waitForTimeout(400);
+      }
+      await page.evaluate(() => window.game.client.send({ type: "speed", speed: 4 }));
+      await until(page, () => window.store.getState().ui?.mission?.objectives[2].status !== "active" || ["Won", "Lost"].includes(window.store.getState().ui?.win), null, 180000);
+      s = await state(page);
+      completed = 2;
+      await page.waitForTimeout(2000);
+      s = await state(page);
+      assert(s.mission.events.includes("water-on"), JSON.stringify(s.mission.events));
+      await page.screenshot({ path: `${out}/${id}-plant.png` });
+      await page.evaluate(() => window.game.client.send({ type: "speed", speed: 8 }));
+    } else if (id === "ghosts-on-the-glass") {
+      s = await state(page);
+      assert(s.mission.events.includes("phantoms"), JSON.stringify(s.mission.events));
+      // The nine contact rings are drawn over the shroud.
+      checks.ringsAboveShroud = await page.evaluate(() => window.game.client.cur.captured.batches.filter((b) => b.above).length);
+      assert(checks.ringsAboveShroud > 0, "no contact ring drawn over the shroud");
+      // Verify: a forward observer walks up to the contact in the school yard; it fades (an event, and its ring turns pale).
+      const school = marker(s, "Contact6");
+      await page.evaluate((m) => window.game.lookAt(m.x, m.y), school);
+      await page.waitForTimeout(1200);
+      await page.screenshot({ path: `${out}/${id}-contact.png` });
+      await page.evaluate(() => window.game.client.send({ type: "speed", speed: 4 }));
+      await spawn(page, "r2ilobserver", school, 1, 30, 10);
+      await until(page, () => (window.store.getState().ui?.mission?.events ?? []).includes("ghost-school"), null, 120000);
+      await page.waitForTimeout(1500);
+      await page.screenshot({ path: `${out}/${id}-verified.png` });
+      s = await state(page);
+      checks.verified = s.mission.events.filter((e) => e.startsWith("ghost-") || e.startsWith("warn-"));
+      assert.equal(s.mission.objectives[0].status, "active");
+      // A strike on nothing: a tank five cells from the unverified contact by the north shelter is ordered onto it; when
+      // the phantom falls, the mission is lost.
+      const north = marker(s, "Contact7");
+      await page.evaluate((m) => window.game.lookAt(m.x, m.y), north);
+      await spawn(page, "r2merkava", north, 1, 220, 0);
+      await page.waitForTimeout(800);
+      const tank = await page.evaluate(() => { const c = window.game.client; const me = c.cur.players.findIndex((p) => p.flags & 1); return c.cur.actors.filter((a) => c.str(a.type) === "r2merkava" && a.owner === me).map((a) => a.id).at(-1); });
+      await page.evaluate((t) => window.game.select([t]), tank);
+      await page.waitForTimeout(300);
+      await page.evaluate((m) => window.game.orderAt(m.x, m.y), north);
+      await page.evaluate(() => window.game.client.send({ type: "speed", speed: 8 }));
+      await until(page, () => ["Won", "Lost"].includes(window.store.getState().ui?.win), null, 180000);
+      s = await state(page);
+      checks.strike = { events: s.mission.events.filter((e) => e.startsWith("struck-") || e.startsWith("ghost-")), objective0: s.mission.objectives[0].status, win: s.win };
+      assert.equal(s.win, "Lost"); assert.equal(s.mission.objectives[0].status, "failed");
+      assert(s.mission.events.includes("struck-Contact7"), JSON.stringify(s.mission.events));
+      console.log(`${id}: ${JSON.stringify(checks)}`);
     } else if (id === "every-light-on") {
       s = await state(page);
       assert(["picture", "hub-sealed"].every((e) => s.mission.events.includes(e)), JSON.stringify(s.mission.events));
