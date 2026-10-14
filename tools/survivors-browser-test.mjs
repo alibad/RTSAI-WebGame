@@ -50,7 +50,7 @@ try {
   }
   // three technicals reach the cove: the first objective completes with the crew beside them
   const cove = marker(m, "SurvivorsCove");
-  await page.evaluate((k) => window.game.command({ cmd: "spawn", type: "r2technical", x: k.x + 40, y: k.y + 40, player: 0, count: 3 }), cove);
+  await page.evaluate((k) => window.game.command({ cmd: "spawn", type: "r2technical", x: Math.round(k.x + 40), y: Math.round(k.y + 40), player: 0, count: 3 }), cove);
   await page.waitForFunction(() => window.store.getState().ui?.mission?.objectives[0].status !== "active", null, { timeout: 120000 });
   await page.evaluate((k) => window.game.lookAt(k.x, k.y - 20), cove);
   await ticks(8);

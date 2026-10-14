@@ -1,8 +1,8 @@
 // Villages in random maps, in the browser: makes a map with the engine's generator (as the "New random map" tile does),
 // starts it with the fog off, finds the villages (the civilian-structure and civ* actors the generator's
 // CivilianBuildings pass places), frames the biggest one and photographs it while its people go about (they wander
-// when idle); then a rocket team force-fires at the ground among them and the shots show them panicking. Also checks
-// that every village actor draws with its own art (a sprite sequence that resolved, not a stand-in).
+// when idle); then two riflemen force-fire at villagers and the shots show them panicking (and the sequences the
+// people played are listed).
 // Serve a static page and data root first (tools/static-serve.mjs).
 //   node tools/village-browser-test.mjs [seed] [terrain]   (env VILLAGE_TEST_URL, VILLAGE_SHOTS)
 import assert from "node:assert/strict";
@@ -76,25 +76,30 @@ try {
   const moved = after.filter((a) => { const b = before.find((b) => b.id === a.id); return b && Math.hypot(a.x - b.x, a.y - b.y) > 4; }).length;
   console.log(`people who walked in ${6 * 150} ticks: ${moved} of ${after.length}`);
   await page.evaluate(() => window.game.client.send({ type: "speed", speed: 1 }));
-  // panic: a rocket team force-fires at the ground among the villagers
-  const folk = after.filter((a) => Math.hypot(a.x - cx, a.y - cy) < 400);
-  const tx = folk.reduce((s, a) => s + a.x, 0) / folk.length, ty = folk.reduce((s, a) => s + a.y, 0) / folk.length;
-  await page.evaluate(({ x, y }) => window.game.command({ cmd: "spawn", type: "r2saat", x: x + 220, y: y + 60, player: 0, count: 2 }), { x: tx, y: ty });
+  // panic: two riflemen force-fire at the villagers nearest the middle (Ctrl + order, sent the way the page sends a
+  // right click); each person hit panics and runs
+  const folk = after.filter((a) => Math.hypot(a.x - cx, a.y - cy) < 400).sort((p, q) => Math.hypot(p.x - cx, p.y - cy) - Math.hypot(q.x - cx, q.y - cy));
+  const tx = Math.round(folk[0].x), ty = Math.round(folk[0].y);
+  const spawned = await page.evaluate(({ x, y }) => window.game.command({ cmd: "spawn", type: "r2sang", x: x + 150, y: y + 70, player: 0, count: 2 }), { x: tx, y: ty });
   await ticks(5);
-  const team = await page.evaluate(() => { const g = window.game, c = g.client.cur; return c.actors.filter((a) => a.owner === c.header.localPlayer && g.client.str(a.type) === "r2saat").map((a) => a.id); });
-  await page.evaluate((ids) => window.game.select(ids), team);
+  const team = await page.evaluate(() => { const g = window.game, c = g.client.cur; return c.actors.filter((a) => a.owner === c.header.localPlayer && g.client.str(a.type) === "r2sang").map((a) => a.id); });
+  console.log(`riflemen: spawn ${JSON.stringify(spawned)}, ${team.length} in view; targets ${folk.slice(0, 2).map((a) => a.type).join(", ")}`);
   await page.evaluate(({ x, y }) => window.game.lookAt(x, y), { x: tx, y: ty });
-  await ticks(3);
-  const box = await page.locator("canvas").first().boundingBox();
-  await page.keyboard.down("Control");
-  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
-  await page.keyboard.up("Control");
-  for (let k = 0; k < 8; k++) {
-    await ticks(12);
-    await page.screenshot({ path: `${out}/village-${seed}-panic-${k}.png` });
+  for (const [k, id] of team.entries()) {
+    const t = folk[Math.min(k, folk.length - 1)];
+    await page.evaluate((id) => window.game.select([id]), id);
+    await ticks(1);
+    await page.evaluate(({ x, y }) => window.game.client.send({ type: "click", x, y, button: 2, mods: 4, t: performance.now() }), { x: Math.round(t.x), y: Math.round(t.y) });
   }
-  const panic = (await villageActors()).filter((a) => PEOPLE.test(a.type) && a.seq.startsWith("panic-"));
-  console.log(`people panicking: ${panic.length} (${[...new Set(panic.map((a) => a.seq))].join(", ")})`);
+  const seen = new Set();
+  for (let k = 0; k < 10; k++) {
+    await ticks(6);
+    await page.screenshot({ path: `${out}/village-${seed}-panic-${k}.png` });
+    for (const a of await villageActors()) if (PEOPLE.test(a.type)) seen.add(`${a.type}:${a.seq}`);
+  }
+  console.log(`sequences the people played: ${[...seen].join(", ")}`);
+  const panic = [...seen].filter((s) => s.split(":")[1].startsWith("panic-"));
+  console.log(`people panicking: ${panic.length} (${panic.join(", ")})`);
   assert.deepEqual(errors, []);
   console.log("PASS");
 } finally {
