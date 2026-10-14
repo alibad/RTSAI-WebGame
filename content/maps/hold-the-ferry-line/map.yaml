@@ -20,17 +20,24 @@ Players:
 		Color: A73731
 		LockSpawn: True
 		LockTeam: True
+		Allies: Tanya
 		Enemies: Orion Group
 	PlayerReference@Orion:
 		Name: Orion Group
 		Faction: russia
 		Color: 545D66
-		Enemies: Turkey
+		Enemies: Turkey, Tanya
 	PlayerReference@Neutral:
 		Name: Neutral
 		OwnsWorld: True
 		NonCombatant: True
 		Faction: china
+	PlayerReference@Tanya:
+		Name: Tanya
+		Faction: america
+		Color: 3A8F5B
+		Allies: Turkey
+		Enemies: Orion Group
 Actors:
 	OrionWaveEntry: waypoint
 		Owner: Neutral
@@ -84,7 +91,7 @@ Actors:
 		Owner: Neutral
 		Location: 122,-39
 	Tanya: tany
-		Owner: Turkey
+		Owner: Tanya
 		Location: 120,-36
 	Aydin0: r2trrifle
 		Owner: Turkey
