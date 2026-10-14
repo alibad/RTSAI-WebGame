@@ -261,7 +261,14 @@ export function EarthStudio({ game, editor, close, mission }: { game: Game; edit
     if (!built || !place) return;
     const s = site ?? { name: place.name, lat: place.lat, lon: place.lon };
     const cell = geoToCell(s.lat, s.lon, place, fp.radius, fp.size);
-    mission({ map: built.id, title: `${s.name}`, site: { ...cell, name: s.name }, fa, fb, youDefend, points: built.points });
+    // The analyst's findings go into the briefing: the site's description and why these sides.
+    const holder = youDefend ? fa : fb, striker = youDefend ? fb : fa;
+    const intel = {
+      summary: site?.extract,
+      holds: forces?.defender.id === holder ? forces.defender.why : undefined,
+      attacks: forces?.attacker.id === striker ? forces.attacker.why : undefined,
+    };
+    mission({ map: built.id, title: `${s.name}`, site: { ...cell, name: s.name }, fa, fb, youDefend, points: built.points, intel });
   };
 
   return (

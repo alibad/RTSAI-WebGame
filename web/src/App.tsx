@@ -11,7 +11,7 @@ import { Simulator } from "./ui/Simulator";
 import { MapEditor } from "./ui/MapEditor";
 import { ARENA, Sandbox, parseSandboxUrl } from "./sandbox";
 import { EditorController } from "./editor";
-import { missionPlacements, type MissionSpec } from "./mission";
+import { missionOperation, missionPlacements, type MissionSpec } from "./mission";
 import { CoachPanel } from "./ui/Coach";
 import { Annotations } from "./ui/Annotations";
 import { installTelemetry } from "./net/telemetry";
@@ -202,12 +202,18 @@ export default function App() {
         Object.assign(cfg, { map: mission.map, fa: mission.fa, fb: mission.fb });
         sb.configure({ map: mission.map, fa: mission.fa, fb: mission.fb, money: 5000 });
         cfg.placements = missionPlacements(mission, c.units, c.rosters);
+        // The battle as a mission: objectives, briefing, waves and radio from the place's intel.
+        const nations = useStore.getState().setup?.factions ?? [];
+        const nameOf = (id: string) => nations.find((f) => f.id === id)?.name ?? id;
+        sb.configure({ operation: missionOperation(mission, cfg.placements, nameOf) });
       }
       game.prepare(cfg.map!);
       await sb.edit(cfg.placements);
     })();
   }, [game, phase, sandboxMode]);
   // The simulator remembers its battlefield.
+  // An operation running in the simulator (a mission from a real place) shows its objectives and radio.
+  const missionOn = useStore((s) => !!s.ui?.mission && s.sandbox?.mode === "run");
   const simMap = useStore((s) => s.sandbox?.map);
   useEffect(() => { if (simMap) try { localStorage.setItem("rtsai.sim-map", JSON.stringify(simMap)); } catch { /* private mode */ } }, [simMap]);
   const exitSimulator = () => {
@@ -286,7 +292,7 @@ export default function App() {
           </nav>
         </>}
       </>}
-      {game && playing && !sandboxMode && !editorMode && !uiHidden && <MissionHud game={game} />}
+      {game && playing && (!sandboxMode || missionOn) && !editorMode && !uiHidden && <MissionHud game={game} />}
       {game && playing && !editorMode && !uiHidden && <CoachPanel game={game} />}
       {game && playing && !editorMode && !uiHidden && <Annotations game={game} />}
       {game && !sandboxMode && !editorMode && <Multiplayer game={game} />}

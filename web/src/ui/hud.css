@@ -872,3 +872,16 @@
 .es-root .maplibregl-ctrl-attrib { background: rgba(0, 0, 0, .45) !important; color: #9aa8b6 !important; font-size: 10px; }
 .es-root .maplibregl-ctrl-attrib a { color: #b9c6d3 !important; }
 .ed-root:has(.es-root) .scr-subnav { display: none; }
+
+/* The operation briefing in the simulator (a mission from a real place). */
+.sim-op { display: grid; gap: 6px; padding: 10px 12px; border-radius: 8px; }
+.sim-op header { display: flex; align-items: center; gap: 6px; color: var(--hud-gold); }
+.sim-op header button { margin-left: auto; font-size: 11px; color: var(--muted-foreground); text-decoration: underline; text-underline-offset: 2px; }
+.sim-op h3 { margin: 0; font-size: 15px; font-weight: 600; color: var(--foreground); }
+.sim-op p { margin: 0; font-size: 12px; line-height: 1.45; color: #c9c2ad; }
+.sim-op details summary { font-size: 11px; color: var(--muted-foreground); cursor: pointer; }
+.sim-op ul { margin: 2px 0 0; padding: 0; list-style: none; display: grid; gap: 3px; }
+.sim-op li { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--foreground); }
+.sim-op li svg { color: var(--hud-gold); flex: none; }
+.sim-op li[data-bonus] { color: #b9c0ad; }
+.sim-op li em { margin-left: auto; font-style: normal; font-size: 10px; color: var(--muted-foreground); text-transform: uppercase; letter-spacing: .06em; }

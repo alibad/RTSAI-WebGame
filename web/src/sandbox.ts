@@ -7,6 +7,7 @@ import type { Game } from "./game";
 import type { Snapshot } from "./sim/protocol";
 import { store } from "./store";
 import { ENGINE_SIDE_COLORS } from "./sides";
+import type { Operation } from "./mission";
 
 export const ARENA = "web-arena";
 const MAX_RECORDING = 25 * 60 * 8; // 8 minutes of ticks
@@ -27,6 +28,8 @@ export const AI_SKILLS: Record<AiSkill, { label: string; hint: string; bot: stri
 
 export interface Placement {
   id: string; // actor type
+  /** A name an operation's objectives refer to (sim SpawnSpec.Name). */
+  name?: string;
   side: 0 | 1;
   u: number;
   v: number;
@@ -82,6 +85,8 @@ export interface SandboxState {
   speed: number;
   paused: boolean;
   pickDestination: 0 | 1 | null;
+  /** A mission from a real place (mission.ts): its objectives, briefing and radio run with the battle. */
+  operation: Operation | null;
 }
 
 function b64urlDecode(s: string) {
@@ -152,7 +157,7 @@ export class Sandbox {
           { order: cfg.order ?? "engage", destination: null, level: cfg.level },
         ],
         fa: cfg.fa, fb: cfg.fb, units: [], rosters: {}, map: cfg.map ?? ARENA, skill: cfg.skill ?? "normal", money: cfg.money ?? 0, fog: cfg.fog ?? false,
-        recordLen: 0, replay: null, playing: false, speed: 1, paused: false, pickDestination: null,
+        recordLen: 0, replay: null, playing: false, speed: 1, paused: false, pickDestination: null, operation: null,
       },
     });
   }
@@ -188,8 +193,10 @@ export class Sandbox {
       ],
       options: {
         explored: run && st.fog ? "False" : "True", fog: run && st.fog ? "True" : "False", crates: "False", shortgame: "False",
-        ...(run ? { startingcash: String(st.money) } : {}),
+        ...(run ? { startingcash: String(st.money), difficulty: st.skill === "easy" ? "easy" : st.skill === "normal" ? "normal" : "hard" } : {}),
       },
+      // An operation runs its objectives against the AI's side (the enemy player is that slot).
+      ...(run && st.operation ? { operation: { id: st.operation.id, title: st.operation.title, enemy: slotB, objectives: st.operation.objectives, victory: st.operation.victory, defeat: st.operation.defeat, waveFrom: st.operation.waveFrom, waveUnits: st.operation.waveUnits } } : {}),
       placements: placements.map((p) => {
         if (!run) return { ...p, order: undefined, destination: undefined };
         // The AI's veteran bonus at the higher skills.
@@ -200,6 +207,8 @@ export class Sandbox {
 
   /** The editing world: paused, the current placements as real actors. */
   async edit(placements: Placement[] = this.urlPlacements) {
+    // These placements' names and orders are what collect() keeps (a mission's set after the simulator was made).
+    this.urlPlacements = placements;
     this.stopPlayback();
     this.recording = [];
     this.patch({ mode: "edit", recordLen: 0, replay: null, paused: true });
@@ -246,12 +255,14 @@ export class Sandbox {
     const st = this.state;
     return (r.spawns ?? []).map((s) => {
       const side = s.player as 0 | 1;
-      const fromUrl = this.urlPlacements.find((p) => p.id === s.type && p.side === side && p.u === s.x && p.v === s.y);
+      // The engine reports a building by its top-left cell, a few cells from where it was asked for (centred).
+      const near = (p: Placement) => Math.abs(p.u - s.x) + Math.abs(p.v - s.y);
+      const fromUrl = this.urlPlacements.filter((p) => p.id === s.type && p.side === side && near(p) <= 4).sort((a, b) => near(a) - near(b))[0];
       const settings = st.sides[side];
       const order = fromUrl?.order ?? settings.order;
       const destination = fromUrl?.destination ?? settings.destination ?? undefined;
       return {
-        id: s.type, side, u: s.x, v: s.y, facing: s.facing, level: s.level, health: s.health,
+        id: s.type, ...(fromUrl?.name ? { name: fromUrl.name } : {}), side, u: s.x, v: s.y, facing: s.facing, level: s.level, health: s.health,
         order: order === "move" && !destination ? "hold" : order, destination, deploy: fromUrl?.deploy,
       };
     });
@@ -264,6 +275,8 @@ export class Sandbox {
     this.stopPlayback();
     this.recording = [];
     this.lastRunScenario = this.scenario(placements, true);
+    const op = this.state.operation;
+    this.game.radio.setOperation(op ? op.id : null, op?.radio ?? []);
     this.patch({ mode: "run", recordLen: 0, replay: null, paused: false, brush: null, pickDestination: null });
     this.game.start(this.lastRunScenario);
   }
@@ -313,7 +326,7 @@ export class Sandbox {
   /** Another battlefield: the placements belong to the old map's cells, so the new one starts empty. */
   setMap(map: string) {
     if (map === this.state.map) return;
-    this.patch({ map });
+    this.patch({ map, operation: null });
     this.urlPlacements = [];
     this.game.prepare(map);
     this.edit([]);
@@ -321,13 +334,15 @@ export class Sandbox {
 
   setSkill(skill: AiSkill) { this.patch({ skill }); }
   /** Settings before the first world starts (a mission's map, nations and money). */
-  configure(p: Partial<Pick<SandboxState, "map" | "fa" | "fb" | "money" | "skill">>) { this.patch(p); }
+  configure(p: Partial<Pick<SandboxState, "map" | "fa" | "fb" | "money" | "skill" | "operation">>) { this.patch(p); }
+  /** Back to a free battle: the operation's objectives, briefing and radio are dropped. */
+  dropOperation() { this.patch({ operation: null }); }
   setMoney(money: number) { this.patch({ money }); }
   setFog(fog: boolean) { this.patch({ fog }); }
 
   /** Replaces everything placed with a plan (the "describe it" planner, an Earth mission), then shows it. */
   async plan(fa: string, fb: string, placements: Placement[]) {
-    this.patch({ fa, fb });
+    this.patch({ fa, fb, operation: null });
     this.urlPlacements = placements;
     await this.edit(placements);
   }
