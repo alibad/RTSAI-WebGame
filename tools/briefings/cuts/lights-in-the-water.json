@@ -1,0 +1,91 @@
+{
+  "mission": "lights-in-the-water",
+  "chapter": "The Missing Man · Chapter 1",
+  "title": "Lights in the Water",
+  "music": "C:/Users/Admin/Code/hq/montage/out/reels/films/story-mv7bu780/music.mp3",
+  "musicVolume": 0.55,
+  "segments": [
+    {
+      "src": "C:/Users/Admin/Code/hq/montage/out/reels/films/story-mv7bu780/s01.mp4",
+      "kind": "cinema",
+      "voice": "C:/Users/Admin/Code/hq/montage/out/reels/films/story-mv7bu780/n01.wav",
+      "line": "The navigation lied to every boat at once. The fleet is on the reef.",
+      "poster": true
+    },
+    {
+      "src": "D:/rtsai-campaign/footage-out/lights-in-the-water/establishing.mp4",
+      "kind": "game",
+      "dur": 6.5,
+      "zoom": 1.1,
+      "card": {
+        "kicker": "Area of operations",
+        "text": "A fictional reef coast"
+      }
+    },
+    {
+      "src": "C:/Users/Admin/Code/hq/montage/out/reels/films/story-mv7bu780/s02.mp4",
+      "kind": "cinema",
+      "voice": "C:/Users/Admin/Code/hq/montage/out/reels/films/story-mv7bu780/n02.wav",
+      "line": "Patrol boats with no flag are already searching the water. They are looking for someone."
+    },
+    {
+      "src": "C:/Users/Admin/Code/hq/montage/out/reels/films/story-mv7bu780/s03.mp4",
+      "kind": "cinema",
+      "voice": "C:/Users/Admin/Code/hq/montage/out/reels/films/story-mv7bu780/n03.wav",
+      "line": "Captain Nabil Haidar takes a small team. No base, no noise."
+    },
+    {
+      "src": "D:/rtsai-campaign/footage-out/lights-in-the-water/objective-1.mp4",
+      "kind": "game",
+      "dur": 4.2,
+      "zoom": 1.1,
+      "card": {
+        "kicker": "Objective 1",
+        "text": "Find the first group of survivors at the cove."
+      }
+    },
+    {
+      "src": "D:/rtsai-campaign/footage-out/lights-in-the-water/objective-2.mp4",
+      "kind": "game",
+      "dur": 4.2,
+      "zoom": 1.1,
+      "card": {
+        "kicker": "Objective 2",
+        "text": "Find the second group by the old jetty."
+      }
+    },
+    {
+      "src": "D:/rtsai-campaign/footage-out/lights-in-the-water/objective-3.mp4",
+      "kind": "game",
+      "dur": 4.2,
+      "zoom": 1.1,
+      "card": {
+        "kicker": "Objective 3",
+        "text": "Find the third group on the far reef, with the stranger."
+      }
+    },
+    {
+      "src": "D:/rtsai-campaign/footage-out/lights-in-the-water/objective-5.mp4",
+      "kind": "game",
+      "dur": 4.2,
+      "zoom": 1.1,
+      "card": {
+        "kicker": "Objective 5",
+        "text": "Escort the survivors from the reef landing to the town clinic."
+      }
+    },
+    {
+      "src": "D:/rtsai-campaign/footage-out/lights-in-the-water/battle.mp4",
+      "kind": "game",
+      "in": 1.5,
+      "dur": 10,
+      "zoom": 1.25
+    },
+    {
+      "src": "C:/Users/Admin/Code/hq/montage/out/reels/films/story-mv7bu780/s04.mp4",
+      "kind": "cinema",
+      "voice": "C:/Users/Admin/Code/hq/montage/out/reels/films/story-mv7bu780/n04.wav",
+      "line": "On the third boat, the crew has pulled someone out of the water who should not be there."
+    }
+  ]
+}

@@ -1,0 +1,97 @@
+{
+  "mission": "hold-the-ferry-line",
+  "chapter": "The Missing Man · Chapter 2",
+  "title": "Hold the Ferry Line",
+  "music": "C:/Users/Admin/Code/hq/montage/out/reels/films/story-mv7buac4/music.mp3",
+  "musicVolume": 0.55,
+  "segments": [
+    {
+      "src": "C:/Users/Admin/Code/hq/montage/out/reels/films/story-mv7buac4/s01.mp4",
+      "kind": "cinema",
+      "voice": "C:/Users/Admin/Code/hq/montage/out/reels/films/story-mv7buac4/n01.wav",
+      "line": "A whole town is waiting on the quay.",
+      "poster": true
+    },
+    {
+      "src": "D:/rtsai-campaign/footage-out/hold-the-ferry-line/establishing.mp4",
+      "kind": "game",
+      "dur": 6.5,
+      "zoom": 1.1,
+      "card": {
+        "kicker": "Area of operations",
+        "text": "A fictional strait port town"
+      }
+    },
+    {
+      "src": "C:/Users/Admin/Code/hq/montage/out/reels/films/story-mv7buac4/s02.mp4",
+      "kind": "cinema",
+      "voice": "C:/Users/Admin/Code/hq/montage/out/reels/films/story-mv7buac4/n02.wav",
+      "line": "Orion Group is coming down all three roads to take the strait back."
+    },
+    {
+      "src": "C:/Users/Admin/Code/hq/montage/out/reels/films/story-mv7buac4/s03.mp4",
+      "kind": "cinema",
+      "voice": "C:/Users/Admin/Code/hq/montage/out/reels/films/story-mv7buac4/n03.wav",
+      "line": "Colonel Kemal Aydın has twelve minutes and three roads to hold."
+    },
+    {
+      "src": "D:/rtsai-campaign/footage-out/hold-the-ferry-line/objective-1.mp4",
+      "kind": "game",
+      "dur": 4.2,
+      "zoom": 1.1,
+      "card": {
+        "kicker": "Objective 1",
+        "text": "Hold until the ferries finish loading."
+      }
+    },
+    {
+      "src": "D:/rtsai-campaign/footage-out/hold-the-ferry-line/objective-2.mp4",
+      "kind": "game",
+      "dur": 4.2,
+      "zoom": 1.1,
+      "card": {
+        "kicker": "Objective 2",
+        "text": "Get all four ferries across to the far shore."
+      }
+    },
+    {
+      "src": "D:/rtsai-campaign/footage-out/hold-the-ferry-line/objective-3.mp4",
+      "kind": "game",
+      "dur": 4.2,
+      "zoom": 1.1,
+      "card": {
+        "kicker": "Objective 3",
+        "text": "Hold the ferry line for 12 minutes."
+      }
+    },
+    {
+      "src": "D:/rtsai-campaign/footage-out/hold-the-ferry-line/objective-4.mp4",
+      "kind": "game",
+      "dur": 4.2,
+      "zoom": 1.1,
+      "card": {
+        "kicker": "Objective 4",
+        "text": "Keep both ferry piers standing."
+      }
+    },
+    {
+      "src": "C:/Users/Admin/Code/hq/montage/out/reels/films/story-mv7buac4/s04.mp4",
+      "kind": "cinema",
+      "voice": "C:/Users/Admin/Code/hq/montage/out/reels/films/story-mv7buac4/n04.wav",
+      "line": "On the radio, a calm voice makes an offer. Tanya knows that voice."
+    },
+    {
+      "src": "D:/rtsai-campaign/footage-out/hold-the-ferry-line/battle.mp4",
+      "kind": "game",
+      "in": 1.5,
+      "dur": 10,
+      "zoom": 1.25
+    },
+    {
+      "src": "C:/Users/Admin/Code/hq/montage/out/reels/films/story-mv7buac4/s05.mp4",
+      "kind": "cinema",
+      "voice": "C:/Users/Admin/Code/hq/montage/out/reels/films/story-mv7buac4/n05.wav",
+      "line": "Twelve minutes. Every ferry."
+    }
+  ]
+}

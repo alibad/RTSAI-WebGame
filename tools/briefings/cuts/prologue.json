@@ -1,0 +1,52 @@
+{
+  "mission": "prologue",
+  "chapter": "Lines of Hope · Prologue",
+  "title": "1953",
+  "music": "C:/Users/Admin/Code/hq/montage/out/reels/films/story-mv7bu03w/music.mp3",
+  "musicVolume": 0.6,
+  "segments": [
+    {
+      "src": "C:/Users/Admin/Code/hq/montage/out/reels/films/story-mv7bu03w/s01.mp4",
+      "kind": "cinema",
+      "voice": "C:/Users/Admin/Code/hq/montage/out/reels/films/story-mv7bu03w/n01.wav",
+      "line": "Nineteen fifty-three. The war is over, and Albert Einstein has one task left: switch off the machine that started it.",
+      "poster": true,
+      "dur": 6.5
+    },
+    {
+      "src": "C:/Users/Admin/Code/hq/montage/out/reels/films/story-mv7bu03w/s02.mp4",
+      "kind": "cinema",
+      "voice": "C:/Users/Admin/Code/hq/montage/out/reels/films/story-mv7bu03w/n02.wav",
+      "line": "In every photograph of the old court, one place is empty. His name was Arkady Orlov.",
+      "dur": 6.5
+    },
+    {
+      "src": "C:/Users/Admin/Code/hq/montage/out/reels/films/story-mv7bu03w/s03.mp4",
+      "kind": "cinema",
+      "voice": "C:/Users/Admin/Code/hq/montage/out/reels/films/story-mv7bu03w/n03.wav",
+      "line": "The Allies sent their best commando to bring him in.",
+      "dur": 6.5
+    },
+    {
+      "src": "C:/Users/Admin/Code/hq/montage/out/reels/films/story-mv7bu03w/s04.mp4",
+      "kind": "cinema",
+      "voice": "C:/Users/Admin/Code/hq/montage/out/reels/films/story-mv7bu03w/n04.wav",
+      "line": "He reached the machine first. She reached him.",
+      "dur": 6.5
+    },
+    {
+      "src": "C:/Users/Admin/Code/hq/montage/out/reels/films/story-mv7bu03w/s05.mp4",
+      "kind": "cinema",
+      "voice": "C:/Users/Admin/Code/hq/montage/out/reels/films/story-mv7bu03w/n05.wav",
+      "line": "The Chronosphere fell silent. Its echo did not.",
+      "dur": 6.5
+    },
+    {
+      "src": "C:/Users/Admin/Code/hq/montage/out/reels/films/story-mv7bu03w/s06.mp4",
+      "kind": "cinema",
+      "voice": "C:/Users/Admin/Code/hq/montage/out/reels/films/story-mv7bu03w/n06.wav",
+      "line": "Seventy-three years later, on a coast at dawn, a radar goes quiet.",
+      "dur": 6.5
+    }
+  ]
+}
