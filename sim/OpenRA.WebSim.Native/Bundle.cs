@@ -499,6 +499,10 @@ static class Bundle
 		"World:\n" +
 		"\t-LoadWidgetAtGameStart:\n" +
 		"\n" +
+		"# The map editor's world too: the page draws the editor (EditorHost drives the engine's brushes).\n" +
+		"EditorWorld:\n" +
+		"\t-LoadWidgetAtGameStart:\n" +
+		"\n" +
 		"# A bot seat that issues no orders: the enemy side of scripted battles and fidelity runs.\n" +
 		"Player:\n" +
 		"\tModularBot@webidle:\n" +

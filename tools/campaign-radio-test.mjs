@@ -152,6 +152,8 @@ try {
 
   // Game time: no time call while paused (the tick stands still), then at 3x speed it comes at its game second.
   await page.evaluate(() => window.game.setPaused(true));
+  // The pause is a message to the sim worker: a tick already on its way may still land. Settle first.
+  await page.waitForFunction(() => new Promise((r) => { const t = window.store.getState().ui.tick; setTimeout(() => r(window.store.getState().ui.tick === t), 400); }), null, { timeout: 10000 });
   const pausedAt = await page.evaluate(() => window.store.getState().ui.tick);
   await page.waitForTimeout(2500);
   assert.equal(await page.evaluate(() => window.store.getState().ui.tick), pausedAt, "the world ticked while paused");
