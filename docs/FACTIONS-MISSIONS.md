@@ -43,7 +43,7 @@ same problem Hold the Ferry Line solved with an allied Tanya side).
   4 cells of the core node (`gatech`) to copy the logs; a patrol boat then comes to the north cove, inside the north
   vault mast's zone. "Stay out of the sensor masts' sight" allows one trip on normal (two on easy, none on hard);
   every trip, and every mast destroyed, sends six hunters from the nearest garrison to that mast. The boat leaves at
-  first light (6:00; 9:00 on easy, 4:48 on hard). Losing Tanya, the specialist or the whole team fails the mission.
+  first light (8:00; 12:00 on easy, 6:24 on hard). Losing Tanya, the specialist or the whole team fails the mission.
 - **Black Platform** (`black-platform`, Saudi Arabia, Commander Turki Al-Zahrani): Bab al-Mandab's map frame painted
   as open sea with concrete deck modules on catwalks (the tileset's pavement tiles; road in Classic). A nine-man
   boarding team (Tanya, two Falcons without their air strike, three riflemen, an anti-tank soldier, two engineers) and
@@ -53,7 +53,7 @@ same problem Hold the Ferry Line solved with an allied Tanya side).
   dock, then at the west and east docks every 40 seconds, and two gunboats arrive; hold the room for two minutes.
   Two deck scanners (`naradr`, 4 cells, 8 / 8, taking turns) watch the control deck's sides and the catwalks to the
   wings; a trip brings the deck crew, and staying clear of them is a bonus objective. The charges must be in before
-  Orion's relief flotilla arrives (7:00; 10:30 on easy, 5:36 on hard). Losing Tanya, the control room, or both
+  Orion's relief flotilla arrives (9:00; 13:30 on easy, 7:12 on hard). Losing Tanya, the control room, or both
   engineers before the capture fails the mission.
 - **Every Light On** (`every-light-on`, Saudi Arabia, Colonel Badr Al-Shammari): Straits Shield's terrain, the island
   chain's central landmass. A forward base with $10,000 and a small force. Destroy three radar domes (`amradr`,
@@ -69,8 +69,8 @@ Scripted players (`tools/mission-probe/Scripted.cs`, plans `stealth`, `boarding`
 normal and hard: Glass Island in about 2:40 without an alarm, Black Platform in about 4:30, Every Light On in about
 10:30 (the strike waits for the towns; on hard an all-in army has lost the yard to the hub columns). They play like a
 careful human who knows the map, so they show that each chapter can be finished and where it bites, not how hard it
-feels. The deadlines are about twice the scripted time on normal; an idle player loses Glass Island at 6:00 and Black
-Platform at 7:00.
+feels. The deadlines leave a first-time player about three times (Glass Island) and twice (Black Platform) the
+scripted time on normal; an idle player loses Glass Island at 8:00 and Black Platform at 9:00.
 
 ### Mission features (JSON in `content/missions.json`)
 
@@ -92,7 +92,7 @@ Platform at 7:00.
     { "kind": "undetected", "targets": ["MastBluff"], "allowed": 1 },   // fails after more trips than allowed (+1 easy, -1 hard)
     { "kind": "squad", "targets": ["Engineer1", "Engineer2"], "count": 1, "until": 0 }, // fails below count alive
     { "kind": "capture", "targets": ["Chronosphere"], "requires": [0], "after": ["towns-clear"] },
-    { "kind": "reach", "target": "ExtractionCove", "requires": [0], "limit": 360 }  // fails if not complete by 6:00
+    { "kind": "reach", "target": "ExtractionCove", "requires": [0], "limit": 480 }  // fails if not complete by 8:00
   ]
 }
 ```

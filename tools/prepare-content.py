@@ -734,16 +734,17 @@ def glass_island():
                   'sensor masts. Tonight a three-man team lands on its western beach: Tanya, a network specialist and '
                   'one Red Spear.\n\nEach mast sees a circle around it. Some sweep and sleep; watch the circle dim before '
                   'you cross. Reach the core node in the east, deploy the specialist to copy the routing logs, then '
-                  'bring him to the boat at the north cove before first light, six minutes from the landing. Every mast '
+                  'bring him to the boat at the north cove before first light, eight minutes from the landing. Every mast '
                   'that sees you, or goes dark, sends the garrison to look.\n\nIf the island sees you too often, the boat '
                   'has to leave without the logs, or Tanya or the specialist falls, the operation fails.'),
         adaptation='An original RTS AI chapter on the terrain of Haitan Network, with a new channel and new actors.')
     return chapter_entry(mission, [
         objective('Copy the routing logs: deploy the network specialist beside the core node.', 'reach', types=['r2cnnetwork'],
                   target='CoreNode', radius=4, deploy=True),
-        # First light: about twice the scripted player's time on normal (tools/mission-probe, plan "stealth").
+        # First light: about three times the scripted player's time on normal (tools/mission-probe, plan "stealth"),
+        # room for a first-time player to watch the sweeps.
         objective('Bring the specialist and the logs to the boat at the north cove before first light.', 'reach',
-                  types=['r2cnnetwork'], target='ExtractionCove', radius=4, requires=[0], limit=360),
+                  types=['r2cnnetwork'], target='ExtractionCove', radius=4, requires=[0], limit=480),
         objective("Stay out of the sensor masts' sight.", 'undetected', [name for name, *_ in masts], allowed=1),
         objective('Keep Tanya and the specialist alive.', 'protect', ['Tanya', 'Specialist'])])
 
@@ -819,16 +820,17 @@ def black_platform():
                   'reinforcements. Clear the control deck, take the control room with an engineer to drop the curtain, '
                   'then let Tanya place charges on every generator out on the wings. When the jamming stops, Orion will '
                   'come from the docks and the sea: hold the control room until the picture comes back. Orion\'s relief '
-                  'flotilla reaches the platform seven minutes after you land; the charges must be in before then. The '
+                  'flotilla reaches the platform nine minutes after you land; the charges must be in before then. The '
                   'two deck scanners take turns; the lane down the middle is out of their sight.\n\nIf Tanya falls, '
                   'the control room is destroyed, both engineers are lost before it is taken, or the relief arrives '
                   'first, the operation fails.'),
         adaptation='An original RTS AI chapter on the frame of the Bab al-Mandab Passage map, repainted as open sea with a platform.')
     return chapter_entry(mission, [
         objective('Take the curtain control room with an engineer.', 'capture', ['CurtainControl']),
-        # The relief flotilla: about twice the scripted player's time on normal, with the hold (plan "boarding").
+        # The relief flotilla: about twice the scripted player's time on normal, with the hold (plan "boarding"), and
+        # room for a first-time player.
         objective('Place charges on all four jammer generators before the relief flotilla arrives.', 'destroy', gen_names,
-                  requires=[0], limit=420),
+                  requires=[0], limit=540),
         objective('Hold the control room until the picture comes back.', 'survive', seconds=120, requires=[1]),
         objective('Keep Tanya alive.', 'protect', ['Tanya']),
         objective('Keep an engineer alive until the control room is taken.', 'squad', ['Engineer1', 'Engineer2'], count=1, until=0),

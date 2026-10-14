@@ -597,10 +597,17 @@ const story: CampaignStory = {
       },
       {
         "when": {
-          "time": 240
+          "time": 360
         },
         "speaker": "lantern",
-        "line": "First light is coming, Commander. The boat can't wait for the sun."
+        "line": "First light in two minutes, Commander. The boat can't wait for the sun."
+      },
+      {
+        "when": {
+          "time": 420
+        },
+        "speaker": "lin",
+        "line": "One minute to first light. Get the specialist to the cove."
       },
       {
         "when": {
@@ -649,10 +656,17 @@ const story: CampaignStory = {
       },
       {
         "when": {
-          "time": 270
+          "time": 420
         },
         "speaker": "lantern",
-        "line": "Orion's relief flotilla is under way. Get those charges in before it reaches the platform."
+        "line": "Orion's relief flotilla is two minutes out. Get those charges in before it reaches the platform."
+      },
+      {
+        "when": {
+          "time": 480
+        },
+        "speaker": "turki",
+        "line": "One minute until that flotilla is alongside. Every generator, now."
       },
       {
         "when": {
