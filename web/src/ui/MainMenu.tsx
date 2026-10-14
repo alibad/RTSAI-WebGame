@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from "react";
-import { BookOpen, Check, ChevronRight, FlaskConical, LoaderCircle, Map as MapIcon, MonitorX, Swords, X } from "lucide-react";
+import { BookOpen, Check, ChevronRight, Crosshair, LoaderCircle, Map as MapIcon, MonitorX, Swords, X } from "lucide-react";
 import { EA_NOTICE } from "../legal";
 import { useStore } from "../store";
 import { gpuInfo } from "../gpu";
@@ -50,7 +50,7 @@ function GpuNotice() {
   );
 }
 
-export function MainMenu({ onSkirmish, onCampaign, onWorkshop, onMapStudio }: { onSkirmish: () => void; onCampaign: () => void; onWorkshop: () => void; onMapStudio?: () => void }) {
+export function MainMenu({ onSkirmish, onCampaign, onSimulator, onEditor }: { onSkirmish: () => void; onCampaign: () => void; onSimulator: () => void; onEditor: () => void }) {
   const profile = useStore((s) => s.profile);
   const current = profile === "public-classic" ? "classic" : "isometric";
   const [switching, setSwitching] = useState<View["id"] | null>(null);
@@ -97,8 +97,8 @@ export function MainMenu({ onSkirmish, onCampaign, onWorkshop, onMapStudio }: { 
           <MenuCard title="Campaign" text="Lines of Hope · 1953 echoes into 2026. Three acts." image="menu/campaign.webp" icon={<BookOpen size={22} />} onClick={onCampaign} />
         </section>
         <div className="menu-row">
-          <MenuCard wide title="Scenario workshop" text="Set up a practice battle, then play it." icon={<FlaskConical size={20} />} onClick={onWorkshop} />
-          {onMapStudio && <MenuCard wide title="Map studio" text={import.meta.env.VITE_STATIC_BUILD === "1" ? "Turn any real place into a battlefield, then play it here or with friends." : "Browse the map library or make a battlefield from a real place."} icon={<MapIcon size={20} />} onClick={onMapStudio} />}
+          <MenuCard wide title="Battle simulator" text="Any map, any forces: drop them in, command one side against the AI." icon={<Crosshair size={20} />} onClick={onSimulator} />
+          <MenuCard wide title="Map editor" text="Open, paint and build maps, make random ones, or turn any real place into a battlefield." icon={<MapIcon size={20} />} onClick={onEditor} />
         </div>
         <p data-testid="ea-notice" className="menu-notice">{EA_NOTICE}</p>
       </main>

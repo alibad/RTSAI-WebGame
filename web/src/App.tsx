@@ -7,17 +7,17 @@ import { Missions, MissionHud } from "./ui/Missions";
 import { Multiplayer } from "./ui/Multiplayer";
 import { MatchLibrary } from "./ui/MatchLibrary";
 import { GameSettings } from "./ui/GameSettings";
-import { MapWorkshop } from "./ui/MapWorkshop";
-import { SandboxHud } from "./ui/SandboxHud";
+import { Simulator } from "./ui/Simulator";
+import { MapEditor } from "./ui/MapEditor";
 import { ARENA, Sandbox, parseSandboxUrl } from "./sandbox";
-import { Practice } from "./ui/Practice";
+import { EditorController } from "./editor";
+import { missionPlacements, type MissionSpec } from "./mission";
 import { CoachPanel } from "./ui/Coach";
 import { Annotations } from "./ui/Annotations";
 import { installTelemetry } from "./net/telemetry";
 import { Feedback } from "./ui/Feedback";
 import { MainMenu } from "./ui/MainMenu";
 import { installUiFeel } from "./ui/feel";
-import { siteOrigin } from "./net/account";
 import { mySavedMaps, savedMap } from "./net/saved-maps";
 import { ArrowLeft, Check, Copy, RotateCcw, TriangleAlert } from "lucide-react";
 import { GameButton, Kbd } from "./ui/kit/game";
@@ -139,18 +139,22 @@ function ErrorCard({ game }: { game: Game | null }) {
 
 let autostarted = false;
 let savedMapsLoaded = false;
+let libraryLoaded = false;
 
-// The Earth studio lives on the website (RTSAI-Web /studio); its "Play in browser" comes back here with ?saved=<id>.
-const studioUrl = `${siteOrigin}/studio`;
+/** The simulator's battlefield when the player has not chosen one: the last one used, else a two-player map. */
+function simulatorMap(maps: { id: string; players: number }[]) {
+  try { const last = JSON.parse(localStorage.getItem("rtsai.sim-map") ?? "null"); if (maps.some((m) => m.id === last)) return last as string; } catch { /* private mode */ }
+  return maps.find((m) => m.id === "twin-fords")?.id ?? ARENA;
+}
 
 export default function App() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [game, setGame] = useState<Game | null>(null);
-  const [practiceOpen, setPracticeOpen] = useState(new URLSearchParams(location.search).get("mode") === "practice");
-  const [mapStudioOpen, setMapStudioOpen] = useState(new URLSearchParams(location.search).get("mode") === "map-studio");
-  const [mode, setMode] = useState<"home" | "skirmish" | "missions">(() => {
+  const [mode, setMode] = useState<"home" | "skirmish" | "missions" | "simulator" | "editor">(() => {
     const mode = new URLSearchParams(location.search).get("mode");
-    return mode === "missions" ? "missions" : mode === "skirmish" ? "skirmish" : "home";
+    // The old Scenario workshop and the Studio's encounters open the battle simulator; the old map studio, the editor.
+    return mode === "missions" ? "missions" : mode === "skirmish" ? "skirmish" : mode === "sandbox" || mode === "practice" || mode === "simulator" ? "simulator"
+      : mode === "map-studio" || mode === "editor" ? "editor" : "home";
   });
   const phase = useStore((s) => s.phase);
   const uiHidden = useStore((s) => s.uiHidden);
@@ -181,15 +185,57 @@ export default function App() {
     return () => { uninstallFeel(); g.dispose(); };
   }, []);
 
-  // ?mode=sandbox: the battle sandbox instead of a skirmish (the Studio's Encounter opens it with placements).
-  const sandboxMode = new URLSearchParams(location.search).get("mode") === "sandbox";
+  // The battle simulator (also ?mode=sandbox, the Studio's encounters, with their placements in the URL).
+  const sandboxMode = mode === "simulator";
   useEffect(() => {
     if (!game || !sandboxMode || phase !== "setup" || game.sandbox) return;
-    const sb = new Sandbox(game, parseSandboxUrl(new URLSearchParams(location.search)));
+    const cfg = parseSandboxUrl(new URLSearchParams(location.search));
+    cfg.map ??= cfg.placements.length ? ARENA : simulatorMap(useStore.getState().setup?.maps ?? []);
+    // A mission from the Earth studio: its map, its nations, both sides placed, and money to build with.
+    const mission = useStore.getState().pendingMission;
+    const sb = new Sandbox(game, cfg);
     game.sandbox = sb;
-    game.prepare(ARENA);
-    sb.edit();
+    void (async () => {
+      if (mission) {
+        useStore.getState().set({ pendingMission: null });
+        const c = await game.catalog();
+        Object.assign(cfg, { map: mission.map, fa: mission.fa, fb: mission.fb });
+        sb.configure({ map: mission.map, fa: mission.fa, fb: mission.fb, money: 5000 });
+        cfg.placements = missionPlacements(mission, c.units, c.rosters);
+      }
+      game.prepare(cfg.map!);
+      await sb.edit(cfg.placements);
+    })();
   }, [game, phase, sandboxMode]);
+  // The simulator remembers its battlefield.
+  const simMap = useStore((s) => s.sandbox?.map);
+  useEffect(() => { if (simMap) try { localStorage.setItem("rtsai.sim-map", JSON.stringify(simMap)); } catch { /* private mode */ } }, [simMap]);
+  const exitSimulator = () => {
+    game?.sandbox?.stopPlayback();
+    if (game) { game.sandbox = null; game.quit(); }
+    useStore.getState().set({ sandbox: null });
+    setMode("home");
+  };
+  const exitEditor = () => { game?.editor?.close(); setMode("home"); };
+  // A mission on the fly (the Earth studio): the battle simulator opens on the place's map with both sides placed.
+  const startMission = (m: MissionSpec) => {
+    useStore.getState().set({ pendingMission: m });
+    game?.editor?.close();
+    setMode("simulator");
+  };
+  // "Test in simulator": the saved map opens in the battle simulator.
+  const testInSimulator = (map: string) => {
+    try { localStorage.setItem("rtsai.sim-map", JSON.stringify(map)); } catch { /* private mode */ }
+    game?.editor?.close();
+    setMode("simulator");
+  };
+  // The player's own maps (this browser's library, editor.ts) join every map list once the engine is ready.
+  useEffect(() => {
+    if (!game || phase !== "setup" || libraryLoaded) return;
+    libraryLoaded = true;
+    game.editor ??= new EditorController(game);
+    void game.editor.loadLibrary().catch((e) => console.warn("map library:", e));
+  }, [game, phase]);
 
   // ?scenario=<name> starts a bundled scenario as soon as the engine is ready (benchmarks, tests).
   useEffect(() => {
@@ -218,13 +264,16 @@ export default function App() {
   useEffect(() => { if (game && phase === "setup") game.requestCursors(); }, [game, phase]);
 
   const playing = phase === "playing";
+  const editorMode = mode === "editor";
+  const simEditing = useStore((s) => sandboxMode && s.sandbox?.mode === "edit");
   return (
-    <div className="fixed inset-0" style={sandboxMode ? ({ "--sidebar-w": "300px" } as React.CSSProperties) : undefined}>
+    <div className="fixed inset-0" style={simEditing ? ({ "--sidebar-w": "340px" } as React.CSSProperties) : editorMode ? ({ "--sidebar-w": "0px" } as React.CSSProperties) : undefined}>
       <canvas ref={canvasRef} className="stage" tabIndex={0} style={{ right: playing ? "var(--sidebar-w)" : 0, width: playing ? "calc(100% - var(--sidebar-w))" : "100%", visibility: playing ? "visible" : "hidden" }} />
-      {game && playing && !uiHidden && !practiceOpen && (sandboxMode ? <SandboxHud game={game} /> : <Hud game={game} />)}
-      {game && phase === "setup" && !sandboxMode && !mapStudioOpen && <>
+      {game && playing && !uiHidden && !editorMode && (sandboxMode ? <Simulator game={game} exit={exitSimulator} /> : <Hud game={game} />)}
+      {game && editorMode && phase !== "boot" && <MapEditor game={game} exit={exitEditor} test={testInSimulator} mission={startMission} />}
+      {game && phase === "setup" && !sandboxMode && !editorMode && <>
         <div className="menu-utility" data-ui-sfx><MatchLibrary game={game} /><GameSettings game={game} /><Feedback game={game} /></div>
-        {mode === "home" ? <MainMenu onSkirmish={() => setMode("skirmish")} onCampaign={() => setMode("missions")} onWorkshop={() => setPracticeOpen(true)} onMapStudio={import.meta.env.VITE_STATIC_BUILD !== "1" ? () => setMapStudioOpen(true) : () => location.assign(studioUrl)} /> : <>
+        {mode === "home" ? <MainMenu onSkirmish={() => setMode("skirmish")} onCampaign={() => setMode("missions")} onSimulator={() => setMode("simulator")} onEditor={() => setMode("editor")} /> : <>
           {mode === "missions" ? <Missions game={game} /> : <Setup game={game} />}
           <nav className="menu-subnav scr-subnav" aria-label="Game modes" data-ui-sfx>
             <button type="button" onClick={() => setMode("home")} className="menu-subnav-back" aria-label="Main menu"><ArrowLeft size={15} aria-hidden="true" /><span>Main menu</span></button>
@@ -232,17 +281,16 @@ export default function App() {
               <button type="button" aria-current={mode === "skirmish" ? "page" : undefined} onClick={() => setMode("skirmish")}>Skirmish</button>
               <button type="button" aria-current={mode === "missions" ? "page" : undefined} onClick={() => setMode("missions")}>Campaign</button>
             </div>
-            <button type="button" onClick={() => import.meta.env.VITE_STATIC_BUILD !== "1" ? setMapStudioOpen(true) : location.assign(studioUrl)}>Map studio</button>
+            <button type="button" onClick={() => setMode("simulator")}>Battle simulator</button>
+            <button type="button" onClick={() => setMode("editor")}>Map editor</button>
           </nav>
         </>}
       </>}
-      {game && playing && !sandboxMode && !uiHidden && <MissionHud game={game} />}
-      {game && playing && !practiceOpen && !uiHidden && <CoachPanel game={game} />}
-      {game && playing && !practiceOpen && !uiHidden && <Annotations game={game} />}
-      {game && useStore.getState().setup && practiceOpen && <Practice game={game} close={() => setPracticeOpen(false)} />}
-      {game && phase === "setup" && mapStudioOpen && <MapWorkshop game={game} close={() => setMapStudioOpen(false)} />}
-      {game && !mapStudioOpen && !sandboxMode && <Multiplayer game={game} />}
-      {(phase === "boot" || phase === "loading" || (phase === "setup" && sandboxMode)) && <Loading game={game} />}
+      {game && playing && !sandboxMode && !editorMode && !uiHidden && <MissionHud game={game} />}
+      {game && playing && !editorMode && !uiHidden && <CoachPanel game={game} />}
+      {game && playing && !editorMode && !uiHidden && <Annotations game={game} />}
+      {game && !sandboxMode && !editorMode && <Multiplayer game={game} />}
+      {(phase === "boot" || (phase === "loading" && !editorMode) || (phase === "setup" && sandboxMode)) && <Loading game={game} />}
       {phase === "error" && <ErrorCard game={game} />}
     </div>
   );

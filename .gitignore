@@ -25,3 +25,6 @@ private/
 
 # Local env files (Firebase web config for the public build lives in web/.env.production.local).
 .env*.local
+
+# The website's Faction viewer data (tools/sync-viewer.mjs), generated.
+web/public/viewer/

@@ -1,15 +1,29 @@
-// Battle sandbox: place units for two sides on a flat arena, run the exact engine simulation, read the results,
-// scrub the replay. Editing happens in a paused world (real actors, real art); every run is rebuilt from the
-// placements as a scenario, so it is reproducible and can be verified against the native engine.
+// Battle simulator: pick any map, place units and buildings for two sides, run the exact engine simulation with you
+// commanding side A against an AI of the chosen skill, read the results, scrub the replay. Editing happens in a paused
+// world (real actors, real art); every run is rebuilt from the placements as a scenario, so it is reproducible and can
+// be verified against the native engine.
 
 import type { Game } from "./game";
 import type { Snapshot } from "./sim/protocol";
 import { store } from "./store";
+import { ENGINE_SIDE_COLORS } from "./sides";
 
 export const ARENA = "web-arena";
 const MAX_RECORDING = 25 * 60 * 8; // 8 minutes of ticks
 
 export type SandboxOrder = "engage" | "hold" | "move";
+export type AiSkill = "easy" | "normal" | "hard" | "brutal";
+
+/**
+ * The enemy's skill: the engine's own bot (its play style), the mod's handicap multipliers (firepower, armour and
+ * production) and extra credits. Nothing here is scripted: the bot plays its normal game from what it is given.
+ */
+export const AI_SKILLS: Record<AiSkill, { label: string; hint: string; bot: string; handicap: number; cash: number; level: number }> = {
+  easy: { label: "Easy", hint: "Steady AI with a handicap: weaker weapons and armour, slower building", bot: "normal", handicap: 50, cash: 0, level: 0 },
+  normal: { label: "Normal", hint: "The standard AI on equal terms", bot: "normal", handicap: 0, cash: 0, level: 0 },
+  hard: { label: "Hard", hint: "Aggressive AI with 5,000 extra credits", bot: "rush", handicap: 0, cash: 5000, level: 0 },
+  brutal: { label: "Brutal", hint: "Aggressive AI with 15,000 extra credits and veteran units", bot: "rush", handicap: 0, cash: 15000, level: 1 },
+};
 
 export interface Placement {
   id: string; // actor type
@@ -32,9 +46,16 @@ export interface SandboxConfig {
   order?: SandboxOrder;
   autorun: boolean;
   placements: Placement[];
+  map?: string;
+  skill?: AiSkill;
+  money?: number;
+  fog?: boolean;
 }
 
 export interface SideSettings { order: SandboxOrder; destination: { u: number; v: number } | null; level: number }
+
+/** A placeable actor (Ui.UnitCatalog): `combat` is the engine's answer to "can it fight?" (it attacks with a weapon). */
+export interface SimUnit { name: string; label: string; queue: string; kind: string; cost: number; modern: boolean; combat?: boolean; footprint?: [number, number] }
 
 export interface SandboxState {
   mode: "edit" | "run";
@@ -44,7 +65,12 @@ export interface SandboxState {
   sides: [SideSettings, SideSettings];
   fa: string;
   fb: string;
-  units: { name: string; label: string; queue: string; modern: boolean }[];
+  units: SimUnit[];
+  rosters: Record<string, string[]>;
+  map: string;
+  skill: AiSkill;
+  money: number;
+  fog: boolean;
   recordLen: number;
   replay: number | null; // index into the recording while scrubbing, null when live
   playing: boolean; // replay playback
@@ -58,7 +84,7 @@ function b64urlDecode(s: string) {
   return new TextDecoder().decode(Uint8Array.from(b, (c) => c.charCodeAt(0)));
 }
 
-/** ?mode=sandbox&s=<base64url JSON> or the shorthand &a=type:count,...&b=...&fa=&fb=&level=&order=&autorun=1. */
+/** ?mode=sandbox&s=<base64url JSON> or the shorthand &a=type:count,...&b=...&fa=&fb=&level=&order=&autorun=1&map=&skill=. */
 export function parseSandboxUrl(params: URLSearchParams): SandboxConfig {
   const cfg: SandboxConfig = { fa: "saudi", fb: "iran", level: 0, health: 100, autorun: false, placements: [] };
   const s = params.get("s");
@@ -67,7 +93,7 @@ export function parseSandboxUrl(params: URLSearchParams): SandboxConfig {
       const j = JSON.parse(b64urlDecode(s));
       Object.assign(cfg, {
         fa: j.fa ?? cfg.fa, fb: j.fb ?? cfg.fb, level: j.level ?? 0, health: j.health ?? 100,
-        order: j.order, autorun: !!j.autorun,
+        order: j.order, autorun: !!j.autorun, map: j.map, skill: j.skill, money: j.money, fog: j.fog,
         placements: (j.placements ?? []).map((p: Placement & { type?: string; player?: number }) => {
           const side = (p.side ?? p.player ?? 0) as 0 | 1;
           return { ...p, id: p.id ?? p.type, side, facing: p.facing ?? (side === 0 ? 768 : 256) };
@@ -79,10 +105,12 @@ export function parseSandboxUrl(params: URLSearchParams): SandboxConfig {
   }
   cfg.fa = params.get("fa") ?? cfg.fa;
   cfg.fb = params.get("fb") ?? cfg.fb;
+  cfg.map = params.get("map") ?? cfg.map;
+  if (params.get("skill") && params.get("skill")! in AI_SKILLS) cfg.skill = params.get("skill") as AiSkill;
   if (params.get("level")) cfg.level = Number(params.get("level"));
   if (params.get("order")) cfg.order = params.get("order") as SandboxOrder;
   if (params.get("autorun")) cfg.autorun = params.get("autorun") === "1" || params.get("autorun") === "true";
-  // Shorthand: blocks laid out in each side's deploy zone (A west, B east), facing each other.
+  // Shorthand on the flat arena: blocks laid out in each side's deploy zone (A west, B east), facing each other.
   for (const [key, side] of [["a", 0], ["b", 1]] as const) {
     const list = params.get(key);
     if (!list) continue;
@@ -118,7 +146,8 @@ export class Sandbox {
           { order: cfg.order ?? "engage", destination: null, level: cfg.level },
           { order: cfg.order ?? "engage", destination: null, level: cfg.level },
         ],
-        fa: cfg.fa, fb: cfg.fb, units: [], recordLen: 0, replay: null, playing: false, speed: 1, paused: false, pickDestination: null,
+        fa: cfg.fa, fb: cfg.fb, units: [], rosters: {}, map: cfg.map ?? ARENA, skill: cfg.skill ?? "normal", money: cfg.money ?? 0, fog: cfg.fog ?? false,
+        recordLen: 0, replay: null, playing: false, speed: 1, paused: false, pickDestination: null,
       },
     });
   }
@@ -130,20 +159,37 @@ export class Sandbox {
 
   get state() { return store.get().sandbox!; }
 
+  /** The map's first two player slots (the arena and generated maps call them Multi0 and Multi1). */
+  private slots(): [string, string] {
+    const map = store.get().setup?.maps.find((m) => m.id === this.state.map);
+    return [map?.slots[0] ?? "Multi0", map?.slots[1] ?? "Multi1"];
+  }
+
   private scenario(placements: Placement[], run: boolean) {
     const st = this.state;
+    const ai = AI_SKILLS[st.skill];
+    const [slotA, slotB] = this.slots();
     return JSON.stringify({
-      map: ARENA,
+      map: st.map,
       seed: 1 + Math.floor(Math.random() * 1e9),
       sandbox: run,
-      // Editing: both sides are idle bots and the page spectates (sees everything, no shroud). Running: side A
-      // is the player's to command.
+      // Only the placed forces: the map's start positions get no construction vehicle.
+      bare: true,
+      // Editing: both sides are idle bots and the page spectates (sees everything, no shroud). Running: side A is
+      // the player's to command; side B is the engine's bot at the chosen skill.
       players: [
-        { slot: "Multi0", faction: st.fa, color: "2A6FDB", ...(run ? {} : { bot: "webidle" }) },
-        { slot: "Multi1", faction: st.fb, bot: "webidle", color: "D83A2E" },
+        { slot: slotA, faction: st.fa, color: ENGINE_SIDE_COLORS[0], ...(run ? {} : { bot: "webidle" }) },
+        { slot: slotB, faction: st.fb, color: ENGINE_SIDE_COLORS[1], ...(run ? { bot: ai.bot, handicap: ai.handicap, cash: ai.cash } : { bot: "webidle" }) },
       ],
-      options: { explored: "True", fog: "False", crates: "False", shortgame: "False" },
-      placements: placements.map((p) => (run ? p : { ...p, order: undefined, destination: undefined })),
+      options: {
+        explored: run && st.fog ? "False" : "True", fog: run && st.fog ? "True" : "False", crates: "False", shortgame: "False",
+        ...(run ? { startingcash: String(st.money) } : {}),
+      },
+      placements: placements.map((p) => {
+        if (!run) return { ...p, order: undefined, destination: undefined };
+        // The AI's veteran bonus at the higher skills.
+        return p.side === 1 && ai.level > (p.level ?? 0) ? { ...p, level: ai.level } : p;
+      }),
     });
   }
 
@@ -156,9 +202,9 @@ export class Sandbox {
     await this.waitPlaying();
     this.frame(placements);
     if (!this.state.units.length) {
-      const r = await this.game.command<{ units: SandboxState["units"] }>({ cmd: "units" });
-      this.patch({ units: r.units ?? [] });
-      this.game.requestIcons((r.units ?? []).map((u) => u.name));
+      const c = await this.game.catalog();
+      this.patch({ units: c.units, rosters: c.rosters });
+      this.game.requestIcons(c.units.map((x) => x.name));
     }
     if (this.cfg.autorun) {
       this.cfg.autorun = false;
@@ -166,10 +212,11 @@ export class Sandbox {
     }
   }
 
-  /** Camera on the placements, zoomed out enough to show both sides. */
+  /** Camera on the placements, zoomed out enough to show both sides (the map's start when nothing is placed). */
   private frame(placements: Placement[]) {
     const info = store.get().info;
-    if (!info || !placements.length) return;
+    if (!info) return;
+    if (!placements.length) { this.game.cam.zoom = 0.75; return; }
     const [ox, oy] = info.cellOrigin;
     const hw = info.tileSize[0] / 2, hh = info.tileSize[1] / 2;
     const pts = placements.map((p) => [ox + (2 * p.u + (p.v & 1)) * hw, oy + p.v * hh]);
@@ -189,7 +236,7 @@ export class Sandbox {
   }
 
   /** Placements now in the editing world, with each side's order, destination and the URL's per-unit settings. */
-  private async collect(): Promise<Placement[]> {
+  async collect(): Promise<Placement[]> {
     const r = await this.game.command<{ spawns: { type: string; player: number; x: number; y: number; facing: number; level: number; health: number }[] }>({ cmd: "placements" });
     const st = this.state;
     return (r.spawns ?? []).map((s) => {
@@ -231,10 +278,15 @@ export class Sandbox {
     if (this.recording.length % 5 === 0 || this.recording.length < 5) this.patch({ recordLen: this.recording.length });
   }
 
-  async spawn(type: string, wx: number, wy: number) {
+  async spawn(type: string, wx: number, wy: number, side: 0 | 1 = this.state.side) {
     const st = this.state;
-    await this.game.command({ cmd: "spawn", type, player: st.side, x: Math.round(wx), y: Math.round(wy), count: st.count, level: st.sides[st.side].level });
+    await this.game.command({ cmd: "spawn", type, player: side, x: Math.round(wx), y: Math.round(wy), count: st.count, level: st.sides[side].level });
     this.game.client.send({ type: "refresh" });
+  }
+
+  /** The map cell (MPos) under a world pixel, from the engine (terrain height included). */
+  cellAt(wx: number, wy: number) {
+    return this.game.command<{ u: number; v: number }>({ cmd: "cellat", x: Math.round(wx), y: Math.round(wy) });
   }
 
   async remove(id: number) {
@@ -253,10 +305,38 @@ export class Sandbox {
     this.collect().then((p) => this.edit(p));
   }
 
+  /** Another battlefield: the placements belong to the old map's cells, so the new one starts empty. */
+  setMap(map: string) {
+    if (map === this.state.map) return;
+    this.patch({ map });
+    this.urlPlacements = [];
+    this.game.prepare(map);
+    this.edit([]);
+  }
+
+  setSkill(skill: AiSkill) { this.patch({ skill }); }
+  /** Settings before the first world starts (a mission's map, nations and money). */
+  configure(p: Partial<Pick<SandboxState, "map" | "fa" | "fb" | "money" | "skill">>) { this.patch(p); }
+  setMoney(money: number) { this.patch({ money }); }
+  setFog(fog: boolean) { this.patch({ fog }); }
+
+  /** Replaces everything placed with a plan (the "describe it" planner, an Earth mission), then shows it. */
+  async plan(fa: string, fb: string, placements: Placement[]) {
+    this.patch({ fa, fb });
+    this.urlPlacements = placements;
+    await this.edit(placements);
+  }
+
+  /** The map's start positions in the editing world (MPos and world px). */
+  spawnPoints() {
+    return this.game.command<{ points: { u: number; v: number; x: number; y: number }[] }>({ cmd: "spawnpoints" }).then((r) => r.points ?? []);
+  }
+
   setPaused(paused: boolean) {
     if (this.state.replay !== null && !paused) { this.goLive(); return; }
     this.game.client.send({ type: "pause", paused });
     this.patch({ paused });
+    store.set({ paused });
   }
 
   step() {
@@ -304,6 +384,7 @@ export class Sandbox {
   goLive() {
     this.stopPlayback();
     this.patch({ replay: null, paused: false });
+    store.set({ paused: false });
     this.game.client.send({ type: "pause", paused: false });
   }
 
@@ -313,12 +394,4 @@ export class Sandbox {
     if (i === null || !this.recording[i]) return null;
     return [this.recording[i], this.recording[i - 1] ?? null];
   }
-}
-
-/** World px -> arena cell (MPos) on the flat isometric arena. */
-export function worldToCell(wx: number, wy: number, origin: [number, number], tile: [number, number]) {
-  const hw = tile[0] / 2, hh = tile[1] / 2;
-  const v = Math.round((wy - origin[1]) / hh);
-  const u = Math.round(((wx - origin[0]) / hw - (v & 1)) / 2);
-  return { u, v };
 }

@@ -258,6 +258,33 @@ namespace OpenRA.WebSim
 			return infantry != null ? (Animation)InfantryAnimationField.GetValue(infantry) : null;
 		}
 
+		/// <summary>
+		/// The world actor's renderables. In the editor world the actor layer's previews are taken inside the page's view
+		/// (EditorActorLayer.Render keeps to the engine's own fixed viewport, which is not what the page shows).
+		/// </summary>
+		static IEnumerable<IRenderable> WorldActorRenderables(World world, WorldRenderer wr)
+		{
+			if (world.Type != WorldType.Editor)
+			{
+				foreach (var r in world.WorldActor.Render(wr))
+					yield return r;
+				yield break;
+			}
+
+			foreach (var t in world.WorldActor.TraitsImplementing<IRender>())
+			{
+				if (t is OpenRA.Mods.Common.Traits.EditorActorLayer layer)
+				{
+					foreach (var p in layer.PreviewsInScreenBox(ViewTopLeft, ViewBottomRight))
+						foreach (var r in p.Render())
+							yield return r;
+				}
+				else
+					foreach (var r in t.Render(world.WorldActor, wr))
+						yield return r;
+			}
+		}
+
 		public static int Build()
 		{
 			var start = Stopwatch.GetTimestamp();
@@ -286,7 +313,7 @@ namespace OpenRA.WebSim
 				foreach (var r in a.Render(wr))
 					Renderables.Add((r, a.ActorID));
 
-			foreach (var r in world.WorldActor.Render(wr))
+			foreach (var r in WorldActorRenderables(world, wr))
 				Renderables.Add((r, 0));
 
 			if (world.RenderPlayer != null)
