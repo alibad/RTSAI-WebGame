@@ -77,12 +77,19 @@ namespace OpenRA.WebSim
 		/// <summary>Called before each load step (the browser forwards it to the page's loading screen).</summary>
 		public static Action<string> OnProgress = _ => { };
 
+		/// <summary>The WebAssembly memory size in MB (set by the browser host; 0 natively).</summary>
+		public static Func<double> MemoryMB = () => 0;
+
 		static void Time(string name, Action a)
 		{
 			OnProgress(name);
 			var start = Stopwatch.GetTimestamp();
+			var allocated = GC.GetTotalAllocatedBytes();
 			a();
 			Timings[name] = Stopwatch.GetElapsedTime(start).TotalMilliseconds;
+			Timings["mem." + name] = MemoryMB();
+			Timings["alloc." + name] = (GC.GetTotalAllocatedBytes() - allocated) / 1048576.0;
+			Timings["live." + name] = GC.GetTotalMemory(false) / 1048576.0;
 		}
 
 		/// <summary>
@@ -247,20 +254,19 @@ namespace OpenRA.WebSim
 			if (preparedMap != null && preparedMapName == mapName)
 				return;
 
+			// Another map was prepared and not started: free it before this one loads.
 			DisposeMap(preparedMap);
 			preparedMap = null;
+
+			// Loading starts from a collected heap, so its allocations reuse freed memory instead of growing it (WebAssembly
+			// memory never shrinks).
+			Time("prepare.collect", () => GC.Collect());
 			Map map = null;
 			Time("prepare.map", () => map = LoadMap(MapPath(mapName)));
 
 			// Sheets a sprite builder may still append to keep their CPU copy; the rest go to the page and are dropped.
-			var spriteCache = map.Sequences.SpriteCache;
-			WebTexture.MayReopen = t =>
-			{
-				foreach (var sb in spriteCache.SheetBuilders.Values)
-					if (sb.Current != null && SheetTexture(sb.Current) == t)
-						return true;
-				return false;
-			};
+			reopenCache = map.Sequences.SpriteCache;
+			WebTexture.MayReopen = MayReopen;
 			// With a sprite store (the browser, the baker), each faction's sprites get sheets of their own (PackGroups).
 			if (SpriteCache.Store != null)
 				Time("prepare.groups", () => SpriteCache.PackGroup = PackGroups.For(map));
@@ -280,16 +286,40 @@ namespace OpenRA.WebSim
 			preparedMapName = mapName;
 		}
 
+		/// <summary>The prepared (or playing) map's sprite cache, for MayReopen; cleared with its map.</summary>
+		static SpriteCache reopenCache;
+
+		static bool MayReopen(WebTexture t)
+		{
+			if (reopenCache == null)
+				return false;
+
+			foreach (var sb in reopenCache.SheetBuilders.Values)
+				if (sb.Current != null && SheetTexture(sb.Current) == t)
+					return true;
+			return false;
+		}
+
 		/// <summary>Map.Dispose frees its sheet builders' sheets; its restored prebaked sheets are freed here.</summary>
 		static void DisposeMap(Map map)
 		{
 			if (map == null)
 				return;
 
-			var spriteCache = map.Sequences?.SpriteCache;
+			ReleaseSprites(map.Sequences?.SpriteCache);
 			map.Dispose();
-			SpriteStore.Release(spriteCache);
 		}
+
+		/// <summary>Frees a disposed map's restored sheets and lets go of its sprite cache (MayReopen kept it reachable).</summary>
+		static void ReleaseSprites(SpriteCache spriteCache)
+		{
+			SpriteStore.Release(spriteCache);
+			if (reopenCache == spriteCache)
+				reopenCache = null;
+		}
+
+		/// <summary>Managed memory still reachable after the last EndGame (its full collection), in MB.</summary>
+		public static double RetainedAfterEndMB { get; private set; }
 
 		static readonly FieldInfo SheetTextureField = typeof(Sheet).GetField("texture", BindingFlags.NonPublic | BindingFlags.Instance);
 
@@ -308,14 +338,21 @@ namespace OpenRA.WebSim
 			WorldRenderer?.Dispose();
 			var spriteCache = World.Map.Sequences?.SpriteCache;
 			World.Dispose(); // disposes World.Map
-			SpriteStore.Release(spriteCache);
+			ReleaseSprites(spriteCache);
 			OrderManager?.Dispose();
 			World = null;
 			WorldRenderer = null;
 			OrderManager = null;
 			Game.OrderManager = null;
 			ScriptedOrders.Clear();
-			GC.Collect();
+
+			// Nothing static may keep the ended world reachable, or it stays alive while the next map loads and the next
+			// world is built (WebAssembly memory never shrinks, so such overlaps raise the tab's memory for good).
+			Spawned.Clear();
+			Snapshot.Reset();
+			Sandbox.Forget();
+			AiLab.Forget();
+			RetainedAfterEndMB = GC.GetTotalMemory(true) / 1048576.0;
 		}
 
 		/// <summary>Creates the world for a scenario. replayPackets (frame -> OrderPacket bytes) switches the connection to replay.</summary>
@@ -368,7 +405,8 @@ namespace OpenRA.WebSim
 			Missions.Start(s.Mission);
 			AiLab.Start();
 
-			GC.Collect();
+			// The load's garbage goes before play starts, so play allocates into a collected heap.
+			Time("start.settle", () => GC.Collect());
 		}
 
 		static readonly List<(Actor Actor, SpawnSpec Spec)> Spawned = [];

@@ -48,6 +48,14 @@ namespace OpenRA.WebSim
 
 		public static bool Active => sides != null;
 
+		/// <summary>The world ended: drop its players and actors, which would otherwise keep it reachable.</summary>
+		public static void Forget()
+		{
+			Actors.Clear();
+			Types.Clear();
+			sides = null;
+		}
+
 		public static void Start(List<Player> players)
 		{
 			Actors.Clear();

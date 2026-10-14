@@ -86,6 +86,9 @@ namespace OpenRA.WebSim.Browser
 		[JSImport("textureFree", "websim")]
 		static partial void TextureFree(int id);
 
+		[JSImport("memoryBytes", "websim")]
+		internal static partial double MemoryBytes();
+
 		[JSImport("companionReply", "websim")]
 		static partial void CompanionReply(int call, int code, string message, [JSMarshalAs<JSType.MemoryView>] Span<byte> payload);
 
@@ -161,6 +164,12 @@ namespace OpenRA.WebSim.Browser
 
 			// Textures the engine disposes (a finished game's sheets) are deleted on the page's GPU too.
 			WebTexture.Freed = TextureFree;
+			// Pages older than this import report 0 instead of failing every timed load step.
+			SimHost.MemoryMB = () =>
+			{
+				try { return MemoryBytes() / 1048576.0; }
+				catch (Exception) { return 0; }
+			};
 
 			// Sheets go to the page as soon as the engine commits them (during map preparation, on the setup
 			// screen), so the WebAssembly heap keeps no copy of them.
@@ -409,6 +418,7 @@ namespace OpenRA.WebSim.Browser
 				$"\"textures\":{WebTexture.All.Count},\"textureMB\":{WebTexture.All.Sum(t => (long)(t.Data?.Length ?? 0)) / 1048576.0:F1}," +
 				$"\"droppedReads\":{WebTexture.DroppedReads},\"heapSizeMB\":{GC.GetGCMemoryInfo().HeapSizeBytes / 1048576.0:F1},\"fragmentedMB\":{GC.GetGCMemoryInfo().FragmentedBytes / 1048576.0:F1}," +
 				$"\"totalAllocatedMB\":{GC.GetTotalAllocatedBytes() / 1048576.0:F0}," +
+				$"\"retainedAfterEndMB\":{SimHost.RetainedAfterEndMB:F1}," +
 				$"\"framework\":\"{System.Runtime.InteropServices.RuntimeInformation.FrameworkDescription}\"" +
 				"}";
 		}

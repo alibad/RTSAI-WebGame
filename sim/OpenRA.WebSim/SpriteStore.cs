@@ -39,25 +39,53 @@ namespace OpenRA.WebSim
 
 		static readonly byte[] Magic = "ORASPR01"u8.ToArray();
 
-		/// <summary>
-		/// Restored sheets belong to no SheetBuilder, so SpriteCache.Dispose never frees them: they are kept here per
-		/// cache and disposed with their map (Release), which frees the page's GPU copies.
-		/// </summary>
-		static readonly ConditionalWeakTable<SpriteCache, Sheet[]> RestoredSheets = new();
+		/// <summary>A restored packing: its sheets and sprites, and how many maps' sprite caches use it.</summary>
+		sealed class Restoration
+		{
+			public string Key;
+			public Sheet[] Sheets;
+			public Dictionary<int, Sprite[]> Sprites;
+			public int Users;
+		}
 
-		/// <summary>Disposes the sheets restored for this cache (its map is being disposed).</summary>
+		/// <summary>
+		/// Restoring a packing reads its whole table and creates every sprite (about 75 MB of allocations per map), so the
+		/// last packing restored is reused by the next map with the same reservation key: same sprites, same sheets
+		/// (already on the page's GPU). Restored sheets belong to no SheetBuilder, so SpriteCache.Dispose never frees
+		/// them: a packing no map uses any more is disposed here once another replaces it, which frees the GPU copies.
+		/// </summary>
+		static Restoration last;
+
+		static readonly ConditionalWeakTable<SpriteCache, Restoration> Restorations = new();
+
+		/// <summary>This cache's map is being disposed: its packing loses a user (and is freed if it was replaced).</summary>
 		public static void Release(SpriteCache cache)
 		{
-			if (cache == null || !RestoredSheets.TryGetValue(cache, out var sheets))
+			if (cache == null || !Restorations.TryGetValue(cache, out var restoration))
 				return;
 
-			RestoredSheets.Remove(cache);
-			foreach (var sheet in sheets)
+			Restorations.Remove(cache);
+			restoration.Users--;
+			if (restoration != last && restoration.Users == 0)
+				Free(restoration);
+		}
+
+		static void Free(Restoration restoration)
+		{
+			foreach (var sheet in restoration.Sheets)
 				sheet.Dispose();
 		}
 
 		public IReadOnlyDictionary<int, Sprite[]> TryRestore(SpriteCache cache, string key)
 		{
+			if (last != null && last.Key == key)
+			{
+				// The page keeps the sheets and its pending fetches (SpriteBake) from the first restore: no Restored call.
+				last.Users++;
+				Restorations.AddOrUpdate(cache, last);
+				return last.Sprites;
+			}
+
 			var table = Load?.Invoke(key);
 			if (table == null || table.Length < Magic.Length || !table.AsSpan(0, Magic.Length).SequenceEqual(Magic))
 				return null;
@@ -120,7 +148,11 @@ namespace OpenRA.WebSim
 				result[token] = sprites;
 			}
 
-			RestoredSheets.AddOrUpdate(cache, sheets);
+			if (last != null && last.Users == 0)
+				Free(last);
+
+			last = new Restoration { Key = key, Sheets = sheets, Sprites = result, Users = 1 };
+			Restorations.AddOrUpdate(cache, last);
 			Restored?.Invoke(key, ids);
 			return result;
 		}

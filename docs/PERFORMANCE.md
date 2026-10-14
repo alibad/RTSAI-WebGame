@@ -40,10 +40,32 @@ without the GPU how to turn acceleration on.
 - **Leaving a match clears it.** `SimClient` drops its snapshots and `Renderer.clearWorld` frees the terrain buffers on
   `end`. `setStartInfo` also frees the previous match's terrain buffers.
 
-## Not fixed (known)
+## Starting a match without regrowing memory
 
-- **Voxel sheet after an overflow** (engine): `VoxelLoader` replaces its `SheetBuilder` when a voxel sheet overflows
-  and disposes only the newest one, so the first voxel sheet (16 MB) stays allocated after each match with voxels.
-  The fix belongs in the engine fork (`OpenRA.Mods.Cnc/Graphics/VoxelLoader.cs`).
-- **The WebAssembly heap grows about 70 MB a match** (331 → 397 → 476 MB over three matches) while live managed
-  objects stay around 90 MB. WebAssembly memory never shrinks, so a long session keeps the high-water mark.
+WebAssembly memory grows but never shrinks, so the tab keeps the highest point any load reached. Each match start used
+to rebuild the same large assets and raise that point: 331 → 397 → 476 MB over three matches. The timings now record,
+for every timed load step, the WebAssembly memory after it (`mem.<step>`), what it allocated (`alloc.<step>`) and the
+live managed memory (`live.<step>`). They showed that `new World` allocated about 165 MB every start: 85 MB to build
+the tileset's tile cache (`TerrainRenderer`) and 79 MB to load every voxel model (`VoxelCache`).
+
+- **Engine (`alibad/OpenRA` `53424ddb79`, on `rtsai/engine`):** `TerrainRenderer` shares one `DefaultTileCache` per tileset across worlds, counting its
+  users; `VoxelCache` shares its loaded models while the model rules are the same and the map ships no `.vxl`/`.hva`
+  of its own. The last cache used is kept for the next world; one no world uses is freed when another replaces it.
+  `VoxelLoader` also disposes the sheet builders it retires on a sheet overflow (the first voxel sheet used to leak,
+  16 MB per match).
+- **Web sim:** `SpriteStore` keeps the last restored packing for the next map with the same reservation key: same
+  sprites, same sheets, already on the page's GPU, so the restore and the page's re-download and upload are skipped.
+  `EndGame` clears every static reference into the ended world (the snapshot's renderables and view actors, spawned
+  actors, sandbox and AI lab players, the map behind `MayReopen`) before its full collection, reported as
+  `retainedAfterEndMB` in the engine's stats. A prepare starts from a collected heap (`prepare.collect`) and a start
+  ends with one (`start.settle`).
+
+Measured on the same build, six 15-second skirmishes in a row: WebAssembly memory 331 → 397 MB, then flat (it was
+331 → 397 → 476 MB, then flat). From the second match on, world creation allocates nothing and takes about 30 ms
+instead of about 900 ms; Start to playing went from 2.2 s to 0.4 s. SyncHash is unchanged on battle-50,
+hezbollah-swarm and battle-originals at 1500 ticks, and random-map ids are the same.
+
+The rest is the garbage collector's normal working size: with `soft-heap-limit=200m` (`worker.ts`), the heap may
+grow to about 200 MB of objects between full collections during play, and long runs of 200-unit battles still reach
+476 MB. A lower limit (128m) kept skirmishes at 331 MB but made the battle's ticks about 40% slower, so the default
+stays. `?gc=` overrides it.

@@ -21,6 +21,10 @@ namespace OpenRA.WebSim
 		static int startTick;
 		static string status = "active";
 		static string metrics;
+
+		/// <summary>The world ended: drop its players, which would otherwise keep it reachable.</summary>
+		public static void Forget() => doctrines.Clear();
+
 		public static void Start()
 		{
 			doctrines.Clear(); startTick = SimHost.World.WorldTick; status = "active"; metrics = null;

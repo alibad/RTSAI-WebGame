@@ -187,6 +187,8 @@ async function init(msg: Extract<ToWorker, { type: "init" }>) {
     spriteSaved: (key: string, table: Uint8Array, ids: ArrayLike<number>) => bake?.saved(key, table, ids),
     spriteRestored: (key: string, ids: ArrayLike<number>) => bake?.restored(key, ids),
     textureFree: (id: number) => { bake?.forget(id); post({ type: "texturefree", id }); },
+    // The WebAssembly memory's size (SimHost records it after each timed load step: timings "mem.<step>").
+    memoryBytes: () => runtimeApi.Module.HEAPU8.length,
     // Sound.AudioReady (SimHost): can this audio file be read now? If not, it is fetched in the background.
     audioReady: (path: string) => lazy?.ready(path) ?? true,
     // The AI co-commander (CompanionRpc.cs): relayed RPC answers, and status/threat/action events for the panel.
