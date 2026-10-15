@@ -3,7 +3,7 @@
 // victory/defeat and the developer stats panel (F2).
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { BarChart3, CornerUpLeft, Crosshair, Flag as FlagIcon, Hand, Keyboard, LogOut, Menu as MenuIcon, MousePointer2, Music, Pause, Play, Shield, Star, Undo2, Volume2, VolumeX } from "lucide-react";
+import { Activity, BarChart3, ChevronLeft, ChevronRight, CornerUpLeft, Crosshair, Flag as FlagIcon, Hand, Keyboard, LogOut, Menu as MenuIcon, MousePointer2, Music, Pause, Play, Shield, Star, Undo2, Volume2, VolumeX } from "lucide-react";
 import type { Game } from "../game";
 import { percentile, useStore } from "../store";
 import { Sidebar } from "./Sidebar";
@@ -221,6 +221,8 @@ function PauseMenu({ game }: { game: Game }) {
           {!game.sandbox && <MatchLibrary game={game} variant="item" />}
           <span className="pm-slot"><GameSettings game={game} /></span>
           <button type="button" className="pm-item" data-sfx-hover onClick={() => set({ keysOpen: true })}><Keyboard />Controls<Kbd>?</Kbd></button>
+          {/* Short screens keep the battlefield review here instead of over the battlefield (hud.css). */}
+          {!replay && !game.sandbox && <button type="button" className="pm-item pm-review" data-sfx-hover onClick={() => set({ reviewOpen: true, menuOpen: false })}><Activity />Battlefield review</button>}
           {leaving ? (
             <div className="pm-confirm" role="alertdialog" aria-label="Leave this match?">
               <b>Leave this match?</b>
@@ -328,6 +330,25 @@ function RotateHint() {
   );
 }
 
+/**
+ * Short screens (a phone held sideways): a handle on the sidebar's edge folds it away, giving the battlefield the whole
+ * width, and brings it back (hud.css shows it only there).
+ */
+function SidebarHandle() {
+  const collapsed = useStore((s) => s.sidebarCollapsed);
+  useEffect(() => {
+    const root = document.documentElement;
+    if (collapsed) root.dataset.sidebar = "collapsed"; else delete root.dataset.sidebar;
+    return () => { delete root.dataset.sidebar; };
+  }, [collapsed]);
+  return (
+    <button type="button" className="hud-sidebar-handle" aria-label={collapsed ? "Show the build menu" : "Hide the build menu"} aria-expanded={!collapsed}
+      onClick={() => useStore.getState().set({ sidebarCollapsed: !collapsed })}>
+      {collapsed ? <ChevronLeft size={18} /> : <ChevronRight size={18} />}
+    </button>
+  );
+}
+
 function PausedBanner() {
   return <div className="hud-paused" aria-live="polite"><div><Pause />Paused<Kbd>Pause</Kbd></div></div>;
 }
@@ -353,6 +374,7 @@ export function Hud({ game }: { game: Game }) {
       {!replay && <Console game={game} />}
       {paused && !menuOpen && !replay && !over && <PausedBanner />}
       <Sidebar game={game} />
+      {!replay && <SidebarHandle />}
       <CoCommander game={game} />
       {replay && <ReplayHud game={game} />}
       <HotkeySheet />

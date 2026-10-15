@@ -10,7 +10,7 @@ import type { AdviserCommand, AdviserObservation } from "../adviser";
 import { decodeAdviserObservation, decodeAdviserReceipt, decodeAdviserStatus, encodeAdviserActions, encodeAdviserStatus } from "./adviser-rpc";
 import { readVoiceLanguage, saveVoiceLanguage } from "../voice-language";
 import type { Renderer } from "../render/renderer";
-import { groupMembers, gunzipSheet } from "./spritecache";
+import { groupMembers, gunzipSheet, gzipSheet } from "./spritecache";
 
 type Handler<T extends FromWorker["type"]> = (m: Extract<FromWorker, { type: T }>) => void;
 
@@ -31,6 +31,16 @@ export class SimClient {
   private wanted: string[] | null = [];
   private gate: string[] | null = [];
   private requested = new Set<number>();
+  /** Sheets that came from the sprite cache, still compressed: inflated again after a lost WebGL context. */
+  private gzSheets = new Map<number, { width: number; height: number; gz: Blob }>();
+  /**
+   * Sheets the engine built (kind 0): once sent, the engine drops its copy (WebTexture.Sent), so their pixels would
+   * only be on the GPU. A compressed copy is kept to rebuild them after a lost WebGL context: they are mostly empty
+   * (a mission's 96 MB of them compress to about 5 MB). Compressed a moment after their last update.
+   */
+  private engineCopies = new Map<number, { width: number; height: number; version: number; data: ArrayBuffer | null; gz: Promise<Blob> | null; timer: ReturnType<typeof setTimeout> | null }>();
+  /** A WebGL context restore in progress: engine sheets asked for again, and those the engine no longer had. */
+  private restoring: { sizes: Map<number, { width: number; height: number; version: number }>; gone: number[] } | null = null;
   /** Sheets the game needs (shared + its factions) and how many of them are on the GPU. */
   onSheets: (uploaded: number, total: number) => void = () => {};
   private handlers = new Map<string, ((m: FromWorker) => void)[]>();
@@ -213,6 +223,53 @@ export class SimClient {
     this.send({ type: "needSheets", ids: [id] });
   }
 
+  /**
+   * After a lost WebGL context: the sheets that were on the GPU, again. Shipped sheets come from the worker, cached ones
+   * are inflated again here, engine sheets come from the engine where it still has their pixels. Resolves with the
+   * sheets that could not be had again (the battlefield cannot be drawn completely without them).
+   */
+  async restoreSheets(lost: { shipped: number[]; engine: { id: number; width: number; height: number; version: number }[] }, timeoutMs = 30000): Promise<number[]> {
+    const gone: number[] = [];
+    const ask = lost.engine.filter((t) => !this.gzSheets.has(t.id) && !this.engineCopies.has(t.id));
+    this.restoring = { sizes: new Map(ask.map((t) => [t.id, t])), gone };
+    for (const t of lost.engine) {
+      const cached = this.gzSheets.get(t.id);
+      const copy = this.engineCopies.get(t.id);
+      const pixels = copy?.data ? Promise.resolve(new Uint8Array(copy.data)) : copy?.gz ? copy.gz.then(gunzipSheet) : cached ? gunzipSheet(cached.gz) : null;
+      const size = copy ?? cached;
+      if (pixels && size) void pixels.then((data) => this.renderer.uploadTexture(t.id, copy?.version ?? t.version, size.width, size.height, 0, data.buffer as ArrayBuffer), () => gone.push(t.id));
+    }
+    if (ask.length) this.send({ type: "resendTextures", ids: ask.map((t) => t.id) });
+    if (lost.shipped.length) this.send({ type: "resendSheets", ids: lost.shipped });
+    const all = [...lost.shipped, ...lost.engine.map((t) => t.id)];
+    const end = performance.now() + timeoutMs;
+    try {
+      for (;;) {
+        const missing = this.renderer.missingSheets(all).filter((id) => !gone.includes(id));
+        if (!missing.length) return gone;
+        if (performance.now() > end) return [...gone, ...missing];
+        await new Promise((r) => setTimeout(r, 100));
+      }
+    } finally {
+      this.restoring = null;
+      this.sheetProgress();
+    }
+  }
+
+  private keepEngineCopy(id: number, version: number, width: number, height: number, data: ArrayBuffer) {
+    const old = this.engineCopies.get(id);
+    if (old?.timer) clearTimeout(old.timer);
+    const entry = { width, height, version, data: data as ArrayBuffer | null, gz: null as Promise<Blob> | null, timer: null as ReturnType<typeof setTimeout> | null };
+    entry.timer = setTimeout(() => {
+      entry.timer = null;
+      const raw = entry.data;
+      if (!raw) return;
+      entry.gz = gzipSheet(new Uint8Array(raw));
+      entry.gz.then(() => { if (this.engineCopies.get(id) === entry) entry.data = null; }, () => { /* keep the raw copy */ });
+    }, 1000);
+    this.engineCopies.set(id, entry);
+  }
+
   private sheetProgress() {
     // What a game waits for: shared sheets and its factions' (effects load meanwhile, never waited for).
     const gate = this.gate === null ? this.wanted : this.gate;
@@ -222,7 +279,7 @@ export class SimClient {
   }
 
   private handle(m: FromWorker) {
-    const asset = m.type === "sheetList" || m.type === "texturebin" || m.type === "texturegz" || m.type === "texturefree";
+    const asset = m.type === "sheetList" || m.type === "texturebin" || m.type === "texturegz" || m.type === "texturefree" || m.type === "textureData";
     if (!asset && m.generation !== undefined && m.generation !== this.generation) return;
     switch (m.type) {
       case "started":
@@ -231,10 +288,23 @@ export class SimClient {
         break;
       case "texture":
         this.renderer.uploadTexture(m.id, m.version, m.width, m.height, m.kind, m.data);
+        if (m.kind === 0 && m.data.byteLength) this.keepEngineCopy(m.id, m.version, m.width, m.height, m.data);
         return;
-      case "texturefree":
+      case "texturefree": {
+        const copy = this.engineCopies.get(m.id);
+        if (copy?.timer) clearTimeout(copy.timer);
+        this.engineCopies.delete(m.id);
+        this.gzSheets.delete(m.id);
         this.renderer.freeTexture(m.id);
         return;
+      }
+      case "textureData": {
+        const size = this.restoring?.sizes.get(m.id);
+        if (!size) return;
+        if (m.data.byteLength >= size.width * size.height * 4) this.renderer.uploadTexture(m.id, size.version, size.width, size.height, 0, m.data);
+        else this.restoring!.gone.push(m.id);
+        return;
+      }
       case "sheetList":
         this.sheetList = m.sheets;
         this.requested.clear();
@@ -255,6 +325,7 @@ export class SimClient {
         return;
       }
       case "texturegz": {
+        this.gzSheets.set(m.id, { width: m.width, height: m.height, gz: m.gz });
         const t0 = performance.now();
         gunzipSheet(m.gz).then((data) => {
           this.renderer.uploadTexture(m.id, 1, m.width, m.height, 0, data.buffer as ArrayBuffer);

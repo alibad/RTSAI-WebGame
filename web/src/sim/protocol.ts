@@ -327,6 +327,10 @@ export type ToWorker = (
   | { type: "sheetGroups"; groups: string[] | null; first?: string[] }
   /** Sheets the page drew from but does not have. */
   | { type: "needSheets"; ids: number[] }
+  /** The page lost its WebGL context: these shipped sheets are needed again (sent even if sent before). */
+  | { type: "resendSheets"; ids: number[] }
+  /** The page lost its WebGL context: the engine's pixels of these sheets, where it still has them (textureData). */
+  | { type: "resendTextures"; ids: number[] }
   | { type: "refresh" }
   | { type: "step" }
   | { type: "speed"; speed: number }
@@ -376,6 +380,8 @@ export type FromWorker = (
   | { type: "texturebin"; id: number; width: number; height: number; rows: number; planar: boolean; data: ArrayBuffer }
   /** A prebaked sprite sheet from the cache, gzip-compressed (the page inflates it). */
   | { type: "texturegz"; id: number; width: number; height: number; gz: Blob }
+  /** resendTextures: a sheet's pixels again (empty: the engine no longer has them). */
+  | { type: "textureData"; id: number; data: ArrayBuffer }
   | { type: "ui"; json: string }
   | { type: "shroud"; cells: ArrayBuffer }
   | { type: "radar"; blips: ArrayBuffer }

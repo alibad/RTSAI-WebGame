@@ -504,6 +504,14 @@ self.onmessage = async (e: MessageEvent<ToWorker>) => {
       }
       case "sheetGroups": bake?.setWanted(m.groups, m.first); break;
       case "needSheets": bake?.need(m.ids); break;
+      case "resendSheets": bake?.resend(m.ids); break;
+      case "resendTextures":
+        for (const id of m.ids) {
+          // The engine keeps a sheet's pixels only while it may still write to it (WebTexture.MayReopen).
+          const data = (S.Texture(id) as Uint8Array).slice().buffer as ArrayBuffer;
+          post({ type: "textureData", id, data }, [data]);
+        }
+        break;
       case "start":
         voiceLanguage = normalizeVoiceLanguage(m.voiceLanguage);
         S.SetVoiceLanguage(voiceLanguage);

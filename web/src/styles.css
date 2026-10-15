@@ -206,6 +206,10 @@ html, body, #root {
 }
 
 .stage { position: absolute; inset: 0; width: 100%; height: 100%; display: block; outline: none; image-rendering: pixelated; touch-action: none; }
+/* In a match two fingers zoom the battlefield (touch.ts), never the page: a pinch or double tap that starts on the HUD
+   (the co-commander's card, the sidebar, the objectives) would otherwise zoom the whole page and leave the HUD stuck
+   zoomed in. Panels still scroll. The menus stay zoomable. */
+[data-playing] { touch-action: pan-x pan-y; }
 
 /* Bevelled panel used by every HUD block. */
 .hud-panel {

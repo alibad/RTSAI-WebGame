@@ -38,19 +38,23 @@ export function useBriefings() {
  * released when it closes. If the download fails, the plain URL is used (it still plays, without seeking).
  */
 export function useWholeFile(url: string | null) {
-  const [src, setSrc] = useState<string | null>(null);
+  // The memory URL with the film it holds: when the film changes, the old URL is never handed out again (a new player
+  // given it in the render before the effect below ran would load a URL that is about to be revoked).
+  const [held, setHeld] = useState<{ url: string; src: string } | null>(null);
   useEffect(() => {
-    setSrc(null);
+    setHeld(null);
     if (!url) return;
     let alive = true;
     let objectUrl: string | null = null;
-    fetch(url, { mode: "cors" })
-      .then((r) => (r.ok ? r.blob() : Promise.reject(new Error(`HTTP ${r.status}`))))
-      .then((blob) => { if (!alive) return; objectUrl = URL.createObjectURL(blob); setSrc(objectUrl); })
-      .catch(() => { if (alive) setSrc(url); });
+    // Played from memory, never by range (the CDN answers none, and Safari plays only what it can range): one retry
+    // before falling back to the plain URL (which plays without seeking where the browser can, and fails in Safari).
+    const whole = () => fetch(url, { mode: "cors" }).then((r) => (r.ok ? r.blob() : Promise.reject(new Error(`HTTP ${r.status}`))));
+    whole().catch(() => new Promise<Blob>((ok, fail) => setTimeout(() => whole().then(ok, fail), 1500)))
+      .then((blob) => { if (!alive) return; objectUrl = URL.createObjectURL(blob); setHeld({ url, src: objectUrl }); })
+      .catch(() => { if (alive) setHeld({ url, src: url }); });
     return () => { alive = false; if (objectUrl) URL.revokeObjectURL(objectUrl); };
   }, [url]);
-  return src;
+  return held && held.url === url ? held.src : null;
 }
 
 export const filmLength = (seconds: number) => `${Math.floor(seconds / 60)}:${String(Math.round(seconds % 60)).padStart(2, "0")}`;

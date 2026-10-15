@@ -69,18 +69,18 @@ interface GLTex { tex: WebGLTexture; width: number; height: number; version: num
 
 export class Renderer {
   readonly gl: WebGL2RenderingContext;
-  private spriteProg: WebGLProgram;
-  private terrainProg: WebGLProgram;
-  private colorProg: WebGLProgram;
-  private shroudProg: WebGLProgram;
+  private spriteProg!: WebGLProgram;
+  private terrainProg!: WebGLProgram;
+  private colorProg!: WebGLProgram;
+  private shroudProg!: WebGLProgram;
   private shroudTex: WebGLTexture | null = null;
   private shroudSize: [number, number] = [0, 0];
   private shroudAllVisible = true;
-  readonly models: ModelPass;
-  private iconRaster: IconRaster;
-  private capVao: WebGLVertexArrayObject;
-  private capVbo: WebGLBuffer;
-  private capIbo: WebGLBuffer;
+  models!: ModelPass;
+  private iconRaster!: IconRaster;
+  private capVao!: WebGLVertexArrayObject;
+  private capVbo!: WebGLBuffer;
+  private capIbo!: WebGLBuffer;
   private capQuads = 0;
   private capUploaded: Snapshot | null = null;
   private textures = new Map<number, GLTex>();
@@ -93,16 +93,16 @@ export class Renderer {
   /** Textures the engine disposed: ids are never reused, so a late upload for one (a sheet still in flight) is dropped. */
   private freed = new Set<number>();
   private rowScales = new Float32Array(8);
-  private spriteRowScale: WebGLUniformLocation | null;
-  private terrainRowScale: WebGLUniformLocation | null;
+  private spriteRowScale: WebGLUniformLocation | null = null;
+  private terrainRowScale: WebGLUniformLocation | null = null;
   private terrainSheets: number[] = [];
-  private spriteVao: WebGLVertexArrayObject;
-  private instanceBuffer: WebGLBuffer;
+  private spriteVao!: WebGLVertexArrayObject;
+  private instanceBuffer!: WebGLBuffer;
   private instanceData = new ArrayBuffer(MAX_INSTANCES * INSTANCE_FLOATS * 4);
   private instanceF32 = new Float32Array(this.instanceData);
   private instanceU32 = new Uint32Array(this.instanceData);
-  private colorVao: WebGLVertexArrayObject;
-  private colorBuffer: WebGLBuffer;
+  private colorVao!: WebGLVertexArrayObject;
+  private colorBuffer!: WebGLBuffer;
   private colorData = new Float32Array(MAX_RECTS * COLOR_FLOATS);
   private info: StartInfo | null = null;
   stats = { draws: 0, batches: 0, skipped: 0, frameMs: 0 };
@@ -120,10 +120,31 @@ export class Renderer {
    */
   frameGrab: ((frame: HTMLCanvasElement) => void) | null = null;
 
+  // ---------------------------------------------------------------- context loss (phones dropping a background tab's
+  // GPU memory, a GPU reset): every GL object is gone. What the page cannot ask for again is kept to rebuild it: the
+  // palette, render targets' sizes, the terrain vertices, the shroud, model buffers. Sheets are fetched again
+  // (Game.restoreGraphics): shipped ones from the worker, engine sheets from the engine where it still has them.
+  /** The context is lost: nothing is drawn, uploads wait for the rebuild. */
+  lost = false;
+  private lostUploads: (() => void)[] = [];
+  private paletteCopy: { id: number; version: number; width: number; height: number; data: ArrayBuffer } | null = null;
+  private targetSizes = new Map<number, { version: number; width: number; height: number }>();
+  private terrainCopy: ArrayBuffer | null = null;
+  private shroudCopy: { cells: Uint8Array; cols: number; rows: number } | null = null;
+  private modelCopies = new Map<number, ArrayBuffer>();
+  /** Sheets that were on the GPU, by where they came from: shipped (uploadSheetRows) or the engine (uploadTexture). */
+  private sheetSources = new Map<number, { shipped: boolean; width: number; height: number; version: number; rows: number }>();
+
   constructor(readonly canvas: HTMLCanvasElement) {
     const gl = canvas.getContext("webgl2", { antialias: false, depth: true, premultipliedAlpha: true, alpha: false, powerPreference: "high-performance" });
     if (!gl) throw new Error("WebGL2 is not available");
     this.gl = gl;
+    this.initGL();
+  }
+
+  /** Programs, vertex arrays and buffers: made once, and again after a lost context is restored. */
+  private initGL() {
+    const gl = this.gl;
     this.spriteProg = compile(gl, SPRITE_VS, COMBINED_FS);
     this.terrainProg = compile(gl, TERRAIN_VS, COMBINED_FS);
     this.colorProg = compile(gl, COLOR_VS, COLOR_FS);
@@ -192,9 +213,49 @@ export class Renderer {
     this.terrainRowScale = gl.getUniformLocation(this.terrainProg, "uRowScale");
   }
 
+  /**
+   * The context came back: every GL object is made again from what was kept, and the uploads that arrived meanwhile
+   * are replayed. Returns the sheets that must be fetched again (their pixels were only on the GPU).
+   */
+  rebuild(): { shipped: number[]; engine: { id: number; width: number; height: number; version: number }[] } {
+    const gl = this.gl;
+    if (gl.isContextLost()) throw new Error("the WebGL context is still lost");
+    this.lost = false;
+    this.initGL();
+    this.models = new ModelPass(gl);
+    this.iconRaster = new IconRaster(gl);
+    this.capQuads = 0;
+    this.capUploaded = null;
+    this.shroudTex = null;
+    this.textures.clear();
+    this.palette = null;
+    // The terrain's buffers died with the old context (deleting them on the new one is an INVALID_OPERATION).
+    this.terrainVao = null;
+    this.terrainBuffers = [];
+    const pal = this.paletteCopy;
+    if (pal) this.uploadTexture(pal.id, pal.version, pal.width, pal.height, 1, pal.data);
+    for (const [id, t] of this.targetSizes) this.uploadTexture(id, t.version, t.width, t.height, 2, new ArrayBuffer(0));
+    for (const [id, data] of this.modelCopies) this.models.setBuffer(id, data);
+    if (this.info && this.terrainCopy) this.setStartInfo(this.info, this.terrainCopy);
+    if (this.shroudCopy) this.setShroud(this.shroudCopy.cells, this.shroudCopy.cols, this.shroudCopy.rows);
+    const sheets = [...this.sheetSources].filter(([id]) => !this.freed.has(id));
+    this.sheetSources.clear();
+    const replay = this.lostUploads.splice(0);
+    for (const upload of replay) upload();
+    this.version++;
+    return {
+      shipped: sheets.filter(([id, s]) => s.shipped && !this.textures.has(id)).map(([id]) => id),
+      engine: sheets.filter(([id, s]) => !s.shipped && !this.textures.has(id)).map(([id, s]) => ({ id, width: s.width, height: s.height, version: s.version })),
+    };
+  }
+
+  /** Sheets still missing after a rebuild (fetched again but not arrived). */
+  missingSheets(ids: number[]) { return ids.filter((id) => !this.textures.has(id) && !this.freed.has(id)); }
+
   setStartInfo(info: StartInfo, terrain: ArrayBuffer) {
     const gl = this.gl;
     this.info = info;
+    this.terrainCopy = terrain;
     // No sprite reset here: the client resets the table when it requests the start, and the first snapshot
     // (which defines every sprite) can arrive through the shared ring before this message is handled.
     this.terrainSheets = info.terrainSheets;
@@ -230,10 +291,15 @@ export class Renderer {
 
   /** Map editor: terrain rows the engine redrew (an edit), written over the same rows of the vertex buffer. */
   updateTerrainRows(first: number, data: ArrayBuffer) {
-    if (!this.info || !this.terrainBuffers.length) return;
+    if (!this.info) return;
+    const offset = first * this.info.vertexRowStride * 48;
+    // The copy a lost context is rebuilt from (rebuild) takes the edit too.
+    const copy = this.terrainCopy;
+    if (copy && offset + data.byteLength <= copy.byteLength) new Uint8Array(copy, offset, data.byteLength).set(new Uint8Array(data));
+    if (this.lost || !this.terrainBuffers.length) return;
     const gl = this.gl;
     gl.bindBuffer(gl.ARRAY_BUFFER, this.terrainBuffers[0]);
-    gl.bufferSubData(gl.ARRAY_BUFFER, first * this.info.vertexRowStride * 48, new Uint8Array(data));
+    gl.bufferSubData(gl.ARRAY_BUFFER, offset, new Uint8Array(data));
     gl.bindBuffer(gl.ARRAY_BUFFER, null);
     this.version++;
   }
@@ -250,6 +316,8 @@ export class Renderer {
   /** The match ended: its world is no longer drawn (the canvas only clears) and its terrain buffers are freed. */
   clearWorld() {
     this.info = null;
+    this.terrainCopy = null;
+    this.shroudCopy = null;
     this.dropTerrain();
     this.sprites = [];
     this.capUploaded = null;
@@ -268,6 +336,7 @@ export class Renderer {
    */
   setShroud(cells: Uint8Array, cols: number, rows: number) {
     const gl = this.gl;
+    this.shroudCopy = { cells, cols, rows };
     const iso = this.info?.gridType !== "Rectangular";
     const W = iso ? cols * 2 + 1 : cols;
     const H = rows;
@@ -337,6 +406,10 @@ export class Renderer {
 
   uploadTexture(id: number, version: number, width: number, height: number, kind: number, data: ArrayBuffer) {
     if (this.freed.has(id)) return;
+    if (this.lost) { this.lostUploads.push(() => this.uploadTexture(id, version, width, height, kind, data)); return; }
+    if (kind === 1) this.paletteCopy = { id, version, width, height, data };
+    else if (kind === 2) this.targetSizes.set(id, { version, width, height });
+    else this.sheetSources.set(id, { shipped: false, width, height, version, rows: height });
     this.version++;
     const gl = this.gl;
     const existing = kind === 1 ? this.palette : this.textures.get(id);
@@ -370,6 +443,8 @@ export class Renderer {
    */
   uploadSheetRows(id: number, width: number, height: number, rows: number, data: Uint8Array) {
     if (this.freed.has(id)) return;
+    if (this.lost) { this.lostUploads.push(() => this.uploadSheetRows(id, width, height, rows, data)); return; }
+    this.sheetSources.set(id, { shipped: true, width, height, version: 1, rows });
     this.version++;
     const gl = this.gl;
     const allocated = Math.max(1, rows);
@@ -387,6 +462,8 @@ export class Renderer {
   /** The engine disposed this texture: its ids are never reused, so the GPU copy can go. */
   freeTexture(id: number) {
     this.freed.add(id);
+    this.sheetSources.delete(id);
+    this.targetSizes.delete(id);
     const t = this.textures.get(id);
     if (!t) return;
     this.version++;
@@ -397,6 +474,7 @@ export class Renderer {
 
   /** A cameo as a PNG data URL, or null until its sheet and the palette are on the GPU. */
   renderIcon(s: IconSprite): string | null {
+    if (this.lost) return null;
     const t = this.textures.get(s.tex);
     if (!t) this.onMissingTexture(s.tex);
     const k = t?.rowScale ?? 1;
@@ -410,6 +488,7 @@ export class Renderer {
    */
   renderTiles(tiles: (IconSprite & { x: number; y: number })[]): string | null {
     if (!tiles.length) return "";
+    if (this.lost) return null;
     const pictures: { c: HTMLCanvasElement; x: number; y: number }[] = [];
     for (const t of tiles) {
       const tex = this.textures.get(t.tex);
@@ -437,6 +516,7 @@ export class Renderer {
    * sprites in this snapshot (out of view, or a voxel model).
    */
   renderActor(s: Snapshot, id: number): string | null {
+    if (this.lost) return null;
     const parts: { sprite: SpriteInfo; x: number; y: number; w: number; h: number; pal: number }[] = [];
     let l = Infinity, t = Infinity, r = -Infinity, b = -Infinity;
     for (let i = 0; i < s.header.drawCount; i++) {
@@ -483,12 +563,15 @@ export class Renderer {
   }
 
   setModelBuffer(id: number, data: ArrayBuffer) {
+    this.modelCopies.set(id, data);
+    if (this.lost) return; // set again by rebuild()
     this.models.setBuffer(id, data);
     this.version++;
   }
 
   /** Draws this snapshot's voxel models into their sheets (once per snapshot, not per frame). */
   runModels(s: Snapshot) {
+    if (this.lost) return;
     if (!this.palette || s.header.modelCmds === 0) return;
     this.version++;
     this.models.run(s.captured.modelCmds, s.header.modelCmds, (id) => this.textures.get(id)?.tex ?? null, this.palette.tex, this.paletteRows);
@@ -581,6 +664,7 @@ export class Renderer {
   }
 
   render(cur: Snapshot | null, prev: Snapshot | null, cam: Camera, overlay: Overlay, now: number) {
+    if (this.lost) return;
     const t0 = performance.now();
     const gl = this.gl;
     const dpr = window.devicePixelRatio || 1;

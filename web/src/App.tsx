@@ -17,9 +17,11 @@ import { Annotations } from "./ui/Annotations";
 import { installTelemetry } from "./net/telemetry";
 import { Feedback } from "./ui/Feedback";
 import { MainMenu } from "./ui/MainMenu";
+import { GraphicsState } from "./ui/GraphicsState";
+import { RESUME_AFTER_RELOAD, savedRecord, startRecord } from "./ui/MatchLibrary";
 import { installUiFeel } from "./ui/feel";
 import { mySavedMaps, savedMap } from "./net/saved-maps";
-import { ArrowLeft, Check, Copy, RotateCcw, TriangleAlert } from "lucide-react";
+import { ArrowLeft, Check, Copy, Crosshair, Map as MapIcon, RotateCcw, TriangleAlert } from "lucide-react";
 import { GameButton, Kbd } from "./ui/kit/game";
 import { Brackets, Meter, ScreenBackdrop } from "./ui/screen-parts";
 import { keyFor, type Command } from "./preferences";
@@ -158,6 +160,7 @@ export default function App() {
   });
   const phase = useStore((s) => s.phase);
   const uiHidden = useStore((s) => s.uiHidden);
+  const graphics = useStore((s) => s.graphics);
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -260,6 +263,15 @@ export default function App() {
     }).catch((e) => console.warn("saved map:", e));
   }, [game, phase]);
 
+  // The graphics were reset mid-match and the match saved (GraphicsState): after the reload, carry on from that save.
+  useEffect(() => {
+    if (!game || phase !== "setup") return;
+    let id: string | null = null;
+    try { id = sessionStorage.getItem(RESUME_AFTER_RELOAD); sessionStorage.removeItem(RESUME_AFTER_RELOAD); } catch { /* storage unavailable */ }
+    const record = id ? savedRecord(id) : null;
+    if (record) void startRecord(game, record, false).then((why) => { if (why) console.warn("resume after reload:", why); });
+  }, [game, phase]);
+
   // The menus use the mod's cursors too: ask for them as soon as the mod is loaded.
   useEffect(() => { if (game && phase === "setup") game.requestCursors(); }, [game, phase]);
 
@@ -267,7 +279,7 @@ export default function App() {
   const editorMode = mode === "editor";
   const simEditing = useStore((s) => sandboxMode && s.sandbox?.mode === "edit");
   return (
-    <div className="fixed inset-0" style={simEditing ? ({ "--sidebar-w": "340px" } as React.CSSProperties) : editorMode ? ({ "--sidebar-w": "0px" } as React.CSSProperties) : undefined}>
+    <div className="fixed inset-0" data-playing={playing || undefined} style={simEditing ? ({ "--sidebar-w": "340px" } as React.CSSProperties) : editorMode ? ({ "--sidebar-w": "0px" } as React.CSSProperties) : undefined}>
       <canvas ref={canvasRef} className="stage" tabIndex={0} style={{ right: playing ? "var(--sidebar-w)" : 0, width: playing ? "calc(100% - var(--sidebar-w))" : "100%", visibility: playing ? "visible" : "hidden" }} />
       {game && playing && !uiHidden && !editorMode && (sandboxMode ? <Simulator game={game} exit={exitSimulator} /> : <Hud game={game} />)}
       {game && editorMode && phase !== "boot" && <MapEditor game={game} exit={exitEditor} test={testInSimulator} mission={startMission} />}
@@ -281,8 +293,9 @@ export default function App() {
               <button type="button" aria-current={mode === "skirmish" ? "page" : undefined} onClick={() => setMode("skirmish")}>Skirmish</button>
               <button type="button" aria-current={mode === "missions" ? "page" : undefined} onClick={() => setMode("missions")}>Campaign</button>
             </div>
-            <button type="button" onClick={() => setMode("simulator")}>Battle simulator</button>
-            <button type="button" onClick={() => setMode("editor")}>Map editor</button>
+            {/* Icons only on narrow screens (screens.css .menu-subnav-studio): the row also holds Multiplayer. */}
+            <button type="button" className="menu-subnav-studio" aria-label="Battle simulator" title="Battle simulator" onClick={() => setMode("simulator")}><Crosshair size={15} aria-hidden="true" /><span>Battle simulator</span></button>
+            <button type="button" className="menu-subnav-studio" aria-label="Map editor" title="Map editor" onClick={() => setMode("editor")}><MapIcon size={15} aria-hidden="true" /><span>Map editor</span></button>
           </nav>
         </>}
       </>}
@@ -292,6 +305,7 @@ export default function App() {
       {game && !sandboxMode && !editorMode && <Multiplayer game={game} />}
       {(phase === "boot" || (phase === "loading" && !editorMode) || (phase === "setup" && sandboxMode)) && <Loading game={game} />}
       {phase === "error" && <ErrorCard game={game} />}
+      {game && (playing || phase === "loading" || graphics === "failed") && <GraphicsState game={game} />}
     </div>
   );
 }

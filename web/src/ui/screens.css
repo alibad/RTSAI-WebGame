@@ -95,6 +95,7 @@
 .menu-subnav .scr-tabs > button { height: 28px; padding: 0 14px; border: 0; border-radius: 4px; background: transparent; box-shadow: none; backdrop-filter: none; color: #a5ad9a; }
 .menu-subnav .scr-tabs > button:hover { transform: none; border: 0; background: rgba(241, 210, 139, .08); color: var(--hud-gold); }
 .menu-subnav .scr-tabs > button[aria-current="page"] { background: linear-gradient(180deg, #f6dc9c, #c9a253); color: #1a160c; }
+.menu-subnav .menu-subnav-studio svg { display: none; }
 
 /* ---------------------------------------------------------------------------------------------- skirmish */
 
@@ -631,3 +632,54 @@
 .cp-film-card:hover img { transform: scale(1.04); filter: brightness(1); }
 .cp-film-card:hover .cp-film-card-play { transform: translate(-50%, -50%) scale(1.08); }
 .cp-film-card:focus-visible { outline: 2px solid var(--hud-gold); outline-offset: 3px; }
+
+/* Battle simulator and Map editor on the sub-screens' row must stop short of the Multiplayer button at the top right
+   (a label over it takes its taps: on a 393 px iPhone Map studio once did). Up to 1080 px they are their icons; on
+   phones the row has no room for even those, and both stay on the main menu, one tap back. */
+@media (max-width: 1080px) {
+  .menu-subnav .menu-subnav-studio { width: 36px; padding: 0; justify-content: center; }
+  .menu-subnav .menu-subnav-studio svg { display: block; }
+  .menu-subnav .menu-subnav-studio span { display: none; }
+}
+@media (max-width: 560px) {
+  .menu-subnav .menu-subnav-studio { display: none; }
+}
+@media (max-width: 360px) {
+  .menu-subnav { gap: 6px; }
+  .menu-subnav .scr-tabs > button { padding: 0 7px; letter-spacing: .03em; }
+}
+
+/* Touch screens: the sub-screens' Back, Skirmish / Campaign, Battle simulator, Map editor and Multiplayer are finger-sized (44 px). */
+@media (pointer: coarse) {
+  :root .menu-subnav { top: 8px; }
+  :root .menu-subnav button, :root .menu-subnav .scr-tabs > button { height: 44px; }
+  :root .menu-subnav .scr-tabs { padding: 2px; }
+  /* The mode tabs' frame makes the row 50 px tall: Multiplayer sits on its centre line like the row's buttons. */
+  :root .mp-launch { top: 11px; height: 44px; }
+}
+@media (pointer: coarse) and (max-width: 1080px) {
+  :root .menu-subnav .menu-subnav-studio { width: 44px; }
+}
+@media (pointer: coarse) and (max-width: 560px) {
+  :root .menu-subnav .menu-subnav-back, :root .menu-subnav .menu-subnav-studio { width: 44px; }
+  :root .mp-launch { width: 44px; }
+}
+@media (pointer: coarse) and (max-width: 360px) {
+  :root .menu-subnav .menu-subnav-back, :root .menu-subnav .menu-subnav-studio, :root .mp-launch { width: 40px; }
+  :root .menu-subnav .scr-tabs > button { padding: 0 6px; font-size: 11px; letter-spacing: .02em; }
+}
+
+/* Two columns: the chosen chapter's briefing stays in view beside the chapter list (its title and map on top, the rest
+   scrolling inside), so a chapter picked low in Act III shows its own title instead of the bottom of its briefing. */
+@media (min-width: 1081px) {
+  /* Sticky makes the panel a stacking context: above the foot bar (z 1), so its fixed launch row stays bright. */
+  .cp-detail { position: sticky; top: 72px; z-index: 2; max-height: calc(100dvh - 176px); }
+  .cp-detail > .cp-body { min-height: 0; overflow-y: auto; scrollbar-color: #4a5443 transparent; scrollbar-width: thin; }
+}
+
+/* A film the browser would not start by itself (Safari: autoplay only right after a tap): a clear button over it. */
+.cp-film-frame { position: relative; }
+.cp-film-tap { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; background: rgba(5, 7, 5, .45); color: #f4ecd6; font-size: 14px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; text-shadow: 0 1px 2px #000; }
+.cp-film-tap > span { display: grid; place-items: center; width: 72px; height: 72px; border-radius: 50%; background: linear-gradient(180deg, #f6dc9c, #c9a253); color: #1a160c; box-shadow: 0 0 0 6px rgba(241, 210, 139, .2), 0 10px 26px rgba(0, 0, 0, .6); }
+.cp-film-tap:hover > span, .cp-film-tap:focus-visible > span { filter: brightness(1.08); }
+.cp-film-tap:focus-visible { outline: 2px solid var(--hud-gold); outline-offset: -2px; }

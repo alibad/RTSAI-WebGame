@@ -38,6 +38,8 @@ export function Missions({ game }: { game: Game }) {
   });
   const [showFilm, setShowFilm] = useState(false);
   const [filmError, setFilmError] = useState(false);
+  /** The memory copy would not play (a browser that cannot read blob: media): the film's own file instead. */
+  const [filmPlain, setFilmPlain] = useState(false);
   const [deployAfterFilm, setDeployAfterFilm] = useState(false);
   const playOnOpen = useRef(false);
   const briefings = useBriefings();
@@ -67,9 +69,26 @@ export function Missions({ game }: { game: Game }) {
   const chapterNumber = arc ? arc.missions.indexOf(mission?.id ?? "") + 1 : 0;
   const speaker = castMember(chapter?.speaker);
   const filmId = part ? part.id : mission?.id;
-  useEffect(() => { setShowFilm(playOnOpen.current); playOnOpen.current = false; setFilmError(false); setDeployAfterFilm(false); }, [filmId]);
+  useEffect(() => { setShowFilm(playOnOpen.current); playOnOpen.current = false; setFilmError(false); setFilmPlain(false); setDeployAfterFilm(false); }, [filmId]);
   const briefing = filmId ? briefings[filmId] : undefined;
   const filmSrc = useWholeFile(showFilm && briefing ? briefing.video : null);
+  // The film starts by itself once downloaded. Safari (and iOS) allow that only right after a tap, which the download
+  // outlasts: play() is refused, and a clear "Play film" button over the poster takes the tap instead.
+  const video = useRef<HTMLVideoElement>(null);
+  const [tapToPlay, setTapToPlay] = useState(false);
+  const autoplay = deployAfterFilm || !!briefing;
+  useEffect(() => {
+    setTapToPlay(false);
+    const v = video.current;
+    if (v) showCaptions(v);
+    if (!v || !autoplay || !showFilm || (briefing && !filmSrc)) return;
+    v.play().catch((e: unknown) => { if ((e as { name?: string })?.name === "NotAllowedError" && video.current === v) setTapToPlay(true); });
+  }, [filmSrc, autoplay, showFilm, filmId, briefing, filmPlain]);
+  const filmFailed = () => { if (briefing && !filmPlain && filmSrc?.startsWith("blob:")) setFilmPlain(true); else setFilmError(true); };
+  // Captions on, as the default track says: Safari leaves a default track off unless its own caption setting asks (it
+  // shows one by itself only for another language), so the page turns them on; the player can still switch them off.
+  const showCaptions = (v: HTMLVideoElement) => { for (const t of Array.from(v.textTracks)) if (t.kind === "captions" && t.mode === "disabled") t.mode = "showing"; };
+  const playFilm = () => { void video.current?.play().then(() => setTapToPlay(false), () => setTapToPlay(true)); };
   // The chosen operation is prepared while its briefing is read; with the prologue open, the first one (Begin is instant).
   const target = mission ?? first;
   useEffect(() => {
@@ -94,8 +113,10 @@ export function Missions({ game }: { game: Game }) {
     if (play && id === filmId) { setDeployAfterFilm(false); setFilmError(false); setShowFilm(true); }
     else playOnOpen.current = play;
     setSelected(id);
-    // One column: the briefing is below the list, so bring it into view.
-    if (innerWidth < 1000) requestAnimationFrame(() => detail.current?.scrollIntoView({ behavior: "smooth", block: "start" }));
+    // One column (screens.css, up to 1080 px): the briefing is below the list, so bring it into view. Two columns: the
+    // briefing stays in view (sticky) and starts at its top.
+    if (matchMedia("(max-width: 1080px)").matches) requestAnimationFrame(() => detail.current?.scrollIntoView({ behavior: "smooth", block: "start" }));
+    else requestAnimationFrame(() => detail.current?.querySelector(".cp-body")?.scrollTo({ top: 0 }));
   };
   const preview = (id: string) => (publicShot ? "" : previews[id] ?? "");
   const done = startable.filter((m) => completed[m.id]).length;
@@ -250,10 +271,12 @@ export function Missions({ game }: { game: Game }) {
                   : <GameButton size="sm" icon={showFilm ? <X size={14} /> : <Film size={14} />} onClick={() => { setDeployAfterFilm(false); setShowFilm(!showFilm); }}>{showFilm ? `Close ${filmName}` : `Watch ${filmName}`}</GameButton>}
                 {showFilm && filmId && <div className="cp-film-player">
                   {!filmError && briefing && !filmSrc ? <div className="cp-film-loading" role="status"><img src={briefing.poster} alt="" draggable={false} crossOrigin="anonymous" /><span><LoaderCircle size={18} className="spin" aria-hidden="true" /> Loading film…</span></div>
-                  : !filmError ? <video key={`${filmId}-${deployAfterFilm}-${briefing ? "cdn" : "local"}`} controls playsInline autoPlay={deployAfterFilm || !!briefing} preload="metadata" crossOrigin={briefing ? "anonymous" : undefined} poster={briefing?.poster} aria-label={part ? `${partEyebrow}: ${part.title}` : `${mission!.title} story introduction`} onEnded={() => { if (deployAfterFilm) deploy(); }} onError={() => setFilmError(true)}>
-                    <source src={briefing ? filmSrc! : `${import.meta.env.BASE_URL}campaign-video/${filmId}.mp4`} type="video/mp4" onError={() => setFilmError(true)} />
+                  : !filmError ? <div className="cp-film-frame"><video ref={video} key={`${filmId}-${deployAfterFilm}-${briefing ? "cdn" : "local"}-${filmPlain}`} controls playsInline preload="metadata" crossOrigin={briefing ? "anonymous" : undefined} poster={briefing?.poster} aria-label={part ? `${partEyebrow}: ${part.title}` : `${mission!.title} story introduction`} onPlay={() => setTapToPlay(false)} onLoadedMetadata={(e) => showCaptions(e.currentTarget)} onEnded={() => { if (deployAfterFilm) deploy(); }} onError={filmFailed}>
+                    <source src={briefing ? (filmPlain ? briefing.video : filmSrc!) : `${import.meta.env.BASE_URL}campaign-video/${filmId}.mp4`} type="video/mp4" onError={filmFailed} />
                     <track kind="captions" src={briefing ? briefing.captions : `${import.meta.env.BASE_URL}campaign-video/${filmId}.vtt`} srcLang="en" label="English" default />
-                  </video> : <p role="status" className="cp-film-error">{partOpen ? `The film could not load. The ${partEyebrow.toLowerCase()} is written above.` : "The video could not load. The complete story is written above; you can still launch the mission."}</p>}
+                  </video>
+                  {tapToPlay && <button type="button" className="cp-film-tap" onClick={playFilm}><span aria-hidden="true"><Play size={28} fill="currentColor" /></span>Play {partOpen ? `the ${partEyebrow.toLowerCase()}` : "the film"}</button>}
+                  </div> : <p role="status" className="cp-film-error">{partOpen ? `The film could not load. The ${partEyebrow.toLowerCase()} is written above.` : "The video could not load. The complete story is written above; you can still launch the mission."}</p>}
                   <div className="cp-film-foot">
                     <span>{briefing ? `${partOpen ? partEyebrow : "Briefing"} · ${filmLength(briefing.seconds)} · captions` : "Narrated operations map · captions available · playback is optional"}</span>
                     {deployAfterFilm ? <GameButton variant="ghost" size="sm" disabled={!ready} onClick={deploy}>Skip introduction and deploy</GameButton>
@@ -277,7 +300,7 @@ export function Missions({ game }: { game: Game }) {
                 </section>}
               </div>
 
-              <details className="cp-original"><summary>Original mission briefing and background</summary><p>{mission.briefing}</p></details>
+              <details key={mission.id} className="cp-original"><summary>Original mission briefing and background</summary><p>{mission.briefing}</p></details>
               <p className="scr-fine">{mission.adaptation} Original fictional story. Campaign arcs connect perspectives and exercises; they do not transfer armies or resources between missions.</p>
             </>}
             <p data-testid="ea-notice" className="scr-notice">{EA_NOTICE}</p>
@@ -316,8 +339,8 @@ export function MissionHud({ game }: { game: Game }) {
   const win = useStore((s) => s.ui?.win);
   const catalog = useStore((s) => s.setup?.missions);
   const briefings = useBriefings();
-  // Phones start with the objectives folded: the battlefield is small enough already.
-  const [expanded, setExpanded] = useState(() => innerWidth >= 700 && innerHeight >= 500);
+  // Phones and tablets start with the objectives folded (the header keeps the count): the battlefield is small enough.
+  const [expanded, setExpanded] = useState(() => innerWidth >= 700 && innerHeight >= 500 && !matchMedia("(pointer: coarse)").matches);
   useEffect(() => {
     if (mission && win === "Won") {
       try { localStorage.setItem("rtsai.missions.completed", JSON.stringify({ ...progress(), [mission.id]: mission.difficulty })); } catch { /* storage unavailable */ }
