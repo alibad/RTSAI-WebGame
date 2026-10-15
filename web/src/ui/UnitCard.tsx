@@ -12,6 +12,7 @@ import catalog from "../data/factions.json";
 import portraits from "../portraits.json";
 import { ENGINE_SIDE_COLORS, SIDE_COLORS } from "../sides";
 import { FactionViewerStage } from "./FactionViewerStage";
+import { iconKey } from "../icon-key";
 
 export interface UnitInfo {
   name: string; label: string; description: string; cost: number; hp: number; armor: string; speed: number; sight: number;
@@ -43,7 +44,7 @@ export function UnitCard({ game, unit, faction, side, pinned = false }: { game: 
   return createPortal(
     <div className={pinned ? "sim-card hud-panel is-pinned" : "sim-card hud-panel"} style={{ "--side": SIDE_COLORS[side] } as CSSProperties} data-testid="sim-card">
       <div className="sim-card-art">
-        <FactionViewerStage unit={unit.name} faction={faction} color={ENGINE_SIDE_COLORS[side]} interactive={pinned} fallback={portrait ? `portraits/${portrait}` : icons[unit.name] ?? null} />
+        <FactionViewerStage unit={unit.name} faction={faction} color={ENGINE_SIDE_COLORS[side]} interactive={pinned} fallback={portrait ? `portraits/${portrait}` : icons[iconKey(unit.name, faction)] ?? null} />
       </div>
       <div className="sim-card-body">
         <span className="menu-eyebrow">{story?.role ?? KIND[unit.kind] ?? unit.kind}</span>

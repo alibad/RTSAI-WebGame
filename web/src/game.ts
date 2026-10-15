@@ -3,6 +3,7 @@
 // source of truth for selection, order modes and production; the page only predicts what it draws this frame.
 
 import { TouchControls } from "./touch";
+import { iconKey } from "./icon-key";
 import { CoCommander } from "./cocommander";
 import { Renderer, type Camera, type Overlay } from "./render/renderer";
 import { SimClient } from "./sim/client";
@@ -266,8 +267,9 @@ export class Game {
     });
     c.on("radar", (m) => { this.radar.blips = new Int32Array(m.blips); this.radar.bump(); });
     c.on("icon", (m) => {
-      if (m.info) this.iconQueue.set(m.name, JSON.parse(m.info) as IconSprite);
-      else store.set({ icons: { ...store.get().icons, [m.name]: null } });
+      const key = iconKey(m.name, m.faction);
+      if (m.info) this.iconQueue.set(key, JSON.parse(m.info) as IconSprite);
+      else store.set({ icons: { ...store.get().icons, [key]: null } });
     });
     c.on("cursor", (m) => {
       this.cursorInFlight = false;
@@ -542,6 +544,9 @@ export class Game {
     return { cam: { ...this.cam }, bookmarks: this.bookmarks.map((b) => b ? [...b] : null), tab: store.get().tab };
   }
   private started(info: StartInfo, radarTerrain: ArrayBuffer, startMs: number) {
+    this.iconRequested.clear();
+    this.iconQueue.clear();
+    store.set({ icons: {} });
     this.requestCursors();
     this.loadActorLabels();
     // The sandbox keeps its camera between editing and running (it frames the placements itself).
@@ -652,7 +657,7 @@ export class Game {
     const publicShot = store.get().publicShot;
     for (const [name, sprite] of this.iconQueue) {
       // Screenshot mode: only the project's own (modern-faction) cameos.
-      const url = publicShot && !name.startsWith("r2") ? "" : this.renderer.renderIcon(sprite);
+      const url = publicShot && !name.split(":").at(-1)!.startsWith("r2") ? "" : this.renderer.renderIcon(sprite);
       if (url === "") { done[name] = ""; this.iconQueue.delete(name); continue; }
       if (url) { done[name] = url; this.iconQueue.delete(name); }
       if (++n >= 12) break;
@@ -660,11 +665,11 @@ export class Game {
     if (Object.keys(done).length) store.set({ icons: { ...store.get().icons, ...done } });
   }
 
-  requestIcons(names: string[]) {
-    const missing = [...new Set(names)].filter((n) => !this.iconRequested.has(n));
+  requestIcons(names: string[], faction?: string) {
+    const missing = [...new Set(names)].filter((n) => !this.iconRequested.has(iconKey(n, faction)));
     if (!missing.length) return;
-    for (const n of missing) this.iconRequested.add(n);
-    this.client.send({ type: "icons", names: missing });
+    for (const n of missing) this.iconRequested.add(iconKey(n, faction));
+    this.client.send({ type: "icons", names: missing, faction });
   }
 
   private onSnapshot(s: Snapshot) {

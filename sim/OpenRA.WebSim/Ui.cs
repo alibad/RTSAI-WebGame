@@ -504,6 +504,9 @@ namespace OpenRA.WebSim
 				case "unitinfo":
 					return UnitInfo(world, Str("type"));
 
+				case "icon":
+					return Icon(Str("type"), Str("faction"));
+
 				case "spawnpoints":
 				{
 					// The map's start positions (MPos and world px), for laying out forces on any map.
@@ -1077,7 +1080,7 @@ namespace OpenRA.WebSim
 		/// palette, exactly what ProductionPaletteWidget draws), as the sprite the page renders on the GPU:
 		/// {"tex","channel","uv":[l,t,r,b],"w","h","pal"} or "" when the actor has no icon.
 		/// </summary>
-		public static string Icon(string actorName)
+		public static string Icon(string actorName, string factionOverride = null)
 		{
 			var world = SimHost.World;
 			if (world != null && actorName.StartsWith("$power:", StringComparison.Ordinal))
@@ -1095,7 +1098,7 @@ namespace OpenRA.WebSim
 			if (rsi == null)
 				return "";
 
-			var faction = Queues(Local).Select(q => q.Faction).FirstOrDefault() ?? Local?.Faction.InternalName;
+			var faction = factionOverride ?? Queues(Local).Select(q => q.Faction).FirstOrDefault() ?? Local?.Faction.InternalName;
 			var image = rsi.GetImage(info, faction);
 			var sequence = bi?.Icon ?? "icon";
 			if (!world.Map.Sequences.HasSequence(image, sequence))
@@ -1116,7 +1119,7 @@ namespace OpenRA.WebSim
 			Snapshot.MarkTexture(tex);
 			var inv = System.Globalization.CultureInfo.InvariantCulture;
 			return $"{{\"tex\":{tex},\"channel\":{(int)sprite.Channel},\"uv\":[{sprite.Left.ToString(inv)},{sprite.Top.ToString(inv)},{sprite.Right.ToString(inv)},{sprite.Bottom.ToString(inv)}]," +
-				$"\"w\":{sprite.Bounds.Width},\"h\":{sprite.Bounds.Height},\"pal\":{palette.TextureIndex}}}";
+				$"\"w\":{sprite.Bounds.Width},\"h\":{sprite.Bounds.Height},\"pal\":{palette.TextureIndex},\"image\":{J(image)}}}";
 		}
 		/// <summary>CPU copy of a sprite's pixels (palette-resolved for indexed sheets) as [w][h][rgba...].</summary>
 		public static byte[] Rasterise(Sprite sprite, IPalette palette)

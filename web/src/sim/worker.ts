@@ -626,7 +626,8 @@ self.onmessage = async (e: MessageEvent<ToWorker>) => {
         break;
       }
       case "icons": {
-        for (const name of m.names) post({ type: "icon", name, info: S.Icon(name) });
+        for (const name of m.names) post({ type: "icon", name, faction: m.faction,
+          info: m.faction ? S.Command(JSON.stringify({ cmd: "icon", type: name, faction: m.faction })) : S.Icon(name) });
         break;
       }
       case "bench": {

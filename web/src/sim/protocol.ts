@@ -345,7 +345,7 @@ export type ToWorker = (
   | { type: "mountFiles"; dir: string; files: Record<string, ArrayBuffer>; req: number }
   | { type: "click"; x: number; y: number; button: number; mods: number; t: number }
   | { type: "cursor"; x: number; y: number; mods: number; seq: number }
-  | { type: "icons"; names: string[] }
+  | { type: "icons"; names: string[]; faction?: string }
   | { type: "cursorset" }
   | { type: "bench"; ticks: number }
   | { type: "log" }
@@ -388,7 +388,7 @@ export type FromWorker = (
   | { type: "reply"; req: number; json: string }
   | { type: "terrainRows"; first: number; data: ArrayBuffer }
   | { type: "adviserReply"; req: number; code: number; message: string; payload: Uint8Array }
-  | { type: "icon"; name: string; info: string }
+  | { type: "icon"; name: string; info: string; faction?: string }
   | { type: "modelbuffer"; id: number; data: ArrayBuffer }
   | { type: "audio"; op: "source"; id: number; channels: number; bits: number; rate: number; data: ArrayBuffer }
   | { type: "audio"; op: "play"; sound: number; source: number; loop: boolean; relative: boolean; x: number; y: number; volume: number; attenuate: boolean }

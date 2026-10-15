@@ -17,6 +17,7 @@ import { Flag } from "./Flag";
 import { GameButton } from "./kit/game";
 import { MapStrip } from "./MapStrip";
 import { UnitCard } from "./UnitCard";
+import { iconKey } from "../icon-key";
 
 const KINDS: { id: string; label: string; icon: React.ReactNode }[] = [
   { id: "infantry", label: "Infantry", icon: <Users size={15} /> },
@@ -72,6 +73,7 @@ function MapCard({ game, sandbox }: { game: Game; sandbox: Sandbox }) {
 function EditPanel({ game, sandbox }: { game: Game; sandbox: Sandbox }) {
   const st = useStore((s) => s.sandbox)!;
   const icons = useStore((s) => s.icons);
+  const phase = useStore((s) => s.phase);
   const setup = useStore((s) => s.setup);
   const set = useStore((s) => s.set);
   const [query, setQuery] = useState("");
@@ -94,6 +96,9 @@ function EditPanel({ game, sandbox }: { game: Game; sandbox: Sandbox }) {
   })), [nations]);
   const faction = side === 0 ? st.fa : st.fb;
   useEffect(() => { setHover(null); }, [faction, side]);
+  useEffect(() => {
+    if (phase === "playing") game.requestIcons(st.units.map((u) => u.name), faction);
+  }, [game, faction, phase, st.units]);
   const roster = st.rosters[faction];
   const units = st.units
     .filter((u) => (!roster || roster.includes(u.name)) && (query ? u.label.toLowerCase().includes(query.toLowerCase()) || u.name.includes(query.toLowerCase()) : u.kind === kind))
@@ -142,7 +147,7 @@ function EditPanel({ game, sandbox }: { game: Game; sandbox: Sandbox }) {
             onMouseEnter={() => setHover(u)}
             onClick={() => patch({ brush: st.brush === u.name ? null : u.name })}
             className={cn("cameo sim-unit hud-inset", st.brush === u.name && "ring-2 ring-[var(--hud-gold)]")}>
-            {icons[u.name] ? <img src={icons[u.name]!} alt="" draggable={false} /> : <div className="grid aspect-[60/48] w-full place-items-center px-1 text-center text-[9px] leading-tight text-[var(--muted-foreground)]">{u.label}</div>}
+            {icons[iconKey(u.name, faction)] ? <img src={icons[iconKey(u.name, faction)]!} alt="" draggable={false} /> : <div className="grid aspect-[60/48] w-full place-items-center px-1 text-center text-[9px] leading-tight text-[var(--muted-foreground)]">{u.label}</div>}
             <span className="sim-cost digits">{u.cost > 0 ? u.cost.toLocaleString() : "Free"}</span>
           </button>
         ))}

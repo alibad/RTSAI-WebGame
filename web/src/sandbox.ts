@@ -209,7 +209,6 @@ export class Sandbox {
     if (!this.state.units.length) {
       const c = await this.game.catalog();
       this.patch({ units: c.units, rosters: c.rosters });
-      this.game.requestIcons(c.units.map((x) => x.name));
     }
     if (this.cfg.autorun) {
       this.cfg.autorun = false;
