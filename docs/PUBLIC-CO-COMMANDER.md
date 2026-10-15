@@ -77,8 +77,8 @@ Lines are short and stay the same while nothing changes, so Suggest shows the ne
 the first group of survivors at the cove: send 12 units there (3 must reach it).", "Take the Network Technician to
 the core node and deploy it: hold at the edge of the bluff mast's zone and cross while it sleeps.", "The curtain
 control is clear: send your Engineer to capture it now." The mission's unit orders (move, attack-move, attack,
-capture, C4, deploy, stop, stance, queued waypoints) go through the same confirmation and native checks as every proposal;
-`target_actor_id` and `queued` are now encoded.
+capture, C4, deploy, stop, stance, queued waypoints) go through the same confirmation and native checks as every
+proposal; `target_actor_id` and `queued` are now encoded.
 
 `node tools/mission-adviser-test.mjs` checks the planner on synthetic observations; `node tools/chapters-playtest.mjs`
 plays the real missions with the co-commander in Auto (see FACTIONS-MISSIONS.md).

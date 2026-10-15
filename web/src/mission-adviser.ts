@@ -519,6 +519,9 @@ function needsOrder(w: World, u: AdviserActor, goal: string, target: Pt, arrive:
   const h = w.memory.heading.get(u.actorId);
   // Sent there already: again only once it has stopped short (after a few tries, only now and then: it cannot get closer).
   if (h && h.goal === goal) return u.idle && w.tick - h.tick > (h.tries >= 3 ? 750 : 50);
+  // Sent somewhere else a moment ago and on the move: not turned round again yet (an errand flipping between two goals
+  // would send the army back and forth).
+  if (h && !h.reactive && !u.idle && w.tick - h.tick < 100) return false;
   if (h && h.reactive && !u.idle && w.tick - h.tick < 500) return false;
   return true;
 }
@@ -829,7 +832,9 @@ function focusOf(w: World): Focus | null {
   const ships = w.fighters.some((u) => w.ctx.techTree[baseType(u.kind)]?.queue === "Ship");
   const atSea = (o: Objective) => !ships && !!w.grid && (o.kind === "destroy" || o.kind === "capture") && (o.targets ?? []).length > 0
     && (o.targets ?? []).every((t) => { const p = w.where(t); return !p || !w.grid!.pass(p); });
-  const rank = (o: Objective) => (o.secondary ? 1000 : 0) + (o.kind === "survive" ? 500 : 0) + (atSea(o) ? 400 : 0) + (o.limit ? -100 : 0) + far(o) / 10;
+  // Targets the army has had to search for again and again (ships that slip out of sight) wait behind the rest.
+  const chased = (o: Objective) => (o.targets ?? []).some((t) => (w.memory.search.get(t)?.n ?? 0) >= 3);
+  const rank = (o: Objective) => (o.secondary ? 1000 : 0) + (o.kind === "survive" ? 500 : 0) + (atSea(o) || chased(o) ? 400 : 0) + (o.limit ? -100 : 0) + far(o) / 10;
   const open = w.objectives.filter((o) => army0(o) && !o.waiting).sort((a, b) => rank(a) - rank(b) || a.i - b.i);
   const upcoming = w.objectives.filter((o) => army0(o) && o.waiting);
   if (open.length && open[0].kind !== "survive") return { o: open[0], prepare: false };
