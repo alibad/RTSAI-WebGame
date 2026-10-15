@@ -93,6 +93,7 @@ function EditPanel({ game, sandbox }: { game: Game; sandbox: Sandbox }) {
     value: f.id, label: f.name, group: nationGroup(f), leading: <Flag id={f.id} className="h-[12px] w-[18px] rounded-[1px]" />,
   })), [nations]);
   const faction = side === 0 ? st.fa : st.fb;
+  useEffect(() => { setHover(null); }, [faction, side]);
   const roster = st.rosters[faction];
   const units = st.units
     .filter((u) => (!roster || roster.includes(u.name)) && (query ? u.label.toLowerCase().includes(query.toLowerCase()) || u.name.includes(query.toLowerCase()) : u.kind === kind))
@@ -114,7 +115,7 @@ function EditPanel({ game, sandbox }: { game: Game; sandbox: Sandbox }) {
       <MapCard game={game} sandbox={sandbox} />
       <div className="grid grid-cols-2 gap-2">
         {([0, 1] as const).map((s) => (
-          <button key={s} type="button" onClick={() => patch({ side: s })} data-testid={`sim-side-${s}`}
+          <button key={s} type="button" onClick={() => patch({ side: s, brush: null, pickDestination: null })} data-testid={`sim-side-${s}`}
             className={cn("sim-side hud-inset", side === s ? "is-on" : "opacity-70 hover:opacity-100")} style={{ "--side": SIDE_COLORS[s] } as CSSProperties}>
             <Flag id={s === 0 ? st.fa : st.fb} className="h-[26px] w-[42px] rounded-[1px] shadow-[0_0_0_1px_#000]" />
             <span className="sim-side-text"><b>{s === 0 ? "You" : "Enemy AI"}</b><small>{nations.find((n) => n.id === (s === 0 ? st.fa : st.fb))?.name}</small></span>

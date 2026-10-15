@@ -306,7 +306,7 @@ export class Sandbox {
   }
 
   setFaction(side: 0 | 1, faction: string) {
-    this.patch(side === 0 ? { fa: faction } : { fb: faction });
+    this.patch({ ...(side === 0 ? { fa: faction } : { fb: faction }), brush: null, pickDestination: null });
     this.collect().then((p) => this.edit(p));
   }
 

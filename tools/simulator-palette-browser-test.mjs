@@ -45,8 +45,21 @@ try {
   await page.waitForFunction(async count => (await window.game.command({ cmd: 'placements' })).spawns.length > count, before);
   await page.mouse.move(800, 800);
   await page.screenshot({ path: `${out}/simulator.png` });
+  // A selected Saudi unit must not stay armed or pinned when switching to America.
+  await page.evaluate(() => window.game.sandbox.setFaction(0, 'america'));
+  await page.waitForFunction(() => window.store.getState().phase === 'playing'
+    && window.store.getState().info?.players?.some(p => p.faction === 'america'));
+  assert.equal(await page.evaluate(() => window.store.getState().sandbox.brush), null);
+  await page.waitForSelector('[data-testid="sim-card"]', { state: 'detached' });
+  assert.deepEqual(await page.locator('.sim-unit').evaluateAll(nodes => nodes.map(n => n.dataset.unit).sort()),
+    await page.evaluate(() => { const s = window.store.getState().sandbox; return s.units.filter(u => u.kind === 'vehicle'
+      && s.rosters.america.includes(u.name)).map(u => u.name).sort(); }), 'America shows its engine roster');
+  await page.locator('.sim-unit').first().click();
+  await page.getByTestId('sim-side-1').click();
+  assert.equal(await page.evaluate(() => window.store.getState().sandbox.brush), null);
+  await page.waitForSelector('[data-testid="sim-card"]', { state: 'detached' });
   assert.deepEqual(errors, []);
-  console.log('PASS: full labels and separate prices at 260/340/500px, grab/grabbing cursors, real drag places a unit.');
+  console.log('PASS: full labels and separate prices at 260/340/500px, grab/grabbing cursors, real drag places a unit, faction/side changes clear stale selections.');
 } finally {
   await browser.close();
 }
