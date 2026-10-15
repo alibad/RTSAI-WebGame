@@ -25,7 +25,11 @@ export function GameDialog({ title, eyebrow, onClose, footer, size = "md", label
   const close = useRef(onClose);
   close.current = onClose;
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") { e.stopPropagation(); close.current(); } };
+    const onKey = (e: KeyboardEvent) => {
+      // Portaled pickers get the first Escape; keep this dialog open while they restore focus.
+      if (e.key !== "Escape" || document.querySelector('[aria-haspopup="listbox"][aria-expanded="true"], [role="combobox"][aria-expanded="true"]')) return;
+      e.stopPropagation(); close.current();
+    };
     addEventListener("keydown", onKey, true);
     return () => removeEventListener("keydown", onKey, true);
   }, []);
