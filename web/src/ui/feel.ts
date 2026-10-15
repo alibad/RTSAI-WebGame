@@ -58,7 +58,7 @@ export function installUiFeel(): () => void {
     const target = (e.target as Element | null)?.closest<HTMLElement>(CLICKABLE) ?? null;
     if (target === hovered) return;
     stop();
-    if (!target || target.closest("canvas")) return;
+    if (!target || target.closest('canvas, [draggable="true"]')) return;
     if (target.matches(HOVER_SFX)) tone("hover");
     if (!modCursor("select")) return;
     hovered = target;

@@ -134,15 +134,15 @@ function EditPanel({ game, sandbox }: { game: Game; sandbox: Sandbox }) {
       </div>
       <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Find a unit or building…"
         className="h-8 rounded-md border border-input bg-field px-2.5 text-[13px] outline-none focus-visible:border-ring" />
-      <div className="no-scrollbar grid min-h-0 flex-1 auto-rows-[72px] content-start grid-cols-3 gap-[3px] overflow-y-auto" onMouseLeave={() => setHover(null)}>
+      <div className="sim-roster no-scrollbar grid min-h-0 flex-1 auto-rows-max content-start grid-cols-3 gap-[3px] overflow-y-auto" onMouseLeave={() => setHover(null)}>
         {units.map((u) => (
           <button key={u.name} type="button" title={u.label} draggable data-unit={u.name}
             onDragStart={(e) => { e.dataTransfer.setData("application/x-rtsai-unit", u.name); e.dataTransfer.effectAllowed = "copy"; }}
             onMouseEnter={() => setHover(u)}
             onClick={() => patch({ brush: st.brush === u.name ? null : u.name })}
-            className={cn("cameo hud-inset", st.brush === u.name && "ring-2 ring-[var(--hud-gold)]")}>
-            {icons[u.name] ? <img src={icons[u.name]!} alt="" draggable={false} /> : <div className="grid h-full place-items-center px-1 text-center text-[9px] leading-tight text-[var(--muted-foreground)]">{u.label}</div>}
-            {u.cost > 0 && <span className="sim-cost digits">{u.cost.toLocaleString()}</span>}
+            className={cn("cameo sim-unit hud-inset", st.brush === u.name && "ring-2 ring-[var(--hud-gold)]")}>
+            {icons[u.name] ? <img src={icons[u.name]!} alt="" draggable={false} /> : <div className="grid aspect-[60/48] w-full place-items-center px-1 text-center text-[9px] leading-tight text-[var(--muted-foreground)]">{u.label}</div>}
+            <span className="sim-cost digits">{u.cost > 0 ? u.cost.toLocaleString() : "Free"}</span>
           </button>
         ))}
       </div>
