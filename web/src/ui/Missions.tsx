@@ -383,3 +383,8 @@ export function MissionHud({ game }: { game: Game }) {
         {game.sandbox && !chapter
           ? <GameButton variant="primary" size="sm" onClick={() => void game.sandbox!.run()}>Fight it again</GameButton>
           : <GameButton variant="primary" size="sm" onClick={() => returnTo(win === "Won" && next ? next : mission.id)}>{win === "Won" && next ? nextLabel : win === "Lost" ? "Retry this chapter" : "Return to campaign"}</GameButton>}
+      </section>}
+    </aside>
+    <RadioPanel game={game} />
+  </div>;
+}
