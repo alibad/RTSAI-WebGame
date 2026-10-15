@@ -883,198 +883,228 @@ const story: CampaignStory = {
       {
         "when": "start",
         "speaker": "arash",
-        "line": "Engineers stay with the camp. We open the road first, then we bring the water in."
+        "line": "Engineers stay with the camp. We open the road first, then we bring the water in.",
+        "audio": "sweet-water/radio-1.mp3"
       },
       {
         "when": {
           "time": 20
         },
         "speaker": "lantern",
-        "line": "Colonel, Lantern. The hub is dark, but its last cells are still moving. One of them is sitting on your town's water."
+        "line": "Colonel, Lantern. The hub is dark, but its last cells are still moving. One of them is sitting on your town's water.",
+        "audio": "sweet-water/radio-2.mp3"
       },
       {
         "when": {
           "time": 45
         },
         "speaker": "tanya",
-        "line": "Tanya, at Lantern's desk. Whatever is under that plant, they want it more than the water. Don't let them leave with it."
+        "line": "Tanya, at Lantern's desk. Whatever is under that plant, they want it more than the water. Don't let them leave with it.",
+        "audio": "sweet-water/radio-3.mp3"
       },
       {
         "when": {
           "event": "raid"
         },
         "speaker": "lantern",
-        "line": "Raiders coming down from the northern hills, heading for your camp."
+        "line": "Raiders coming down from the northern hills, heading for your camp.",
+        "audio": "sweet-water/radio-4.mp3"
       },
       {
         "when": {
           "time": 330
         },
         "speaker": "lantern",
-        "line": "The trucks are on their way, Colonel. The road has to be open when they reach the salt."
+        "line": "The trucks are on their way, Colonel. The road has to be open when they reach the salt.",
+        "audio": "sweet-water/radio-5.mp3"
       },
       {
         "when": {
           "objective": 0
         },
         "speaker": "arash",
-        "line": "The road is open. Bring the trucks through, and keep them moving."
+        "line": "The road is open. Bring the trucks through, and keep them moving.",
+        "audio": "sweet-water/radio-6.mp3"
       },
       {
         "when": {
           "objective": 1
         },
         "speaker": "arash",
-        "line": "The trucks are at the cistern. The town drinks tonight. Now the plant."
+        "line": "The trucks are at the cistern. The town drinks tonight. Now the plant.",
+        "audio": "sweet-water/radio-7.mp3"
       },
       {
         "when": {
           "time": 420
         },
         "speaker": "orlov",
-        "line": "Colonel Tavakoli. A town without water makes a sad picture. Leave me the plant's basement, and I will turn the taps back on myself."
+        "line": "Colonel Tavakoli. A town without water makes a sad picture. Leave me the plant's basement, and I will turn the taps back on myself.",
+        "audio": "sweet-water/radio-8.mp3"
       },
       {
         "when": {
           "objective": 2
         },
         "speaker": "lantern",
-        "line": "The pumps are yours, and the cell's coils just went dark. There's a vault under the plant, Colonel. That's the cache."
+        "line": "The pumps are yours, and the cell's coils just went dark. There's a vault under the plant, Colonel. That's the cache.",
+        "audio": "sweet-water/radio-9.mp3"
       },
       {
         "when": {
           "event": "recovery"
         },
         "speaker": "tanya",
-        "line": "Boats at the dock. They've come for the coils. Not one of them leaves this coast."
+        "line": "Boats at the dock. They've come for the coils. Not one of them leaves this coast.",
+        "audio": "sweet-water/radio-10.mp3"
       },
       {
         "when": {
           "event": "vault-open"
         },
         "speaker": "arash",
-        "line": "The lock is cut. Engineer, take the vault. Gently."
+        "line": "The lock is cut. Engineer, take the vault. Gently.",
+        "audio": "sweet-water/radio-11.mp3"
       },
       {
         "when": "victory",
         "speaker": "tanya",
-        "line": "Coils in a crate, dated 1953, wound by hand. Same as the one Kemal's engineers found. Somebody's been busy."
+        "line": "Coils in a crate, dated 1953, wound by hand. Same as the one Kemal's engineers found. Somebody's been busy.",
+        "audio": "sweet-water/radio-12.mp3"
       },
       {
         "when": "victory",
         "speaker": "lantern",
-        "line": "The taps are on and the cache is ours. Colonel, the crate's manifest lists one more, on another coast."
+        "line": "The taps are on and the cache is ours. Colonel, the crate's manifest lists one more, on another coast.",
+        "audio": "sweet-water/radio-13.mp3"
       },
       {
         "when": "defeat",
         "speaker": "arash",
-        "line": "Back to the road camp. The town still needs its water."
+        "line": "Back to the road camp. The town still needs its water.",
+        "audio": "sweet-water/radio-14.mp3"
       }
     ],
     "ghosts-on-the-glass": [
       {
         "when": "start",
         "speaker": "maya",
-        "line": "Nine contacts on the picture. Nobody fires on anything until we have seen it with our own eyes."
+        "line": "Nine contacts on the picture. Nobody fires on anything until we have seen it with our own eyes.",
+        "audio": "ghosts-on-the-glass/radio-1.mp3"
       },
       {
         "when": {
           "time": 12
         },
         "speaker": "lantern",
-        "line": "Colonel, Lantern. Six of those contacts weren't on any picture a minute ago. Send your observers first, and set everyone else to return fire."
+        "line": "Colonel, Lantern. Six of those contacts weren't on any picture a minute ago. Send your observers first, and set everyone else to return fire.",
+        "audio": "ghosts-on-the-glass/radio-2.mp3"
       },
       {
         "when": {
           "event": "warn-school"
         },
         "speaker": "lantern",
-        "line": "Your column is closing on the contact in the school yard. Hold fire. That yard is the way into a shelter."
+        "line": "Your column is closing on the contact in the school yard. Hold fire. That yard is the way into a shelter.",
+        "audio": "ghosts-on-the-glass/radio-3.mp3"
       },
       {
         "when": {
           "event": "ghost-school"
         },
         "speaker": "lantern",
-        "line": "Nothing in the school yard but families going down to the shelter. That contact was never there."
+        "line": "Nothing in the school yard but families going down to the shelter. That contact was never there.",
+        "audio": "ghosts-on-the-glass/radio-4.mp3"
       },
       {
         "when": {
           "event": "warn-north"
         },
         "speaker": "maya",
-        "line": "Unverified contact by the north shelter. Nobody shoots it. Eyes first."
+        "line": "Unverified contact by the north shelter. Nobody shoots it. Eyes first.",
+        "audio": "ghosts-on-the-glass/radio-5.mp3"
       },
       {
         "when": {
           "event": "ghost-quay"
         },
         "speaker": "lantern",
-        "line": "Nothing off the fishing quay. Empty water. Your picture is lying to you, Colonel."
+        "line": "Nothing off the fishing quay. Empty water. Your picture is lying to you, Colonel.",
+        "audio": "ghosts-on-the-glass/radio-6.mp3"
       },
       {
         "when": {
           "event": "warn-bridge"
         },
         "speaker": "tanya",
-        "line": "Ghost or not, somebody look at that one on the bridge road before you put a shell in it."
+        "line": "Ghost or not, somebody look at that one on the bridge road before you put a shell in it.",
+        "audio": "ghosts-on-the-glass/radio-7.mp3"
       },
       {
         "when": {
           "event": "real-bridge"
         },
         "speaker": "maya",
-        "line": "That one is real, and it's shooting. Engage."
+        "line": "That one is real, and it's shooting. Engage.",
+        "audio": "ghosts-on-the-glass/radio-8.mp3"
       },
       {
         "when": {
           "event": "landing"
         },
         "speaker": "maya",
-        "line": "Boats on the beach north of the harbour. Real ones. Hold the line there."
+        "line": "Boats on the beach north of the harbour. Real ones. Hold the line there.",
+        "audio": "ghosts-on-the-glass/radio-9.mp3"
       },
       {
         "when": {
           "time": 240
         },
         "speaker": "orlov",
-        "line": "Colonel Ronen. Nine ships, and you have looked at so few. I can tell you which ones are real. It costs only your first shot."
+        "line": "Colonel Ronen. Nine ships, and you have looked at so few. I can tell you which ones are real. It costs only your first shot.",
+        "audio": "ghosts-on-the-glass/radio-10.mp3"
       },
       {
         "when": {
           "time": 300
         },
         "speaker": "tanya",
-        "line": "In my day a radar full of ghosts meant somebody wanted you looking the wrong way. Find what's painting them."
+        "line": "In my day a radar full of ghosts meant somebody wanted you looking the wrong way. Find what's painting them.",
+        "audio": "ghosts-on-the-glass/radio-11.mp3"
       },
       {
         "when": {
           "objective": 1
         },
         "speaker": "lantern",
-        "line": "The relays are down. Every ghost just vanished. Whatever is still on your picture is real."
+        "line": "The relays are down. Every ghost just vanished. Whatever is still on your picture is real.",
+        "audio": "ghosts-on-the-glass/radio-12.mp3"
       },
       {
         "when": {
           "event": "strike-group"
         },
         "speaker": "maya",
-        "line": "There's the strike group the lie was covering. Hold the harbour."
+        "line": "There's the strike group the lie was covering. Hold the harbour.",
+        "audio": "ghosts-on-the-glass/radio-13.mp3"
       },
       {
         "when": "victory",
         "speaker": "lantern",
-        "line": "They turned back, and the city never fired on nothing. Colonel, the last relay held the last coil cache on the manifest."
+        "line": "They turned back, and the city never fired on nothing. Colonel, the last relay held the last coil cache on the manifest.",
+        "audio": "ghosts-on-the-glass/radio-14.mp3"
       },
       {
         "when": "victory",
         "speaker": "tanya",
-        "line": "Every cache accounted for. Then why do I still feel him in the room?"
+        "line": "Every cache accounted for. Then why do I still feel him in the room?",
+        "audio": "ghosts-on-the-glass/radio-15.mp3"
       },
       {
         "when": "defeat",
         "speaker": "maya",
-        "line": "Pull back to the harbour. We look again before anyone fires."
+        "line": "Pull back to the harbour. We look again before anyone fires.",
+        "audio": "ghosts-on-the-glass/radio-16.mp3"
       }
     ]
   }
