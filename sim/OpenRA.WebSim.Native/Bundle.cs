@@ -176,7 +176,9 @@ static class Bundle
 					Console.WriteLine($"original voices and sounds: {originalAudio.Count} clips ({originalAudio.Sum(o => new FileInfo(o.File).Length) / 1024.0:F0} KB, in web-audio.pack)");
 			}
 
-			Add("mods/rtsai/mod.yaml", Encoding.UTF8.GetBytes(WebModYaml(File.ReadAllText(Path.Combine(modDir, "mod.yaml")), !classic && publicProfile && Directory.Exists(content), false, originals != null, originalAudio != null)));
+			// The sound check's overlays (tools/prepare-content.py sound_check), one per manifest section.
+			var soundFallbacks = publicProfile ? SoundFallbackFiles.Where(f => File.Exists(Path.Combine(content, f.File))).ToArray() : [];
+			Add("mods/rtsai/mod.yaml", Encoding.UTF8.GetBytes(WebModYaml(File.ReadAllText(Path.Combine(modDir, "mod.yaml")), !classic && publicProfile && Directory.Exists(content), false, originals != null, originalAudio != null, soundFallbacks)));
 			if (classic)
 			{
 				foreach (var file in Files(primaryDir))
@@ -185,7 +187,7 @@ static class Bundle
 					if (rel == "mod.yaml" || rel.StartsWith("maps/", StringComparison.Ordinal) && !maps.Contains(rel.Split('/')[1])) continue;
 					Add("mods/rtsai-topdown/" + rel, File.ReadAllBytes(file));
 				}
-				Add("mods/rtsai-topdown/mod.yaml", Encoding.UTF8.GetBytes(WebModYaml(File.ReadAllText(Path.Combine(primaryDir, "mod.yaml")), Directory.Exists(content), true)));
+				Add("mods/rtsai-topdown/mod.yaml", Encoding.UTF8.GetBytes(WebModYaml(File.ReadAllText(Path.Combine(primaryDir, "mod.yaml")), Directory.Exists(content), true, soundFallbacks: soundFallbacks)));
 			}
 			Add("mods/rtsai/web/web-rules.yaml", Encoding.UTF8.GetBytes(WebRules));
 			Add("mods/rtsai/web/web-names.ftl", Encoding.UTF8.GetBytes(WebNames));
@@ -217,6 +219,12 @@ static class Bundle
 		// The original countries' unit voices and the dog's barks and bite: exactly the clips the content plays.
 		if (originalAudio != null)
 			audio = audio.Concat(originalAudio.Select(o => (OriginalAudioDir + o.Name, o.File)));
+
+		// The sound check's silent clip (tools/prepare-content.py SILENT_FILE): voice phrases whose every file is missing
+		// play it (ra2|web/content/sound-silence.wav), since a voice set must keep each phrase.
+		var silence = Path.Combine(opts.TryGetValue("content", out var silenceContent) ? silenceContent : "content", "sound-silence.wav");
+		if (File.Exists(Path.Combine(modDir, "standalone", "base-kit.yaml")) && File.Exists(silence))
+			audio = audio.Append(("mods/rtsai/web/content/sound-silence.wav", silence));
 		WriteLazyPack(Path.Combine(outDir, "web-audio.pack"), audio);
 		WriteLazyPack(Path.Combine(outDir, "web-art.pack"), art);
 		return 0;
@@ -390,11 +398,17 @@ static class Bundle
 
 	static bool HiddenWithin(string root, string file) => Rel(root, file).Split('/').Any(part => part.StartsWith(".", StringComparison.Ordinal));
 
+	/// <summary>The sound check's overlay files (tools/prepare-content.py SOUND_FALLBACK_FILES) by manifest section.</summary>
+	static readonly (string Section, string File)[] SoundFallbackFiles =
+		[("Rules", "sound-fallbacks.yaml"), ("Weapons", "sound-fallbacks-weapons.yaml"), ("Voices", "sound-fallbacks-voices.yaml")];
+
 	/// <summary>
 	/// The web mod.yaml: identical to the mod's (the AI co-commander's CompanionBridge included; the page's host relays
-	/// its RPCs) plus a small overlay for what the embedded host needs. Everything that affects the simulation is unchanged.
+	/// its RPCs) plus a small overlay for what the embedded host needs. Everything that affects the simulation is unchanged,
+	/// apart from the sound fallbacks (sounds the rules, weapons and voice sets name that the inputs do not ship).
 	/// </summary>
-	static string WebModYaml(string yaml, bool expansion, bool classic = false, bool originals = false, bool originalAudio = false)
+	static string WebModYaml(string yaml, bool expansion, bool classic = false, bool originals = false, bool originalAudio = false,
+		(string Section, string File)[] soundFallbacks = null)
 	{
 		yaml = yaml.Replace("\r\n", "\n");
 
@@ -442,6 +456,11 @@ static class Bundle
 			yaml = AppendToSection(yaml, "Voices", "ra2|web/content/ea-voices.yaml");
 			yaml = AppendToSection(yaml, "Weapons", "ra2|web/content/ea-weapons.yaml");
 		}
+
+		// Sounds the rules, weapons and voice sets name that the inputs do not ship (tools/prepare-content.py sound_check):
+		// last of each section, in both modes, so a fallback replaces the missing name wherever the files above set it.
+		foreach (var (section, file) in soundFallbacks ?? [])
+			yaml = AppendToSection(yaml, section, "ra2|web/content/" + file);
 
 		// Player-facing names (the standalone's), loaded last so they override the RA2 preview strings.
 		var fluent = yaml.IndexOf("\nFluentMessages:\n", StringComparison.Ordinal);

@@ -1258,6 +1258,174 @@ def originals():
     return manifest
 
 
+# Sounds the rules name that the public build does not ship. The mod's standalone sound set was made for the sounds its
+# audit found in fields named *Sound* or *Report*, so the tesla coil's and the prism tower's charge sounds
+# (AttackTesla.ChargeAudio) never got one; runtimes up to rt-04dcc660ef36 then stopped the whole browser simulation the
+# first time a powered coil or tower charged (their lazy audio made the engine open the missing file). Every sound a
+# public game can play must ship: a sound listed here is replaced by a shipped project sound, or with None dropped (the
+# engine's own behaviour for a missing file: the tower charges silently), through content/sound-fallbacks.yaml, which
+# the bundle loads last in both modes; any other missing one fails the build. A fallback applies only while the inputs
+# lack the file, so it falls away once the mod ships its own. (The bare iteschaa.wav is the project's stand-in for the
+# tesla trooper's shot, a cannon-like report, so it is no charge sound; the original clip ships only in the isometric
+# mode, for the original countries' weapons.)
+SOUND_FALLBACKS = {
+    'btespow.wav': None,  # Tesla Coil charging
+    'bpripow.wav': None,  # Prism Tower charging
+}
+# With the map editor in the build, a player's own map can hold any actor the editor offers (MapEditorData categories):
+# animals, civilian props, fences, sandbags. Their sounds play in a test match like any other (a cow's ambient moo
+# within seconds), so they count too; a missing one of an actor only the editor offers is dropped (and listed) rather
+# than failing the build: the factions' own sounds must all ship.
+EDITOR = (ROOT/'sim/OpenRA.WebSim/Editor.cs').is_file()
+SOUND_FALLBACK_FILES = {'Rules': 'sound-fallbacks.yaml', 'Weapons': 'sound-fallbacks-weapons.yaml',
+                        'Voices': 'sound-fallbacks-voices.yaml'}
+SILENT_FILE = 'sound-silence.wav'
+SILENT_CLIP = 'ra2|web/content/sound-silence'  # a voice clip: the set's '.wav' suffix completes the path
+
+def silent_wav(seconds=0.05, rate=22050):
+    """A short silent clip (22.05 kHz mono 16-bit PCM) for voice phrases whose every file is missing."""
+    data = bytes(2 * round(seconds * rate))
+    return (b'RIFF' + struct.pack('<I', 36 + len(data)) + b'WAVEfmt ' + struct.pack('<IHHIIHH', 16, 1, 1, rate, 2 * rate, 2, 16)
+            + b'data' + struct.pack('<I', len(data)) + data)
+
+def sound_check(ea_clips=()):
+    """Every sound file named in the rules, weapons and (for actors only the map editor offers) voice sets of the public
+    game, against the files the build ships: the folders the mod mounts (its FileSystem packages, read by bare name),
+    explicit 'ra2|' paths (the mod's files, the web content, and in the isometric mode with original voices the original
+    clips under web/ea/audio). Writes content/sound-fallbacks*.yaml (one per manifest section, loaded last) for
+    SOUND_FALLBACKS and for the editor-only actors' missing sounds; raises for any other missing sound that a public game
+    can play (an actor that is buildable or placed on a shipped map, or a weapon one of them carries). Sounds of actors
+    no public game has are only reported. The factions' voices and notifications are contenttest's."""
+    available = set()
+    (OUT/SILENT_FILE).unlink(missing_ok=True)  # written again below if a voice phrase needs it
+    packages = parse((MOD/'mod.yaml').read_text(encoding='utf-8'))['FileSystem']['children']['Packages']['children']
+    for key in list(packages) + (['$rtsai-topdown'] if CLASSIC_MODE else []):
+        entry = key.lstrip('~')
+        folder = {'$rtsai': MOD, '$rtsai-topdown': MOD.parent/'rtsai-topdown'}.get(entry) or (MOD/entry.split('|', 1)[1] if entry.startswith('ra2|') else None)
+        if folder is not None and folder.is_dir():
+            available |= {f.name.lower() for f in folder.iterdir() if f.is_file()}
+    clips = {c.lower() for c in ea_clips}
+    def shipped(name):
+        if '|' in name:
+            alias, path = name.split('|', 1)
+            if alias != 'ra2': return False
+            if path.startswith('web/ea/audio/'): return path.rsplit('/', 1)[1].lower() in clips
+            if path.startswith('web/content/'): return (OUT/path[len('web/content/'):]).is_file()
+            return (MOD/path).is_file()
+        return name.lower() in available
+    # The rules as the public game loads them: the mod's, Classic's own file, the web content overlays, and map rules.
+    allrules = copy.deepcopy(rules)
+    overlays = [MOD.parent/'rtsai-topdown/rules.yaml'] if CLASSIC_MODE else []
+    overlays += [OUT/f for f in ('countries.yaml', 'ea-art.yaml', 'ea-audio.yaml')]
+    for p in overlays:
+        if p.exists(): merge(allrules, parse(p.read_text(encoding='utf-8')))
+    weapons = {}
+    for name in manifest['Weapons']['children']:
+        if name.startswith('ra2|'): merge(weapons, parse((MOD/name.split('|')[1]).read_text(encoding='utf-8')))
+    if (OUT/'ea-weapons.yaml').exists(): merge(weapons, parse((OUT/'ea-weapons.yaml').read_text(encoding='utf-8')))
+    maps = [p for d in (OUT/'maps', MOD/'standalone/maps', MOD/'maps') if d.is_dir() for p in d.glob('*/map.yaml')]
+    placed = set()
+    for p in maps:
+        m = parse(p.read_text(encoding='utf-8'))
+        placed |= {a['value'] for a in m.get('Actors', node())['children'].values()}
+        for actor, n in m.get('Rules', node())['children'].items():
+            if actor in allrules: merge(allrules[actor]['children'], copy.deepcopy(n['children']))
+    def sounds(nodes, path=()):
+        for k, n in nodes.items():
+            names = [s.strip() for s in (n['value'] or '').split(',') if re.search(r'\.(wav|aud)$', s.strip(), re.I)]
+            if names: yield path + (k,), names
+            yield from sounds(n['children'], path + (k,))
+    def reachable(actor, r):
+        """'faction' (buildable or placed on a shipped map), 'editor' (only the map editor offers it) or None."""
+        if actor in placed or r.get('Buildable', node())['children'].get('Queue', node())['value']: return 'faction'
+        if EDITOR and r.get('MapEditorData', node())['children'].get('Categories', node())['value'].strip(): return 'editor'
+        return None
+    overlays = {s: {} for s in SOUND_FALLBACK_FILES}
+    unreachable, problems, dropped = {}, [], {}
+    def fallback(section, top, path, names, live, what):
+        """A sound-valued field with missing files: an overlay entry that replaces or drops them, or a problem."""
+        missing = [s for s in names if not shipped(s)]
+        if not missing: return
+        if not live:
+            for s in missing: unreachable.setdefault(s, set()).add(what)
+            return
+        strict = [s for s in missing if s.lower() not in SOUND_FALLBACKS]
+        if strict and live == 'faction':
+            problems.append(f'{what} {".".join(path)}: {", ".join(strict)}'); return
+        kept = [s if shipped(s) else SOUND_FALLBACKS.get(s.lower()) for s in names]
+        kept = [s for s in kept if s]
+        if any(not shipped(s) for s in kept):
+            problems.append(f'{what} {".".join(path)}: the fallback {", ".join(s for s in kept if not shipped(s))} is not shipped either'); return
+        for s in strict: dropped.setdefault(s, set()).add(what)
+        if section == 'Voices':
+            # A phrase names clips (the engine adds the set's suffix back). It must keep at least one: the engine throws
+            # "Can't find Die in voice pool" for a phrase a set lacks, so an all-missing phrase plays the shipped silence.
+            kept = [voice_clips[top][path[-1]][names.index(s)] for s in kept] or [SILENT_CLIP]
+            if not (OUT/SILENT_FILE).is_file(): (OUT/SILENT_FILE).write_bytes(silent_wav())
+        at = overlays[section].setdefault(top, node())['children']
+        if not kept and section == 'Rules' and path[0].split('@')[0] == 'AmbientSound':
+            at['-' + path[0]] = node(); return  # its SoundFiles is required: the trait goes
+        for k in path[:-1]: at = at.setdefault(k, node())['children']
+        at[('' if kept else '-') + path[-1]] = node(', '.join(kept))
+    armed, voiced, faction_voices = {}, {}, set()
+    for actor in sorted(a for a in allrules if not a.startswith('^')):
+        try: r = resolve(allrules, actor)
+        except (KeyError, ValueError): continue
+        live = reachable(actor, r)
+        for t, n in r.items():
+            if t.startswith('Armament') and live:
+                w = n['children'].get('Weapon', node())['value']
+                if armed.get(w) != 'faction': armed[w] = live
+            if t.split('@')[0] in ('Voiced', 'RTSAIVoiced') and live:
+                vs = n['children'].get('VoiceSet', node())['value']
+                if live == 'faction': faction_voices.add(vs)
+                else: voiced.setdefault(vs, actor)
+        for path, names in sounds(r):
+            fallback('Rules', actor, path, names, live, actor)
+    for wname in sorted(w for w in weapons if not w.startswith('^')):
+        try: w = resolve(weapons, wname)
+        except (KeyError, ValueError): continue
+        for path, names in sounds(w):
+            fallback('Weapons', wname, path, names, armed.get(wname), f'weapon {wname}')
+    # Voice sets of the actors only the editor offers (the factions' are contenttest's): the file a phrase plays is the
+    # set's default prefix + clip + default variant (neutral owners have no per-faction prefix or variant).
+    voices = {}
+    for name in manifest['Voices']['children']:
+        if name.startswith('ra2|'): merge(voices, parse((MOD/name.split('|')[1]).read_text(encoding='utf-8')))
+    # A set the factions also use is left alone (changing it would change their voices), and so is one with a prefix,
+    # per-faction prefixes or variants; such gaps are listed, for the runtime to skip.
+    voice_clips, shared = {}, {}
+    for vname, actor in sorted(voiced.items()):
+        if vname not in voices: continue
+        v = resolve(voices, vname)
+        prefix, variant = v.get('DefaultPrefix', node())['value'], v.get('DefaultVariant', node('.aud'))['value'] or '.aud'
+        # The silent clip is a path (ra2|web/content/...) the engine completes with the set's suffix: only for a set
+        # that adds no prefix and plays .wav, for every owner.
+        plain = not prefix and variant == '.wav' and not v.get('Prefixes') and not v.get('Variants')
+        for phrase, n in v.get('Voices', node())['children'].items():
+            clips = [c.strip() for c in n['value'].split(',') if c.strip()]
+            files = [prefix + c + variant for c in clips]
+            if vname in faction_voices or not plain:
+                if any(not shipped(f) for f in files): shared.setdefault(f'{actor} ({vname})', set()).add(phrase)
+                continue
+            voice_clips.setdefault(vname, {})[phrase] = clips
+            fallback('Voices', vname, ('Voices', phrase), files, 'editor', f'{actor} voice {vname}')
+    if problems:
+        raise ValueError('sounds the public game can play that the build does not ship (add a file or a SOUND_FALLBACKS '
+                         'entry):\n  ' + '\n  '.join(problems))
+    for section, file in SOUND_FALLBACK_FILES.items():
+        out = OUT/file
+        if overlays[section]:
+            out.write_text(f'# Generated by tools/prepare-content.py (sound_check): {section.lower()} sounds the inputs do not ship.\n'
+                           + dump(overlays[section]), encoding='utf-8', newline='\n')
+        elif out.exists(): out.unlink()
+    print(f'sounds: fallbacks for {", ".join(overlays["Rules"]) or "no actor"}'
+          + (f'; editor-only actors fall silent where {len(dropped)} sounds are missing ({", ".join(sorted(dropped))})' if dropped else '')
+          + (f'; voice phrases of editor-only actors left to the runtime (a set the factions use, or one with per-faction prefixes): '
+             + ', '.join(f'{k} {"/".join(sorted(v))}' for k, v in sorted(shared.items())) if shared else '')
+          + f'; {len(unreachable)} missing sounds only on actors no public game has'
+          + (f' ({", ".join(sorted(unreachable))})' if unreachable else ''))
+
 if __name__ == '__main__':
     OUT.mkdir(parents=True, exist_ok=True)
     SCENARIOS.mkdir(parents=True, exist_ok=True)
@@ -1269,6 +1437,8 @@ if __name__ == '__main__':
     if args.ea_list:
         print(f'wrote {args.ea_list}')
         raise SystemExit(0)
+    ea_clips = json.loads((OUT/'ea-audio.json').read_text())['clips'] if ea_manifest and not args.no_ea_audio else []
+    sound_check(ea_clips)
     sources=[p for p in MISSIONS.rglob('*') if p.is_file() and p.suffix in {'.yaml','.bin','.md'}]
     sources += [CLASSIC/'mods/ra/tilesets/temperat.yaml',CLASSIC/'mods/ra/tilesets/desert.yaml',MOD/'standalone/maps/twin-fords/map.yaml',MOD/'standalone/maps/twin-fords/map.bin',MOD.parent/'rtsai-topdown/tileset.yaml']
     if ea_manifest: sources.append(args.ea_art/'EA-INPUTS.json')

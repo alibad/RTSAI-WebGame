@@ -363,12 +363,27 @@ function folderManifest(dir) {
 async function cdnPublish(rel, roots, liveBuild) {
   const dir = config.cdn.dir;
   const added = [];
+  // 0. Retired roots leave the deployment so it stays under Cloudflare's file limit: they are moved to cdn.retiredDir
+  //    (never deleted; move one back to serve it again). Never the live page's roots, nor a root this release adds.
+  const retired = (config.cdn.retired ?? []).map((r) => r.replace(/\/?$/, "/"));
+  for (const r of retired) {
+    if (r === liveBuild.rtRoot || r === liveBuild.dataRoot || r in roots) refuse(`${r} is live or being added: it cannot be retired`);
+    const from = path.join(dir, r), to = path.join(config.cdn.retiredDir, r);
+    if (fs.existsSync(from)) {
+      if (fs.existsSync(to)) refuse(`${to} already exists: compare it with ${from} by hand`);
+      fs.mkdirSync(config.cdn.retiredDir, { recursive: true });
+      fs.renameSync(from, to);
+      say(`  retired ${r} to ${config.cdn.retiredDir}`);
+    } else if (!fs.existsSync(to)) refuse(`the retired root ${r} is in neither ${dir} nor ${config.cdn.retiredDir}`);
+  }
   // 1. Nothing live may vanish: the folder must hold every file of the live manifest (or, before the first manifest,
-  //    the live roots and the files release-play.json keeps).
+  //    the live roots and the files release-play.json keeps), except the retired roots. Files under cdn.mutable (the
+  //    campaign's films and index, which the page does not pin by hash) may change but not vanish.
   const local = folderManifest(dir);
   const liveManifest = await fetch(`${host}MANIFEST.json?release=${Date.now()}`).then((r) => (r.ok ? r.json() : null)).catch(() => null);
+  const mutable = (p) => (config.cdn.mutable ?? []).some((m) => p.startsWith(m));
   const missing = liveManifest
-    ? Object.entries(liveManifest.files).filter(([p, size]) => local[p] !== size).map(([p]) => p)
+    ? Object.entries(liveManifest.files).filter(([p, size]) => !retired.some((r) => p.startsWith(r)) && (mutable(p) ? !(p in local) : local[p] !== size)).map(([p]) => p)
     : [liveBuild.rtRoot, liveBuild.dataRoot].filter((r) => !fs.existsSync(path.join(dir, r))).concat(config.cdn.keep.filter((p) => !(p in local)));
   if (missing.length) refuse(`${dir} lacks ${missing.length} live file(s), e.g. ${missing.slice(0, 5).join(", ")}: deploying it would delete them from ${host}`);
 
