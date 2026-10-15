@@ -1,0 +1,97 @@
+{
+  "mission": "black-platform",
+  "chapter": "The Missing Man · Chapter 4",
+  "title": "Black Platform",
+  "music": "C:/Users/Admin/Code/AI/betenshi-console/generated-music/20261014-150651-text2music-935109925-relentless-commando-cinematic-game-brief.flac",
+  "musicVolume": 0.55,
+  "segments": [
+    {
+      "src": "C:/Users/Admin/Code/AI/betenshi-console/generated/video/2026-10-14/v_mv806zn0_36f4e2-wan2.2-ti2v-5b.mp4",
+      "kind": "cinema",
+      "voice": null,
+      "line": "While the platform jams, no one on the coast can see the hub.",
+      "poster": true
+    },
+    {
+      "src": "D:/rtsai-campaign/footage-out/black-platform/establishing.mp4",
+      "kind": "game",
+      "dur": 6.5,
+      "zoom": 1.1,
+      "card": {
+        "kicker": "Area of operations",
+        "text": "Directorate jamming platform, open sea"
+      }
+    },
+    {
+      "src": "C:/Users/Admin/Code/AI/betenshi-console/generated/video/2026-10-14/v_mv8070zx_5d0eb3-wan2.2-ti2v-5b.mp4",
+      "kind": "cinema",
+      "voice": null,
+      "line": "Its generators sit behind an Iron Curtain. Nothing from outside can touch them."
+    },
+    {
+      "src": "C:/Users/Admin/Code/AI/betenshi-console/generated/video/2026-10-14/v_mv8072jm_eb147f-wan2.2-ti2v-5b.mp4",
+      "kind": "cinema",
+      "voice": null,
+      "line": "Commander Turki Al-Zahrani leads the boarding team himself. There are no reinforcements."
+    },
+    {
+      "src": "D:/rtsai-campaign/footage-out/black-platform/objective-1.mp4",
+      "kind": "game",
+      "dur": 4.2,
+      "zoom": 1.1,
+      "card": {
+        "kicker": "Objective 1",
+        "text": "Take the curtain control room with an engineer."
+      }
+    },
+    {
+      "src": "D:/rtsai-campaign/footage-out/black-platform/objective-2.mp4",
+      "kind": "game",
+      "dur": 4.2,
+      "zoom": 1.1,
+      "card": {
+        "kicker": "Objective 2",
+        "text": "Place charges on all four jammer generators before the relief flotilla arrives."
+      }
+    },
+    {
+      "src": "D:/rtsai-campaign/footage-out/black-platform/objective-4.mp4",
+      "kind": "game",
+      "dur": 4.2,
+      "zoom": 1.1,
+      "card": {
+        "kicker": "Objective 4",
+        "text": "Keep Tanya alive."
+      }
+    },
+    {
+      "src": "D:/rtsai-campaign/footage-out/black-platform/objective-5.mp4",
+      "kind": "game",
+      "dur": 4.2,
+      "zoom": 1.1,
+      "card": {
+        "kicker": "Objective 5",
+        "text": "Keep an engineer alive until the control room is taken."
+      }
+    },
+    {
+      "src": "C:/Users/Admin/Code/AI/betenshi-console/generated/video/2026-10-14/v_mv8073yr_eb1bac-wan2.2-ti2v-5b.mp4",
+      "kind": "cinema",
+      "voice": null,
+      "line": "Take the control room first. Then a charge on every generator."
+    },
+    {
+      "src": "D:/rtsai-campaign/footage-out/black-platform/battle.mp4",
+      "kind": "game",
+      "in": 1.5,
+      "dur": 10,
+      "zoom": 1.25
+    },
+    {
+      "src": "C:/Users/Admin/Code/AI/betenshi-console/generated/video/2026-10-14/v_mv8075a7_bc903b-wan2.2-ti2v-5b.mp4",
+      "kind": "cinema",
+      "voice": null,
+      "line": "Then hold, until the picture comes back."
+    }
+  ]
+}

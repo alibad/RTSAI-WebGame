@@ -6,6 +6,7 @@
 // A mission with no footage yet keeps its cinematic shots only.
 //   node tools/briefings/make-cut.mjs <mission> [--footage D:/rtsai-campaign/footage-out] [--montage http://127.0.0.1:8018]
 //        [--films C:/Users/Admin/Code/hq/montage/out/reels] [--battle 10] [--zoom 1.25]
+//        [--clips <shot id -> mp4 json> --music <score>]   (clips straight from the video queue instead of Montage)
 import fs from "node:fs";
 import path from "node:path";
 
@@ -19,16 +20,25 @@ const reels = opt("films", "C:/Users/Admin/Code/hq/montage/out/reels");
 const battleSeconds = Number(opt("battle", 10));
 const zoom = Number(opt("zoom", 1.25));
 
-// The newest cut Montage film for this mission (not superseded).
-const res = await fetch(`${opt("montage", "http://127.0.0.1:8018")}/api/films`);
-const body = await res.json();
-const films = (Array.isArray(body.films ?? body) ? body.films ?? body : Object.values(body.films ?? body))
-  .filter((f) => f.source === "rtsai" && f.externalId === mission && f.output && !f.superseded);
-if (!films.length) { console.error(`No cut Montage film for ${mission} yet`); process.exit(1); }
-const film = films.sort((a, b) => String(b.id).localeCompare(String(a.id)))[0];
-const dir = path.join(reels, path.dirname(film.output));
-const narration = JSON.parse(fs.readFileSync(path.join(dir, "narration.json"), "utf8"));
-const part = (kind, i) => path.join(dir, `${kind}${String(i + 1).padStart(2, "0")}.${kind === "s" ? "mp4" : "wav"}`).replace(/\\/g, "/");
+// Parts: either clips made directly by the video queue (--clips <json of shot id -> mp4> and --music <file>; the lines are
+// then read by cut-film.py's narrator), or the newest cut Montage film for this mission (its clips, takes and score).
+let dir, narration, part, film = { id: "direct clips" };
+if (opt("clips")) {
+  const clips = JSON.parse(fs.readFileSync(opt("clips"), "utf8"));
+  narration = { lines: spec.shots.map((s) => s.line) };
+  part = (kind, i) => (kind === "s" ? String(clips[spec.shots[i].id]).replace(/\\/g, "/") : "-missing-");
+  dir = path.dirname(opt("music"));
+} else {
+  const res = await fetch(`${opt("montage", "http://127.0.0.1:8018")}/api/films`);
+  const body = await res.json();
+  const films = (Array.isArray(body.films ?? body) ? body.films ?? body : Object.values(body.films ?? body))
+    .filter((f) => f.source === "rtsai" && f.externalId === mission && f.output && !f.superseded);
+  if (!films.length) { console.error(`No cut Montage film for ${mission} yet`); process.exit(1); }
+  film = films.sort((a, b) => String(b.id).localeCompare(String(a.id)))[0];
+  dir = path.join(reels, path.dirname(film.output));
+  narration = JSON.parse(fs.readFileSync(path.join(dir, "narration.json"), "utf8"));
+  part = (kind, i) => path.join(dir, `${kind}${String(i + 1).padStart(2, "0")}.${kind === "s" ? "mp4" : "wav"}`).replace(/\\/g, "/");
+}
 
 const footage = fs.existsSync(path.join(footageDir, "footage.json")) ? JSON.parse(fs.readFileSync(path.join(footageDir, "footage.json"), "utf8")) : null;
 const game = (file) => path.join(footageDir, file).replace(/\\/g, "/");
@@ -71,7 +81,7 @@ if (footage && !spec.shots.some((s) => s.id === "commander")) {
   segments.splice(at, 0, ...objectiveShots());
 }
 
-const edit = { mission, chapter: spec.chapter, title: spec.title, music: path.join(dir, "music.mp3").replace(/\\/g, "/"), musicVolume: 0.55, segments };
+const edit = { mission, chapter: spec.chapter, title: spec.title, music: (opt("music") ?? path.join(dir, "music.mp3")).replace(/\\/g, "/"), musicVolume: 0.55, segments };
 fs.mkdirSync(path.join(here, "cuts"), { recursive: true });
 fs.writeFileSync(path.join(here, "cuts", `${mission}.json`), JSON.stringify(edit, null, 2) + "\n");
 console.log(`cuts/${mission}.json: ${segments.length} segments (${segments.filter((s) => s.kind === "game").length} in-game) from ${film.id}`);

@@ -28,9 +28,10 @@
     },
     {
       "id": "commander",
-      "prompt": "Portrait of a fictional Iranian Army engineer colonel in his fifties, close-cropped greying beard, sand-coloured field uniform with rolled sleeves, a dusty scarf, reading glasses in his breast pocket, standing beside a water tanker truck on a white salt flat at dusk, calm and patient expression, looking at the viewer, cinematic rim light, painted portrait.",
+      "prompt": "Keep this man's face, hair and uniform exactly. Portrait of a fictional Iranian Army engineer colonel in his fifties, close-cropped greying beard, sand-coloured field uniform with rolled sleeves, a dusty scarf, reading glasses in his breast pocket, standing beside a water tanker truck on a white salt flat at dusk, calm and patient expression, looking at the viewer, cinematic rim light, painted portrait.",
       "line": "Colonel Arash Tavakoli has laid water lines across three deserts. Today he brings the water in by road.",
-      "motion": "push-in-slow"
+      "motion": "push-in-slow",
+      "reference": "cast/arash"
     },
     {
       "id": "convoy",

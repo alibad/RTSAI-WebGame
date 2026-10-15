@@ -1,0 +1,87 @@
+{
+  "mission": "every-light-on",
+  "chapter": "The Missing Man · Chapter 5",
+  "title": "Every Light On",
+  "music": "C:/Users/Admin/Code/AI/betenshi-console/generated-music/20261014-150725-text2music-629497889-epic-finale-cinematic-game-score-full-or.flac",
+  "musicVolume": 0.55,
+  "segments": [
+    {
+      "src": "C:/Users/Admin/Code/AI/betenshi-console/generated/video/2026-10-14/v_mv8076p2_31e8df-wan2.2-ti2v-5b.mp4",
+      "kind": "cinema",
+      "voice": null,
+      "line": "The Directorate hub. The rebuilt Chronosphere waits at its heart.",
+      "poster": true
+    },
+    {
+      "src": "D:/rtsai-campaign/footage-out/every-light-on/establishing.mp4",
+      "kind": "game",
+      "dur": 6.5,
+      "zoom": 1.1,
+      "card": {
+        "kicker": "Area of operations",
+        "text": "The Directorate hub"
+      }
+    },
+    {
+      "src": "C:/Users/Admin/Code/AI/betenshi-console/generated/video/2026-10-14/v_mv80785z_41bcdc-wan2.2-ti2v-5b.mp4",
+      "kind": "cinema",
+      "voice": null,
+      "line": "Arkady Orlov means to run it once, and edit the whole region into war."
+    },
+    {
+      "src": "C:/Users/Admin/Code/AI/betenshi-console/generated/video/2026-10-14/v_mv8079im_043cb0-wan2.2-ti2v-5b.mp4",
+      "kind": "cinema",
+      "voice": null,
+      "line": "Colonel Badr Al-Shammari, who first saw the radar go silent, leads the assault."
+    },
+    {
+      "src": "D:/rtsai-campaign/footage-out/every-light-on/objective-1.mp4",
+      "kind": "game",
+      "dur": 4.2,
+      "zoom": 1.1,
+      "card": {
+        "kicker": "Objective 1",
+        "text": "Destroy the three radar domes to sever the Directorate link."
+      }
+    },
+    {
+      "src": "D:/rtsai-campaign/footage-out/every-light-on/objective-2.mp4",
+      "kind": "game",
+      "dur": 4.2,
+      "zoom": 1.1,
+      "card": {
+        "kicker": "Objective 2",
+        "text": "Capture the Chronosphere once the mainland towns are clear."
+      }
+    },
+    {
+      "src": "D:/rtsai-campaign/footage-out/every-light-on/objective-3.mp4",
+      "kind": "game",
+      "dur": 4.2,
+      "zoom": 1.1,
+      "card": {
+        "kicker": "Bonus objective",
+        "text": "Keep the radar relay standing."
+      }
+    },
+    {
+      "src": "C:/Users/Admin/Code/AI/betenshi-console/generated/video/2026-10-14/v_mv807b24_e37de6-wan2.2-ti2v-5b.mp4",
+      "kind": "cinema",
+      "voice": null,
+      "line": "Four commanders hold four fronts. The final strike waits until the towns are clear."
+    },
+    {
+      "src": "D:/rtsai-campaign/footage-out/every-light-on/battle.mp4",
+      "kind": "game",
+      "in": 1.5,
+      "dur": 10,
+      "zoom": 1.25
+    },
+    {
+      "src": "C:/Users/Admin/Code/AI/betenshi-console/generated/video/2026-10-14/v_mv807cd5_c201f0-wan2.2-ti2v-5b.mp4",
+      "kind": "cinema",
+      "voice": null,
+      "line": "Take the domes. Capture the machine. Every light on."
+    }
+  ]
+}

@@ -28,9 +28,10 @@
     },
     {
       "id": "commander",
-      "prompt": "Portrait of a fictional Israeli army lieutenant colonel, a woman in her forties, dark hair in a low knot, olive field uniform, a headset around her neck and binoculars on a strap, standing in a harbour command room at night lit by green screens, focused and sceptical expression, looking at the viewer, cinematic rim light, painted portrait.",
+      "prompt": "Keep this woman's face, hair and uniform exactly. Portrait of a fictional Israeli army lieutenant colonel, a woman in her forties, dark hair in a low knot, olive field uniform, a headset around her neck and binoculars on a strap, standing in a harbour command room at night lit by green screens, focused and sceptical expression, looking at the viewer, cinematic rim light, painted portrait.",
       "line": "Lieutenant Colonel Maya Ronen trusts nothing she has not seen twice.",
-      "motion": "push-in-slow"
+      "motion": "push-in-slow",
+      "reference": "cast/maya"
     },
     {
       "id": "relays",
