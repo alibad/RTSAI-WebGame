@@ -137,7 +137,7 @@ In a campaign mission the page's co-commander (Suggest and Auto) plans around th
 missions"), so the playtests need no director. One Auto run per mission and difficulty at 4x
 (`tools/chapters-playtest.mjs`, 15 minutes; Act IV 17 and 18 minutes, on its data root), before and after, 15 October:
 
-- Won before on 3 of the 39 runs (Hold the Ferry Line easy and normal, Hodeidah Lifeline easy), after on 26.
+- Won before on 3 of the 39 runs (Hold the Ferry Line easy and normal, Hodeidah Lifeline easy), after on 27.
 - Lights in the Water: easy and normal won at 9:36 and 9:41 (survivors found by 1:30, the reef road held, the convoy
   escorted); hard lost at about 7:00, as the scripted player does.
 - Glass Island: won at 2:39 on every difficulty without an alarm (the team crosses each mast's zone while it sleeps,
@@ -145,10 +145,11 @@ missions"), so the playtests need no director. One Auto run per mission and diff
 - Black Platform: won at 4:14 to 4:39 on every difficulty (bonus: the scanners see the deck fight).
 - Every Light On: won at 10:51 to 11:08 on every difficulty, cash $20-25k at the end instead of $58-79k.
 - Hold the Ferry Line: easy and normal won at 12:00; hard lost at 11:50 (an earlier sweep won it).
-- Jizan Corridor, Haitan Network: won on every difficulty (1:22 to 6:29). Hodeidah Lifeline, Bab al-Mandab: easy and
-  normal won; hard lost (the evacuation convoy) or undecided (a mobile launcher out of sight).
+- Jizan Corridor, Haitan Network: won on every difficulty (1:22 to 6:29). Bab al-Mandab: won on every difficulty
+  (1:46 to 10:50). Hodeidah Lifeline: easy and normal won; hard lost when the evacuation convoy is caught at the start.
 - Hezbollah Relay: easy won at 4:50; normal and hard overrun before the four minutes are up, as before.
-- Straits Shield: the production network built, the rest undecided at 15:00 (it needs a navy for the surface group).
+- Straits Shield: the production network built, then the harbour relay and the uplinks; undecided at 15:00 (the
+  surface group needs a navy, and its ships slip out of sight).
 - Sweet Water: won on normal (9:02) and hard (8:47), undecided on easy; Ghosts on the Glass: no phantom fired on in any
   run, the relays fall on hard (lost in the hold, as the scripted player), the relay deadline passes on normal.
 
