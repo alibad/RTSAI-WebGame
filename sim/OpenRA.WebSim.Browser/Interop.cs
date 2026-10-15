@@ -155,12 +155,9 @@ namespace OpenRA.WebSim.Browser
 				CompanionEvent($"{{\"kind\":\"executed\",\"id\":{Snapshot.Json(id)},\"accepted\":{(accepted ? "true" : "false")},\"detail\":{Snapshot.Json(detail)}}}");
 
 			// Audio files come over the network: a sound that is not fetched yet is skipped and music waits for its file,
-			// both fetched in the background, so the game never stalls on audio (Sound.AudioReady).
-			OpenRA.Sound.AudioReady = name =>
-			{
-				var path = SimHost.LoosePath(name);
-				return path == null || AudioReady(path);
-			};
+			// both fetched in the background, so the game never stalls on audio (Sound.AudioReady). A sound the game files
+			// do not have at all is skipped for good, and logged once (SimHost.GateAudio): loading it would throw.
+			SimHost.GateAudio(AudioReady);
 
 			// Textures the engine disposes (a finished game's sheets) are deleted on the page's GPU too.
 			WebTexture.Freed = TextureFree;
