@@ -8732,6 +8732,14 @@
       "license": "GPL-3.0 (project code); output has no third-party rights"
     },
     {
+      "filename": "standalone/audio/sfx/bpripow.wav",
+      "category": "sfx",
+      "sha256": "e60455e6ba34a49356d5dd0b01102da79c30df601e21a4bf2daf2f7994beea9a",
+      "source": "tools/standalone-sfx.py",
+      "engine": null,
+      "license": "GPL-3.0 (project code); output has no third-party rights"
+    },
+    {
       "filename": "standalone/audio/sfx/bsenatta.wav",
       "category": "sfx",
       "sha256": "4c0dcc29e7f6b527356965417986c71d848222d689a6493200da642a2844486a",
@@ -8775,6 +8783,14 @@
       "filename": "standalone/audio/sfx/btesat2a.wav",
       "category": "sfx",
       "sha256": "68207e11b905b3f31fed866ca015edef739c2c167b9b929eede131a0fa946429",
+      "source": "tools/standalone-sfx.py",
+      "engine": null,
+      "license": "GPL-3.0 (project code); output has no third-party rights"
+    },
+    {
+      "filename": "standalone/audio/sfx/btespow.wav",
+      "category": "sfx",
+      "sha256": "e9a9ad8eed817438d6bf4d2ed9c47e3bb319f11961ec427bc3c4232f7b6f8fa2",
       "source": "tools/standalone-sfx.py",
       "engine": null,
       "license": "GPL-3.0 (project code); output has no third-party rights"
