@@ -292,9 +292,11 @@ function siteCheckout() {
     execSync("npm ci --no-audit --no-fund", { cwd: dir, stdio: "inherit" });
     fs.writeFileSync(marker, lock);
   }
-  // The viewer data is generated and ignored by Git: regenerate it, or the page ships whatever an earlier sync left.
+  // The viewer data and the faction catalog (web/src/data/factions.json) are generated and ignored by Git: regenerate
+  // them, or the page ships whatever an earlier sync left (and a fresh worktree has no catalog at all).
   fs.rmSync(path.join(repo, "web", "public", "viewer"), { recursive: true, force: true });
   run(process.execPath, [path.join(repo, "tools", "sync-viewer.mjs"), "--from", dir], { stdio: ["ignore", "ignore", "inherit"] });
+  run(process.execPath, [path.join(repo, "tools", "sync-catalog.mjs"), "--from", dir], { stdio: ["ignore", "ignore", "inherit"] });
   return { dir, commit };
 }
 

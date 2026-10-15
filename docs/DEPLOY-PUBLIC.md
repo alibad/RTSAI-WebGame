@@ -40,7 +40,8 @@ node tools/release-play.mjs abort        # gives up a prepared release
 3. **Page.** It is built against the Cloudflare roots.
    - Part of the page is compiled from the website's source (RTSAI-Web; see `web/vite.config.ts`). That source comes
      from a checkout of its `origin/main` that only the tool uses (`<work>/site`, with its own `node_modules`).
-   - The Faction viewer data is regenerated from that checkout on every release.
+   - The Faction viewer data and the faction catalog (`web/src/data/factions.json`, both ignored by Git) are
+     regenerated from that checkout on every release.
    - The settings come from `tools/release-play.json` (`page`), and the Firebase web config from the work folder's
      `firebase.env`.
    - Stray `VITE_` keys in `web/.env*` are refused, because they would change the page behind those settings.
