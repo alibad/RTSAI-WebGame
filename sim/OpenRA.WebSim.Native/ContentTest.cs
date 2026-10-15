@@ -84,6 +84,17 @@ static class ContentTest
 		if (Snapshot.UnsupportedRenderables > 0) throw new Exception(faction + ": unsupported renderables");
 		var art = RenderArt(world, own, faction);
 		var voices = Voices(world, own, faction);
+		var cameoImages = new SortedDictionary<string, string>();
+		foreach (var actor in roster)
+		{
+			var icon = Ui.Icon(actor.Name, faction);
+			if (string.IsNullOrEmpty(icon)) throw new Exception(faction + ": no cameo for " + actor.Name);
+			using var data = JsonDocument.Parse(icon);
+			var image = data.RootElement.GetProperty("image").GetString();
+			if (art.OriginalTypes > 0 && !image.StartsWith("ea-", StringComparison.Ordinal))
+				throw new Exception(faction + ": substituted cameo for " + actor.Name + ": " + image);
+			cameoImages[actor.Name] = image;
+		}
 		if (opts.TryGetValue("dump", out var dump))
 			File.WriteAllText(dump, JsonSerializer.Serialize(art.Report, new JsonSerializerOptions { WriteIndented = true }));
 		var compared = opts.TryGetValue("baseline", out var baselinePath) && !Originals.Contains(faction);
@@ -108,7 +119,7 @@ static class ContentTest
 
 		Console.WriteLine(JsonSerializer.Serialize(new { faction, signature, production = true, units = units.Select(a => a.Name), unsupported = Snapshot.UnsupportedRenderables,
 			originalArtActors = art.OriginalActors, originalArtTypes = art.OriginalTypes, originalVoiceTypes = voices.OriginalTypes,
-			projectVoiceTypes = voices.ProjectTypes, originalClipsChecked = voices.Clips, baselineCompared = compared, passed = true }));
+			projectVoiceTypes = voices.ProjectTypes, originalClipsChecked = voices.Clips, cameoImages, baselineCompared = compared, passed = true }));
 		return 0;
 	}
 
