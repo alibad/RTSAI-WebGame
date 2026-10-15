@@ -4,6 +4,8 @@
 //   node tools/briefings/gpu.mjs clips <mission> [--stills D:/rtsai-ea-build/briefings] [--seconds 7] [--out <json>]
 //        queues one i2v clip per shot (camera sentence + scene + action, as commission.mjs words them), waits, and
 //        writes {shot id: mp4} to --out (default D:/rtsai-campaign/p2-clips-<mission>.json)
+//   node tools/briefings/gpu.mjs wait <mission> <log> [--out <json>]
+//        waits again for the jobs a `clips` run queued (its "queued <mission> <shot> <job>" lines in <log>)
 //   node tools/briefings/gpu.mjs music "<prompt>" <seconds> [fade]   -> prints the FLAC path
 import fs from "node:fs";
 import path from "node:path";
@@ -28,6 +30,25 @@ const CAMERA = {
 };
 const ACTION = "Gentle, natural motion only: smoke, dust, mist and light drift; vehicles and people move a little and keep their shape; one continuous shot, no cuts.";
 const anchor = (p) => String(p).replace(/^keep this [^.]*\.\s*/i, "").split(/(?<=[.!?])\s+/)[0];
+
+/** Polls the queue until every job is done. The console may be restarting or mid-edit (an HTML error page instead of
+ *  JSON): that is a pause, not a failure; only a job the queue reports failed or cancelled is. */
+async function waitFor(jobs, out) {
+  const done = {};
+  while (Object.keys(done).length < Object.keys(jobs).length) {
+    for (const [shot, id] of Object.entries(jobs)) {
+      if (done[shot]) continue;
+      let j;
+      try { j = (await (await fetch(`${CONSOLE}/api/video/jobs/${id}`, { signal: AbortSignal.timeout(30_000) })).json()).job; }
+      catch { continue; }
+      if (j?.status === "done") { done[shot] = path.join(VIDEO_ROOT, j.output).replace(/\\/g, "/"); console.log("done", shot); }
+      else if (["failed", "cancelled"].includes(j?.status)) throw new Error(`${shot} ${j.status}: ${j.error ?? ""}`);
+    }
+    if (Object.keys(done).length < Object.keys(jobs).length) await sleep(20_000);
+  }
+  fs.writeFileSync(out, JSON.stringify(done, null, 1));
+  console.log("wrote", out);
+}
 
 if (cmd === "service") {
   const [action, id] = rest;
@@ -63,19 +84,13 @@ if (cmd === "service") {
     jobs[s.id] = job.id;
     console.log("queued", mission, s.id, job.id);
   }
-  const done = {};
-  while (Object.keys(done).length < Object.keys(jobs).length) {
-    for (const [shot, id] of Object.entries(jobs)) {
-      if (done[shot]) continue;
-      const j = (await (await fetch(`${CONSOLE}/api/video/jobs/${id}`)).json()).job;
-      if (j?.status === "done") { done[shot] = path.join(VIDEO_ROOT, j.output).replace(/\\/g, "/"); console.log("done", shot); }
-      else if (["failed", "cancelled"].includes(j?.status)) throw new Error(`${shot} ${j.status}: ${j.error ?? ""}`);
-    }
-    if (Object.keys(done).length < Object.keys(jobs).length) await sleep(20_000);
-  }
-  fs.writeFileSync(out, JSON.stringify(done, null, 1));
-  console.log("wrote", out);
+  await waitFor(jobs, out);
+} else if (cmd === "wait") {
+  const [mission, log] = rest;
+  const jobs = Object.fromEntries(fs.readFileSync(log, "utf8").split("\n")
+    .map((l) => l.trim().split(" ")).filter((w) => w[0] === "queued" && w[1] === mission).map((w) => [w[2], w[3]]));
+  await waitFor(jobs, opt("out", `D:/rtsai-campaign/p2-clips-${mission}.json`));
 } else {
-  console.error("usage: gpu.mjs service start|stop <id> | clips <mission> | music <prompt> <seconds> [fade]");
+  console.error("usage: gpu.mjs service start|stop <id> | clips <mission> | wait <mission> <log> | music <prompt> <seconds> [fade]");
   process.exit(2);
 }

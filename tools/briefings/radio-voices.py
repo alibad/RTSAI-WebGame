@@ -24,6 +24,8 @@ VOICES = {
     'badr': 'am_adam', 'nabil': 'am_puck', 'turki': 'bm_lewis', 'kemal': 'am_fenrir', 'lin': 'bm_fable',
     'signals-chief': 'am_michael', 'lantern': 'af_heart', 'tanya': 'af_bella', 'orlov': 'bm_george',
     'einstein': 'bm_lewis', 'narrator': 'am_michael',
+    # Act IV: neither shares a mission with Kemal, whose voice Arash borrows; Maya's is her own.
+    'arash': 'am_fenrir', 'maya': 'af_kore',
 }
 # Chatterbox expressiveness per speaker: the Broker is calm, Tanya quick and alive, everyone else in between.
 EXAGGERATION = {'orlov': 0.3, 'tanya': 0.7, 'lantern': 0.45}
