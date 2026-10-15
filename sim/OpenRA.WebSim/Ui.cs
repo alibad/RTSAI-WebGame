@@ -19,6 +19,7 @@ using OpenRA.Graphics;
 using OpenRA.Mods.Common.Orders;
 using OpenRA.Mods.Common.Traits;
 using OpenRA.Mods.RTSAI.Traits;
+using CompanionBridge = OpenRA.Mods.RTSAI.Traits.CompanionBridge;
 using OpenRA.Mods.Common.Traits.Radar;
 using OpenRA.Mods.Common.Traits.Render;
 using OpenRA.Mods.Common;

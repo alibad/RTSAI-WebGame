@@ -422,6 +422,9 @@ namespace OpenRA.WebSim
 
 	sealed class WebFont : IFont
 	{
+		// Text is rendered by the page; the simulation font only supplies placeholder metrics.
+		public bool HasGlyph(char c) => true;
+
 		public FontGlyph CreateGlyph(char c, int size, float deviceScale)
 		{
 			return new FontGlyph
