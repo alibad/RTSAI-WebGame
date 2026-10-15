@@ -17,7 +17,7 @@ silent.source(1, 1, 16, 24000, new ArrayBuffer(6));
 silent.play(1, 1, false, true, 0, 0, 1, false);
 silent.stream(1, 1, 16, 24000, new ArrayBuffer(6), true, 1);
 await silent.voice(new ArrayBuffer(6));
-assert.equal(await silent.radio(new ArrayBuffer(6), () => true), 0);
+await assert.rejects(silent.radio(new ArrayBuffer(6), () => true), /no Web Audio/);
 assert.equal(silent.context(), null);
 globalThis.AudioContext = class { constructor() { throw new Error("Browser disabled audio"); } };
 assert.equal(createAudioContext(), null);

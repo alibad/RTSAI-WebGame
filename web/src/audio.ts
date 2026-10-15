@@ -159,7 +159,7 @@ export class AudioEngine {
 
   pause(sound: number, paused: boolean) {
     if (sound < 0 && this.ctx) {
-      if (paused) this.ctx.suspend(); else this.void ctx.resume().catch(() => {});
+      if (paused) this.ctx.suspend(); else void this.ctx.resume().catch(() => {});
     }
   }
 
