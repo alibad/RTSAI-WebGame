@@ -1,0 +1,97 @@
+{
+  "mission": "glass-island",
+  "chapter": "The Missing Man · Chapter 3",
+  "title": "Glass Island",
+  "music": "C:/Users/Admin/Code/AI/betenshi-console/generated-music/20261014-150617-text2music-1427192047-cold-stealthy-cinematic-game-briefing-sc.flac",
+  "musicVolume": 0.55,
+  "segments": [
+    {
+      "src": "C:/Users/Admin/Code/AI/betenshi-console/generated/video/2026-10-14/v_mv806rc4_da84c8-wan2.2-ti2v-5b.mp4",
+      "kind": "cinema",
+      "voice": null,
+      "line": "The island no chart names is real, and its masts see everything.",
+      "poster": true
+    },
+    {
+      "src": "D:/rtsai-campaign/footage-out/glass-island/establishing.mp4",
+      "kind": "game",
+      "dur": 6.5,
+      "zoom": 1.1,
+      "card": {
+        "kicker": "Area of operations",
+        "text": "The uncharted island"
+      }
+    },
+    {
+      "src": "C:/Users/Admin/Code/AI/betenshi-console/generated/video/2026-10-14/v_mv806sy8_d0b429-wan2.2-ti2v-5b.mp4",
+      "kind": "cinema",
+      "voice": null,
+      "line": "Three of them go in. Tanya, a network specialist, and one marine."
+    },
+    {
+      "src": "C:/Users/Admin/Code/AI/betenshi-console/generated/video/2026-10-14/v_mv806uf3_7d409e-wan2.2-ti2v-5b.mp4",
+      "kind": "cinema",
+      "voice": null,
+      "line": "Commander Lin Haoran watches from the ship. Nothing on that island can be allowed to see them."
+    },
+    {
+      "src": "D:/rtsai-campaign/footage-out/glass-island/objective-1.mp4",
+      "kind": "game",
+      "dur": 4.2,
+      "zoom": 1.1,
+      "card": {
+        "kicker": "Objective 1",
+        "text": "Copy the routing logs: deploy the network specialist beside the core node."
+      }
+    },
+    {
+      "src": "D:/rtsai-campaign/footage-out/glass-island/objective-2.mp4",
+      "kind": "game",
+      "dur": 4.2,
+      "zoom": 1.1,
+      "card": {
+        "kicker": "Objective 2",
+        "text": "Bring the specialist and the logs to the boat at the north cove before first light."
+      }
+    },
+    {
+      "src": "D:/rtsai-campaign/footage-out/glass-island/objective-3.mp4",
+      "kind": "game",
+      "dur": 4.2,
+      "zoom": 1.1,
+      "card": {
+        "kicker": "Objective 3",
+        "text": "Stay out of the sensor masts' sight."
+      }
+    },
+    {
+      "src": "D:/rtsai-campaign/footage-out/glass-island/objective-4.mp4",
+      "kind": "game",
+      "dur": 4.2,
+      "zoom": 1.1,
+      "card": {
+        "kicker": "Objective 4",
+        "text": "Keep Tanya and the specialist alive."
+      }
+    },
+    {
+      "src": "C:/Users/Admin/Code/AI/betenshi-console/generated/video/2026-10-14/v_mv806vu0_2beb55-wan2.2-ti2v-5b.mp4",
+      "kind": "cinema",
+      "voice": null,
+      "line": "The masts sweep in turns. Move only in the dark between them."
+    },
+    {
+      "src": "D:/rtsai-campaign/footage-out/glass-island/battle.mp4",
+      "kind": "game",
+      "in": 1.5,
+      "dur": 10,
+      "zoom": 1.25
+    },
+    {
+      "src": "C:/Users/Admin/Code/AI/betenshi-console/generated/video/2026-10-14/v_mv806x2i_29aab5-wan2.2-ti2v-5b.mp4",
+      "kind": "cinema",
+      "voice": null,
+      "line": "Copy the logs, and take whatever else the Directorate is hiding."
+    }
+  ]
+}

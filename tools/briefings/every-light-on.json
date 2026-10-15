@@ -1,0 +1,43 @@
+{
+  "mission": "every-light-on",
+  "chapter": "The Missing Man · Chapter 5",
+  "title": "Every Light On",
+  "style": "Cinematic painted key art for a modern real-time strategy game, the look of classic Command and Conquer box art: dramatic light, rich colour, crisp detail, wide 16:9 composition, no text, no logos, no letters, no flags, no insignia.",
+  "music": {
+    "caption": "epic finale cinematic underscore, full orchestra with oud and frame drum joining synth pulses and taiko, a broad amber brass theme stated in full, building to a triumphant final chord, no vocals",
+    "seconds": 60
+  },
+  "shots": [
+    {
+      "id": "hub",
+      "prompt": "A fortified island chain at dusk: black glass radar domes on three islands, a vast hangar of black glass at the centre glowing with pale blue light from within, dark warships at anchor, storm clouds, ominous.",
+      "line": "The Directorate hub. The rebuilt Chronosphere waits at its heart.",
+      "motion": "push-in"
+    },
+    {
+      "id": "machine",
+      "prompt": "Inside a black glass hangar: a rebuilt time machine of brass rings and glass coils crackling with pale blue arcs, and on a gantry above it the black silhouette of a man in a long coat watching it, no face visible.",
+      "line": "Arkady Orlov means to run it once, and edit the whole region into war.",
+      "motion": "push-in-slow"
+    },
+    {
+      "id": "commander",
+      "reference": "jizan-corridor/commander",
+      "prompt": "Keep this man's face, grey beard, headset and uniform exactly. Dusk at a coastal command post, an island chain on the horizon behind him, resolute.",
+      "line": "Colonel Badr Al-Shammari, who first saw the radar go silent, leads the assault.",
+      "motion": "push-in-slow"
+    },
+    {
+      "id": "fronts",
+      "prompt": "Four scenes of one night around a coastline: warships closing a sea lane, a relay tower glowing on a hill, a dark offshore platform with its lights coming on, and buses of families leaving a coastal town, joined by lines of warm amber light, painterly montage composition.",
+      "line": "Four commanders hold four fronts. The final strike waits until the towns are clear.",
+      "motion": "pan-right"
+    },
+    {
+      "id": "every-light",
+      "prompt": "A long coastline at night seen from high above, as convoys, ferries and ships light up one by one in warm amber lines along the roads and sea lanes, and in the foreground a single amber desk lamp glows in a small window, hopeful.",
+      "line": "Take the domes. Capture the machine. Every light on.",
+      "motion": "push-in"
+    }
+  ]
+}

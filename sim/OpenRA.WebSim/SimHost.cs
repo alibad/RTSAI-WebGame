@@ -135,8 +135,11 @@ namespace OpenRA.WebSim
 				Game.Renderer.InitializeFonts(Game.ModData);
 			});
 
-			// Registers the bundled maps (World looks its map up in the MapCache).
-			Time("boot.maps", () => Game.ModData.MapCache.LoadMaps(Game.ModData));
+			// Registers the bundled maps (World looks its map up in the MapCache): the setup screen's now, every other one
+			// when it is first prepared (WebMaps; MapCache.LoadMaps merged every mission's rules at boot).
+			Time("boot.maps", () => WebMaps.Load(Game.ModData));
+			Timings["boot.maps.loaded"] = WebMaps.LoadedAtBoot;
+			Timings["boot.maps.deferred"] = WebMaps.Deferred;
 		}
 
 		/// <summary>A map's package path by its folder name, in any of the mod's MapFolders (e.g. ra2|standalone/maps).</summary>
@@ -144,6 +147,7 @@ namespace OpenRA.WebSim
 		{
 			var generated = Path.Combine(Root, "mods", "rtsai", "web", "content", "maps", mapName);
 			if (File.Exists(Path.Combine(generated, "map.yaml"))) return generated;
+			WebMaps.Ensure(mapName);
 			return ModData.MapCache.FirstOrDefault(p => Path.GetFileName(p.Path) == mapName)?.Path
 				?? Path.Combine(Root, "mods", ModId, "maps", mapName);
 		}
@@ -160,6 +164,37 @@ namespace OpenRA.WebSim
 
 			return null;
 		}
+
+		static readonly HashSet<string> MissingSounds = [];
+
+		/// <summary>
+		/// Whether a sound the rules name is in the game files; a missing one is written to the log once and skipped.
+		/// The page's lazy audio asks the file system where a sound sits (<see cref="LoosePath"/>) before the engine
+		/// loads it, and the engine's file index answers every lookup by adding an entry for the name: afterwards
+		/// FileSystem.Exists reports a missing file as present, Sound.LoadSound opens it, and the open throws, which
+		/// stopped the whole simulation (a tesla coil's charge sound that the build did not ship). This check asks the
+		/// packages themselves.
+		/// </summary>
+		public static bool SoundAvailable(string filename)
+		{
+			var found = ModData.DefaultFileSystem is OpenRA.FileSystem.FileSystem fs
+				? fs.TryGetPackageContaining(filename, out var package, out var name) && package.Contains(name)
+				: ModData.DefaultFileSystem.Exists(filename);
+			if (!found && MissingSounds.Add(filename))
+				Log.Write("sound", $"Sound file not in the game files, skipped: {filename}");
+			return found;
+		}
+
+		/// <summary>The sounds skipped so far because the game files do not have them (native tests).</summary>
+		public static IReadOnlyCollection<string> SkippedSounds => MissingSounds;
+
+		/// <summary>
+		/// The page's audio gate (Sound.AudioReady): a sound the game files do not have is skipped for good (logged once);
+		/// one that sits loose in a lazily mounted folder plays once <paramref name="fetched"/> says its file has arrived
+		/// (the page fetches it in the background meanwhile); the rest play at once.
+		/// </summary>
+		public static void GateAudio(Func<string, bool> fetched) =>
+			OpenRA.Sound.AudioReady = name => SoundAvailable(name) && (LoosePath(name) is not { } path || fetched(path));
 
 		public static Map LoadMap(string path)
 		{
@@ -262,6 +297,8 @@ namespace OpenRA.WebSim
 			// Loading starts from a collected heap, so its allocations reuse freed memory instead of growing it (WebAssembly
 			// memory never shrinks).
 			Time("prepare.collect", () => GC.Collect());
+			// The map joins the MapCache as the boot used to add it (World looks it up there).
+			Time("prepare.mapcache", () => WebMaps.Ensure(mapName));
 			Map map = null;
 			Time("prepare.map", () => map = LoadMap(MapPath(mapName)));
 

@@ -17,10 +17,15 @@ export interface Chapter {
   speaker?: string;
 }
 export interface Arc { id: string; title: string; premise: string; missions: string[]; /** "Act I" etc. */ act?: string }
+/** A film around the acts, not a mission: the prologue before Act I, the epilogue after the last act. Shown once its
+ * film is published (in the briefings index under its id). */
 export interface Prologue { id: string; title: string; eyebrow?: string; intro: string }
+export type Epilogue = Prologue;
+/** The next part of the story, teased after the epilogue: a locked card, never launchable from this campaign. */
+export interface Sequel { id: string; title: string; eyebrow?: string; premise: string; status?: "coming" }
 export interface CampaignStory {
-  title: string; provenance?: string; prologue?: Prologue; arcs: Arc[]; chapters: Record<string, Chapter>;
-  cast?: Record<string, CastMember>; radio?: Record<string, RadioCall[]>;
+  title: string; provenance?: string; prologue?: Prologue; epilogue?: Epilogue; sequel?: Sequel; arcs: Arc[];
+  chapters: Record<string, Chapter>; cast?: Record<string, CastMember>; radio?: Record<string, RadioCall[]>;
 }
 
 /** The CDN folder holding campaign/index.json, films, portraits and radio voices; unset in local builds. */

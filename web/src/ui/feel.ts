@@ -74,12 +74,18 @@ export function installUiFeel(): () => void {
     const target = (e.target as Element | null)?.closest<HTMLElement>(CLICKABLE);
     if (target && target.closest("[data-ui-sfx]")) tone("press");
   };
+  // iOS Safari starts audio only from the end of a touch: unlock the UI sounds there too.
+  const unlock = () => { if (audio?.state === "suspended") void audio.resume().catch(() => {}); };
   document.addEventListener("pointerover", over, { passive: true });
   document.addEventListener("pointerdown", press, { passive: true, capture: true });
+  document.addEventListener("touchend", unlock, { passive: true, capture: true });
+  document.addEventListener("click", unlock, { passive: true, capture: true });
   return () => {
     window.clearInterval(poll);
     stop();
     document.removeEventListener("pointerover", over);
     document.removeEventListener("pointerdown", press, { capture: true });
+    document.removeEventListener("touchend", unlock, { capture: true });
+    document.removeEventListener("click", unlock, { capture: true });
   };
 }

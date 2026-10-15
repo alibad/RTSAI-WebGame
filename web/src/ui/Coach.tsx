@@ -14,7 +14,8 @@ const KIND_ICONS: Record<string, React.ReactNode> = { power: <Zap size={14} />, 
 const KIND_NAMES: Record<string, string> = { power: "Low power", loss: "Losses", production: "Production idle", cash: "No income" };
 
 export function CoachPanel({ game }: { game: Game }) {
-  const [open, setOpen] = useState(false);
+  const open = useStore((s) => s.reviewOpen);
+  const setOpen = (reviewOpen: boolean) => useStore.getState().set({ reviewOpen });
   const [, render] = useState(0);
   useEffect(() => { const t = setInterval(() => render(n => n + 1), 1000); return () => clearInterval(t); }, []);
   const c = game.coach;

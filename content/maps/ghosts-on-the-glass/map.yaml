@@ -1,0 +1,387 @@
+MapFormat: 12
+RequiresMod: rtsai
+Title: Ghosts on the Glass
+Author: RTS AI — Lines of Hope
+Tileset: TEMPERATE
+MapSize: 96,96
+Bounds: 1,1,94,94
+Visibility: MissionSelector
+Categories: Campaign
+LockPreview: True
+Players:
+	PlayerReference@Israel:
+		Name: Israel
+		AllowBots: False
+		Playable: True
+		Required: True
+		LockFaction: True
+		Faction: israel
+		LockColor: True
+		Color: 3A6EA5
+		LockSpawn: True
+		LockTeam: True
+		Enemies: Orion Group, Contacts
+	PlayerReference@Orion:
+		Name: Orion Group
+		Faction: russia
+		Color: 545D66
+		Allies: Contacts
+		Enemies: Israel
+	PlayerReference@Neutral:
+		Name: Neutral
+		OwnsWorld: True
+		NonCombatant: True
+		Faction: china
+	PlayerReference@Civilians:
+		Name: Civilians
+		NonCombatant: True
+		Faction: israel
+		Color: D8D2C4
+	PlayerReference@Contacts:
+		Name: Contacts
+		Faction: russia
+		Color: 545D66
+		Allies: Orion Group
+		Enemies: Israel
+Actors:
+	MissionSpawn: mpspawn
+		Owner: Neutral
+		Location: 49,28
+	IsraelConyard: gacnst
+		Owner: Israel
+		Location: 42,30
+	IsraelPowerOne: gapowr
+		Owner: Israel
+		Location: 36,30
+	IsraelPowerTwo: gapowr
+		Owner: Israel
+		Location: 42,38
+	IsraelBarracks: gapile
+		Owner: Israel
+		Location: 44,22
+	IsraelFactory: gaweap
+		Owner: Israel
+		Location: 50,34
+	IsraelRadar: gaairc
+		Owner: Israel
+		Location: 53,21
+	IsraelRefinery: garefn
+		Owner: Israel
+		Location: 49,18
+	IsraelSentry: r2ilsentry
+		Owner: Israel
+		Location: 47,10
+	IsraelBeachGun: r2ilatpost
+		Owner: Israel
+		Location: 50,9
+	IsraelSentryNorth: r2ilsentry
+		Owner: Israel
+		Location: 38,17
+	IsraelATPost: r2ilatpost
+		Owner: Israel
+		Location: 64,26
+	Ronen0: r2merkava
+		Owner: Israel
+		Location: 39,21
+	Ronen1: r2merkava
+		Owner: Israel
+		Location: 42,19
+	Ronen2: r2merkava
+		Owner: Israel
+		Location: 43,17
+	Ronen3: r2namer
+		Owner: Israel
+		Location: 46,15
+	Ronen4: r2namer
+		Owner: Israel
+		Location: 47,13
+	Ronen5: r2ilrifle
+		Owner: Israel
+		Location: 50,11
+	Ronen6: r2ilrifle
+		Owner: Israel
+		Location: 40,22
+	Ronen7: r2ilrifle
+		Owner: Israel
+		Location: 43,20
+	Ronen8: r2ilrifle
+		Owner: Israel
+		Location: 44,18
+	Ronen9: r2ilat
+		Owner: Israel
+		Location: 47,16
+	Ronen10: r2ilat
+		Owner: Israel
+		Location: 48,14
+	Ronen11: r2ilat
+		Owner: Israel
+		Location: 51,12
+	Ronen12: r2ilobserver
+		Owner: Israel
+		Location: 41,23
+	Ronen13: r2ilobserver
+		Owner: Israel
+		Location: 44,21
+	Ronen14: r2ilobserver
+		Owner: Israel
+		Location: 45,19
+	Ronen15: engineer
+		Owner: Israel
+		Location: 48,17
+	Patrol0: r2ilpatrol
+		Owner: Israel
+		Location: 70,15
+	Patrol1: r2ilpatrol
+		Owner: Israel
+		Location: 73,15
+	ShelterNorth: gapile
+		Owner: Civilians
+		Location: 16,5
+	ShelterSchool: gapile
+		Owner: Civilians
+		Location: 25,9
+	ShelterQuay: gapile
+		Owner: Civilians
+		Location: 28,19
+	RelayNorth: naradr
+		Owner: Orion Group
+		Location: 85,-67
+	RelayCape: naradr
+		Owner: Orion Group
+		Location: 108,-66
+	RelaySouth: naradr
+		Owner: Orion Group
+		Location: 118,-50
+	CellPower: nanrct
+		Owner: Orion Group
+		Location: 117,-63
+	RelayNorthGuard0: nalasr
+		Owner: Orion Group
+		Location: 87,-72
+	RelayNorthGuard1: e2
+		Owner: Orion Group
+		Location: 82,-66
+	RelayNorthGuard2: e2
+		Owner: Orion Group
+		Location: 89,-67
+	RelayNorthGuard3: flakt
+		Owner: Orion Group
+		Location: 81,-63
+	RelayNorthGuard4: htnk
+		Owner: Orion Group
+		Location: 90,-70
+	RelayCapeGuard0: tesla
+		Owner: Orion Group
+		Location: 107,-61
+	RelayCapeGuard1: nalasr
+		Owner: Orion Group
+		Location: 105,-66
+	RelayCapeGuard2: e2
+		Owner: Orion Group
+		Location: 112,-66
+	RelayCapeGuard3: e2
+		Owner: Orion Group
+		Location: 105,-64
+	RelayCapeGuard4: deso
+		Owner: Orion Group
+		Location: 108,-69
+	RelayCapeGuard5: htnk
+		Owner: Orion Group
+		Location: 110,-66
+	RelaySouthGuard0: nalasr
+		Owner: Orion Group
+		Location: 114,-49
+	RelaySouthGuard1: nalasr
+		Owner: Orion Group
+		Location: 122,-50
+	RelaySouthGuard2: e2
+		Owner: Orion Group
+		Location: 118,-47
+	RelaySouthGuard3: e2
+		Owner: Orion Group
+		Location: 120,-54
+	RelaySouthGuard4: flakt
+		Owner: Orion Group
+		Location: 117,-53
+	RelaySouthGuard5: ttnk
+		Owner: Orion Group
+		Location: 115,-45
+	RelaySouthGuard6: htnk
+		Owner: Orion Group
+		Location: 124,-53
+	CellPowerGuard0: ttnk
+		Owner: Orion Group
+		Location: 116,-58
+	CellPowerGuard1: e2
+		Owner: Orion Group
+		Location: 118,-66
+	CellPowerGuard2: e2
+		Owner: Orion Group
+		Location: 120,-59
+	Contact1: hyd
+		Owner: Contacts
+		Location: 47,-9
+	Contact2: hyd
+		Owner: Contacts
+		Location: 71,-9
+	Contact3: hyd
+		Owner: Contacts
+		Location: 62,-16
+	Contact4: htnk
+		Owner: Contacts
+		Location: 39,-29
+	Contact5: htnk
+		Owner: Contacts
+		Location: 61,-51
+	Contact6: htnk
+		Owner: Contacts
+		Location: 32,5
+	Contact7: htnk
+		Owner: Contacts
+		Location: 20,-1
+	Contact8: htnk
+		Owner: Contacts
+		Location: 104,-57
+	Contact9: hyd
+		Owner: Contacts
+		Location: 90,-3
+	WarnSchool: waypoint
+		Owner: Neutral
+		Location: 32,5
+	WarnNorth: waypoint
+		Owner: Neutral
+		Location: 20,-1
+	WarnBridge: waypoint
+		Owner: Neutral
+		Location: 39,-29
+	ContactPicture: waypoint
+		Owner: Neutral
+		Location: 67,-13
+	LandingBeach: waypoint
+		Owner: Neutral
+		Location: 46,3
+	SeaSouth: waypoint
+		Owner: Neutral
+		Location: 99,-6
+	HarbourMouth: waypoint
+		Owner: Neutral
+		Location: 71,7
+Rules:
+	World:
+		-SpawnStartingUnits:
+		-CrateSpawner:
+		-StartGameNotification:
+	Player:
+		-ConquestVictoryConditions:
+	htnk:
+		ExternalCondition@phantom:
+			Condition: phantom
+		ExternalCondition@spoof-off:
+			Condition: spoof-off
+		ExternalCondition@sensor-on:
+			Condition: sensor-on
+		ExternalCondition@sensor-tripped:
+			Condition: sensor-tripped
+		Armament@primary:
+			RequiresCondition: !rank-elite && !phantom
+		Armament@elite:
+			RequiresCondition: rank-elite && !phantom
+		DamageMultiplier@unverified:
+			Modifier: 10
+			RequiresCondition: phantom && !sensor-tripped && !spoof-off
+		DamageMultiplier@ghost:
+			Modifier: 0
+			RequiresCondition: phantom && (sensor-tripped || spoof-off)
+		Cloak@ghost:
+			InitialDelay: 0
+			CloakDelay: 0
+			UncloakOn: None
+			DetectionTypes: Ghost
+			RequiresCondition: phantom && (sensor-tripped || spoof-off)
+		WithRangeCircle@contact:
+			Range: 3c0
+			Visible: Always
+			ValidRelationships: Ally, Neutral, Enemy
+			Color: FFB53CF0
+			Width: 2
+			BorderColor: 00000080
+			BorderWidth: 4
+			RequiresCondition: sensor-on && !sensor-tripped && !spoof-off
+		WithRangeCircle@ghost:
+			Range: 3c0
+			Visible: Always
+			ValidRelationships: Ally, Neutral, Enemy
+			Color: C8DCE6A0
+			Width: 1
+			BorderColor: 00000080
+			BorderWidth: 3
+			RequiresCondition: phantom && (sensor-tripped || spoof-off)
+		WithRangeCircle@hostile:
+			Range: 3c0
+			Visible: Always
+			ValidRelationships: Ally, Neutral, Enemy
+			Color: FF3A2AF0
+			Width: 3
+			BorderColor: 00000080
+			BorderWidth: 5
+			RequiresCondition: !phantom && sensor-on && (sensor-tripped || spoof-off)
+	hyd:
+		ExternalCondition@phantom:
+			Condition: phantom
+		ExternalCondition@spoof-off:
+			Condition: spoof-off
+		ExternalCondition@sensor-on:
+			Condition: sensor-on
+		ExternalCondition@sensor-tripped:
+			Condition: sensor-tripped
+		Armament@primary:
+			RequiresCondition: !phantom
+		Armament@secondary:
+			RequiresCondition: !phantom
+		DamageMultiplier@unverified:
+			Modifier: 10
+			RequiresCondition: phantom && !sensor-tripped && !spoof-off
+		DamageMultiplier@ghost:
+			Modifier: 0
+			RequiresCondition: phantom && (sensor-tripped || spoof-off)
+		Cloak@ghost:
+			InitialDelay: 0
+			CloakDelay: 0
+			UncloakOn: None
+			DetectionTypes: Ghost
+			RequiresCondition: phantom && (sensor-tripped || spoof-off)
+		WithRangeCircle@contact:
+			Range: 3c0
+			Visible: Always
+			ValidRelationships: Ally, Neutral, Enemy
+			Color: FFB53CF0
+			Width: 2
+			BorderColor: 00000080
+			BorderWidth: 4
+			RequiresCondition: sensor-on && !sensor-tripped && !spoof-off
+		WithRangeCircle@ghost:
+			Range: 3c0
+			Visible: Always
+			ValidRelationships: Ally, Neutral, Enemy
+			Color: C8DCE6A0
+			Width: 1
+			BorderColor: 00000080
+			BorderWidth: 3
+			RequiresCondition: phantom && (sensor-tripped || spoof-off)
+		WithRangeCircle@hostile:
+			Range: 3c0
+			Visible: Always
+			ValidRelationships: Ally, Neutral, Enemy
+			Color: FF3A2AF0
+			Width: 3
+			BorderColor: 00000080
+			BorderWidth: 5
+			RequiresCondition: !phantom && sensor-on && (sensor-tripped || spoof-off)
+	waypoint:
+		Health:
+			HP: 1
+		HitShape:
+		ExternalCondition@struck:
+			Condition: struck
+		KillsSelf@struck:
+			RequiresCondition: struck

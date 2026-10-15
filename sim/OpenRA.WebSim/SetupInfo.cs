@@ -77,8 +77,10 @@ namespace OpenRA.WebSim
 		/// <summary>The map's preview image (map.png in its package), or empty.</summary>
 		public static byte[] Preview(string mapId)
 		{
-			IReadOnlyFileSystem preview = SimHost.ModData.MapCache.FirstOrDefault(p => Path.GetFileName(p.Path) == mapId);
-			if (preview == null || !preview.TryOpen("map.png", out var s))
+			// Read from the map's package whether or not it is loaded yet (WebMaps): the campaign screen shows every
+			// mission's picture, and loading a mission's map for its picture would merge its rules.
+			var png = WebMaps.ReadFile(mapId, "map.png");
+			if (png == null)
 			{
 				// Maps without a picture (the practice arenas the bundle builds): the engine draws one, as the editor does.
 				try
@@ -92,10 +94,7 @@ namespace OpenRA.WebSim
 				}
 			}
 
-			using var _ = s;
-			using var ms = new MemoryStream();
-			s.CopyTo(ms);
-			return ms.ToArray();
+			return png;
 		}
 	}
 }

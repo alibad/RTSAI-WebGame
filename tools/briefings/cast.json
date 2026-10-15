@@ -19,6 +19,14 @@
     {
       "id": "orlov",
       "prompt": "A black-and-white 1950s formal portrait photograph in an ornate dark frame, where the man has been cut out of the print: a crisp man-shaped blank gap in the outline of a dark suit, only his gloved hands resting on a chair, the frame reflected in polished black glass, mysterious, no face visible."
+    },
+    {
+      "id": "arash",
+      "prompt": "Portrait of a fictional Iranian army engineer colonel in his fifties, close-cropped greying beard, sand-coloured field uniform with rolled sleeves and no badges, a dusty scarf, reading glasses in his breast pocket, standing beside a water tanker truck on a white salt flat at dusk, calm and practical, looking at the viewer."
+    },
+    {
+      "id": "maya",
+      "prompt": "Portrait of a fictional Israeli lieutenant colonel, a woman in her forties, dark hair in a low knot, plain olive uniform with no badges, a headset around her neck and binoculars on a strap, in a harbour command room lit by green screens, alert and sceptical, looking at the viewer."
     }
   ]
 }

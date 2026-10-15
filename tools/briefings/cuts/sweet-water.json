@@ -1,0 +1,97 @@
+{
+  "mission": "sweet-water",
+  "chapter": "Aftershocks · Chapter 1",
+  "title": "Sweet Water",
+  "music": "C:/Users/Admin/Code/AI/betenshi-console/generated-music/20261015-043209-text2music-220625652-warm-desert-cinematic-underscore-santur-.flac",
+  "musicVolume": 0.55,
+  "segments": [
+    {
+      "src": "C:/Users/Admin/Code/AI/betenshi-console/generated/video/2026-10-14/v_mv8lnsek_bc1720-wan2.2-ti2v-5b.mp4",
+      "kind": "cinema",
+      "voice": null,
+      "line": "Days after every light came back on, the Directorate's last cells are racing for the coil caches.",
+      "poster": true
+    },
+    {
+      "src": "D:/rtsai-campaign/footage-out/sweet-water/establishing.mp4",
+      "kind": "game",
+      "dur": 6.5,
+      "zoom": 1.1,
+      "card": {
+        "kicker": "Area of operations",
+        "text": "A fictional salt coast"
+      }
+    },
+    {
+      "src": "C:/Users/Admin/Code/AI/betenshi-console/generated/video/2026-10-14/v_mv8lnsk3_243f5f-wan2.2-ti2v-5b.mp4",
+      "kind": "cinema",
+      "voice": null,
+      "line": "On a salt coast, one cell has taken a town's water plant. Under it lies a cache of coils."
+    },
+    {
+      "src": "C:/Users/Admin/Code/AI/betenshi-console/generated/video/2026-10-14/v_mv8lnsqm_d7c127-wan2.2-ti2v-5b.mp4",
+      "kind": "cinema",
+      "voice": null,
+      "line": "It has cut the water, to keep everyone away from what it came for."
+    },
+    {
+      "src": "C:/Users/Admin/Code/AI/betenshi-console/generated/video/2026-10-14/v_mv8lnsw5_3104c0-wan2.2-ti2v-5b.mp4",
+      "kind": "cinema",
+      "voice": null,
+      "line": "Colonel Arash Tavakoli has laid water lines across three deserts. Today he brings the water in by road."
+    },
+    {
+      "src": "D:/rtsai-campaign/footage-out/sweet-water/objective-1.mp4",
+      "kind": "game",
+      "dur": 4.2,
+      "zoom": 1.1,
+      "card": {
+        "kicker": "Objective 1",
+        "text": "Clear the three roadblocks on the salt road before the water trucks are due."
+      }
+    },
+    {
+      "src": "D:/rtsai-campaign/footage-out/sweet-water/objective-2.mp4",
+      "kind": "game",
+      "dur": 4.2,
+      "zoom": 1.1,
+      "card": {
+        "kicker": "Objective 2",
+        "text": "Bring the water trucks through to the town cistern."
+      }
+    },
+    {
+      "src": "D:/rtsai-campaign/footage-out/sweet-water/objective-3.mp4",
+      "kind": "game",
+      "dur": 4.2,
+      "zoom": 1.1,
+      "card": {
+        "kicker": "Objective 3",
+        "text": "Retake the water plant: capture its pumps and its power station with engineers."
+      }
+    },
+    {
+      "src": "D:/rtsai-campaign/footage-out/sweet-water/objective-4.mp4",
+      "kind": "game",
+      "dur": 4.2,
+      "zoom": 1.1,
+      "card": {
+        "kicker": "Objective 4",
+        "text": "Take the coil cache in the plant vault with an engineer."
+      }
+    },
+    {
+      "src": "D:/rtsai-campaign/footage-out/sweet-water/battle.mp4",
+      "kind": "game",
+      "in": 1.5,
+      "dur": 10,
+      "zoom": 1.25
+    },
+    {
+      "src": "C:/Users/Admin/Code/AI/betenshi-console/generated/video/2026-10-15/v_mv8sld37_ad0b1c-wan2.2-ti2v-5b.mp4",
+      "kind": "cinema",
+      "voice": null,
+      "line": "Clear the road. Retake the plant. Take the cache whole."
+    }
+  ]
+}

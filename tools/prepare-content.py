@@ -356,12 +356,14 @@ TILE = dict(water=1 if CLASSIC_MODE else 1015, rough=2 if CLASSIC_MODE else 1047
             deck=3 if CLASSIC_MODE else 463)
 MAP_RULES = 'World:\n\t-SpawnStartingUnits:\n\t-CrateSpawner:\n\t-StartGameNotification:\nPlayer:\n\t-ConquestVictoryConditions:\n'
 
-def chapter_players(slot, faction, color, extra='', ally=None):
+def chapter_players(slot, faction, color, extra='', ally=None, enemies=(), orion_allies=()):
+    """The player's side, Orion Group and Neutral; `enemies` are further sides hostile to the player (and allied to Orion)."""
     allies = f'\tAllies: {ally}\n' if ally else ''
+    orion_allies = f'\tAllies: {", ".join(orion_allies)}\n' if orion_allies else ''
     return parse(f'PlayerReference@{slot}:\n\tName: {slot}\n\tAllowBots: False\n\tPlayable: True\n\tRequired: True\n'
                  f'\tLockFaction: True\n\tFaction: {faction}\n\tLockColor: True\n\tColor: {color}\n\tLockSpawn: True\n'
-                 f'\tLockTeam: True\n{allies}\tEnemies: Orion Group\n'
-                 'PlayerReference@Orion:\n\tName: Orion Group\n\tFaction: russia\n\tColor: 545D66\n\tEnemies: '+slot+(f', {ally}' if ally else '')+'\n'
+                 f'\tLockTeam: True\n{allies}\tEnemies: {", ".join(("Orion Group",) + tuple(enemies))}\n'
+                 'PlayerReference@Orion:\n\tName: Orion Group\n\tFaction: russia\n\tColor: 545D66\n'+orion_allies+'\tEnemies: '+slot+(f', {ally}' if ally else '')+'\n'
                  'PlayerReference@Neutral:\n\tName: Neutral\n\tOwnsWorld: True\n\tNonCombatant: True\n\tFaction: china\n'+extra)
 
 # Stranded crews and the stranger: a non-combatant side nobody is hostile to. Its faction (one of the original
@@ -393,8 +395,18 @@ class ChapterMap:
     def fill(self, u0, v0, u1, v1, kind):
         for u in range(u0, u1+1):
             for v in range(v0, v1+1): self.paint(u, v, kind)
-    def clear_ore(self):
-        if self.res: self.raw[self.res:self.res+self.w*self.h*2] = bytes(self.w*self.h*2)
+    def lay_ore(self, u0, v0, u1, v1):
+        """Lay ore on the land cells of a box (resource type 1 at full density, as the adapted maps carry it)."""
+        for u in range(u0, u1+1):
+            for v in range(v0, v1+1):
+                if self.tile(u, v) != TILE['water'] and (CLASSIC_MODE or self.tile(u, v) != TILE['beach']): struct.pack_into('<BB', self.raw, self.res+(u*self.h+v)*2, 1, 12)
+
+    def clear_ore(self, u0=None, v0=None, u1=None, v1=None):
+        """Remove the ore and gems everywhere, or within a box of cells."""
+        if not self.res: return
+        if u0 is None: self.raw[self.res:self.res+self.w*self.h*2] = bytes(self.w*self.h*2); return
+        for u in range(max(0, u0), min(self.w, u1+1)):
+            for v in range(max(0, v0), min(self.h, v1+1)): struct.pack_into('<BB', self.raw, self.res+(u*self.h+v)*2, 0, 0)
 
     def cpos(self, u, v):
         off = v & 1
@@ -453,11 +465,11 @@ class ChapterMap:
                     seen.add(n); todo.append(n)
         return False
 
-    def write(self, title, slot, faction, color, extra_rules='', extra_players='', ally=None):
+    def write(self, title, slot, faction, color, extra_rules='', extra_players='', ally=None, enemies=(), orion_allies=()):
         m = self.yaml
         m['Title'] = node(title); m['Author'] = node('RTS AI — Lines of Hope')
         m['Visibility'] = node('MissionSelector'); m['Categories'] = node('Campaign')
-        m['Players'] = node(children=chapter_players(slot, faction, color, extra_players, ally))
+        m['Players'] = node(children=chapter_players(slot, faction, color, extra_players, ally, enemies, orion_allies))
         m['Actors'] = node(children=self.actors)
         m['Rules'] = node(children=parse(MAP_RULES+extra_rules))
         if self.art_check:
@@ -482,7 +494,7 @@ class ChapterMap:
 
 def stand_in_art(kind, faction):
     """True when every sprite the actor's image draws for that faction is one of the standalone's code-drawn stand-ins
-    (standalone/placeholders: the civilians, the campaign outpost), ignoring the original art the isometric mode adds."""
+    (standalone/placeholders: the campaign outpost and other unused stock actors), ignoring the original art the isometric mode adds."""
     if kind in COUNTRY_ART and not CLASSIC_MODE: return False
     images = resolve(rules, kind).get('RenderSprites', node())['children']
     image = (images.get('FactionImages', node())['children'].get(COUNTRIES.get(faction, faction), node())['value']
@@ -493,7 +505,7 @@ def stand_in_art(kind, faction):
     def stand_in(f):
         f = f.split('|')[-1]
         return '/' not in f and (MOD/'standalone/placeholders'/f).exists() and not any(
-            (MOD/d/f).exists() for d in ('standalone/effects', 'standalone/units', 'standalone/base', 'bits', 'bits/cameos'))
+            (MOD/d/f).exists() for d in ('standalone/effects', 'standalone/units', 'standalone/base', 'standalone/civilian', 'bits', 'bits/cameos'))
     return not files or all(stand_in(f) for f in files)
 
 def sensor_rules(kind, radius):
@@ -573,9 +585,11 @@ def lights_in_the_water():
     for name, u in sites:
         v = coast[u]-3
         m.add(name, 'waypoint', 'Neutral', u, v)
-        # Engineers (workers in overalls) stand in for the fishing crews: the standalone's civilians are still
-        # placeholder art.
-        for k, kind in enumerate(['engineer'] * (3 if name != 'StrangerSite' else 2)):
+        # The fishing crews: fishermen, a man in a thobe, an elder, a young deckhand (the standalone's civilians,
+        # RTSAI-Art tools/civilians.py; civ3, civbfm and civstm wear the fisherman's look).
+        crews = {'SurvivorsCove': ['civ3', 'civ2', 'civb'], 'SurvivorsJetty': ['civbfm', 'civa', 'civ3'],
+                 'StrangerSite': ['civstm', 'civc']}
+        for k, kind in enumerate(crews[name]):
             m.add(f'{name}Civilian{k}', kind, 'Survivors', u-2+k*2, v-1)
     m.add('Stranger', 'tany', 'Survivors', 87, coast[87]-5)
     # Orion patrols have reached each group: heavier the further east (the stranger is what Orion wants).
@@ -922,8 +936,281 @@ def every_light_on():
         objective('Capture the Chronosphere once the mainland towns are clear.', 'capture', ['Chronosphere'], requires=[0], after=['towns-clear']),
         objective('Keep the radar relay standing.', 'protect', ['PictureRelay'], secondary=True)])
 
+# Lines of Hope, Act IV (Aftershocks): two chapters on separate coasts and days, one per faction, against the Directorate's
+# last cells. They never meet; Lantern's desk connects them on the radio.
+# Both give Orion power, so their tesla coils charge (Act III's run unpowered); the coil's charge sound comes from the
+# sound check (fix/tesla-sound: sound-fallbacks.yaml until the mod ships btespow.wav).
+SALT_ROAD_TOWN ='PlayerReference@Town:\n\tName: Town\n\tNonCombatant: True\n\tFaction: iran\n\tColor: B8B2A2\n'
+
+def sweet_water():
+    """Act IV, chapter 1 (Iran): a salt-desert trade road and a port town whose water plant, with a coil cache under it,
+    a Directorate cell holds (terrain of Jizan Corridor, with a painted coast, salt flat, road and dock). After Allies
+    02 "Five to One" (clear a road before the convoy is due) and Soviet 07 "Core of the Matter" (retake a plant)."""
+    import math
+    m = ChapterMap('jizan-corridor', 'sweet-water', art_check=True)
+    coast = {v: 86 + round(2*math.sin(v*0.21)) for v in range(m.h)}
+    for v in range(m.h):
+        for u in range(coast[v]-2, m.w): m.paint(u, v, 'beach' if u < coast[v] else 'water')
+    # The salt flat the trade road crosses (the tileset's sand), then the road itself, the spur to the town cistern and
+    # the town's dock.
+    for u in range(m.w):
+        for v in range(m.h):
+            if ((u-40)/17)**2 + ((v-50)/24)**2 < 1: m.paint(u, v, 'beach')
+    m.fill(1, 49, 63, 50, 'road'); m.fill(56, 30, 57, 50, 'road'); m.fill(56, 30, 66, 31, 'road')
+    m.fill(coast[51]-2, 50, coast[51]+5, 52, 'deck')
+    m.clear_ore(60, 24, 95, 75)
+    # Colonel Tavakoli's road camp at the west end of the salt road. Its buildings come first: the raids go for the
+    # oldest one still standing.
+    m.add('MissionSpawn', 'mpspawn', 'Neutral', 10, 64)
+    for name, kind, u, v in [('IranConyard', 'nacnst', 8, 58), ('IranPowerOne', 'napowr', 3, 57), ('IranPowerTwo', 'napowr', 3, 62),
+                             ('IranBarracks', 'nahand', 15, 56), ('IranFactory', 'naweap', 13, 63), ('IranRefinery', 'narefn', 13, 71),
+                             ('IranRadar', 'naradr', 4, 68), ('IranBunkerNorth', 'r2irbunker', 9, 52), ('IranBunkerEast', 'r2irbunker', 20, 53)]:
+        m.add(name, kind, 'Iran', u, v)
+    force = [('r2karrar', 4), ('r2raad', 1), ('r2basij', 6), ('r2toophan', 3), ('engineer', 3)]
+    i = 0
+    for kind, count in force:
+        for _ in range(count):
+            m.add(f'Tavakoli{i}', kind, 'Iran', 19 + i % 6*2, 57 + i//6*2 + (i % 2)); i += 1
+    # Three roadblocks across the salt road: a sentry gun and a tesla coil on the road itself (the coils run on the
+    # plant's power station), a squad and armour around them.
+    roadblocks = [('RoadblockWest', 34, 49, False, [('e2', -2, -3), ('e2', 2, 3), ('flakt', 0, 4), ('htnk', 3, -3), ('e2', -1, -4)]),
+                  ('RoadblockMid', 46, 50, False, [('e2', -2, -3), ('e2', 2, 3), ('flakt', -1, 4), ('deso', 3, -2), ('htnk', -3, 3), ('e2', 1, 4)]),
+                  ('RoadblockEast', 57, 49, True, [('e2', -2, -3), ('e2', 2, 3), ('flakt', 0, -4), ('deso', -3, 3), ('htnk', 3, -3), ('ttnk', 4, 3)])]
+    for name, u, v, coil, guards in roadblocks:
+        m.add(name+'Gun', 'nalasr', 'Orion Group', u, v)
+        if coil: m.add(name+'Coil', 'tesla', 'Orion Group', u+2, v+(1 if v == 49 else -1))
+        for k, (kind, du, dv) in enumerate(guards): m.add(f'{name}Guard{k}', kind, 'Orion Group', u+du, v+dv)
+    # The port town: a few buildings of the town's own, and the cistern the trucks fill.
+    for name, kind, u, v in [('TownHall', 'nahand', 67, 24), ('TownMarket', 'nadept', 73, 30), ('TownWorks', 'napowr', 79, 24)]:
+        m.add(name, kind, 'Town', u, v)
+    # The desalination plant on the shore, held by the cell, with the vault and its coil cache beside it; the power
+    # station north of it, by the coast road, feeds the cell's coils: take it and they go dark.
+    m.add('WaterPlant', 'narefn', 'Orion Group', 72, 56, FreeActor='False')
+    m.add('PlantPower', 'nanrct', 'Orion Group', 80, 36)
+    m.add('CoilVault', 'natech', 'Orion Group', 71, 64)
+    for name, kind, u, v in [('PlantTeslaNorth', 'tesla', 69, 54), ('PlantTeslaSouth', 'tesla', 68, 63), ('PlantGun', 'nalasr', 76, 54),
+                             ('PlantFlak', 'naflak', 81, 56), ('PlantTeslaEast', 'tesla', 82, 61), ('PlantGunWest', 'nalasr', 65, 58)]:
+        m.add(name, kind, 'Orion Group', u, v)
+    for k, (kind, u, v) in enumerate([('e2', 67, 57), ('e2', 76, 59), ('e2', 76, 64), ('e2', 66, 52), ('e2', 70, 69),
+                                      ('flakt', 75, 69), ('deso', 74, 63), ('htnk', 65, 61), ('htnk', 72, 51), ('ttnk', 80, 53),
+                                      ('ttnk', 67, 66), ('shk', 73, 52),
+                                      # the power station's guard
+                                      ('e2', 77, 34), ('e2', 84, 38), ('flakt', 80, 42), ('htnk', 76, 39)]):
+        m.add(f'PlantGuard{k}', kind, 'Orion Group', u, v)
+    # The army water trucks wait at the west edge of the salt; the cell's raiders camp in the northern hills; its
+    # recovery boat comes to the town dock.
+    route = [('RoadCamp', 14, 50), ('SaltWest', 28, 50), ('SaltMid', 40, 50), ('SaltEast', 52, 50), ('TownGate', 56, 40), ('Cistern', 63, 32)]
+    m.add('TruckEntry', 'waypoint', 'Neutral', 2, 50)
+    for name, u, v in route: m.add(name, 'waypoint', 'Neutral', u, v)
+    m.add('RaidCamp', 'waypoint', 'Neutral', 44, 6)
+    m.add('Dock', 'waypoint', 'Neutral', coast[51]+2, 51)
+    m.add('DockWater', 'waypoint', 'Neutral', coast[51]+3, 54, where='water')
+    m.add('SeaApproach', 'waypoint', 'Neutral', 93, 51, where='water')
+    for a, b in [('TruckEntry', 'Cistern'), ('RaidCamp', 'IranConyard'), ('Dock', 'CoilVault'), ('RoadCamp', 'WaterPlant'), ('Dock', 'WaterPlant')]:
+        if not m.reachable(a, b): raise ValueError(f'{m.id}: no land route {a} -> {b}')
+    if not m.reachable('SeaApproach', 'DockWater', water=True): raise ValueError(f'{m.id}: no sea route to the dock')
+    # Mission rules: the trucks are slow, laden; the plant and the vault cannot be destroyed while the cell holds them
+    # ("intact", granted at the start: the town needs the plant, and the coils hold a charge), and the vault cannot be
+    # captured until its lock is cut ("sealed").
+    intact = '\tExternalCondition@intact:\n\t\tCondition: intact\n\tDamageMultiplier@intact:\n\t\tModifier: 0\n\t\tRequiresCondition: intact\n'
+    m.write('Sweet Water', 'Iran', 'iran', '6A9E3F', extra_players=SALT_ROAD_TOWN, extra_rules=(
+        'sapc:\n\tMobile:\n\t\tSpeed: 70\nnarefn:\n' + intact + 'nanrct:\n' + intact + 'natech:\n' + intact
+        + '\tExternalCondition@sealed:\n\t\tCondition: sealed\n\tCapturable:\n\t\tRequiresCondition: !sealed\n'))
+    guns = [name+'Gun' for name, *_ in roadblocks]
+    events = [
+        dict(id='plant-held', when=dict(time=0), grant=[dict(condition='intact', actors=['WaterPlant', 'PlantPower', 'CoilVault']),
+                                                         dict(condition='sealed', actors=['CoilVault'])]),
+        # Lantern's picture: the three roadblocks and the plant.
+        dict(id='intel', when=dict(time=0), reveal=[dict(at=name, radius=3) for name in guns] + [dict(at='WaterPlant', radius=3)]),
+        # The cell's raiders hit the road camp until the plant is retaken.
+        dict(id='raid', when=dict(time=300), repeat=180, until='water-on',
+             spawn=[dict(at='RaidCamp', to='IranConyard', types=['e2', 'e2', 'flakt', 'e2', 'deso'])]),
+        dict(id='trucks-rolling', when=dict(objective=0)),
+        dict(id='trucks-in', when=dict(objective=1)),
+        dict(id='water-on', when=dict(objective=2), reveal=[dict(at='WaterPlant', radius=10)]),
+        # The cell's recovery boat lands at the dock for the coils while the engineers cut the vault's lock.
+        dict(id='recovery', when=dict(event='water-on'), delay=20, repeat=40, until='cache-secured',
+             spawn=[dict(at='Dock', to='CoilVault', types=['e2', 'e2', 'flakt', 'deso', 'e2', 'htnk'])]),
+        dict(id='gunboat', when=dict(event='water-on'), delay=30, spawn=[dict(at='SeaApproach', to='DockWater', types=['hyd', 'hyd'])]),
+        dict(id='vault-open', when=dict(event='water-on'), delay=45, revoke=[dict(condition='sealed', actors=['CoilVault'])]),
+        dict(id='cache-secured', when=dict(objective=3)),
+    ]
+    mission = dict(id=m.id, map=m, title='Sweet Water', faction='iran', campaign='Lines of Hope', slot='Iran',
+        enemy='Orion Group', protect=['IranConyard'], events=events,
+        briefing=('Colonel Arash Tavakoli. A cell of the Obsidian Directorate has seized the desalination and power plant '
+                  'of a port town on the salt coast and cut the town\'s water. Under the plant is a cache of Chronosphere '
+                  'coils the cell means to take away by sea.\n\nArmy water trucks are waiting at the western edge of the '
+                  'salt, and they are due on the road in ten minutes. The cell has blocked the salt road in three places: '
+                  'destroy each roadblock\'s gun before then, and bring the trucks through to the town cistern. Retake the '
+                  'plant with engineers: its pumps, and the power station that feeds the cell\'s coils. When the lock on '
+                  'the vault is cut, take the cache whole with an engineer. Nothing on the plant can be destroyed.\n\nRaiders '
+                  'from the northern hills will strike the road camp. If the construction yard falls, the trucks are lost, '
+                  'or the road is still closed when the trucks are due, the operation fails.'),
+        adaptation='An original RTS AI chapter on the terrain of Jizan Corridor, with a new coast, salt flat and actors.')
+    return chapter_entry(mission, [
+        objective('Clear the three roadblocks on the salt road before the water trucks are due.', 'destroy', guns, limit=600),
+        objective('Bring the water trucks through to the town cistern.', 'escort', entry='TruckEntry',
+                  route=[name for name, _, _ in route], count=2, requires=[0]),
+        objective('Retake the water plant: capture its pumps and its power station with engineers.', 'capture', ['WaterPlant', 'PlantPower']),
+        objective('Take the coil cache in the plant vault with an engineer.', 'capture', ['CoilVault'], requires=[2], after=['vault-open'])])
+
+def contact_rules(kind, radius):
+    """Map rules for the contacts on the picture (each one a Missions.Sensor). One actor type carries both the real
+    contacts and the phantoms the Directorate paints. A phantom (condition "phantom", granted by an event) has no
+    weapons and takes a tenth of the damage while unverified, so a unit that fires on it has time to be called off;
+    once a player unit comes within the radius (the sensor trips: verified) or the relays fall ("spoof-off"), it fades
+    behind a cloak nothing detects and cannot be hurt. Rings: amber while unverified, pale for a verified phantom, red for
+    a verified real contact."""
+    ghost = 'phantom && (sensor-tripped || spoof-off)'
+    def circle(name, color, width, when):
+        return (f'\tWithRangeCircle@{name}:\n\t\tRange: {radius}c0\n\t\tVisible: Always\n\t\tValidRelationships: Ally, Neutral, Enemy\n'
+                f'\t\tColor: {color}\n\t\tWidth: {width}\n\t\tBorderColor: 00000080\n\t\tBorderWidth: {width+2}\n\t\tRequiresCondition: {when}\n')
+    out = f'{kind}:\n' + ''.join(f'\tExternalCondition@{c}:\n\t\tCondition: {c}\n' for c in ('phantom', 'spoof-off', 'sensor-on', 'sensor-tripped'))
+    for name, n in resolve(rules, kind).items():
+        if name.startswith('Armament'):
+            cond = n['children'].get('RequiresCondition', node())['value']
+            out += f'\t{name}:\n\t\tRequiresCondition: {cond + " && " if cond else ""}!phantom\n'
+    out += '\tDamageMultiplier@unverified:\n\t\tModifier: 10\n\t\tRequiresCondition: phantom && !sensor-tripped && !spoof-off\n'
+    out += f'\tDamageMultiplier@ghost:\n\t\tModifier: 0\n\t\tRequiresCondition: {ghost}\n'
+    out += f'\tCloak@ghost:\n\t\tInitialDelay: 0\n\t\tCloakDelay: 0\n\t\tUncloakOn: None\n\t\tDetectionTypes: Ghost\n\t\tRequiresCondition: {ghost}\n'
+    return out + (circle('contact', 'FFB53CF0', 2, 'sensor-on && !sensor-tripped && !spoof-off') + circle('ghost', 'C8DCE6A0', 1, ghost)
+                  + circle('hostile', 'FF3A2AF0', 3, f'!phantom && sensor-on && (sensor-tripped || spoof-off)'))
+
+# Ghosts on the Glass: the families' shelters (a non-combatant side nobody fires on) and the contacts (a side hostile to
+# the player and allied to Orion: the picture marks every one of them hostile, real or not).
+HARBOUR_CIVILIANS = 'PlayerReference@Civilians:\n\tName: Civilians\n\tNonCombatant: True\n\tFaction: israel\n\tColor: D8D2C4\n'
+CONTACTS = 'PlayerReference@Contacts:\n\tName: Contacts\n\tFaction: russia\n\tColor: 545D66\n\tAllies: Orion Group\n\tEnemies: Israel\n'
+
+def ghosts_on_the_glass():
+    """Act IV, chapter 2 (Israel): a harbour city whose picture a Directorate cell fills with phantom contacts to provoke
+    a strike on nothing (the Bab al-Mandab map's frame repainted as a bay with a land bridge across its head). After
+    Soviet 03 "Covert Cleanup" (find the real threat among the people around it) and Negotiations (a town full of
+    civilians: nothing fires carelessly)."""
+    m = ChapterMap('bab-al-mandab-passage', 'ghosts-on-the-glass', art_check=True)
+    m.clear_ore()
+    # The bay: land across its head in the north joins the city's shore (west) to the cape (east).
+    m.fill(0, 0, m.w-1, 12, 'clear')
+    m.fill(23, 13, 66, 14, 'beach')
+    for box in [(84, 17, 93, 29), (87, 49, 94, 61), (74, 74, 79, 83), (58, 2, 66, 5)]: m.fill(*box, 'rough')
+    # Roads: down the city's shore, across the bay head, down the cape; piers at the fishing quay and the harbour.
+    m.fill(14, 7, 82, 8, 'road'); m.fill(14, 7, 15, 92, 'road'); m.fill(81, 7, 82, 86, 'road')
+    for box in [(21, 34, 29, 35), (21, 70, 30, 71), (21, 80, 28, 81)]: m.fill(*box, 'deck')
+    m.lay_ore(1, 53, 6, 61)
+    # Colonel Ronen's harbour command in the south of the city's shore, with the ore field north of it.
+    m.add('MissionSpawn', 'mpspawn', 'Neutral', 10, 77)
+    for name, kind, u, v in [('IsraelConyard', 'gacnst', 6, 72), ('IsraelPowerOne', 'gapowr', 3, 66), ('IsraelPowerTwo', 'gapowr', 2, 80),
+                             ('IsraelBarracks', 'gapile', 11, 66), ('IsraelFactory', 'gaweap', 8, 84), ('IsraelRadar', 'gaairc', 16, 74),
+                             ('IsraelRefinery', 'garefn', 15, 67), ('IsraelSentry', 'r2ilsentry', 18, 57), ('IsraelBeachGun', 'r2ilatpost', 20, 59),
+                             ('IsraelSentryNorth', 'r2ilsentry', 10, 55), ('IsraelATPost', 'r2ilatpost', 19, 90)]:
+        m.add(name, kind, 'Israel', u, v)
+    force = [('r2merkava', 3), ('r2namer', 2), ('r2ilrifle', 4), ('r2ilat', 3), ('r2ilobserver', 3), ('engineer', 1)]
+    i = 0
+    for kind, count in force:
+        for _ in range(count):
+            m.add(f'Ronen{i}', kind, 'Israel', 9 + i % 6*2, 60 + i//6*2 + (i % 2)); i += 1
+    for k, (u, v) in enumerate([(27, 85), (29, 88)]): m.add(f'Patrol{k}', 'r2ilpatrol', 'Israel', u, v, where='water')
+    # The city: three public shelters the families go down into.
+    shelters = [('ShelterNorth', 5, 21), ('ShelterSchool', 8, 34), ('ShelterQuay', 4, 47)]
+    for name, u, v in shelters: m.add(name, 'gapile', 'Civilians', u, v)
+    # The cell on the cape: three relay towers that paint the phantoms onto every screen in the city, the power station
+    # that feeds them and its coils, and their guards.
+    relays = [('RelayNorth', 76, 18), ('RelayCape', 87, 42), ('RelaySouth', 84, 68)]
+    for name, u, v in relays: m.add(name, 'naradr', 'Orion Group', u, v)
+    m.add('CellPower', 'nanrct', 'Orion Group', 90, 54)
+    guards = {'RelayNorth': [('nalasr', 79, 15), ('e2', 74, 16), ('e2', 78, 22), ('flakt', 72, 18), ('htnk', 80, 20)],
+              'RelayCape': [('tesla', 84, 46), ('nalasr', 85, 39), ('e2', 89, 46), ('e2', 84, 41), ('deso', 88, 39), ('htnk', 88, 44)],
+              'RelaySouth': [('nalasr', 81, 65), ('nalasr', 86, 72), ('e2', 82, 71), ('e2', 87, 66), ('flakt', 85, 64), ('ttnk', 80, 70), ('htnk', 88, 71)],
+              'CellPower': [('ttnk', 87, 58), ('e2', 92, 52), ('e2', 89, 61)]}
+    for site, items in guards.items():
+        for k, (kind, u, v) in enumerate(items): m.add(f'{site}Guard{k}', kind, 'Orion Group', u, v)
+    # The picture's nine contacts. Six are phantoms (nothing there: the relays paint them); three are real.
+    contacts = [('Contact1', 'hyd', 28, 38, True),    # off the fishing quay
+                ('Contact2', 'hyd', 40, 62, False),   # mid-bay: a real gunboat
+                ('Contact3', 'hyd', 39, 46, True),    # in the lee of the lighthouse island
+                ('Contact4', 'htnk', 34, 10, True),   # on the bay-head road
+                ('Contact5', 'htnk', 56, 10, False),  # on the bay-head road: real armour
+                ('Contact6', 'htnk', 13, 37, True),   # in the school yard
+                ('Contact7', 'htnk', 10, 19, True),   # beside the north shelter
+                ('Contact8', 'htnk', 80, 47, False),  # on the cape road, below the relay
+                ('Contact9', 'hyd', 46, 87, True)]    # on the southern approach
+    for name, kind, u, v, _ in contacts: m.add(name, kind, 'Contacts', u, v, where='water' if kind == 'hyd' else 'land')
+    phantoms = [name for name, *_, phantom in contacts if phantom]
+    # Warning lines a little wider than the contacts on the city's road and the bay head: a column closing on one there
+    # hears it on the radio before anything opens fire.
+    warn = [('WarnSchool', 'Contact6'), ('WarnNorth', 'Contact7'), ('WarnBridge', 'Contact4')]
+    for name, contact in warn:
+        c = next(x for x in contacts if x[0] == contact)
+        m.add(name, 'waypoint', 'Neutral', c[2], c[3])
+    # The proxy that records a strike on nothing: a phantom destroyed before it was verified kills it, and the mission
+    # with it. It sits in the middle of the bay, where the picture says the contacts are.
+    m.add('ContactPicture', 'waypoint', 'Neutral', 40, 54, where='water')
+    # Where Orion lands (the beach north of the harbour), its strike group at the end, and the harbour mouth.
+    m.add('LandingBeach', 'waypoint', 'Neutral', 21, 49)
+    m.add('SeaSouth', 'waypoint', 'Neutral', 52, 93, where='water')
+    m.add('HarbourMouth', 'waypoint', 'Neutral', 32, 78, where='water')
+    for a, b in [('IsraelConyard', 'RelayNorth'), ('IsraelConyard', 'RelayCape'), ('IsraelConyard', 'RelaySouth'),
+                 ('LandingBeach', 'IsraelConyard'), ('IsraelConyard', 'Contact6'), ('IsraelConyard', 'Contact8')]:
+        if not m.reachable(a, b): raise ValueError(f'{m.id}: no land route {a} -> {b}')
+    for a, b in [('Patrol0', 'Contact1'), ('Patrol0', 'Contact3'), ('Patrol0', 'Contact9'), ('SeaSouth', 'HarbourMouth')]:
+        if not m.reachable(a, b, water=True): raise ValueError(f'{m.id}: no sea route {a} -> {b}')
+    # Nothing the player starts with can see a phantom and fire on it before anyone has moved: every phantom lies beyond
+    # the longest reach (a weapon's range or the vision of the actor) of every armed unit and gun of the player's.
+    def cells(a, b):
+        (ax, ay), (bx, by) = [map(int, m.actors[n]['children']['Location']['value'].split(',')) for n in (a, b)]
+        return ((ax-bx)**2 + (ay-by)**2) ** 0.5
+    armed = [n for n, a in m.actors.items() if a['children']['Owner']['value'] == 'Israel' and any(k.startswith('Armament') for k in resolve(rules, a['value']))]
+    for p in phantoms:
+        near = min(armed, key=lambda n: cells(n, p))
+        if cells(near, p) < 12: raise ValueError(f'{m.id}: phantom {p} is {cells(near, p):.1f} cells from {near}')
+    m.write('Ghosts on the Glass', 'Israel', 'israel', '3A6EA5', extra_players=HARBOUR_CIVILIANS + CONTACTS,
+            enemies=('Contacts',), orion_allies=('Contacts',), extra_rules=(
+                contact_rules('htnk', 3) + contact_rules('hyd', 3)
+                + 'waypoint:\n\tHealth:\n\t\tHP: 1\n\tHitShape:\n\tExternalCondition@struck:\n\t\tCondition: struck\n'
+                  '\tKillsSelf@struck:\n\t\tRequiresCondition: struck\n'))
+    names = [name for name, *_ in contacts]
+    landing = ['e2', 'e2', 'flakt', 'htnk', 'e2']
+    events = [dict(id='phantoms', when=dict(time=0), grant=[dict(condition='phantom', actors=phantoms)]),
+              # Lantern's triangulation: the three relays are on the picture from the start.
+              dict(id='intel', when=dict(time=0), reveal=[dict(at=name, radius=3) for name, *_ in relays])]
+    events += [dict(id=f'struck-{p}', when=dict(killed=p), grant=[dict(condition='struck', actors=['ContactPicture'])]) for p in phantoms]
+    events += [dict(id='warn-school', when=dict(detected='WarnSchool')), dict(id='warn-north', when=dict(detected='WarnNorth')),
+               dict(id='warn-bridge', when=dict(detected='WarnBridge')),
+               dict(id='ghost-quay', when=dict(detected='Contact1')), dict(id='ghost-school', when=dict(detected='Contact6')),
+               dict(id='ghost-north', when=dict(detected='Contact7')), dict(id='ghost-bridge', when=dict(detected='Contact4')),
+               dict(id='real-bridge', when=dict(detected='Contact5')), dict(id='real-cape', when=dict(detected='Contact8')),
+               # Orion lands on the beach north of the harbour while the relays stand.
+               dict(id='landing', when=dict(time=210), repeat=150, until='picture-clean',
+                    spawn=[dict(at='LandingBeach', to='IsraelConyard', types=landing)]),
+               # The relays fall: every phantom fades and the picture is clean; the real strike group shows itself.
+               dict(id='picture-clean', when=dict(objective=1), grant=[dict(condition='spoof-off', actors=names)], reveal=[dict(radius=0)]),
+               dict(id='strike-group', when=dict(event='picture-clean'), delay=15, repeat=45, until='held',
+                    spawn=[dict(at='LandingBeach', to='IsraelConyard', types=['htnk', 'e2', 'e2', 'flakt', 'deso']),
+                           dict(at='SeaSouth', to='HarbourMouth', types=['hyd', 'hyd'])]),
+               dict(id='held', when=dict(objective=2))]
+    # Eyes on: a contact is verified only from within three cells, closer than almost any weapon reaches.
+    sensors = [dict(actor=name, radius=3) for name in names] + [dict(actor=name, radius=9) for name, _ in warn]
+    mission = dict(id=m.id, map=m, title='Ghosts on the Glass', faction='israel', campaign='Lines of Hope', slot='Israel',
+        enemy='Orion Group', protect=['IsraelConyard'], sensors=sensors, events=events,
+        briefing=('Lieutenant Colonel Maya Ronen. The harbour city\'s picture shows nine contacts closing on it, and most '
+                  'of them are not there. A cell of the Obsidian Directorate is painting phantoms onto every screen in the '
+                  'city from relay towers on the cape across the bay. It wants the city to fire first, on nothing, '
+                  'and to sell the picture.\n\nEvery contact is marked by a ring. Before anything fires on one, verify it: '
+                  'a unit of yours must come within its ring. A phantom fades and its ring turns pale; a real contact\'s '
+                  'ring turns red. Send forward observers first, and set approaching units to Return fire so they never '
+                  'shoot first. Then take the road round the head of the bay, destroy the three relay towers, and hold '
+                  'the harbour against the strike group behind the lie.\n\nThe families are in three public shelters. If '
+                  'the city fires on a phantom, a shelter falls, or the construction yard is lost, the operation fails.'),
+        adaptation='An original RTS AI chapter on the frame of the Bab al-Mandab Passage map, repainted as a harbour bay.')
+    return chapter_entry(mission, [
+        objective('Fire on nothing you have not verified.', 'protect', ['ContactPicture']),
+        objective('Destroy the three relay towers on the cape before first light.', 'destroy', [name for name, *_ in relays], limit=960),
+        objective('Hold the harbour until the strike group turns back.', 'survive', seconds=180, requires=[1]),
+        objective('Keep the shelters standing.', 'protect', [name for name, *_ in shelters]),
+        objective('Verify every contact on the picture.', 'scout', names, radius=3, secondary=True)])
+
 def chapters():
-    return [lights_in_the_water(), hold_the_ferry_line(), glass_island(), black_platform(), every_light_on()]
+    return [lights_in_the_water(), hold_the_ferry_line(), glass_island(), black_platform(), every_light_on(),
+            sweet_water(), ghosts_on_the_glass()]
 
 def originals():
     """Original art for the nine original countries (isometric only): content/ea-art.yaml, ea-sequences.yaml,

@@ -1,0 +1,18 @@
+{
+  "map": "sweet-water",
+  "mission": "sweet-water",
+  "seed": 2026,
+  "players": [
+    {
+      "slot": "Iran",
+      "faction": "iran",
+      "color": "2A6FDB"
+    }
+  ],
+  "options": {
+    "startingcash": "10000",
+    "difficulty": "normal",
+    "fog": "True",
+    "explored": "False"
+  }
+}

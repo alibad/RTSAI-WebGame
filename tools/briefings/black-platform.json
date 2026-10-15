@@ -1,0 +1,44 @@
+{
+  "mission": "black-platform",
+  "chapter": "The Missing Man · Chapter 4",
+  "title": "Black Platform",
+  "style": "Cinematic painted key art for a modern real-time strategy game, the look of classic Command and Conquer box art: dramatic light, rich colour, crisp detail, wide 16:9 composition, no text, no logos, no letters, no flags, no insignia.",
+  "music": {
+    "caption": "relentless commando cinematic underscore, heavy taiko and industrial percussion, crashing waves, a dark brass ostinato, rising to a defiant heroic horn at the end, no vocals",
+    "seconds": 60
+  },
+  "shots": [
+    {
+      "id": "platform",
+      "prompt": "A huge black offshore platform in open sea at dawn: matte black glass domes and antenna arrays on steel decks, four tall generators wrapped in a faint shimmering crimson energy field, heavy grey waves breaking against its legs, ominous.",
+      "line": "While the platform jams, no one on the coast can see the hub.",
+      "motion": "push-in"
+    },
+    {
+      "id": "curtain",
+      "prompt": "Close view of a massive generator on a steel deck wrapped in a shimmering crimson energy shield like heat haze turned red, sparks crawling over it, rain, a dark control room window glowing behind it.",
+      "line": "Its generators sit behind an Iron Curtain. Nothing from outside can touch them.",
+      "motion": "push-in-slow"
+    },
+    {
+      "id": "commander",
+      "reference": "bab-al-mandab-passage/commander",
+      "prompt": "Keep this man's face, beard, headset and uniform exactly. Dawn on a fast boat at sea, spray in the air, the dark platform on the horizon behind him, determined.",
+      "line": "Commander Turki Al-Zahrani leads the boarding team himself. There are no reinforcements.",
+      "motion": "push-in-slow"
+    },
+    {
+      "id": "boarding",
+      "prompt": "A small boarding team climbing a steel ladder onto an offshore platform deck at dawn: a young woman commando with a dark ponytail in 1950s fatigues leading the climb, modern special forces in dark gear behind her, sea spray, determined.",
+      "line": "Take the control room first. Then a charge on every generator.",
+      "motion": "static",
+      "action": "They climb quickly; spray bursts against the ladder."
+    },
+    {
+      "id": "lights",
+      "prompt": "A long coastline at night seen from the sea, where the lights of cities, ports and radar stations come back on one district after another in warm amber, the dark platform burning far offshore, hopeful.",
+      "line": "Then hold, until the picture comes back.",
+      "motion": "push-in"
+    }
+  ]
+}

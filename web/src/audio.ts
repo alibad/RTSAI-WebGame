@@ -4,6 +4,13 @@
 
 import { preferences } from "./preferences";
 import { createAudioContext } from "./audio-context";
+import { store } from "./store";
+/** Web Audio's constructor (older Safari only has it prefixed); null without Web Audio: the game then plays silent. */
+export function audioContextClass(): typeof AudioContext | null {
+  if (typeof window === "undefined") return null;
+  return window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext ?? null;
+}
+
 const NEAR = 450; // world px: full volume within this distance of the camera centre
 const FAR = 1900; // silent beyond this
 
@@ -37,7 +44,7 @@ export class AudioEngine {
   /** The audio context, created on first use (recording taps attach to the buses). */
   context() { return this.ensure(); }
 
-  private ensure() {
+  private ensure(): AudioContext | null {
     if (this.ctx) return this.ctx;
     const ctx = createAudioContext({ latencyHint: "interactive" });
     if (!ctx) return null;
@@ -51,15 +58,15 @@ export class AudioEngine {
     this.buses.voice.connect(this.master);
     this.ctx = ctx;
     this.applyVolumes();
-    // Browsers start audio suspended until the player interacts with the page.
-    const resume = () => { if (ctx.state === "suspended") void ctx.resume().catch(() => {}); };
-    for (const ev of ["pointerdown", "keydown"]) window.addEventListener(ev, resume, { capture: true });
+    // Browsers start audio suspended until the player interacts with the page. iOS Safari only lets the end of a touch
+    // (touchend, then click) start audio, not its start (pointerdown), so those unlock it too.
+    // A paused match keeps its sound suspended (pause()): a click in the game menu must not bring it back.
+    const resume = () => { const s = store.get(); if (ctx.state === "suspended" && !(s.phase === "playing" && s.paused)) void ctx.resume().catch(() => {}); };
+    for (const ev of ["pointerdown", "touchend", "click", "keydown"]) window.addEventListener(ev, resume, { capture: true });
     return ctx;
   }
 
-  private toBuffer(channels: number, bits: number, rate: number, pcm: ArrayBuffer) {
-    const ctx = this.ensure();
-    if (!ctx) return null;
+  private toBuffer(ctx: AudioContext, channels: number, bits: number, rate: number, pcm: ArrayBuffer) {
     const bytes = bits / 8;
     const frames = Math.floor(pcm.byteLength / (bytes * channels));
     const buf = ctx.createBuffer(Math.max(1, channels), Math.max(1, frames), rate);
@@ -75,8 +82,8 @@ export class AudioEngine {
   }
 
   source(id: number, channels: number, bits: number, rate: number, pcm: ArrayBuffer) {
-    const buffer = this.toBuffer(channels, bits, rate, pcm);
-    if (buffer) this.sources.set(id, buffer);
+    const ctx = this.ensure();
+    if (ctx) this.sources.set(id, this.toBuffer(ctx, channels, bits, rate, pcm));
   }
 
   private gainFor(p: { x: number; y: number; positional: boolean; volume: number }) {
@@ -90,9 +97,8 @@ export class AudioEngine {
 
   play(sound: number, source: number, loop: boolean, relative: boolean, x: number, y: number, volume: number, attenuate: boolean) {
     const buf = this.sources.get(source);
-    if (!buf || !this.soundOn) return;
     const ctx = this.ensure();
-    if (!ctx) return;
+    if (!buf || !this.soundOn || !ctx) return;
     const node = ctx.createBufferSource();
     node.buffer = buf;
     node.loop = loop;
@@ -121,7 +127,7 @@ export class AudioEngine {
     s.gain.gain.value = this.musicOn ? volume : 0;
     if (pcm.byteLength > 0) {
       const node = ctx.createBufferSource();
-      node.buffer = this.toBuffer(channels, bits, rate, pcm)!;
+      node.buffer = this.toBuffer(ctx, channels, bits, rate, pcm);
       node.connect(s.gain);
       const at = Math.max(s.next, ctx.currentTime + 0.02);
       node.start(at);
@@ -153,7 +159,7 @@ export class AudioEngine {
 
   pause(sound: number, paused: boolean) {
     if (sound < 0 && this.ctx) {
-      void (paused ? this.ctx.suspend() : this.ctx.resume()).catch(() => {});
+      if (paused) this.ctx.suspend(); else this.void ctx.resume().catch(() => {});
     }
   }
 
@@ -231,7 +237,7 @@ export class AudioEngine {
    */
   async radio(encoded: ArrayBuffer, wanted: () => boolean) {
     const ctx = this.ensure();
-    if (!ctx) return 0;
+    if (!ctx) throw new Error("no Web Audio in this browser"); // radio.ts: the caption stays, without a voice
     const buf = await ctx.decodeAudioData(encoded);
     if (!wanted()) return 0;
     this.stopRadio();

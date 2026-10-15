@@ -68,6 +68,7 @@ export class Game {
     observe: () => this.client.adviserObserve(),
     execute: (id, commands, tick) => this.client.adviserExecute(id, commands, tick),
     status: (enabled, message) => this.client.adviserStatus(enabled, message),
+    missionMap: (mission) => this.client.missionMap(mission),
   });
   readonly coach = new Coach(this);
   private lastListener = 0;
@@ -149,10 +150,66 @@ export class Game {
     this.client.onSnapshot = (s) => this.onSnapshot(s);
     this.client.onSheets = (uploaded, total) => store.set({ sheets: { uploaded, total } });
     this.renderer.onMissingTexture = (id) => this.client.needSheet(id);
-    this.lock = new MouseLock(canvas, () => { this.lastCursorKey = ""; });
+    this.lock = new MouseLock(canvas, () => {
+      this.lastCursorKey = "";
+      // The browser keeps Esc while the mouse is locked: the Esc that releases the lock is the player's "cancel" too, so
+      // repair, sell, placement and the other modes end with it (a lock lost with the window's focus keeps the mode).
+      if (!this.lock.locked && document.hasFocus() && this.ui?.mode) void this.command({ cmd: "mode", mode: "none" });
+    });
     this.wire();
     this.bind();
+    // A lost WebGL context (a phone dropping a background tab's GPU memory, a GPU reset): the battlefield is rebuilt
+    // when the browser gives the context back; until then the match waits behind "Restoring graphics".
+    canvas.addEventListener("webglcontextlost", (e) => { e.preventDefault(); this.contextLost(); });
+    canvas.addEventListener("webglcontextrestored", () => void this.contextRestored());
     this.raf = requestAnimationFrame(this.frame);
+  }
+
+  // ---------------------------------------------------------------- graphics lost and restored
+
+  /** This page paused the match when the graphics went (and resumes it when they are back). */
+  private pausedForGraphics = false;
+  private graphicsTimer: ReturnType<typeof setTimeout> | null = null;
+  /** How long the browser gets to give a lost context back before the match is saved and a reload offered. */
+  static readonly GRAPHICS_WAIT_MS = 20000;
+
+  private contextLost() {
+    this.renderer.lost = true;
+    const s = store.get();
+    store.set({ graphics: "lost" });
+    if (s.phase === "playing" && !this.multiplayer && !this.replayMatch && !this.editor?.active && !s.paused) {
+      this.setPaused(true);
+      this.pausedForGraphics = true;
+    }
+    if (this.graphicsTimer) clearTimeout(this.graphicsTimer);
+    // Some browsers never give it back (the GPU process is gone): the HUD then saves the match and offers a reload.
+    this.graphicsTimer = setTimeout(() => { if (this.renderer.lost) store.set({ graphics: "failed" }); }, Game.GRAPHICS_WAIT_MS);
+  }
+
+  private async contextRestored() {
+    if (this.graphicsTimer) clearTimeout(this.graphicsTimer);
+    this.graphicsTimer = null;
+    if (store.get().graphics === "failed") return; // already given up: the reload card is up
+    store.set({ graphics: "restoring" });
+    try {
+      const lost = this.renderer.rebuild();
+      const gone = await this.client.restoreSheets(lost);
+      if (gone.length) {
+        console.warn(`graphics: ${gone.length} sheet(s) could not be restored`, gone.join(","));
+        store.set({ graphics: "failed" });
+        return;
+      }
+    } catch (e) {
+      console.warn("graphics: restore failed", e);
+      store.set({ graphics: "failed" });
+      return;
+    }
+    store.set({ graphics: "ok" });
+    if (this.pausedForGraphics) {
+      this.pausedForGraphics = false;
+      const s = store.get();
+      if (s.phase === "playing" && s.paused && !s.menuOpen) this.setPaused(false);
+    }
   }
 
   // ---------------------------------------------------------------- worker events
@@ -447,7 +504,7 @@ export class Game {
     this.audio.stop(-1);
     this.info = null;
     this.ui = null;
-    store.set({ phase: "setup", info: null, ui: null, catalog: [], menuOpen: false, keysOpen: false, preparedMap: null });
+    store.set({ phase: "setup", info: null, ui: null, catalog: [], menuOpen: false, keysOpen: false, reviewOpen: false, preparedMap: null });
     // A replay watched at 4x must not speed up the next match (the worker keeps its speed between worlds).
     this.client.send({ type: "speed", speed: 1 });
   }

@@ -1,0 +1,17 @@
+{
+  "map": "web-arena",
+  "seed": 7,
+  "players": [
+    { "slot": "Multi0", "faction": "russia", "color": "D83A2E", "spawn": 1 },
+    { "slot": "Multi1", "faction": "america", "bot": "webidle", "color": "2A6FDB", "spawn": 2 }
+  ],
+  "options": { "explored": "True", "fog": "False", "crates": "False", "shortgame": "False" },
+  "spawns": [
+    { "type": "e1", "player": 0, "x": 44, "y": 63 },
+    { "type": "e1", "player": 0, "x": 44, "y": 64 },
+    { "type": "e1", "player": 0, "x": 44, "y": 65 },
+    { "type": "cow", "player": 1, "x": 48, "y": 63 },
+    { "type": "civ1", "player": 1, "x": 48, "y": 65 },
+    { "type": "gasand", "player": 1, "x": 47, "y": 67 }
+  ]
+}

@@ -82,6 +82,12 @@ export interface Store {
   pendingMission: MissionSpec | null;
   /** ?shot=1: project art only (screenshots that may leave this machine): no terrain, map previews or EA cameos. */
   publicShot: boolean;
+  /** The WebGL context: ok; lost (waiting for the browser); restoring (rebuilding, sheets on their way); failed. */
+  graphics: "ok" | "lost" | "restoring" | "failed";
+  /** The battlefield review (Coach.tsx), opened from its button or, on short screens, from the game menu. */
+  reviewOpen: boolean;
+  /** Short screens: the sidebar folded away to give the battlefield the whole width (Hud.tsx SidebarHandle). */
+  sidebarCollapsed: boolean;
   set: (p: Partial<Store>) => void;
 }
 
@@ -126,6 +132,9 @@ export const useStore = create<Store>((set) => ({
   editor: null,
   pendingMission: null,
   publicShot: new URLSearchParams(typeof location !== "undefined" ? location.search : "").get("shot") === "1",
+  graphics: "ok",
+  reviewOpen: false,
+  sidebarCollapsed: false,
   set: (p) => set(p),
 }));
 

@@ -13,6 +13,7 @@ import { CameoTip } from "./CameoTip";
 import { PowerMeter } from "./PowerMeter";
 import { UnitPortrait } from "./UnitPortrait";
 import { ReplaySidePanel, replayOf } from "./Replay";
+import { keyFor } from "../preferences";
 
 function SupportPowers({ game }: { game: Game }) {
   const powers = useStore((s) => s.ui?.supportPowers) ?? [];
@@ -53,7 +54,7 @@ function Credits() {
     return () => cancelAnimationFrame(raf);
   }, []);
   return (
-    <div className="digits text-[19px] font-semibold tracking-wide text-[var(--hud-gold)] drop-shadow-[0_1px_0_#000]" title="Credits">
+    <div className="sb-credits digits text-[19px] font-semibold tracking-wide text-[var(--hud-gold)] drop-shadow-[0_1px_0_#000]" title="Credits">
       <span className="mr-1 text-[var(--hud-gold-dim)]">$</span>{shown.toLocaleString("en-US")}
     </div>
   );
@@ -150,7 +151,7 @@ function Tabs() {
   const tab = useStore((s) => s.tab);
   const set = useStore((s) => s.set);
   return (
-    <div className="grid grid-cols-6 gap-[3px]">
+    <div className="sb-tabs grid grid-cols-6 gap-[3px]">
       {catalog.map((q) => {
         const Icon = QUEUE_ICONS[q.type] ?? QUEUE_ICONS.Building;
         const state = queues?.find((x) => x.type === q.type);
@@ -241,7 +242,7 @@ function ModeButton({ active, title, hotkey, onClick, children, disabled }: { ac
       title={`${title} (${hotkey})`}
       disabled={disabled}
       onClick={onClick}
-      className={cn("hud-inset relative grid size-[30px] place-items-center text-[var(--muted-foreground)] hover:text-[var(--foreground)] disabled:opacity-35",
+      className={cn("sb-mode hud-inset relative grid size-[30px] place-items-center text-[var(--muted-foreground)] hover:text-[var(--foreground)] disabled:opacity-35",
         active && "text-[var(--hud-gold)] shadow-[inset_0_0_0_1px_var(--hud-gold),inset_0_0_10px_rgba(241,210,139,0.35)]")}
     >
       {children}
@@ -272,13 +273,13 @@ export function Sidebar({ game }: { game: Game }) {
   const radarSize = compact ? Math.max(96, Math.min(168, Math.floor(h * 0.3))) : 232;
   const paletteH = Math.max(80, availableHeight || h - radarSize - 8 - 44 - 36 - 28);
   return (
-    <aside className="hud-panel absolute right-0 top-0 flex h-full flex-col gap-[6px] p-[8px]" style={{ width: "var(--sidebar-w)" }} onContextMenu={(e) => e.preventDefault()}>
+    <aside className="hud-panel hud-sidebar absolute right-0 top-0 flex h-full flex-col gap-[6px] p-[8px]" style={{ width: "var(--sidebar-w)" }} onContextMenu={(e) => e.preventDefault()}>
       <Minimap game={game} size={radarSize} />
       <div className="flex items-center justify-between gap-2 px-[2px]">
         <Credits />
         <div className="flex gap-[3px]">
-          <ModeButton active={mode === "repair"} title="Repair" hotkey="C" disabled={replay} onClick={() => game.setMode("repair")}><RepairIcon width={18} height={18} /></ModeButton>
-          <ModeButton active={mode === "sell"} title="Sell" hotkey="Z" disabled={replay} onClick={() => game.setMode("sell")}><SellIcon width={18} height={18} /></ModeButton>
+          <ModeButton active={mode === "repair"} title="Repair" hotkey={keyFor("repair").toUpperCase()} disabled={replay} onClick={() => game.setMode("repair")}><RepairIcon width={18} height={18} /></ModeButton>
+          <ModeButton active={mode === "sell"} title="Sell" hotkey={keyFor("sell").toUpperCase()} disabled={replay} onClick={() => game.setMode("sell")}><SellIcon width={18} height={18} /></ModeButton>
         </div>
       </div>
       {replay ? <ReplaySidePanel game={game} /> : <>

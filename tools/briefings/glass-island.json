@@ -1,0 +1,45 @@
+{
+  "mission": "glass-island",
+  "chapter": "The Missing Man · Chapter 3",
+  "title": "Glass Island",
+  "style": "Cinematic painted key art for a modern real-time strategy game, the look of classic Command and Conquer box art: dramatic light, rich colour, crisp detail, wide 16:9 composition, no text, no logos, no letters, no flags, no insignia.",
+  "music": {
+    "caption": "cold stealthy cinematic underscore, ticking clock percussion, low pulsing synth bass, distant metallic hums, a held breath, tension building to a sudden release, no vocals",
+    "seconds": 60
+  },
+  "shots": [
+    {
+      "id": "island-night",
+      "prompt": "An uncharted island at night seen from the sea: black glass sensor masts on the cliffs, each with a single cold white strobe, a fortified black glass vault building lit in cold light on the plateau, mist over black water, ominous.",
+      "line": "The island no chart names is real, and its masts see everything.",
+      "motion": "push-in"
+    },
+    {
+      "id": "landing",
+      "prompt": "A small team landing from a black rubber boat on a dark rocky beach at night: a young woman commando in 1950s fatigues with a dark ponytail leading, a modern marine network specialist with a laptop case and a marine with a rifle behind her, crouching low, moonlight on wet rocks.",
+      "line": "Three of them go in. Tanya, a network specialist, and one marine.",
+      "motion": "push-in-slow",
+      "action": "The team moves forward in a low crouch; waves wash over the rocks."
+    },
+    {
+      "id": "commander",
+      "reference": "haitan-network/commander",
+      "prompt": "Keep this man's face, hair, headset and uniform exactly. Night on the deck of a ship, a dark island on the horizon behind him with tiny white strobes, his face lit by a screen, intent and still.",
+      "line": "Commander Lin Haoran watches from the ship. Nothing on that island can be allowed to see them.",
+      "motion": "push-in-slow"
+    },
+    {
+      "id": "sweep",
+      "prompt": "A cone of pale white light sweeping across wet black rocks from a black glass mast at night, and a young woman commando with a dark ponytail pressed flat in shadow just outside the edge of the beam, holding her breath, tense.",
+      "line": "The masts sweep in turns. Move only in the dark between them.",
+      "motion": "static",
+      "action": "The cone of light sweeps slowly past; she stays perfectly still."
+    },
+    {
+      "id": "vault",
+      "prompt": "Inside a cold vault room lit by blue screens and server racks: an old round metal film canister from the 1950s lies on a steel table, a gloved hand reaching for it, frost on the metal, cold blue light, no writing anywhere.",
+      "line": "Copy the logs, and take whatever else the Directorate is hiding.",
+      "motion": "push-in-slow"
+    }
+  ]
+}

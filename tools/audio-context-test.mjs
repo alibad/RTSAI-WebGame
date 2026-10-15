@@ -9,6 +9,7 @@ globalThis.window = new EventTarget();
 globalThis.AudioContext = undefined; globalThis.webkitAudioContext = undefined;
 assert.equal(createAudioContext(), null);
 const { AudioEngine } = await import(moduleUrl(fs.readFileSync("web/src/audio.ts", "utf8")
+  .replace('import { store } from "./store";', 'const store = { get: () => ({ phase: "setup", paused: false }) };')
   .replace('import { preferences } from "./preferences";', "const preferences = { master: 1, effects: 1, voice: 1, music: 1 };")
   .replace('import { createAudioContext } from "./audio-context";', `import { createAudioContext } from ${JSON.stringify(helperUrl)};`)));
 const silent = new AudioEngine();

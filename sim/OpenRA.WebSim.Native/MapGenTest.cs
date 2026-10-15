@@ -23,7 +23,8 @@ using OpenRA.WebSim;
 /// websim mapgentest --root &lt;vfs&gt; [--out &lt;dir&gt;] [--seeds 1,2,3] [--size 96] [--players 2] [--ticks 6000]
 /// Generates maps with MapGen (as the browser does), mounts each where the page would (web/content/maps/&lt;id&gt;/), and
 /// plays it: a normal bot against an idle player for the given ticks. A map passes when the bot builds a base and its
-/// harvesters bring in money, which needs reachable spawns and ore. Copies each map's files to --out for viewing.
+/// harvesters bring in money, which needs reachable spawns and ore. Copies each map's files to --out for viewing. Also
+/// counts the villages' buildings and people (the generator's CivilianBuildings pass).
 /// </summary>
 static class MapGenTest
 {
@@ -88,6 +89,11 @@ static class MapGenTest
 			var trees = SimHost.World.Actors.Count(a => a.Info.Name.StartsWith("tree", StringComparison.Ordinal));
 			var drills = SimHost.World.Actors.Count(a => a.Info.Name == "oremine" || a.Info.Name.StartsWith("tibtre", StringComparison.Ordinal));
 			var oreCells = SimHost.World.Map.AllCells.Count(c => SimHost.World.Map.Resources[c].Type != 0);
+			// Villages: the civilian buildings and civ* people of the generator's CivilianBuildings pass.
+			var neutral = SimHost.World.Actors.Where(a => a.Owner.InternalName == "Neutral" && !a.IsDead).ToList();
+			var villagers = neutral.Count(a => a.Info.Name.StartsWith("civ", StringComparison.Ordinal));
+			var houses = neutral.Count(a => a.Info.HasTraitInfo<BuildingInfo>() && a.Info.Name.StartsWith("ca", StringComparison.Ordinal) &&
+				a.Info.Name != "caoild");
 			var terrainTypes = SimHost.World.Map.Rules.TerrainInfo.TerrainTypes;
 			int Cells(string type) => SimHost.World.Map.AllCells.Count(c => terrainTypes[SimHost.World.Map.GetTerrainIndex(c)].Type == type);
 			var (waterCells, cliffCells) = (Cells("Water"), Cells("Cliff"));
@@ -102,7 +108,8 @@ static class MapGenTest
 			var pass = buildings >= 4 && earned > 0;
 			if (!pass) failures++;
 			Console.WriteLine($"seed {seed}: {id} {landscape} {size}x{size} generated in {genMs:F0} ms ({attempts} attempts), world in {startMs:F0} ms, {ticks} ticks in {tickMs:F0} ms; " +
-				$"{waterCells} water, {cliffCells} cliff, {oreCells} ore cells, {drills} ore mines, {trees} trees; bot {buildings} buildings, {units} units, earned {earned} (started {cashAtStart}) " +
+				$"{waterCells} water, {cliffCells} cliff, {oreCells} ore cells, {drills} ore mines, {trees} trees, village {houses} buildings and {villagers} people; " +
+				$"bot {buildings} buildings, {units} units, earned {earned} (started {cashAtStart}) " +
 				(pass ? "PASS" : "FAIL"));
 			SimHost.EndGame();
 		}
