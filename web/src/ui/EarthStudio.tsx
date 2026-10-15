@@ -16,6 +16,7 @@ import { SearchSelect, type Option } from "../components/ui/fields";
 import { Flag } from "./Flag";
 import { GameButton } from "./kit/game";
 import { compileBattlefield } from "@site/lib/earth-battlefield";
+import { elevationGrid } from "../elevation";
 import { overpassFailure, terrainBox, terrainFeatures, terrainQuery } from "@site/lib/earth-evidence";
 import type { Map as MapLibreMap } from "maplibre-gl";
 
@@ -234,11 +235,28 @@ export function EarthStudio({ game, editor, close, mission }: { game: Game; edit
       say(`Compiling <b>${features.length}</b> features into terrain`);
       const title = place.name.split(",")[0].slice(0, 40);
       const bf = await compileBattlefield({ latitude: place.lat, longitude: place.lon, radius: fp.radius, seed: 42, size: fp.size, players: 2, title }, features);
+      let files: Record<string, Uint8Array> = { "map.yaml": new TextEncoder().encode(bf.yaml), "map.bin": bf.bin, "map.png": bf.png };
+      let id = bf.id;
+      // The ground's real hills and valleys (sim Relief.cs), level where the sites a mission may use stand.
+      say("Reading the ground's <b>height</b>");
+      const grid = await elevationGrid(place.lat, place.lon, fp.radius, fp.size).catch(() => null);
+      if (grid) {
+        const near = [place, ...(sites ?? []).filter((s) => s.dist <= fp.radius)];
+        const keep = near.map((s) => ({ ...geoToCell(s.lat, s.lon, place, fp.radius, fp.size), r: 12 }));
+        try {
+          const shaped = await editor.relief(files, grid, keep);
+          files = shaped.files;
+          id = `${bf.id}-h${shaped.levels}`;
+          say(shaped.levels
+            ? `Ground: <b>${Math.round(grid.highest - grid.lowest)} m</b> from low to high, <b>${shaped.levels}</b> height levels, <b>${shaped.slopes}</b> slopes`
+            : "Ground: <b>level</b> (too little relief to show)");
+        } catch { say("Ground: kept <b>level</b> (the slopes didn't fit)"); }
+      } else say("Ground: kept <b>level</b> (elevation unavailable)");
       say("Engine check: <b>2 start positions, bases connected</b>");
-      await editor.addFiles(bf.id, bf.title, bf.players, { "map.yaml": new TextEncoder().encode(bf.yaml), "map.bin": bf.bin, "map.png": bf.png });
+      await editor.addFiles(id, bf.title, bf.players, files);
       // The battlefield, draped over the place it came from.
       const m = map.current, b = box(place, fp.radius);
-      const url = URL.createObjectURL(new Blob([bf.png.slice()], { type: "image/png" }));
+      const url = URL.createObjectURL(new Blob([files["map.png"].slice()], { type: "image/png" }));
       if (m.getLayer("built")) m.removeLayer("built");
       if (m.getSource("built")) m.removeSource("built");
       m.addSource("built", { type: "image", url, coordinates: [[b.w, b.n], [b.e, b.n], [b.e, b.s], [b.w, b.s]] });
@@ -246,7 +264,7 @@ export function EarthStudio({ game, editor, close, mission }: { game: Game; edit
       m.setPaintProperty("built", "raster-opacity-transition", { duration: 1800, delay: 0 });
       setTimeout(() => m.setPaintProperty("built", "raster-opacity", 0.92), 50);
       m.easeTo({ pitch: 55, bearing: 45, zoom: m.getZoom() + 0.2, duration: 2400 });
-      setBuilt({ id: bf.id, title: bf.title, points: spawnCells(bf.yaml) });
+      setBuilt({ id, title: bf.title, points: spawnCells(new TextDecoder().decode(files["map.yaml"])) });
       setStage("built");
     } catch (e) { setError(e instanceof Error ? e.message : String(e)); setStage("place"); }
   };

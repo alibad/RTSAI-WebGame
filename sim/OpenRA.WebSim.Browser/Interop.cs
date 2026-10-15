@@ -256,6 +256,10 @@ namespace OpenRA.WebSim.Browser
 		[JSExport]
 		public static string GenerateMap(string json) => MapGen.Generate(json);
 
+		/// <summary>A real place's hills and valleys on a map from the Earth compiler: its new files (Relief).</summary>
+		[JSExport]
+		public static string ReliefMap(string json) => Relief.Apply(json);
+
 		/// <summary>Loads a map's rules, sequences and sprites ahead of Start (called from the setup screen).</summary>
 		[JSExport]
 		public static string Prepare(string mapId)

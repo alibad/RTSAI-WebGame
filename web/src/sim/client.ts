@@ -99,7 +99,7 @@ export class SimClient {
   }
 
   /** A command that answers with JSON (selection, control groups, production...). */
-  request<T = Record<string, unknown>>(m: { type: "command"; json: string } | { type: "editorOpen"; json: string } | { type: "catalog" } | { type: "editor"; json: string } | { type: "mountFiles"; dir: string; files: Record<string, ArrayBuffer> } | { type: "record" } | { type: "select"; ids: number[]; additive: boolean } | { type: "voiceLanguage"; value?: string } | { type: "voicePreview" } | { type: "missionMap"; mission: string }): Promise<T> {
+  request<T = Record<string, unknown>>(m: { type: "command"; json: string } | { type: "editorOpen"; json: string } | { type: "catalog" } | { type: "relief"; json: string } | { type: "editor"; json: string } | { type: "mountFiles"; dir: string; files: Record<string, ArrayBuffer> } | { type: "record" } | { type: "select"; ids: number[]; additive: boolean } | { type: "voiceLanguage"; value?: string } | { type: "voicePreview" } | { type: "missionMap"; mission: string }): Promise<T> {
     const req = this.nextReq++;
     return new Promise((resolve) => {
       this.replies.set(req, (json) => resolve(JSON.parse(json) as T));
@@ -114,6 +114,11 @@ export class SimClient {
   /** Everything buildable and each faction's roster, from the rules (no world needed). */
   catalog<T = Record<string, unknown>>() {
     return this.request<T>({ type: "catalog" });
+  }
+
+  /** A real place's hills and valleys on an Earth map's files (Relief.cs, no world needed). */
+  relief<T = Record<string, unknown>>(request: Record<string, unknown>) {
+    return this.request<T>({ type: "relief", json: JSON.stringify(request) });
   }
 
   /** Opens the map editor's world (EditorHost.Open); the world arrives as a normal "started" message. */

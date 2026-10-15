@@ -343,6 +343,8 @@ export type ToWorker = (
   | { type: "command"; json: string; req: number }
   | { type: "editorOpen"; json: string; req: number }
   | { type: "catalog"; req: number }
+  /** A real place's hills and valleys on an Earth map (Relief.cs): answers with its new files. `json`: the request. */
+  | { type: "relief"; req: number; json: string }
   | { type: "editor"; json: string; req: number }
   | { type: "mountFiles"; dir: string; files: Record<string, ArrayBuffer>; req: number }
   | { type: "click"; x: number; y: number; button: number; mods: number; t: number }

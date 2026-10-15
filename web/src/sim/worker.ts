@@ -553,6 +553,12 @@ self.onmessage = async (e: MessageEvent<ToWorker>) => {
         break;
       }
       case "catalog": post({ type: "reply", req: m.req, json: S.Catalog() }); break;
+      case "relief": {
+        let json: string;
+        try { json = S.ReliefMap(m.json); } catch (err) { json = JSON.stringify({ error: String(err instanceof Error ? err.message : err) }); }
+        post({ type: "reply", req: m.req, json });
+        break;
+      }
       case "editor": {
         let json: string;
         try { json = S.EditorCall(m.json); } catch (err) { json = JSON.stringify({ error: String(err instanceof Error ? err.message : err) }); }

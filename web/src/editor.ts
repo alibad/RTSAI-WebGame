@@ -5,6 +5,7 @@
 // .oramap file.
 
 import type { Game, GenerateRequest } from "./game";
+import { fromBase64, toBase64, type ElevationGrid } from "./elevation";
 import { store } from "./store";
 import type { IconSprite } from "./render/icons";
 
@@ -144,6 +145,23 @@ export class EditorController {
     const m: LibraryMap = { id, title, players, files, updated: Date.now() };
     await this.mount(m);
     await keep(m).catch(() => undefined);
+  }
+
+  /**
+   * A real place's ground on an Earth map's files: its hills and valleys from the elevation, with the engine's slope
+   * tiles (sim Relief.cs). `keep`: more level ground (MPos and radius in cells), for the bases a mission may put there.
+   */
+  async relief(files: Record<string, Uint8Array>, grid: ElevationGrid, keep: { u: number; v: number; r: number }[]) {
+    const elevation = new Uint8Array(grid.data.buffer, grid.data.byteOffset, grid.data.byteLength);
+    const reply = await this.game.client.relief<{ files?: Record<string, string>; levels?: number; slopes?: number; metersPerLevel?: number; error?: string }>({
+      files: Object.fromEntries(Object.entries(files).map(([name, bytes]) => [name, toBase64(bytes)])),
+      elevation: toBase64(elevation), columns: grid.columns, rows: grid.rows, metersPerCell: grid.metersPerCell, keep,
+    });
+    if (reply.error || !reply.files) throw Error(reply.error ?? "The ground couldn't be shaped");
+    return {
+      files: Object.fromEntries(Object.entries(reply.files).map(([name, b64]) => [name, fromBase64(b64)])) as Record<string, Uint8Array>,
+      levels: reply.levels ?? 0, slopes: reply.slopes ?? 0, metersPerLevel: reply.metersPerLevel ?? 0,
+    };
   }
 
   /** Map files from elsewhere, opened for editing. */

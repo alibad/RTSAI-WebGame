@@ -49,6 +49,18 @@ try {
   await lobbyReady(host);
   const link = await host.getByLabel('Invite link').inputValue();
   const made = Date.now();
+  if (process.env.RTSAI_TEST_FIXED_MAP === '1') {
+    // Control run: the same flow on the lobby's default (bundled) map.
+    await guest.goto(link);
+    await guest.waitForFunction(() => window.store?.getState().phase === 'setup', null, { timeout: 300000 });
+    await watch(guest); await lobbyReady(guest);
+    await guest.getByRole('button', { name: 'Ready', exact: true }).click();
+    await host.getByRole('button', { name: 'Start match', exact: true }).and(host.locator(':enabled')).click();
+    await Promise.all([host, guest].map(p => p.waitForFunction(() => ['playing', 'error'].includes(window.store.getState().phase), null, { timeout: 300000 })));
+    for (const p of [host, guest]) assert.equal(await p.evaluate(() => window.store.getState().phase), 'playing', await p.evaluate(() => window.store.getState().error));
+    console.log('PASS fixedMapMatchStarts'); receipt.passed = true;
+    process.exit(0);
+  }
   await host.getByTestId('mp-random-map').click();
   await host.waitForFunction(() => document.querySelector('[data-testid="mp-random-map"]')?.textContent === 'New random map'
     && document.querySelector('.mp-map-caption b')?.textContent !== '', null, { timeout: 120000 });
