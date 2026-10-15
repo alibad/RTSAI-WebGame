@@ -213,7 +213,7 @@ export class MissionMemory {
   unreachable = new Set<string>();
   scoutTries = new Map<string, number>();
   /** Where the army is looking for a target that moved out of sight, and how many places it has tried. */
-  search = new Map<string, { spot: Pt; n: number }>();
+  search = new Map<string, { spot: Pt; n: number; at: number }>();
   /** Units were set to return fire only, while unverified contacts were about; when each stance was last set. */
   calmed = false;
   stanced = new Map<number, number>();
@@ -1070,10 +1070,12 @@ function armyTask(w: World, f: Focus, army: AdviserActor[]): MissionAdvice | nul
       // place at a time (kept until reached or in sight), and not for ever.
       if (!next.a && w.memory.named.get(next.t)?.lost !== undefined && army.some((u) => dist(cellOf(u), next.p) <= 6)) {
         let look = w.memory.search.get(next.t);
-        if (!look || w.grid?.seen(look.spot) || army.some((u) => dist(cellOf(u), look!.spot) <= 4)) {
-          const spot = (look?.n ?? 0) < 6 ? w.searchSpot(next.p, from) : null;
-          look = spot ? { spot, n: (look?.n ?? 0) + 1 } : undefined;
-          if (look) w.memory.search.set(next.t, look);
+        // Another place once this one is reached, in sight, or out of reach (16 seconds on it).
+        if (!look || w.grid?.seen(look.spot) || army.some((u) => dist(cellOf(u), look!.spot) <= 4) || w.tick - look.at > 400) {
+          const n = (look?.n ?? 0) + 1;
+          const spot = n <= 6 ? w.searchSpot(next.p, from) : null;
+          w.memory.search.set(next.t, { spot: spot ?? next.p, n, at: w.tick });
+          look = spot ? { spot, n, at: w.tick } : undefined;
         }
         if (look) {
           const spot = look.spot;
