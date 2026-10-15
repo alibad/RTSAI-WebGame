@@ -2,8 +2,10 @@
 // connection is down: start/stop a service, animate a shot list's stills with the video queue, generate a score.
 //   node tools/briefings/gpu.mjs service start|stop <id>
 //   node tools/briefings/gpu.mjs clips <mission> [--stills D:/rtsai-ea-build/briefings] [--seconds 7] [--out <json>]
+//        [--only <shot,shot>]
 //        queues one i2v clip per shot (camera sentence + scene + action, as commission.mjs words them), waits, and
-//        writes {shot id: mp4} to --out (default D:/rtsai-campaign/p2-clips-<mission>.json)
+//        writes {shot id: mp4} to --out (default D:/rtsai-campaign/p2-clips-<mission>.json); --only redoes those shots
+//        and keeps the others already in --out
 //   node tools/briefings/gpu.mjs wait <mission> <log> [--out <json>]
 //        waits again for the jobs a `clips` run queued (its "queued <mission> <shot> <job>" lines in <log>)
 //   node tools/briefings/gpu.mjs music "<prompt>" <seconds> [fade]   -> prints the FLAC path
@@ -46,7 +48,8 @@ async function waitFor(jobs, out) {
     }
     if (Object.keys(done).length < Object.keys(jobs).length) await sleep(20_000);
   }
-  fs.writeFileSync(out, JSON.stringify(done, null, 1));
+  const kept = fs.existsSync(out) ? JSON.parse(fs.readFileSync(out, "utf8")) : {};
+  fs.writeFileSync(out, JSON.stringify({ ...kept, ...done }, null, 1));
   console.log("wrote", out);
 }
 
@@ -70,7 +73,8 @@ if (cmd === "service") {
   const stills = path.join(opt("stills", "D:/rtsai-ea-build/briefings"), mission);
   const out = opt("out", `D:/rtsai-campaign/p2-clips-${mission}.json`);
   const jobs = {};
-  for (const s of spec.shots) {
+  const only = opt("only")?.split(",");
+  for (const s of spec.shots.filter((x) => !only || only.includes(x.id))) {
     const still = path.join(stills, `${s.id}.png`);
     const reg = await fetch(`${CONSOLE}/api/video/source`, { method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ dataUrl: `data:image/png;base64,${fs.readFileSync(still).toString("base64")}` }) });

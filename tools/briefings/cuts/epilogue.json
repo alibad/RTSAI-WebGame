@@ -1,0 +1,46 @@
+{
+  "mission": "epilogue",
+  "chapter": "Lines of Hope · Epilogue",
+  "title": "1946",
+  "music": "C:/Users/Admin/Code/AI/betenshi-console/generated-music/20261015-043441-text2music-926862009-slow-melancholic-brass-waltz-under-old-f.flac",
+  "musicVolume": 0.55,
+  "segments": [
+    {
+      "src": "C:/Users/Admin/Code/AI/betenshi-console/generated/video/2026-10-14/v_mv8lnsdt_25fd16-wan2.2-ti2v-5b.mp4",
+      "kind": "cinema",
+      "voice": null,
+      "line": "When every light was back on, Lantern went back to her wall.",
+      "poster": true
+    },
+    {
+      "src": "C:/Users/Admin/Code/AI/betenshi-console/generated/video/2026-10-14/v_mv8lnsj2_a18519-wan2.2-ti2v-5b.mp4",
+      "kind": "cinema",
+      "voice": null,
+      "line": "One print was missing from it: the first test of the Chronosphere, nineteen forty-six."
+    },
+    {
+      "src": "C:/Users/Admin/Code/AI/betenshi-console/generated/video/2026-10-14/v_mv8lnso2_a222e7-wan2.2-ti2v-5b.mp4",
+      "kind": "cinema",
+      "voice": null,
+      "line": "She knew every face in it. She had counted them a hundred times."
+    },
+    {
+      "src": "C:/Users/Admin/Code/AI/betenshi-console/generated/video/2026-10-14/v_mv8lnssb_c2e4b9-wan2.2-ti2v-5b.mp4",
+      "kind": "cinema",
+      "voice": null,
+      "line": "Tonight there is one more. A man who was not in the picture yesterday."
+    },
+    {
+      "src": "C:/Users/Admin/Code/AI/betenshi-console/generated/video/2026-10-14/v_mv8lnsxw_e1bc63-wan2.2-ti2v-5b.mp4",
+      "kind": "cinema",
+      "voice": null,
+      "line": "For seventy-three years he was missing from every photograph."
+    },
+    {
+      "src": "C:/Users/Admin/Code/AI/betenshi-console/generated/video/2026-10-14/v_mv8lnt5b_3f59ba-wan2.2-ti2v-5b.mp4",
+      "kind": "cinema",
+      "voice": null,
+      "line": "Tonight he is in the first one."
+    }
+  ]
+}
