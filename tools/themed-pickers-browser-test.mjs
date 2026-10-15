@@ -24,6 +24,7 @@ try {
       await voice.click();
       const popup = page.getByRole('listbox').last();
       await popup.waitFor();
+      await popup.evaluate(n => Promise.all(n.getAnimations({ subtree: true }).map(a => a.finished.catch(() => {}))));
       assert.equal(await page.locator('select:visible').count(), 0);
       const r = await popup.boundingBox();
       assert.ok(r && r.x >= -1 && r.y >= -1 && r.x + r.width <= viewport.width + 1 && r.y + r.height <= viewport.height + 1);
@@ -41,6 +42,7 @@ try {
     const owner = page.getByLabel('Actor owner');
     await owner.click();
     await page.getByRole('listbox').last().waitFor();
+    await page.getByRole('listbox').last().evaluate(n => Promise.all(n.getAnimations({ subtree: true }).map(a => a.finished.catch(() => {}))));
     assert.equal(await page.locator('select:visible').count(), 0);
     await page.screenshot({ path: `${out}/${name}-owner.png` });
     const option = page.getByRole('option').last();
