@@ -494,7 +494,7 @@ class ChapterMap:
 
 def stand_in_art(kind, faction):
     """True when every sprite the actor's image draws for that faction is one of the standalone's code-drawn stand-ins
-    (standalone/placeholders: the civilians, the campaign outpost), ignoring the original art the isometric mode adds."""
+    (standalone/placeholders: the campaign outpost and other unused stock actors), ignoring the original art the isometric mode adds."""
     if kind in COUNTRY_ART and not CLASSIC_MODE: return False
     images = resolve(rules, kind).get('RenderSprites', node())['children']
     image = (images.get('FactionImages', node())['children'].get(COUNTRIES.get(faction, faction), node())['value']
@@ -505,7 +505,7 @@ def stand_in_art(kind, faction):
     def stand_in(f):
         f = f.split('|')[-1]
         return '/' not in f and (MOD/'standalone/placeholders'/f).exists() and not any(
-            (MOD/d/f).exists() for d in ('standalone/effects', 'standalone/units', 'standalone/base', 'bits', 'bits/cameos'))
+            (MOD/d/f).exists() for d in ('standalone/effects', 'standalone/units', 'standalone/base', 'standalone/civilian', 'bits', 'bits/cameos'))
     return not files or all(stand_in(f) for f in files)
 
 def sensor_rules(kind, radius):
@@ -585,9 +585,11 @@ def lights_in_the_water():
     for name, u in sites:
         v = coast[u]-3
         m.add(name, 'waypoint', 'Neutral', u, v)
-        # Engineers (workers in overalls) stand in for the fishing crews: the standalone's civilians are still
-        # placeholder art.
-        for k, kind in enumerate(['engineer'] * (3 if name != 'StrangerSite' else 2)):
+        # The fishing crews: fishermen, a man in a thobe, an elder, a young deckhand (the standalone's civilians,
+        # RTSAI-Art tools/civilians.py; civ3, civbfm and civstm wear the fisherman's look).
+        crews = {'SurvivorsCove': ['civ3', 'civ2', 'civb'], 'SurvivorsJetty': ['civbfm', 'civa', 'civ3'],
+                 'StrangerSite': ['civstm', 'civc']}
+        for k, kind in enumerate(crews[name]):
             m.add(f'{name}Civilian{k}', kind, 'Survivors', u-2+k*2, v-1)
     m.add('Stranger', 'tany', 'Survivors', 87, coast[87]-5)
     # Orion patrols have reached each group: heavier the further east (the stranger is what Orion wants).

@@ -32,4 +32,6 @@ Page-only release against the live runtime with the new data root: build the pag
 - Glass Island, Black Platform and Every Light On need Phase 2 mission features (detection zones, fixed squads with squad-loss failure, event-gated objectives, a Tanya hero unit).
 - Balance of the new chapters comes from scripted probes; a human playtest is the real check.
 - The radio voices are Kokoro (clear but plain); Chatterbox takes would match the film narrator.
-- Civilians are still placeholder art in the standalone game; the survivors use engineers.
+- ~~Civilians are still placeholder art in the standalone game; the survivors use engineers.~~ Branch `art/civilians`
+  (14 October): the standalone civilians have project art (RTSAI-Art `tools/civilians.py`), and Lights in the Water's
+  stranded crews are civilians again (fishermen, a man in a thobe, an elder, a young deckhand).
