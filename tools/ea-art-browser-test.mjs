@@ -219,7 +219,10 @@ try {
     // The Tesla tank stands at MPos (24, 74); the target about three cells away, in range.
     russia.spawns.push({ type: "mtnk", player: 1, x: 26, y: 74 });
     await play(page, russia);
-    for (let i = 0; i < 80 && !net.eaAudio.some((c) => /^vtesatt[ab]\.wav$/.test(c)); i++) await page.waitForTimeout(500);
+    for (let i = 0; i < 80 && !net.eaAudio.some((c) => /^vtesatt[ab]\.wav$/.test(c)); i++) {
+      await page.waitForTimeout(500);
+      await checkOriginalRequests(net);
+    }
     assert.ok(net.eaAudio.some((c) => /^vtesatt[ab]\.wav$/.test(c)), `the Tesla tank's original bolt was not fetched: ${net.eaAudio}`);
     const conscript = await voiceOf(page, net, "e2");
     assert.match(conscript.family, /^eaconscriptvoice/, conscript.family);
