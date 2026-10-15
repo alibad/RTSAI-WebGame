@@ -5,6 +5,7 @@ import { COMMAND_KEYS, RESERVED_KEYS, defaults, preferences, savePreferences, ty
 import { readVoiceLanguage, normalizeVoiceLanguage } from "../voice-language";
 import { useStore } from "../store";
 import { Button } from "../components/ui/button";
+import { OptionSelect } from "../components/ui/fields";
 import { GameButton, GameDialog, GameSection } from "./kit/game";
 import { Segmented } from "./screen-parts";
 
@@ -69,9 +70,8 @@ export function GameSettings({ game }: { game: Game }) {
         <GameSection icon={<Mic size={15} />} title="Unit voices">
           <label className="settings-row">
             <span>Language<small>Falls back to the original voice.</small></span>
-            <select aria-label="Unit voice language" className="settings-select" value={language} onChange={(e) => void updateLanguage(e.target.value)}>
-              <option value="faction">Faction language</option><option value="en">English</option>
-            </select>
+            <OptionSelect aria-label="Unit voice language" value={language} onValueChange={(value) => void updateLanguage(value)}
+              options={[{ value: "faction", label: "Faction language" }, { value: "en", label: "English" }]} />
           </label>
           {playing && <GameButton size="sm" className="mt-3" onClick={() => { const current = ++revision.current; void game.client.previewVoice().then((result) => { if (current === revision.current) setError(String(result.error ?? (result.played ? "" : "Voice audio is loading. Preview again shortly."))); }); }}>Preview selected unit voice</GameButton>}
         </GameSection>

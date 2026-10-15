@@ -10,6 +10,7 @@ import type { Game } from "../game";
 import { EditorController, type EditorTool } from "../editor";
 import { useStore } from "../store";
 import { cn } from "../lib/utils";
+import { OptionSelect } from "../components/ui/fields";
 import { GameButton } from "./kit/game";
 import { MapStrip } from "./MapStrip";
 import { ScreenBackdrop } from "./screen-parts";
@@ -153,9 +154,8 @@ function Palette({ game, editor }: { game: Game; editor: EditorController }) {
   if (st.tool === "actor") return (
     <div className="ed-palette hud-panel">
       <label className="ed-owner"><span>Owner</span>
-        <select value={st.owner} onChange={(e) => editor.setOwner(e.target.value)}>
-          {cat.owners.map((o) => <option key={o.name} value={o.name}>{o.name}</option>)}
-        </select>
+        <OptionSelect aria-label="Actor owner" value={st.owner} onValueChange={(value) => editor.setOwner(value)}
+          options={cat.owners.map((o) => ({ value: o.name, label: o.name }))} size="sm" />
       </label>
       <div className="ed-search"><Search size={14} /><input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Find a unit, building, tree…" /></div>
       {!query && <div className="ed-chips" role="tablist" aria-label="Actor categories">
