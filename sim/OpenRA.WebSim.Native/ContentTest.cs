@@ -91,7 +91,9 @@ static class ContentTest
 			if (string.IsNullOrEmpty(icon)) throw new Exception(faction + ": no cameo for " + actor.Name);
 			using var data = JsonDocument.Parse(icon);
 			var image = data.RootElement.GetProperty("image").GetString();
-			if (art.OriginalTypes > 0 && !image.StartsWith("ea-", StringComparison.Ordinal))
+			// Project-only extensions (e.g. the purifier) have no original RA2 actor or cameo.
+			if (art.Report.TryGetValue(actor.Name, out var visual) && visual.Image?.StartsWith("ea-", StringComparison.Ordinal) == true
+				&& !image.StartsWith("ea-", StringComparison.Ordinal))
 				throw new Exception(faction + ": substituted cameo for " + actor.Name + ": " + image);
 			cameoImages[actor.Name] = image;
 		}
