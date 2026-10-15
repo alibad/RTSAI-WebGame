@@ -446,7 +446,11 @@ namespace OpenRA.WebSim
 				ScriptOpening();
 
 			Sandbox.Start(s.Sandbox ? PlayablePlayers() : null);
-			Missions.Start(s.Mission);
+			if (s.Operation != null)
+				Missions.StartOperation(s.Operation, Spawned.Where(x => !string.IsNullOrEmpty(x.Spec.Name) && !x.Actor.Disposed)
+					.GroupBy(x => x.Spec.Name).ToDictionary(g => g.Key, g => g.First().Actor));
+			else
+				Missions.Start(s.Mission);
 			AiLab.Start();
 
 			// The load's garbage goes before play starts, so play allocates into a collected heap.

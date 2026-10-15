@@ -21,6 +21,8 @@ export const readingMs = (line: string) => Math.min(14000, Math.max(4000, 1800 +
 
 export class Radio {
   private mission = "";
+  /** An operation's calls (the simulator's missions from a real place, mission.ts), by its mission id. */
+  private operation: { id: string; calls: RadioCall[] } | null = null;
   private calls: RadioCall[] = [];
   private fired = new Set<number>();
   private over = false;
@@ -41,19 +43,26 @@ export class Radio {
     else useRadio.setState({ waiting: this.queue.length });
   }
 
+  /** The calls of the operation about to run (null: none). */
+  setOperation(id: string | null, calls: RadioCall[]) {
+    this.operation = id ? { id, calls } : null;
+    if (this.mission) this.reset("");
+  }
+
   /** The player dismissed the call on air: the next one, if any. */
   skip() { this.next(); }
 
   private watch(s: Store) {
     const mission = s.phase === "playing" ? s.ui?.mission : null;
-    if (!mission || !campaign.chapters[mission.id]) {
+    const own = mission && this.operation && this.operation.id === mission.id ? this.operation.calls : null;
+    if (!mission || (!campaign.chapters[mission.id] && !own)) {
       if (this.mission) this.reset("");
       return;
     }
     const ui = s.ui!;
     if (mission.id !== this.mission) {
       this.reset(mission.id);
-      this.calls = radioCalls(mission.id);
+      this.calls = own ?? radioCalls(mission.id);
     }
     if (this.over) return;
     const seconds = ui.tick / TICKS_PER_SECOND;

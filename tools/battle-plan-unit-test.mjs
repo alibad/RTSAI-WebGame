@@ -67,6 +67,26 @@ assert.ok(worth(0) >= worth(1) * 0.8, `armies of about equal value (${worth(0)} 
 const lab = await import(labUrl);
 assert.equal(lab.pickUnit('infantry', 'america', [{ name: 'dog', label: 'Attack Dog', queue: 'Infantry', modern: false }, { name: 'e1', label: 'G.I.', queue: 'Infantry', modern: false }], { america: ['dog', 'e1'] }), 'e1');
 
+// The mission as an operation: named targets, objectives, waves, briefing and radio from the intel.
+assert.equal(placed.find((p) => p.id === 'gacnst').name, 'ConstructionYard');
+assert.equal(placed.find((p) => p.id === 'gaweap').name, 'WarFactory');
+const names = { saudi: 'Saudi Arabia', iran: 'Iran' };
+const intel = { summary: 'Air base one. It hosts many jets. Third sentence.', holds: 'the country it is in (SA)', attacks: 'the regional rival of Saudi Arabia' };
+const hold = mission.missionOperation({ ...spec, intel }, placed, (n) => names[n]);
+assert.equal(hold.title, 'Hold Air base');
+assert.deepEqual(hold.objectives.map((o) => [o.kind, !!o.secondary]), [['survive', false], ['protect', false], ['protect', true]]);
+assert.deepEqual(hold.objectives[1].targets, ['ConstructionYard']);
+assert.deepEqual(hold.waveFrom, [18, 52], 'the waves come from the far start position');
+assert.deepEqual(hold.waveUnits.sort(), ['r2basij', 'r2karrar']);
+assert.equal(hold.situation[0], 'Air base one. It hosts many jets.', 'two sentences of the place');
+assert.equal(hold.situation[1], 'Saudi Arabia holds Air base. Iran, the regional rival of Saudi Arabia, is moving on it from the north-west.');
+assert.ok(hold.radio.some((c) => c.when === 'start') && hold.radio.some((c) => c.when === 'victory') && hold.radio.some((c) => typeof c.when === 'object' && 'time' in c.when));
+const strike = mission.missionOperation({ ...spec, youDefend: false, fa: 'iran', fb: 'saudi' }, placed, (n) => names[n]);
+assert.deepEqual(strike.objectives.map((o) => o.targets), [['ConstructionYard'], ['WarFactory']]);
+assert.deepEqual(strike.waveUnits, [], 'no waves when you attack');
+assert.equal(mission.direction({ u: 40, v: 90 }, { u: 40, v: 20 }), 'north');
+assert.equal(mission.direction({ u: 40, v: 90 }, { u: 60, v: 90 }), 'east');
+
 // Strength from the rules: damage per second against the target's armor, only with weapons that can hit it.
 const gun = { dps: { '': 10, Heavy: 4, Light: 12 }, valid: ['Ground'], invalid: [] };
 const flak = { dps: { '': 20 }, valid: ['Air'], invalid: [] };

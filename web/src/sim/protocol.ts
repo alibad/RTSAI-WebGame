@@ -259,6 +259,8 @@ export interface MissionState {
   id: string; title: string; difficulty: string;
   /** The mission's events that have fired, in order (Missions.cs): the radio's { event: id } calls key off them. */
   events?: string[];
+  /** An operation's outcome texts (campaign chapters keep theirs in the story). */
+  victory?: string | null; defeat?: string | null;
   objectives: {
     text: string; secondary: boolean; status: "active" | "complete" | "failed"; progress: string;
     /** Active but not counting yet: an objective or event it waits for has not happened. */

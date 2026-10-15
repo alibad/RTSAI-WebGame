@@ -4,7 +4,7 @@
 // engine's bot plays the enemy. A timeline records the battle for scrubbing; Edit goes back to the setup.
 
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
-import { Anchor, ArrowLeft, Building2, Castle, Coins, Eraser, EyeOff, Map as MapIcon, MousePointerClick, Pause, Plane, Play, Radio, RotateCcw, Shield, ShieldCheck, SkipBack, Sparkles, StepForward, Swords, Trash2, Truck, Undo2, Users, X } from "lucide-react";
+import { Anchor, ArrowLeft, Building2, Castle, Coins, Diamond, Eraser, EyeOff, Map as MapIcon, MousePointerClick, Pause, Plane, Play, Radio, RotateCcw, Shield, ShieldCheck, SkipBack, Sparkles, StepForward, Swords, Target, Trash2, Truck, Undo2, Users, X } from "lucide-react";
 import type { Game } from "../game";
 import { AI_SKILLS, type AiSkill, type Sandbox, type SandboxOrder, type SimUnit } from "../sandbox";
 import { planBattle } from "../battle-plan";
@@ -28,6 +28,25 @@ const KINDS: { id: string; label: string; icon: React.ReactNode }[] = [
   { id: "defense", label: "Defences", icon: <Castle size={15} /> },
 ];
 const MONEY = [0, 5000, 10000, 25000];
+
+/** A mission from a real place (mission.ts): its briefing and objectives before the battle; it can go back to a free battle. */
+function OperationCard({ sandbox }: { sandbox: Sandbox }) {
+  const op = useStore((s) => s.sandbox?.operation);
+  if (!op) return null;
+  const [summary, ...rest] = op.situation.length > 2 ? op.situation : ["", ...op.situation];
+  return (
+    <section className="sim-op hud-inset" aria-label="Operation briefing" data-testid="sim-operation">
+      <header><Target size={14} aria-hidden="true" /><span className="menu-eyebrow">Operation</span>
+        <button type="button" onClick={() => sandbox.dropOperation()} title="Keep the forces, drop the objectives">Free battle</button></header>
+      <h3>{op.title}</h3>
+      {rest.map((p, i) => <p key={i}>{p}</p>)}
+      {summary && <details><summary>About the place</summary><p>{summary}</p></details>}
+      <ul aria-label="Objectives">
+        {op.objectives.map((o, i) => <li key={i} data-bonus={o.secondary || undefined}><Diamond size={9} aria-hidden="true" />{o.text}{o.secondary && <em>Bonus</em>}</li>)}
+      </ul>
+    </section>
+  );
+}
 
 function Seg<T extends string | number>({ value, options, onChange, label }: { value: T; options: { value: T; label: React.ReactNode; title?: string }[]; onChange: (v: T) => void; label?: string }) {
   return (
@@ -118,6 +137,7 @@ function EditPanel({ game, sandbox }: { game: Game; sandbox: Sandbox }) {
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-2">
       <MapCard game={game} sandbox={sandbox} />
+      {st.operation && <OperationCard sandbox={sandbox} />}
       <div className="grid grid-cols-2 gap-2">
         {([0, 1] as const).map((s) => (
           <button key={s} type="button" onClick={() => patch({ side: s, brush: null, pickDestination: null })} data-testid={`sim-side-${s}`}
@@ -177,7 +197,7 @@ function EditPanel({ game, sandbox }: { game: Game; sandbox: Sandbox }) {
         <GameButton size="sm" icon={<Eraser size={14} />} onClick={() => sandbox.clearSide(side)}>Clear side</GameButton>
         <GameButton size="sm" variant="ghost" icon={<Trash2 size={14} />} onClick={() => sandbox.clearSide(-1)}>Clear all</GameButton>
       </div>
-      <GameButton variant="primary" size="lg" className="sb-fight" icon={<Swords size={18} />} onClick={() => sandbox.run()} data-testid="sim-fight">Fight</GameButton>
+      <GameButton variant="primary" size="lg" className="sb-fight" icon={<Swords size={18} />} onClick={() => sandbox.run()} data-testid="sim-fight">{st.operation ? "Begin operation" : "Fight"}</GameButton>
     </div>
   );
 }

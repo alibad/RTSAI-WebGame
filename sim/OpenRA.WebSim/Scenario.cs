@@ -45,6 +45,9 @@ namespace OpenRA.WebSim
 		/// <summary>Health percent at spawn (HealthInit).</summary>
 		public int Health = 100;
 
+		/// <summary>A name an operation's objectives refer to (a target to protect or destroy).</summary>
+		public string Name;
+
 		/// <summary>Opening order on tick 1: "engage" (attack-move to the enemy centre), "hold" (Defend stance), "move".</summary>
 		public string Order;
 		public int DestX = -1, DestY = -1;
@@ -81,6 +84,12 @@ namespace OpenRA.WebSim
 		public string Objective;
 		public int Duration = 120;
 
+		/// <summary>
+		/// An operation: a mission defined in the scenario itself (the simulator's missions from a real place), run by
+		/// the campaign's objective code (Missions.StartOperation). Its targets are the spawns' names.
+		/// </summary>
+		public Missions.Definition Operation;
+
 		public static ScenarioSpec Parse(string json)
 		{
 			using var doc = JsonDocument.Parse(json);
@@ -101,6 +110,9 @@ namespace OpenRA.WebSim
 				Sandbox = root.TryGetProperty("sandbox", out var sbx) && sbx.ValueKind == JsonValueKind.True,
 				Bare = root.TryGetProperty("bare", out var bare) && bare.ValueKind == JsonValueKind.True,
 			};
+
+			if (root.TryGetProperty("operation", out var operation) && operation.ValueKind == JsonValueKind.Object)
+				s.Operation = Missions.ParseDefinition(operation.GetRawText());
 
 			if (root.TryGetProperty("players", out var players))
 			{
@@ -163,6 +175,7 @@ namespace OpenRA.WebSim
 							DestX = dx,
 							DestY = dy,
 							Deploy = a.TryGetProperty("deploy", out var dep) && dep.ValueKind == JsonValueKind.True,
+							Name = count == 1 ? Str(a, "name", null) : null,
 						});
 					}
 				}

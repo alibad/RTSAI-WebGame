@@ -379,10 +379,7 @@ export function MissionHud({ game }: { game: Game }) {
       </ul>}
       {over && <section className="mh-debrief" aria-label="Campaign debrief">
         <div className="mh-debrief-head"><span className="mh-debrief-icon" aria-hidden="true">{win === "Won" ? <Trophy size={16} /> : <Target size={16} />}</span><h2>{win === "Won" ? "Operation complete" : "Regroup and retry"}</h2></div>
-        <p>{chapter ? (win === "Won" ? chapter.victory : chapter.defeat) : "Return to the campaign to choose an operation."}</p>
-        <GameButton variant="primary" size="sm" onClick={() => returnTo(win === "Won" && next ? next : mission.id)}>{win === "Won" && next ? nextLabel : win === "Lost" ? "Retry this chapter" : "Return to campaign"}</GameButton>
-      </section>}
-    </aside>
-    <RadioPanel game={game} />
-  </div>;
-}
+        <p>{chapter ? (win === "Won" ? chapter.victory : chapter.defeat) : (win === "Won" ? mission.victory : mission.defeat) ?? "Return to the campaign to choose an operation."}</p>
+        {game.sandbox && !chapter
+          ? <GameButton variant="primary" size="sm" onClick={() => void game.sandbox!.run()}>Fight it again</GameButton>
+          : <GameButton variant="primary" size="sm" onClick={() => returnTo(win === "Won" && next ? next : mission.id)}>{win === "Won" && next ? nextLabel : win === "Lost" ? "Retry this chapter" : "Return to campaign"}</GameButton>}

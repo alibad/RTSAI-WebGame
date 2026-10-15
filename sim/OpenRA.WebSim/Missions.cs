@@ -20,6 +20,13 @@ namespace OpenRA.WebSim
 			public Objective[] Objectives = [];
 			public Sensor[] Sensors = [];
 			public Event[] Events = [];
+
+			/// <summary>An operation's outcome texts (campaign chapters keep theirs in the story).</summary>
+			public string Victory, Defeat;
+
+			/// <summary>An operation's reinforcement waves: where they enter (MPos u, v) and the unit types they field.</summary>
+			public int[] WaveFrom = [];
+			public string[] WaveUnits = [];
 		}
 
 		public sealed class Objective
@@ -139,6 +146,7 @@ namespace OpenRA.WebSim
 		static Player human;
 		static string difficulty;
 		static int nextWave;
+		static int lastWave;
 
 		public static Definition[] Catalog
 		{
@@ -151,6 +159,7 @@ namespace OpenRA.WebSim
 		}
 
 		public static string CatalogJson() => JsonSerializer.Serialize(Catalog, JsonOptions);
+		public static Definition ParseDefinition(string json) => JsonSerializer.Deserialize<Definition>(json, JsonOptions);
 		public static bool Active => current != null;
 		public static void Reset()
 		{
@@ -186,6 +195,28 @@ namespace OpenRA.WebSim
 				if (!named.ContainsKey(target)) throw new InvalidDataException("Mission event actor missing: " + target);
 			foreach (var e in current.Events.SelectMany(e => e.Conceal.Append(e.Until).Append(e.When.Event)).Concat(current.Objectives.SelectMany(o => o.After)))
 				if (e != null && !ids.Contains(e)) throw new InvalidDataException("Mission event missing: " + e);
+		}
+
+		/// <summary>
+		/// An operation: a mission the scenario defines (the simulator's missions from a real place). Its targets are the
+		/// spawns' names; an objective whose target was taken off the battlefield is dropped. The human is the local player
+		/// on any map, the enemy the player the definition names.
+		/// </summary>
+		public static void StartOperation(Definition operation, IReadOnlyDictionary<string, Actor> names)
+		{
+			Reset();
+			human = SimHost.World.LocalPlayer;
+			if (human == null || operation == null) return;
+			named = new Dictionary<string, Actor>(names);
+			bool Present(Objective o) => o.Targets.Concat(new[] { o.Target, o.Via }).Where(t => !string.IsNullOrEmpty(t)).All(named.ContainsKey);
+			operation.Objectives = operation.Objectives.Where(Present).ToArray();
+			operation.Protect = operation.Protect.Where(named.ContainsKey).ToArray();
+			if (!operation.Objectives.Any(o => !o.Secondary)) return;
+			current = operation;
+			states = current.Objectives.Select(o => new State { Spec = o }).ToList();
+			difficulty = SimHost.Scenario.Options.GetValueOrDefault("difficulty", "normal");
+			nextWave = current.WaveUnits.Length == 0 ? int.MaxValue : difficulty == "easy" ? 2250 : difficulty == "hard" ? 1000 : 1500;
+			lastWave = 0;
 		}
 
 		static bool Alive(Actor a) => a != null && a.IsInWorld && !a.IsDead;
@@ -270,6 +301,11 @@ namespace OpenRA.WebSim
 					case "survive":
 						if (world.WorldTick - Since(s) >= o.Seconds * 25) s.Status = "complete";
 						break;
+					case "defeat":
+						// Every unit and building of the enemy player is gone (the attack force, a base).
+						var enemy = world.Players.FirstOrDefault(p => p.InternalName == current.Enemy);
+						if (enemy != null && !world.Actors.Any(a => a.Owner == enemy && Alive(a) && a.TraitOrDefault<MustBeDestroyed>() != null)) s.Status = "complete";
+						break;
 					case "escort": case "shipping":
 						if (!s.Started) StartConvoy(world, s);
 						foreach (var convoy in s.Convoys)
@@ -296,7 +332,14 @@ namespace OpenRA.WebSim
 				foreach (var s in states.Where(s => Passive(s.Spec.Kind) && s.Status == "active")) s.Status = "complete";
 				Finish(world, true); return;
 			}
-			if (world.WorldTick >= nextWave) { Wave(world); nextWave += difficulty == "easy" ? 2000 : difficulty == "hard" ? 850 : 1400; }
+			if (world.WorldTick >= nextWave) { Wave(world); lastWave = world.WorldTick; nextWave += difficulty == "easy" ? 2000 : difficulty == "hard" ? 850 : 1400; }
+			else if (current.WaveUnits.Length > 0 && world.WorldTick >= lastWave + 250 && EnemyStrength(world) <= 3)
+			{
+				// An operation's attacker is never wiped out before the clock runs down: its next wave comes as soon as its
+				// force is down to its last few (otherwise the engine would end the match as a conquest at once).
+				Wave(world);
+				lastWave = world.WorldTick;
+			}
 		}
 
 		static bool InArea(World world, Actor a, int[] area)
@@ -443,6 +486,7 @@ namespace OpenRA.WebSim
 
 		static void Wave(World world)
 		{
+			if (current.WaveUnits.Length > 0) { OperationWave(world); return; }
 			var enemy = world.Players.FirstOrDefault(p => p.InternalName == current.Enemy);
 			var entry = named.FirstOrDefault(kv => kv.Key.Contains("GroundEntry") || kv.Key.Contains("WaveEntry") || kv.Key == "NorthEntry" || kv.Key == "WestEntry").Value;
 			var target = Own(world).FirstOrDefault(a => a.TraitOrDefault<Building>() != null);
@@ -452,6 +496,29 @@ namespace OpenRA.WebSim
 			for (var i = 0; i < count; i++)
 			{
 				var actor = world.CreateActor(true, type, new TypeDictionary { new OwnerInit(enemy), new LocationInit(entry.Location + new CVec(i % 2, i / 2)), new FactionInit(enemy.Faction.InternalName) });
+				actor.QueueActivity(new OpenRA.Mods.Common.Activities.AttackMoveActivity(actor, () => new OpenRA.Mods.Common.Activities.Move(actor, target.Location)));
+			}
+		}
+
+		static int EnemyStrength(World world)
+		{
+			var enemy = world.Players.FirstOrDefault(p => p.InternalName == current.Enemy);
+			return enemy == null ? int.MaxValue : world.Actors.Count(a => a.Owner == enemy && Alive(a) && a.TraitOrDefault<MustBeDestroyed>() != null);
+		}
+
+		/// <summary>An operation's wave: its units from where the definition says, attack-moving on the human's base.</summary>
+		static void OperationWave(World world)
+		{
+			var enemy = world.Players.FirstOrDefault(p => p.InternalName == current.Enemy);
+			var target = Own(world).Where(a => a.TraitOrDefault<Building>() != null).OrderBy(a => a.ActorID).FirstOrDefault() ?? Own(world).FirstOrDefault();
+			if (enemy == null || target == null || current.WaveFrom.Length != 2) return;
+			var entry = new MPos(current.WaveFrom[0], current.WaveFrom[1]).ToCPos(world.Map);
+			var count = difficulty == "easy" ? 2 : difficulty == "hard" ? 6 : 4;
+			for (var i = 0; i < count; i++)
+			{
+				var type = current.WaveUnits[i % current.WaveUnits.Length];
+				if (!world.Map.Rules.Actors.ContainsKey(type)) continue;
+				var actor = world.CreateActor(true, type, new TypeDictionary { new OwnerInit(enemy), new LocationInit(entry + new CVec(i % 3, i / 3)), new FactionInit(enemy.Faction.InternalName) });
 				actor.QueueActivity(new OpenRA.Mods.Common.Activities.AttackMoveActivity(actor, () => new OpenRA.Mods.Common.Activities.Move(actor, target.Location)));
 			}
 		}
@@ -467,8 +534,8 @@ namespace OpenRA.WebSim
 			if (current == null) return "null";
 			return JsonSerializer.Serialize(new
 			{
-				current.Id, current.Title, Difficulty = difficulty, Events = fired,
-				Objectives = states.Select(s => new { s.Spec.Text, s.Status, s.Spec.Secondary, Waiting = s.Status == "active" && !Open(s.Spec),
+				current.Id, current.Title, Difficulty = difficulty, Events = fired, current.Victory, current.Defeat,
+				Objectives = states.Select(s => new { s.Spec.Text, Status = Shown(s), s.Spec.Secondary, Waiting = s.Status == "active" && !Open(s.Spec),
 					Progress = Progress(s), Markers = Markers(s.Spec) })
 			}, JsonOptions);
 		}
@@ -495,6 +562,13 @@ namespace OpenRA.WebSim
 					return left >= 0 ? $"{left / 60}:{left % 60:00} left" : "";
 			}
 		}
+
+		/// <summary>
+		/// An objective's status as shown. An operation won by wiping the attacker out before the clock ran down (the
+		/// engine's conquest) has held: its open objectives read as complete.
+		/// </summary>
+		static string Shown(State s) =>
+			s.Status == "active" && current.WaveUnits.Length > 0 && human?.WinState == WinState.Won ? "complete" : s.Status;
 
 		static IEnumerable<object> Markers(Objective o)
 		{
