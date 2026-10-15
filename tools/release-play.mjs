@@ -272,19 +272,16 @@ function webDependencies() {
   fs.writeFileSync(marker, lock);
 }
 
-/** The website's source at its origin/main: the page compiles some of its files (@site, web/vite.config.ts) and the
- *  battle simulator's unit cards come from its Faction viewer data (tools/sync-viewer.mjs). A worktree of
- *  repos.site in the work folder that only this tool uses, with its own node_modules. */
+/** Build from the clean canonical website checkout at origin/main. Worktrees require an explicit owner request. */
 function siteCheckout() {
   const site = config.repos.site;
   gitIn(site, "fetch", "--quiet", "origin");
   const commit = gitIn(site, "rev-parse", "origin/main");
-  const dir = path.join(work, "site");
-  if (!fs.existsSync(path.join(dir, ".git"))) gitIn(site, "worktree", "add", "--detach", dir, commit);
-  else {
-    if (gitIn(dir, "status", "--porcelain", "--untracked-files=no")) refuse(`${dir} has local changes; it is this tool's own checkout`);
-    gitIn(dir, "checkout", "--quiet", "--detach", commit);
-  }
+  const dir = site;
+  if (gitIn(dir, "branch", "--show-current") !== "main" || gitIn(dir, "rev-parse", "HEAD") !== commit)
+    refuse(`${dir} must be on canonical main at origin/main before a release; no automatic worktree or checkout is created`);
+  if (gitIn(dir, "status", "--porcelain", "--untracked-files=no"))
+    refuse(`${dir} has local source changes; commit and validate them on main before a release`);
   const lock = sha("sha1", fs.readFileSync(path.join(dir, "package-lock.json")));
   const marker = path.join(dir, "node_modules", ".release-play-lock");
   if (!fs.existsSync(marker) || fs.readFileSync(marker, "utf8") !== lock) {
@@ -293,7 +290,7 @@ function siteCheckout() {
     fs.writeFileSync(marker, lock);
   }
   // The viewer data and the faction catalog (web/src/data/factions.json) are generated and ignored by Git: regenerate
-  // them, or the page ships whatever an earlier sync left (and a fresh worktree has no catalog at all).
+  // them, or the page ships whatever an earlier sync left (build snapshots may not contain generated catalogs).
   fs.rmSync(path.join(repo, "web", "public", "viewer"), { recursive: true, force: true });
   run(process.execPath, [path.join(repo, "tools", "sync-viewer.mjs"), "--from", dir], { stdio: ["ignore", "ignore", "inherit"] });
   run(process.execPath, [path.join(repo, "tools", "sync-catalog.mjs"), "--from", dir], { stdio: ["ignore", "ignore", "inherit"] });
