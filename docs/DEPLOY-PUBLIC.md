@@ -46,8 +46,14 @@ node tools/release-play.mjs abort        # gives up a prepared release
    - Stray `VITE_` keys in `web/.env*` are refused, because they would change the page behind those settings.
    - BUILD.json records `runtimeSource`, `pageSettings` and `release` (with the website commit).
 4. **Cloudflare, only for new roots.** The shared folder (`cdn.dir`) must still hold every file of the live
-   `MANIFEST.json`, because wrangler replaces the whole site with the folder. A new runtime root gets its one header
-   rule. The tool checks the limits: at most 100 rules, under 20,000 files, at most 25 MiB a file. Then it deploys
+   `MANIFEST.json`, because wrangler replaces the whole site with the folder. Two exceptions:
+   - The roots listed in `cdn.retired` leave the deployment to keep it under the file limit. They are moved to
+     `cdn.retiredDir`, never deleted; a live root can't be retired. A data root is about 3,350 files, so a new one
+     usually means retiring an old one.
+   - Files under `cdn.mutable` (the campaign folder: its index and films, which the page doesn't pin by hash) may
+     change, but not vanish.
+
+   A new runtime root gets its one header rule. The tool checks the limits: at most 100 rules, under 20,000 files, at most 25 MiB a file. Then it deploys
    with a new `MANIFEST.json`, and checks that Cloudflare serves every runtime file byte for byte with
    `Content-Encoding: br`.
 5. **Smoke test.** The same page without the sign-in gate (`--mode nogate`) is served locally on the Cloudflare roots.

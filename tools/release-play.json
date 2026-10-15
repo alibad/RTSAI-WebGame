@@ -11,7 +11,11 @@
     "host": "https://rtsai-play-cdn.pages.dev/",
     "project": "rtsai-play-cdn",
     "dir": "D:/rtsai-ea-build/play-cdn",
-    "keep": ["campaign-v2/index.json"]
+    "keep": ["campaign-v2/index.json"],
+    "mutable": ["campaign-v2/"],
+    "$retired": "Roots moved out of the deployment to stay under Cloudflare's 20,000 files (15 Oct: the data roots of the 14 Oct map-generator and voices pages, superseded since the campaign release).",
+    "retiredDir": "D:/rtsai-ea-build/play-cdn-retired",
+    "retired": ["data-169d5132ea83/", "data-d455a47b2a2d/"]
   },
   "vercel": {
     "team": "alibads-projects",
