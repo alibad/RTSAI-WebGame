@@ -95,11 +95,11 @@ function EditPanel({ game, sandbox }: { game: Game; sandbox: Sandbox }) {
     value: f.id, label: f.name, group: nationGroup(f), leading: <Flag id={f.id} className="h-[12px] w-[18px] rounded-[1px]" />,
   })), [nations]);
   const faction = side === 0 ? st.fa : st.fb;
+  const roster = st.rosters[faction];
   useEffect(() => { setHover(null); }, [faction, side]);
   useEffect(() => {
-    if (phase === "playing") game.requestIcons(st.units.map((u) => u.name), faction);
-  }, [game, faction, phase, st.units]);
-  const roster = st.rosters[faction];
+    if (phase === "playing" && roster) game.requestIcons(st.units.filter((u) => roster.includes(u.name)).map((u) => u.name), faction);
+  }, [game, faction, phase, st.units, roster]);
   const units = st.units
     .filter((u) => (!roster || roster.includes(u.name)) && (query ? u.label.toLowerCase().includes(query.toLowerCase()) || u.name.includes(query.toLowerCase()) : u.kind === kind))
     .sort((a, b) => Number(b.modern) - Number(a.modern) || a.cost - b.cost || a.label.localeCompare(b.label));
