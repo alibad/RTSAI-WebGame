@@ -45,12 +45,25 @@ const bytes = (f: Fields, n: number) => f.get(n)?.[0] instanceof Uint8Array ? f.
 const string = (f: Fields, n: number) => textDecoder.decode(bytes(f, n));
 const strings = (f: Fields, n: number) => (f.get(n) ?? []).filter((v): v is Uint8Array => v instanceof Uint8Array).map((v) => textDecoder.decode(v));
 const messages = (f: Fields, n: number) => (f.get(n) ?? []).filter((v): v is Uint8Array => v instanceof Uint8Array).map(fields);
+/** A repeated uint32: packed (one length-delimited run of varints, proto3's default) or one value per field. */
+const uints = (f: Fields, n: number) => (f.get(n) ?? []).flatMap((v) => {
+  if (typeof v === "number") return [v >>> 0];
+  const out: number[] = [];
+  for (let i = 0, value = 0, shift = 0; i < v.length; i++) {
+    value += (v[i] & 127) * 2 ** shift; shift += 7;
+    if (!(v[i] & 128)) { out.push(value >>> 0); value = 0; shift = 0; }
+  }
+  return out;
+});
 
 function actor(f: Fields, building = false): AdviserActor {
   return { actorId: number(f, 1) >>> 0, kind: string(f, 2), cellX: number(f, building ? 17 : 5), cellY: number(f, building ? 18 : 6),
     idle: building ? false : !!number(f, 8), canAttack: building ? number(f, 22) > 0 : !!number(f, 12),
-    hpPercent: number(f, building ? 5 : 7),
-    ...(building ? {} : { canDisguise: !!number(f, 22), canInfiltrate: !!number(f, 23), isDisguised: !!number(f, 20), detectsDisguise: !!number(f, 26) }) };
+    hpPercent: number(f, building ? 5 : 7), x: number(f, 3), y: number(f, 4),
+    ...(building ? {} : { canDisguise: !!number(f, 22), canInfiltrate: !!number(f, 23), isDisguised: !!number(f, 20), detectsDisguise: !!number(f, 26),
+      // Campaign missions (mission-adviser.ts): speed, cargo, the special orders' valid targets and the current target.
+      speed: number(f, 16), stance: number(f, 15), passengers: number(f, 18), canCapture: !!number(f, 29), captureTargets: uints(f, 30),
+      canDemolish: !!number(f, 27), demolishTargets: uints(f, 28), targetId: number(f, 39) >>> 0 }) };
 }
 
 export function decodeAdviserObservation(payload: Uint8Array): AdviserObservation {
@@ -65,6 +78,8 @@ export function decodeAdviserObservation(payload: Uint8Array): AdviserObservatio
     rememberedEnemyBuildings: messages(f, 21).map((a) => actor(a, true)),
     production: messages(f, 7).map((p) => ({ item: string(p, 2), queueType: string(p, 1), progress: number(p, 3), remainingTicks: number(p, 4) })),
     availableProduction: strings(f, 15), actorNames,
+    // The cell grid (terrain, passability, fog, threat), read only by the mission planner: kept as the raw bytes here.
+    spatial: { channels: number(f, 11), bytes: bytes(f, 10) },
   };
 }
 
@@ -90,10 +105,12 @@ export function encodeAdviserActions(id: string, tick: number, commands: Adviser
     if (!action) throw Error(`Unsupported co-commander action ${command.action}`);
     const c = new Writer().integer(1, action);
     if (command.actor_id !== undefined) c.integer(2, command.actor_id);
+    if (command.target_actor_id !== undefined) c.integer(3, command.target_actor_id);
     // The engine uses omitted placement coordinates as its own validated near-base placement search.
     if (command.target_x !== undefined) c.integer(4, command.target_x);
     if (command.target_y !== undefined) c.integer(5, command.target_y);
     if (command.item_type !== undefined) c.string(6, command.item_type);
+    if (command.queued) c.integer(7, 1);
     request.bytes(3, c.finish());
   }
   return request.finish();

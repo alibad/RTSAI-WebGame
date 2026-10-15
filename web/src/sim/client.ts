@@ -89,7 +89,7 @@ export class SimClient {
   }
 
   /** A command that answers with JSON (selection, control groups, production...). */
-  request<T = Record<string, unknown>>(m: { type: "command"; json: string } | { type: "editorOpen"; json: string } | { type: "catalog" } | { type: "editor"; json: string } | { type: "mountFiles"; dir: string; files: Record<string, ArrayBuffer> } | { type: "record" } | { type: "select"; ids: number[]; additive: boolean } | { type: "voiceLanguage"; value?: string } | { type: "voicePreview" }): Promise<T> {
+  request<T = Record<string, unknown>>(m: { type: "command"; json: string } | { type: "editorOpen"; json: string } | { type: "catalog" } | { type: "editor"; json: string } | { type: "mountFiles"; dir: string; files: Record<string, ArrayBuffer> } | { type: "record" } | { type: "select"; ids: number[]; additive: boolean } | { type: "voiceLanguage"; value?: string } | { type: "voicePreview" } | { type: "missionMap"; mission: string }): Promise<T> {
     const req = this.nextReq++;
     return new Promise((resolve) => {
       this.replies.set(req, (json) => resolve(JSON.parse(json) as T));
@@ -135,6 +135,9 @@ export class SimClient {
   }
 
   previewVoice() { return this.request({ type: "voicePreview" }); }
+
+  /** A mission map's map.yaml ("" when it is not in the game files). */
+  async missionMap(mission: string) { return (await this.request<{ text?: string }>({ type: "missionMap", mission })).text ?? ""; }
 
   private adviserRpc(method: "Observe" | "ExecuteCompanionActions" | "UpdateCompanionStatus", payload = new Uint8Array()): Promise<Uint8Array> {
     if (this.disposed || !this.active || !this.browserAdviser) return Promise.reject(Error("No active browser co-commander match"));
