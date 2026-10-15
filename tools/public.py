@@ -23,10 +23,14 @@ def main():
     ap=argparse.ArgumentParser(description=__doc__)
     ap.add_argument('--inputs',type=Path,required=True); ap.add_argument('--out',type=Path,required=True)
     ap.add_argument('--game-mode',choices=['isometric','classic'],default='isometric'); ap.add_argument('--maps',default='all'); ap.add_argument('--check-only',action='store_true')
-    ap.add_argument('--ea-art',type=Path,help='verified original-art directory (isometric only)')
+    content = ap.add_mutually_exclusive_group()
+    content.add_argument('--ea-art',type=Path,help='verified original-country art and voices (normal isometric build)')
+    content.add_argument('--project-art-only',action='store_true',help='explicit isometric fallback with substitute country art; not the normal game content')
     ap.add_argument('--no-ea-audio',action='store_true',help='with --ea-art: original art only, no original unit voices or sounds')
     args=ap.parse_args(); inputs=args.inputs.resolve(); out=args.out.absolute()
     ea=args.ea_art.resolve() if args.ea_art else None
+    if args.game_mode == 'isometric' and not ea and not args.project_art_only:
+        ap.error('Isometric content must be explicit: use --ea-art <verified original-country assets> for the normal game, or --project-art-only for the fallback. Omitting the assets must not silently substitute other factions.')
     if ea and args.game_mode!='isometric': raise ValueError('Original art is isometric only; Classic/top-down keeps the stand-ins')
     if ea: subprocess.run([sys.executable,str(ROOT/'tools/prepare-ea-art.py'),'verify','--dir',str(ea)],check=True)
     mod=inputs/'mod'; engine=inputs/'engine'
@@ -65,6 +69,10 @@ def main():
     run('bake','--root',scratch,'--maps',args.maps,'--out',data/'sprites')
     shutil.copy2(inputs/'build-inputs.json',data/'build-inputs.json')
     if ea: shutil.copy2(ea/'EA-INPUTS.json',data/'ea-inputs.json')
+    (data/'content-profile.json').write_text(json.dumps({'schema':1,'gameMode':args.game_mode,
+        'variant':'original-countries' if ea else 'project-art-only',
+        'originalCountryArt':bool(ea),'originalCountryVoices':bool(ea and not args.no_ea_audio),
+        'modSource':expected['inputs']['mod']},indent=2)+'\n')
     print(f'Public pack/bake ready: {data}; publish browser runtime separately using the same props and private engine copy.')
 
 if __name__=='__main__': main()
