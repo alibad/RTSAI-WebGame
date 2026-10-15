@@ -31,7 +31,7 @@ try {
       await page.screenshot({ path: `${out}/${name}-voice-${dir}.png` });
       await page.keyboard.press('Escape');
       await popup.waitFor({ state: 'hidden' });
-      assert.equal(await voice.evaluate(n => n === document.activeElement), true);
+      await page.waitForFunction(() => document.querySelector('[aria-label="Unit voice language"]') === document.activeElement, null, { timeout: 5000 });
     }
     await voice.click();
     await page.getByRole('option', { name: 'English', exact: true }).click();
