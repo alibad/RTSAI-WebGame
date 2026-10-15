@@ -22,7 +22,7 @@ try {
     for (const dir of ['ltr', 'rtl']) {
       await page.evaluate(d => { document.documentElement.dir = d; }, dir);
       await voice.click();
-      const popup = page.getByRole('listbox').last();
+      const popup = page.locator('[data-slot="select-content"][data-open]').last();
       await popup.waitFor();
       await popup.evaluate(n => Promise.all(n.getAnimations({ subtree: true }).map(a => a.finished.catch(() => {}))));
       assert.equal(await page.locator('select:visible').count(), 0);
@@ -41,8 +41,9 @@ try {
     await page.locator('[data-tool="actor"]').click();
     const owner = page.getByLabel('Actor owner');
     await owner.click();
-    await page.getByRole('listbox').last().waitFor();
-    await page.getByRole('listbox').last().evaluate(n => Promise.all(n.getAnimations({ subtree: true }).map(a => a.finished.catch(() => {}))));
+    const ownerPopup = page.locator('[data-slot="select-content"][data-open]').last();
+    await ownerPopup.waitFor();
+    await ownerPopup.evaluate(n => Promise.all(n.getAnimations({ subtree: true }).map(a => a.finished.catch(() => {}))));
     assert.equal(await page.locator('select:visible').count(), 0);
     await page.screenshot({ path: `${out}/${name}-owner.png` });
     const option = page.getByRole('option').last();
