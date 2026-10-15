@@ -1,0 +1,97 @@
+{
+  "mission": "ghosts-on-the-glass",
+  "chapter": "Aftershocks · Chapter 2",
+  "title": "Ghosts on the Glass",
+  "music": "C:/Users/Admin/Code/AI/betenshi-console/generated-music/20261015-043233-text2music-1977247133-tense-nocturnal-electronic-underscore-so.flac",
+  "musicVolume": 0.55,
+  "segments": [
+    {
+      "src": "C:/Users/Admin/Code/AI/betenshi-console/generated/video/2026-10-14/v_mv8lnse3_6ae6ad-wan2.2-ti2v-5b.mp4",
+      "kind": "cinema",
+      "voice": null,
+      "line": "Two days later, on another coast, a harbour city's picture starts to fill.",
+      "poster": true
+    },
+    {
+      "src": "D:/rtsai-campaign/footage-out/ghosts-on-the-glass/establishing.mp4",
+      "kind": "game",
+      "dur": 6.5,
+      "zoom": 1.1,
+      "card": {
+        "kicker": "Area of operations",
+        "text": "A fictional harbour city"
+      }
+    },
+    {
+      "src": "C:/Users/Admin/Code/AI/betenshi-console/generated/video/2026-10-14/v_mv8lnsji_e48bd3-wan2.2-ti2v-5b.mp4",
+      "kind": "cinema",
+      "voice": null,
+      "line": "Nine contacts are closing on the harbour. Most of them are not there."
+    },
+    {
+      "src": "C:/Users/Admin/Code/AI/betenshi-console/generated/video/2026-10-14/v_mv8lnspa_dcc19b-wan2.2-ti2v-5b.mp4",
+      "kind": "cinema",
+      "voice": null,
+      "line": "The families go down to the shelters. Above them, nobody fires until somebody has looked."
+    },
+    {
+      "src": "C:/Users/Admin/Code/AI/betenshi-console/generated/video/2026-10-14/v_mv8lnsv5_de04af-wan2.2-ti2v-5b.mp4",
+      "kind": "cinema",
+      "voice": null,
+      "line": "Lieutenant Colonel Maya Ronen trusts nothing she has not seen twice."
+    },
+    {
+      "src": "D:/rtsai-campaign/footage-out/ghosts-on-the-glass/objective-1.mp4",
+      "kind": "game",
+      "dur": 4.2,
+      "zoom": 1.1,
+      "card": {
+        "kicker": "Objective 1",
+        "text": "Fire on nothing you have not verified."
+      }
+    },
+    {
+      "src": "D:/rtsai-campaign/footage-out/ghosts-on-the-glass/objective-2.mp4",
+      "kind": "game",
+      "dur": 4.2,
+      "zoom": 1.1,
+      "card": {
+        "kicker": "Objective 2",
+        "text": "Destroy the three relay towers on the cape before first light."
+      }
+    },
+    {
+      "src": "D:/rtsai-campaign/footage-out/ghosts-on-the-glass/objective-4.mp4",
+      "kind": "game",
+      "dur": 4.2,
+      "zoom": 1.1,
+      "card": {
+        "kicker": "Objective 4",
+        "text": "Keep the shelters standing."
+      }
+    },
+    {
+      "src": "D:/rtsai-campaign/footage-out/ghosts-on-the-glass/objective-5.mp4",
+      "kind": "game",
+      "dur": 4.2,
+      "zoom": 1.1,
+      "card": {
+        "kicker": "Bonus objective",
+        "text": "Verify every contact on the picture."
+      }
+    },
+    {
+      "src": "D:/rtsai-campaign/footage-out/ghosts-on-the-glass/battle.mp4",
+      "kind": "game",
+      "in": 1.5,
+      "dur": 10,
+      "zoom": 1.25
+    },
+    {
+      "src": "C:/Users/Admin/Code/AI/betenshi-console/generated/video/2026-10-14/v_mv8lnt0g_b8994b-wan2.2-ti2v-5b.mp4",
+      "kind": "cinema",
+      "voice": null,
+      "line": "Find what paints the ghosts. Verify, then strike."
+    }
+  ]
+}
