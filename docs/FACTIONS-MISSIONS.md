@@ -72,6 +72,66 @@ careful human who knows the map, so they show that each chapter can be finished 
 feels. The deadlines leave a first-time player about three times (Glass Island) and twice (Black Platform) the
 scripted time on normal; an idle player loses Glass Island at 8:00 and Black Platform at 9:00.
 
+### Act IV · Aftershocks
+
+Two more chapters on the same features, one per faction, on separate coasts (rule 3 of the story bible). They need no
+new simulation code: map rules (conditions on existing traits) and mission events do the rest. Unlike Act III, both give
+Orion a power station, so its tesla coils charge and fire; the coil's charge sound (`btespow.wav`) is not in the public
+build, and a missing file stops the browser simulation, so a map rule (`POWERED_TESLA`) charges them with the tesla
+trooper's sound. (A powered coil anywhere else, such as a Soviet-side skirmish base, would still ask for the missing
+file.)
+
+- **Sweet Water** (`sweet-water`, Iran, Colonel Arash Tavakoli): Jizan Corridor's terrain with a painted coast and dock,
+  a salt flat (the tileset's sand) and the salt road across it. A road camp with a small column. Three roadblocks
+  (`RoadblockWestGun`, `RoadblockMidGun`, `RoadblockEastGun`: a sentry gun on the road with a squad and armour; the east
+  one has a tesla coil) must be destroyed before the army water trucks are due (10:00; 15:00 easy, 8:00 hard); then
+  three trucks (`sapc`, speed 70 here) drive from `TruckEntry` to the town `Cistern` (two must arrive; one on easy). The
+  cell's plant: engineers capture the pumps (`WaterPlant`, a refinery placed without its free harvester) and the power
+  station north of it (`PlantPower`; taking it starves the cell's tesla coils of power). Both, and the vault
+  (`CoilVault`), carry an `intact` condition (granted at 0:00: `DamageMultiplier` 0), so they can only be taken; the
+  vault is also `sealed` (its `Capturable` needs `!sealed`) until 45 seconds after the plant is retaken (`vault-open`).
+  Raiders from `RaidCamp` hit the camp every 3 minutes from 5:00 until the plant is retaken; afterwards recovery
+  parties land at the `Dock` every 40 seconds and two gunboats come to `DockWater`. Losing the construction yard fails
+  the mission.
+- **Ghosts on the Glass** (`ghosts-on-the-glass`, Israel, Lieutenant Colonel Maya Ronen): the Bab al-Mandab map's frame
+  repainted as a bay with a land bridge across its head, the city on the west shore, the cell's cape on the east. Nine
+  contacts (`Contact1`-`Contact9`, `htnk` on land and `hyd` at sea) belong to a side named Contacts, hostile to the
+  player and allied to Orion, so the player's units fire on every one of them. Six are phantoms (condition `phantom`,
+  granted at 0:00); `contact_rules()` in `prepare-content.py` gives the two actor types, through map rules: no weapons
+  while `phantom`, a tenth of the damage while unverified, and, once verified, a cloak nothing detects (detection type
+  `Ghost`) and no damage. Each contact is a sensor of radius 3 with no sweep: a unit of the player's within three cells
+  verifies it (`sensor-tripped`): its amber ring turns pale (phantom) or red (real). A phantom destroyed before that
+  (`killed`) grants `struck` to `ContactPicture`, a waypoint that map rules give `Health`, a `HitShape` and
+  `KillsSelf@struck`; the primary objective "Fire on nothing you have not verified" protects it, so a strike on nothing
+  loses the mission (and the objective's Locate button points at the bay, not at which contacts are phantoms). Three
+  wider sensors (radius 9, on waypoints) fire `warn-*` events for the radio before a column reaches the contacts on the
+  city road and the bay head. Destroying the three relay towers (`naradr`; 16:00 on normal) grants `spoof-off` to every
+  contact (all phantoms fade, real ones turn red) and reveals the map; the strike group then lands and the harbour must
+  hold 3:00. The families' three shelters (`gapile`, a non-combatant Civilians side) must stand. Orion lands on the beach
+  north of the harbour every 2:30 from 3:30 until the relays fall. Bonus: verify all nine contacts. The generator checks
+  that every phantom starts beyond twelve cells of every armed unit and gun of the player's.
+
+Scripted players (`tools/mission-probe/Scripted.cs`): plan `water` (the column regroups before each roadblock, takes the
+power station before the plant's guns, a guard of six stays at the camp) wins Sweet Water at 7:55 on easy, normal and
+hard (roadblocks down at 1:50, trucks in at 2:45, plant retaken at 6:15); an idle player loses at 10:00, when the trucks
+are due. Plan `verify` (everyone on Return fire, observers to the contacts on the city road and the bay head, then the
+relays) wins Ghosts on the Glass at 10:10 on easy and 10:04 on normal (contacts verified by 0:45, relays down at 7:05);
+on hard the strike group overruns the harbour during the hold (lost at 8:35). Plan `careless` (the column attack-moves
+straight at the relays, as the co-commander would) fires on the phantom in the school yard and loses at 0:36. An idle
+player loses Ghosts on the Glass at 16:00, first light.
+
+In the browser (`tools/chapters-browser-test.mjs`), both chapters launch from the campaign screen; in Sweet Water
+engineers take the plant by the player's own orders (the vault then opens and the recovery parties land) and an idle
+player loses at 10:00; in Ghosts on the Glass the rings are drawn over the shroud, an observer verifies the school-yard
+contact (its ring turns pale) and a tank ordered onto the unverified contact by the north shelter loses the mission
+(`struck-Contact7`). The page's co-commander in Auto (`tools/chapters-playtest.mjs`, one run each) does not play these
+chapters as written: in Sweet Water it clears the roadblocks and brings the trucks in on easy and hard (with the
+director) and on normal (without it; with it, the roadblocks were still standing at 10:00), but it never captures the
+plant (it trains no engineers and spends nothing after the first minutes), so those runs end undecided at 18 minutes or
+with the camp lost. In Ghosts on the Glass it treats every contact as an enemy and fires on a phantom within about a
+minute on every difficulty, with or without the director: this chapter needs the player's own judgement, or a
+co-commander that leaves unverified contacts to the observers.
+
 ### Mission features (JSON in `content/missions.json`)
 
 ```jsonc
@@ -116,7 +176,7 @@ scripted time on normal; an idle player loses Glass Island at 8:00 and Black Pla
   targets), `squad` (the squad is lost) and `detected` (a unit walks into every zone: the alarms must fire and the
   stay-undetected objective must fail, ending the mission when it is primary); `--difficulty` sets the level.
 
-All eleven missions are available immediately.
+All thirteen missions are available immediately.
 
 ## Local generation and validation
 

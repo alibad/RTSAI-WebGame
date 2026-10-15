@@ -1,0 +1,43 @@
+{
+  "mission": "sweet-water",
+  "chapter": "Aftershocks · Chapter 1",
+  "title": "Sweet Water",
+  "style": "Cinematic painted key art for a modern real-time strategy game, the look of classic Command and Conquer box art: dramatic light, rich colour, crisp detail, wide 16:9 composition, no text, no logos, no letters, no flags, no insignia.",
+  "music": {
+    "caption": "warm desert cinematic underscore, santur and frame drum over low strings, heat-haze pads, a slow rising horn theme, steady and determined, a hopeful resolve at the end, no vocals",
+    "seconds": 60
+  },
+  "shots": [
+    {
+      "id": "salt-road",
+      "prompt": "Dawn over a vast white salt desert: a long straight trade road runs across the cracked salt flat toward a small whitewashed port town on a blue sea coast on the horizon; a line of plain army water tanker trucks waits at the near edge of the salt, heat haze rising, quiet and tense, wide establishing shot.",
+      "line": "Days after every light came back on, the Directorate's last cells are racing for the coil caches.",
+      "motion": "push-in"
+    },
+    {
+      "id": "plant",
+      "prompt": "A desalination and power plant on a desert shore at dusk: white storage tanks, pipework and two cooling towers by the sea; dark armoured vehicles with no markings parked at its gates; on its roof a single matte black glass mast with one cold white strobe light; ominous.",
+      "line": "On a salt coast, one cell has taken a town's water plant. Under it lies a cache of coils.",
+      "motion": "pan-right"
+    },
+    {
+      "id": "dry-fountain",
+      "prompt": "A quiet whitewashed port town street in the afternoon heat: a dry public drinking fountain, a row of empty blue plastic water jugs lined up beside it, closed shutters, long shadows, no people, hushed.",
+      "line": "It has cut the water, to keep everyone away from what it came for.",
+      "motion": "push-in-slow"
+    },
+    {
+      "id": "commander",
+      "prompt": "Portrait of a fictional Iranian Army engineer colonel in his fifties, close-cropped greying beard, sand-coloured field uniform with rolled sleeves, a dusty scarf, reading glasses in his breast pocket, standing beside a water tanker truck on a white salt flat at dusk, calm and patient expression, looking at the viewer, cinematic rim light, painted portrait.",
+      "line": "Colonel Arash Tavakoli has laid water lines across three deserts. Today he brings the water in by road.",
+      "motion": "push-in-slow"
+    },
+    {
+      "id": "convoy",
+      "prompt": "Army water tanker trucks rolling along a straight road across a white salt flat at sunset, escorted by desert-tan modern main battle tanks, dust trailing behind them, the port town and the sea ahead glowing gold, hopeful and determined.",
+      "line": "Clear the road. Retake the plant. Take the cache whole.",
+      "motion": "pan-left",
+      "title": true
+    }
+  ]
+}
