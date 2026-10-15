@@ -29,15 +29,17 @@ def main():
     ap.add_argument('--mod', type=Path, default=ROOT.parent/'RTSAI-Mod')
     ap.add_argument('--engine-repo', type=Path, default=ROOT.parent/'OpenRA')
     ap.add_argument('--missions', type=Path, default=ROOT.parent/'OpenRA-AI')
+    ap.add_argument('--committed', action='store_true', help='Freeze committed main sources only; leave concurrent working changes untouched')
     args=ap.parse_args(); dest=args.out.absolute()
     if dest.exists(): raise ValueError(f'Refusing existing input directory: {dest}')
     tool=args.mod.resolve()/'tools/build-inputs.py'
     dest.mkdir(parents=True)
     def run(*a): subprocess.run([sys.executable, str(tool), *map(str,a)],check=True)
     run('engine','--repo',args.engine_repo,'--out',dest/'engine')
-    run('snapshot','--repo',args.mod,'--out',dest/'mod')
-    run('snapshot','--repo',args.missions,'--include','missions','--out',dest/'missions')
-    run('snapshot','--repo',args.engine_repo,'--include','mods/ra/tilesets','--include','mods/ra/maps','--out',dest/'classic-map-source')
+    committed = ['--committed'] if args.committed else []
+    run('snapshot','--repo',args.mod,'--out',dest/'mod',*committed)
+    run('snapshot','--repo',args.missions,'--include','missions','--out',dest/'missions',*committed)
+    run('snapshot','--repo',args.engine_repo,'--include','mods/ra/tilesets','--include','mods/ra/maps','--out',dest/'classic-map-source',*committed)
     result={'schema':1, 'standalone':standalone(dest/'mod'),
             'inputs': {name: json.loads((dest/name/'INPUTS.json').read_text())['sourceSha256'] for name in ['engine','mod','missions','classic-map-source']}}
     (dest/'build-inputs.json').write_text(json.dumps(result,indent=2)+'\n')
