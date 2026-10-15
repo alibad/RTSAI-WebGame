@@ -10,9 +10,7 @@ live without a fix that was already on main. These rules prevent that.
 - Before you start, before every commit, and before any build you test or ship, run `git fetch` and bring your
   checkout up to the latest `origin/main`: `git pull --ff-only`, or `git pull --rebase` if you have local commits. Never
   build or test on a checkout that is behind main.
-- If another session already uses the main checkout, work in a worktree started from the latest main
-  (`git worktree add -b <topic> <dir> origin/main`). Keep rebasing it onto `origin/main` and land it on main
-  (`git push origin HEAD:main`) as soon as it works, the same day. Don't stack branches on branches.
+- If another session uses main, coordinate or wait. Worktrees require an explicit owner request; see the policy below.
 - Finished work must not sit on a branch or as unpushed commits on a local main. Other sessions can't see it there,
   and the next release from main would drop it. Pushing main here deploys nothing, because Vercel Git deployments are
   off.
@@ -45,3 +43,12 @@ See docs/DEPLOY-PUBLIC.md ("Releasing").
 
 Shipping something that is not on main yet means landing it on main first. That includes a campaign chapter, new
 data, or a branch's runtime.
+
+## Worktrees require an explicit owner request (15 October 2026)
+
+- Use the existing canonical checkout. Do not create a Git worktree or a parallel clone unless the owner explicitly asks for it in the current task. This supersedes older instructions permitting worktrees for concurrency, isolation, convenience, or risk.
+- Another session using the checkout is not permission to create a worktree. Coordinate non-overlapping changes, wait, or report the specific blocker; preserve all in-progress work.
+- In the OpenRA/RTS AI repositories, work and commit on canonical `main`. Fetch the correct owner remote and safely incorporate its main before starting, committing, or validating a build. Never reset, force-push, or rewrite another session's commits.
+- If the owner explicitly authorizes a worktree, keep it temporary, start from current main, and integrate validated work back into canonical main. Do not leave the only copy of finished work on a branch or worktree.
+- Before retiring an existing branch or worktree, verify that its unique commits, uncommitted files, and user artifacts are preserved and integrated where appropriate. Never delete unique work to make a checkout look clean.
+- Keep this policy change and local consolidation local. A request to consolidate on main does not by itself authorize a push, deployment, release, or deletion of branches/worktrees.
