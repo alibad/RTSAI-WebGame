@@ -54,7 +54,7 @@ const receipt = { base, runtime, notice: {}, matches: [], voices: [], screenshot
 
 async function open(context) {
   const page = await context.newPage();
-  const net = { sheets: [], audio: [], eaAudio: [], eaOther: [], art: 0, index: null, audioIndex: null, errors: [] };
+  const net = { sheets: [], audio: [], audioRanges: [], eaAudio: [], eaOther: [], art: 0, index: null, audioIndex: null, errors: [] };
   page.on("pageerror", (e) => net.errors.push(String(e)));
   page.on("request", (r) => {
     const u = new URL(r.url()).pathname;
@@ -62,6 +62,7 @@ async function open(context) {
     if (/\/sprites\/index\.json$/.test(u)) net.index = r.url();
     if (/\/web-audio\.json$/.test(u)) net.audioIndex = r.url();
     if (/\/audio\//.test(u)) net.audio.push(u);
+    if (/\/web-audio\.pack$/.test(u)) net.audioRanges.push(r.headers().range ?? "");
     if (/\/web\/ea\//.test(u)) {
       const m = u.match(EA_CLIP);
       if (m) net.eaAudio.push(m[1]); else if (/\.(aud|wav|ogg|mp3|bag|idx|mix)$/i.test(u) || /\/audio\//.test(u)) net.eaOther.push(u);
@@ -136,6 +137,18 @@ async function voiceOf(page, net, type) {
 /** Every original request is a listed .wav clip under web/ea/audio; no archive, music or other original audio. */
 async function checkOriginalRequests(net) {
   assert.deepEqual(net.eaOther, [], `unexpected original or archive requests ${net.eaOther}`);
+  // The local server reads clips by indexed byte range; static builds expose individual clip URLs.
+  if (net.audioRanges.length) {
+    const index = await (await fetch(net.audioIndex)).json();
+    for (const range of net.audioRanges) {
+      const match = /^bytes=(\d+)-(\d+)$/.exec(range);
+      assert.ok(match, `audio pack must be read by range: ${range}`);
+      const start = Number(match[1]), end = Number(match[2]);
+      const file = index.files.find(f => f.offset <= start && f.offset + f.size > end);
+      assert.ok(file, `audio range is not inside a listed clip: ${range}`);
+      if (file.path.startsWith('mods/rtsai/web/ea/audio/')) net.eaAudio.push(file.path.split('/').pop());
+    }
+  }
   const listed = await listedClips(net);
   const unlisted = net.eaAudio.filter((c) => !listed.has(c));
   assert.deepEqual(unlisted, [], `original clips not listed in web-audio.json: ${unlisted}`);
