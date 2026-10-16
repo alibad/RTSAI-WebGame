@@ -81,7 +81,7 @@ try {
   assert.equal(await page.getByRole('button', { name: 'Now playing music', exact: true }).getAttribute('aria-expanded'), 'false');
   assert.equal(await page.evaluate(() => document.activeElement?.getAttribute('aria-label')), 'Now playing music');
   await page.getByRole('button', { name: 'Settings', exact: true }).click();
-  assert.equal(await page.getByRole('slider', { name: 'Music', exact: true }).inputValue(), '0.37', 'Settings reflects the player volume');
+  assert.equal(await page.getByRole('dialog', { name: 'Game settings', exact: true }).getByRole('slider', { name: 'Music volume', exact: true }).inputValue(), '0.37', 'Settings reflects the player volume');
   await page.getByRole('button', { name: 'Done', exact: true }).click();
   await page.evaluate(() => window.game.setPaused(true));
   await page.waitForTimeout(300);
