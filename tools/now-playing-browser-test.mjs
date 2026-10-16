@@ -56,7 +56,9 @@ try {
   await page.waitForFunction(() => !window.game.audio.musicPlayback().paused);
   await page.waitForTimeout(700);
   assert(await page.evaluate(() => window.game.audio.musicPlayback().elapsed) > musicPaused + .3);
-  await page.getByLabel('Music volume', { exact: true }).fill('37');
+  const volume = page.getByLabel('Music volume', { exact: true });
+  await volume.press('Home');
+  for (let i = 0; i < 37; i++) await volume.press('ArrowRight');
   assert.equal(await page.evaluate(() => JSON.parse(localStorage.getItem('rtsai.preferences.v1')).music), .37);
   await page.getByRole('button', { name: 'Mute music', exact: true }).click();
   assert.deepEqual(await page.evaluate(() => ({ music: window.game.audio.musicOn, effects: window.game.audio.soundOn })), { music: false, effects: true });
@@ -78,6 +80,9 @@ try {
   await page.waitForTimeout(200);
   assert.equal(await page.getByRole('button', { name: 'Now playing music', exact: true }).getAttribute('aria-expanded'), 'false');
   assert.equal(await page.evaluate(() => document.activeElement?.getAttribute('aria-label')), 'Now playing music');
+  await page.getByRole('button', { name: 'Settings', exact: true }).click();
+  assert.equal(await page.getByRole('slider', { name: 'Music', exact: true }).inputValue(), '0.37', 'Settings reflects the player volume');
+  await page.getByRole('button', { name: 'Done', exact: true }).click();
   await page.evaluate(() => window.game.setPaused(true));
   await page.waitForTimeout(300);
   const frozen = await page.evaluate(() => window.game.audio.musicPlayback().elapsed);
