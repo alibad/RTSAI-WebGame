@@ -34,7 +34,7 @@ try {
     await page.waitForFunction(id => window.store.getState().ui?.music?.id === id && window.game.audio.musicPlayback().active && !window.game.audio.musicPlayback().paused, song.id, { timeout: 90000 });
     assert.equal(await page.getByRole('button', { name: `Play ${song.title}`, exact: true }).getAttribute('aria-current'), 'true');
   };
-  await select(library.tracks.at(-1));
+  for (const song of library.tracks) await select(song);
   await select(library.tracks[0]);
   await page.getByRole('button', { name: 'Next track', exact: true }).click();
   await page.waitForFunction(id => window.store.getState().ui?.music?.id !== id, library.tracks[0].id);

@@ -60,7 +60,7 @@ export function GameSettings({ game }: { game: Game }) {
   const volumes = [["master", "Master volume"], ["effects", "Effects volume"], ["music", "Music volume"],
     ["voice", companionDeveloperTools ? "Radio and companion voices" : "Radio voices"]] as const;
   return <>
-    <Button size="sm" variant="outline" aria-label="Settings" onClick={() => setOpen(true)}><SettingsIcon size={14} aria-hidden="true" />Settings</Button>
+    <Button size="sm" variant="outline" aria-label="Settings" onClick={() => { setValues({ ...preferences }); setOpen(true); }}><SettingsIcon size={14} aria-hidden="true" />Settings</Button>
     {open && <GameDialog eyebrow="Settings" title="Game settings" onClose={close} footer={<>
       <GameButton variant="ghost" size="sm" icon={<RotateCcw size={14} />} onClick={() => { update({ ...defaults, bindings: {} }); void updateLanguage("faction"); setAssist("suggest"); setError(""); }}>Reset settings</GameButton>
       <GameButton variant="primary" onClick={close}>Done</GameButton>
