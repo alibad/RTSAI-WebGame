@@ -230,6 +230,7 @@ export interface SetupData {
 
 /** Per-tick game-UI state (sim/OpenRA.WebSim/Ui.cs). `catalog` is present only when it changed. */
 export interface UiState {
+  music?: { id: string; title: string; duration: number } | null;
   coach?: { earned: number; losses: number; actors: { id: number; building: boolean; x: number; y: number }[] };
   mission?: MissionState | null;
   tick: number;

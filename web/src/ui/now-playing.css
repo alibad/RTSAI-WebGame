@@ -1,0 +1,16 @@
+.np-trigger { position: relative; display: grid; place-items: center; inline-size: 40px; block-size: 40px; flex: 0 0 auto; border: 1px solid #756d4c55; border-radius: 7px; background: #171e17; color: var(--hud-gold); cursor: pointer; }
+.np-trigger:hover, .np-trigger[aria-expanded="true"] { background: #303725; border-color: var(--hud-gold); }
+.np-trigger:focus-visible, .np-mute:focus-visible { outline: 2px solid var(--hud-gold); outline-offset: 3px; }
+.np-indicator { position: absolute; inset-inline-end: 5px; inset-block-end: 5px; inline-size: 4px; block-size: 4px; border-radius: 50%; background: #687064; }
+.np-indicator[data-active] { background: #baca88; box-shadow: 0 0 5px #baca8866; }
+.np-panel[data-slot] { box-sizing: border-box; inline-size: min(304px, calc(100vw - 24px)); padding: 20px; gap: 0; border: 1px solid #81704b; border-radius: 12px; background: linear-gradient(145deg, #252b20, #101711); color: #f3ecd9; box-shadow: 0 16px 48px #0009; }
+.np-eyebrow { display: flex; align-items: center; gap: 8px; color: #c1bf99; font-size: 10px; text-transform: uppercase; letter-spacing: .12em; }
+.np-title { margin-block-start: 12px; font-size: 20px; font-weight: 600; line-height: 1.25; overflow-wrap: anywhere; }
+.np-subtitle, .np-hint { margin-block-start: 6px; font-size: 12px; line-height: 1.5; color: #a5af9c; }
+.np-timeline { margin-block: 20px 16px; }
+.np-progress { block-size: 4px; border-radius: 4px; background: #ffffff19; overflow: hidden; }
+.np-progress > span { display: block; block-size: 100%; border-radius: inherit; background: var(--hud-gold); transition: width .25s linear; }
+.np-times { display: flex; justify-content: space-between; margin-block-start: 8px; font-size: 11px; font-variant-numeric: tabular-nums; color: #b3b9aa; }
+.np-mute { margin-block-start: 12px; display: flex; align-items: center; justify-content: center; gap: 8px; min-block-size: 40px; inline-size: 100%; border: 1px solid #75806677; border-radius: 6px; color: #e3e7d8; font-size: 12px; background: #ffffff07; cursor: pointer; }
+.np-mute:hover { background: #ffffff13; }
+@media (prefers-reduced-motion: reduce) { .np-progress > span { transition: none; } }

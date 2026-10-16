@@ -24,7 +24,7 @@ interface Playing {
   positional: boolean;
 }
 
-interface Stream { gain: GainNode; next: number; nodes: AudioBufferSourceNode[]; volume: number }
+interface Stream { gain: GainNode; next: number; started: number; nodes: AudioBufferSourceNode[]; volume: number; duration?: number }
 
 export class AudioEngine {
   private ctx: AudioContext | null = null;
@@ -121,7 +121,7 @@ export class AudioEngine {
     if (!s) {
       const gain = ctx.createGain();
       gain.connect(this.music);
-      s = { gain, next: ctx.currentTime + 0.05, nodes: [], volume };
+      s = { gain, next: ctx.currentTime + 0.05, started: ctx.currentTime + 0.05, nodes: [], volume };
       this.streams.set(sound, s);
     }
     s.gain.gain.value = this.musicOn ? volume : 0;
@@ -135,7 +135,23 @@ export class AudioEngine {
       s.nodes.push(node);
       node.onended = () => { s!.nodes = s!.nodes.filter((n) => n !== node); };
     }
-    if (end) setTimeout(() => this.streams.delete(sound), Math.max(0, (s.next - ctx.currentTime) * 1000) + 500);
+    if (end) {
+      s.duration = s.next - s.started;
+      setTimeout(() => { if (this.streams.get(sound) === s) this.streams.delete(sound); }, Math.max(0, (s.next - ctx.currentTime) * 1000) + 500);
+    }
+  }
+
+  /** Read the actual output clock: it freezes with Web Audio when the match is paused. */
+  musicPlayback() {
+    const stream = [...this.streams.values()].at(-1);
+    const ctx = this.ctx;
+    return {
+      elapsed: stream && ctx ? Math.max(0, Math.min(ctx.currentTime, stream.next) - stream.started) : 0,
+      duration: stream?.duration ?? 0,
+      active: !!stream && !!stream.nodes.length,
+      suspended: ctx?.state === "suspended",
+      muted: !this.musicOn || this.muted || preferences.music === 0 || preferences.master === 0,
+    };
   }
 
   stop(sound: number) {

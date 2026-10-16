@@ -15,6 +15,7 @@ import { AttackMoveIcon, DeployIcon, GuardIcon, ScatterIcon, StopIcon } from "./
 import { UnitPortrait } from "./UnitPortrait";
 import { MatchLibrary } from "./MatchLibrary";
 import { GameSettings } from "./GameSettings";
+import { NowPlaying } from "./NowPlaying";
 import { keyFor, type Command } from "../preferences";
 import { Feedback } from "./Feedback";
 import { GameButton, Kbd } from "./kit/game";
@@ -370,6 +371,7 @@ export function Hud({ game }: { game: Game }) {
         <span className="hud-bar-sep" aria-hidden="true" />
         <HotkeyButton />
         <MatchLibrary game={game} variant="hud" />
+        <NowPlaying game={game} />
         <span className="hud-tool-slot" style={{ "--tip": '"Settings"' } as React.CSSProperties}><GameSettings game={game} /></span>
         <span className="hud-tool-slot" style={{ "--tip": '"Feedback"' } as React.CSSProperties}><Feedback game={game} compact /></span>
       </nav>

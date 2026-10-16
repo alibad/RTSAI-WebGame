@@ -49,6 +49,7 @@ namespace OpenRA.WebSim
 		// ---------------------------------------------------------------- per-tick state
 
 		static string lastCatalog;
+		static OpenRA.GameRules.MusicInfo measuredMusic;
 
 		/// <summary>
 		/// Per-tick UI state as JSON. "catalog" (the buildable items per queue) is included only when it changed since
@@ -80,6 +81,20 @@ namespace OpenRA.WebSim
 			sb.Append(",\"radar\":").Append(radar ? "true" : "false");
 			sb.Append(",\"win\":").Append(J(p.WinState.ToString()));
 			sb.Append(",\"mission\":").Append(Missions.StateJson());
+			var music = Game.Sound.CurrentMusic;
+			// Only inspect the current, already fetched track. Preparing the whole playlist would download it all.
+			if (music != null && Game.Sound.MusicPlaying && music != measuredMusic)
+			{
+				measuredMusic = music;
+				try { music.Load(world.Map); }
+				catch { /* Playback can continue without a duration label. */ }
+			}
+			sb.Append(",\"music\":");
+			if (music == null)
+				sb.Append("null");
+			else
+				sb.Append("{\"id\":").Append(J(music.Filename)).Append(",\"title\":").Append(J(music.Title))
+					.Append(",\"duration\":").Append(music.Length).Append('}');
 			sb.Append(",\"mode\":").Append(J(ModeName(world.OrderGenerator)));
 
 			var selected = OwnSelection(world);
