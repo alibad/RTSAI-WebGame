@@ -878,6 +878,35 @@
 .es-root .maplibregl-ctrl-attrib { background: rgba(0, 0, 0, .45) !important; color: #9aa8b6 !important; font-size: 10px; }
 .es-root .maplibregl-ctrl-attrib a { color: #b9c6d3 !important; }
 .ed-root:has(.es-root) .scr-subnav { display: none; }
+.es-place { left: 18px; right: 70px; width: fit-content; max-width: calc(100% - 88px); transform: none; flex-wrap: wrap; }
+.es-place b { overflow-wrap: anywhere; }
+.es-scroll { flex: 1; min-height: 0; overflow-y: auto; }
+.es-scroll > .ed-tip { padding: 4px 16px; }
+.es-scroll .es-sites { overflow: visible; }
+.es-intel { top: 86px; }
+.es-area, .es-context { margin: 14px; display: flex; flex-direction: column; gap: 10px; }
+.es-area h2, .es-context h2 { margin: 0; color: var(--hud-gold); font-size: 16px; font-weight: 800; }
+.es-area p, .es-context p { margin: 0; font-size: 13px; line-height: 1.5; }
+.es-area small, .es-context small { font-size: 12px; line-height: 1.5; color: #aab6c3; }
+.es-fp { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.es-fp button { min-height: 44px; font-size: 14px; border-radius: 8px; }
+.es-fp button:disabled { opacity: .35; }
+.es-area-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.es-area-actions button { min-height: 44px; font-size: 12px; }
+.es-context { padding: 14px 0; border-block: 1px solid var(--hud-edge); }
+.es-context > a { font-size: 13px; color: #5fe0cb; text-decoration: underline; text-underline-offset: 3px; }
+.es-center-pin { width: 30px; height: 30px; border: 3px solid #ffd98a; border-radius: 50%; background: #181c14aa; box-shadow: 0 0 0 4px #12190b88; cursor: grab; }
+.es-center-pin:active { cursor: grabbing; }
+.es-center-pin::after { content: '+'; display: block; text-align: center; line-height: 23px; color: #ffd98a; font-size: 24px; }
+.es-root .maplibregl-canvas { cursor: grab; }
+.es-root .maplibregl-canvas:active { cursor: grabbing; }
+@media (max-width: 700px) {
+  .es-place { top: 8px; left: 8px; right: 58px; gap: 6px; padding: 4px 8px; max-width: calc(100% - 66px); }
+  .es-place .es-coords { width: 100%; padding-inline-start: 44px; font-size: 11px; }
+  .es-intel { top: auto; left: 8px; right: 8px; bottom: 8px; width: auto; height: 53vh; }
+  .es-area, .es-context { margin: 10px 12px; gap: 8px; }
+  .es-area p { font-size: 12px; }
+}
 
 /* The WebGL context is lost (GraphicsState.tsx): the battlefield waits behind this until it is rebuilt. */
 .gx-restoring { position: fixed; inset: 0; z-index: 95; display: grid; place-items: center; padding: 20px; background: rgba(7, 9, 7, .74); }

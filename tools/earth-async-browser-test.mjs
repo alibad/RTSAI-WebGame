@@ -15,7 +15,7 @@ try {
     const page = await context.newPage(); page.setDefaultTimeout(30000);
     const errors = [], held = [], summaries = [];
     let geoStarted = false, terrainStarted = false, location = 0;
-    const articles = title => ({ query: { geosearch: [{ pageid: 1, title, lat: 26.5667, lon: 56.25, dist: 50 }, { pageid: 2, title: 'Second Air Base', lat: 26.567, lon: 56.251, dist: 100 }] } });
+    const articles = title => ({ query: { geosearch: [{ pageid: 1, title, lat: 25.1173, lon: 51.3149, dist: 50 }, { pageid: 2, title: 'Second Air Base', lat: 25.118, lon: 51.316, dist: 100 }] } });
     const json = (route, data) => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(data) });
     page.on('pageerror', e => errors.push(String(e)));
     await page.route('**/*', async route => {
@@ -37,17 +37,17 @@ try {
         const query = decodeURIComponent((route.request().postData() ?? '').replace(/^data=/, ''));
         if (!query.includes('out tags geom')) {
           if (scenario === 'research-timeout') { held.push(route); return; }
-          return json(route, { elements: [{ type: 'node', id: 7, lat: 26.568, lon: 56.253, tags: { military: 'airfield', name: 'Mapped Air Base' } }] });
+          return json(route, { elements: [{ type: 'node', id: 7, lat: 25.119, lon: 51.317, tags: { military: 'airfield', name: 'Mapped Air Base' } }] });
         }
         terrainStarted = true;
-        return json(route, { elements: [{ type: 'way', id: 8, tags: { highway: 'primary' }, geometry: [{ lat: 26.5667, lon: 56.23 }, { lat: 26.5667, lon: 56.27 }] }] });
+        return json(route, { elements: [{ type: 'way', id: 8, tags: { highway: 'primary' }, geometry: [{ lat: 25.1173, lon: 51.29 }, { lat: 25.1173, lon: 51.34 }] }] });
       }
       if (['127.0.0.1', 'localhost'].includes(url.hostname) || ['blob:', 'data:'].includes(url.protocol)) return route.continue();
       return route.abort();
     });
     await page.goto(`${base}?profile=public&mode=editor`);
     await page.getByTestId('ed-earth').waitFor({ timeout: 180000 }); await page.getByTestId('ed-earth').click();
-    const destination = page.locator('[data-place="Strait of Hormuz"]');
+    const destination = page.locator('[data-place="Al Udeid Air Base, Qatar"]');
     await destination.and(page.locator(':enabled')).waitFor(); await destination.click();
     const build = page.getByTestId('es-build');
     await build.and(page.locator(':enabled')).waitFor();
@@ -69,7 +69,7 @@ try {
       await page.waitForFunction(() => document.querySelector('[data-testid="es-edit"]') || document.querySelector('.es-intel .ed-error'), null, { timeout: 120000 });
       assert.equal(await page.locator('.es-intel .ed-error').count(), 0, await page.locator('.es-intel .ed-error').allTextContents());
       assert.equal(terrainStarted, true);
-      assert.ok(await page.evaluate(() => window.store.getState().setup.maps.some(m => m.title === 'Strait of Hormuz')));
+      assert.ok(await page.evaluate(() => window.store.getState().setup.maps.some(m => m.title === 'Al Udeid Air Base')));
       receipt.checks.push('Terrain compiled and registered while Wikipedia geosearch was still held');
       await page.getByRole('combobox', { name: 'Your nation', exact: true }).click();
       await page.getByRole('option', { name: 'America', exact: true }).click();
