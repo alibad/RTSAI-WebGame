@@ -12,9 +12,9 @@ const out=process.argv[3]??'artifacts/campaign-live-20261016';fs.mkdirSync(out,{
 const catalog=JSON.parse(fs.readFileSync('content/missions.json','utf8'));
 const story=JSON.parse(fs.readFileSync('../RTSAI-Mod/resources/campaign-story.json','utf8'));
 const browser=await chromium.launch({executablePath:browserExecutable(),headless:true,args:browserArgs()});
-const page=await browser.newPage({viewport:{width:1440,height:1000}});const errors=[];const films=[];const launches=[];
+const page=await browser.newPage({viewport:{width:1440,height:1000}});const errors=[];const films=[];const launches=[];const adviser=[];
 page.on('pageerror',e=>errors.push(String(e)));
-await page.addInitScript(()=>localStorage.setItem('rtsai.cocommander',JSON.stringify({enabled:false,mode:'browser',muted:true,auto:false,browserVersion:1})));
+await page.addInitScript(()=>localStorage.setItem('rtsai.cocommander',JSON.stringify({enabled:true,mode:'browser',muted:true,auto:false,browserVersion:1})));
 const state=()=>page.evaluate(()=>{const s=window.store.getState();return {phase:s.phase,error:s.error,id:s.ui?.mission?.id,tick:s.ui?.tick,win:s.ui?.win};});
 const setup=async()=>{await page.waitForFunction(()=>['setup','error'].includes(window.store?.getState().phase),null,{timeout:600000});assert.equal((await state()).phase,'setup',JSON.stringify(await state()));};
 const playing=async(id)=>{await page.waitForFunction(id=>window.store.getState().phase==='error'||window.store.getState().ui?.mission?.id===id,id,{timeout:600000});assert.equal((await state()).phase,'playing',JSON.stringify(await state()));};
@@ -48,6 +48,14 @@ try{
   const s=await page.evaluate(()=>window.store.getState().ui.mission);
   assert.deepEqual(s.objectives.map(o=>o.text),def.objectives.map(o=>o.text));
   launches.push({id:def.id,tick:(await state()).tick,objectives:s.objectives.length});console.log('Mission launched:',def.id);
+  if(def.id==='jizan-corridor'){
+   await page.getByRole('button',{name:'Apply recommendation (J)',exact:true}).waitFor({timeout:30000});
+   const proposal=await page.evaluate(()=>window.game.cc.pending());assert(proposal?.proposalId);
+   await page.getByRole('button',{name:'Apply recommendation (J)',exact:true}).click();
+   await page.waitForFunction(id=>window.game.cc.receipts.has(id),proposal.proposalId,{timeout:30000});
+   const receipt=await page.evaluate(id=>window.game.cc.receipts.get(id),proposal.proposalId);assert.equal(receipt.accepted,true,receipt.detail);
+   adviser.push({mission:def.id,commands:proposal.commands,receipt});console.log('Native adviser order accepted.');
+  }
   if(def.id==='jizan-corridor')await page.screenshot({path:path.join(out,'mission.png')});
   await page.evaluate(()=>window.game.quit());await setup();
  }
@@ -81,7 +89,7 @@ try{
  assert.equal(await page.locator('button[data-chapter="hodeidah-lifeline"]').getAttribute('aria-pressed'),'true');
  assert.match(await page.locator('button[data-chapter="jizan-corridor"]').innerText(),/Completed/);
  assert.equal(errors.length,0,JSON.stringify(errors));
- const report={passed:true,url:base,checkedAt:new Date().toISOString(),films,launches,nativeProgressFixture:{objective:'survive three seconds (failure case: one-second deadline)',outcomes:['Lost','Won'],lossDoesNotComplete:true,storage:true,nextChapter:true,nextMissionLaunched:true,reload:true,fullCampaignPlaythrough:false},errors};
+ const report={passed:true,url:base,checkedAt:new Date().toISOString(),films,launches,adviser,nativeProgressFixture:{objective:'survive three seconds (failure case: one-second deadline)',outcomes:['Lost','Won'],lossDoesNotComplete:true,storage:true,nextChapter:true,nextMissionLaunched:true,reload:true,fullCampaignPlaythrough:false},errors};
  fs.writeFileSync(path.join(out,'release-acceptance.json'),JSON.stringify(report,null,2));console.log('PASS:',films.length,'films,',launches.length,'mission launches; native progress fixture and reload.');
 }catch(e){fs.writeFileSync(path.join(out,'failure.json'),JSON.stringify({error:String(e),state:await state().catch(()=>null),loading:await page.evaluate(()=>({prepared:window.store.getState().preparedMap,sheets:window.store.getState().sheets,stage:window.store.getState().stage})).catch(()=>null),films,launches,errors},null,2));await page.screenshot({path:path.join(out,'failure.png')}).catch(()=>{});throw e;}
 finally{await browser.close();}
