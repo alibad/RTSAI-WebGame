@@ -1,5 +1,5 @@
 // The Earth studio: a globe to pick any place on, a fly-in to it, a scan of public sources (OpenStreetMap's mapped
-// military sites, airfields and ports; Wikipedia's articles around it, each with its source), then the battlefield
+// military sites, airfields and ports; Wikipedia's articles around it, each with its source), independently of the battlefield
 // built from the place's roads, water and land cover by the website's own Earth compiler (RTSAI-Web
 // lib/earth-battlefield.ts, the same file /studio runs). From there: edit the map, or start a mission on the fly at a
 // site the scan found, between any two nations.
@@ -17,13 +17,13 @@ import { Flag } from "./Flag";
 import { GameButton } from "./kit/game";
 import { compileBattlefield } from "@site/lib/earth-battlefield";
 import { elevationGrid } from "../elevation";
+import { researchSites, type Place, type Site } from "../earth-research";
 import { overpassFailure, terrainBox, terrainFeatures, terrainQuery } from "@site/lib/earth-evidence";
 import type { Map as MapLibreMap } from "maplibre-gl";
 
 type DataSource = { setData(data: unknown): void };
 
-type Place = { name: string; lat: number; lon: number };
-type Site = { id: string; name: string; kind: string; lat: number; lon: number; source: "OpenStreetMap" | "Wikipedia"; url?: string; extract?: string; thumb?: string; operator?: string; dist: number };
+
 
 const SUGGEST: Place[] = [
   { name: "Al Udeid Air Base, Qatar", lat: 25.1173, lon: 51.3149 },
@@ -43,77 +43,23 @@ const FOOTPRINTS = [
 const OVERPASS = ["https://overpass-api.de/api/interpreter", "https://maps.mail.ru/osm/tools/overpass/api/interpreter", "https://overpass.kumi.systems/api/interpreter", "https://overpass.private.coffee/api/interpreter"];
 const ESRI = "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}";
 
-async function overpass(query: string) {
+async function overpass(query: string, signal?: AbortSignal) {
+  const deadline = AbortSignal.any([...(signal ? [signal] : []), AbortSignal.timeout(60000)]);
   // The local game server relays and keeps answers (server/serve.mjs); the public game asks the mirrors itself.
   const relay = import.meta.env.VITE_STATIC_BUILD !== "1" ? [new URL("api/overpass", new URL("./", location.href)).href] : [];
   for (const url of [...relay, ...OVERPASS]) {
+    deadline.throwIfAborted();
     try {
-      const r = await fetch(url, { method: "POST", body: "data=" + encodeURIComponent(query), headers: { "Content-Type": "application/x-www-form-urlencoded" } });
+      const r = await fetch(url, { method: "POST", body: "data=" + encodeURIComponent(query), headers: { "Content-Type": "application/x-www-form-urlencoded" }, signal: AbortSignal.any([deadline, AbortSignal.timeout(20000)]) });
       if (r.ok) return await r.json();
     } catch { /* the next mirror */ }
   }
   throw Error("OpenStreetMap didn't answer. Try again in a moment.");
 }
-const hav = (a: [number, number], b: [number, number]) => {
-  const R = 6371000, r = Math.PI / 180, dl = (b[0] - a[0]) * r, dn = (b[1] - a[1]) * r;
-  const h = Math.sin(dl / 2) ** 2 + Math.cos(a[0] * r) * Math.cos(b[0] * r) * Math.sin(dn / 2) ** 2;
-  return 2 * R * Math.asin(Math.sqrt(h));
-};
 const box = (p: Place, radius: number) => {
   const dy = radius / 110540, dx = radius / (111320 * Math.cos(p.lat * Math.PI / 180));
   return { s: p.lat - dy, w: p.lon - dx, n: p.lat + dy, e: p.lon + dx };
 };
-
-/** Public military and transport sites around a place: OpenStreetMap's mapped ones and Wikipedia's articles. */
-async function scan(p: Place, radius: number, log: (s: string) => void): Promise<Site[]> {
-  const b = box(p, radius * 1.4);
-  const bb = `${b.s},${b.w},${b.n},${b.e}`;
-  log("Reading <b>OpenStreetMap</b>: military sites, airfields, ports");
-  const q = `[out:json][timeout:25];(way["landuse"="military"](${bb});relation["landuse"="military"](${bb});way["military"](${bb});node["military"](${bb});way["aeroway"="aerodrome"](${bb});node["aeroway"="aerodrome"](${bb});way["landuse"~"^(port|harbour)$"](${bb});way["harbour"](${bb}););out tags center;`;
-  log("Reading <b>Wikipedia</b> within 10 km");
-  const [osm, wiki] = await Promise.allSettled([
-    overpass(q),
-    fetch(`https://en.wikipedia.org/w/api.php?action=query&list=geosearch&gscoord=${p.lat}|${p.lon}&gsradius=10000&gslimit=30&format=json&origin=*`).then((r) => r.json()),
-  ]);
-  const sites: Site[] = [];
-  if (osm.status === "fulfilled") {
-    type El = { id: number; type: string; lat?: number; lon?: number; center?: { lat: number; lon: number }; tags?: Record<string, string> };
-    const els = (osm.value.elements ?? []) as El[];
-    for (const e of els) {
-      const c = e.center ?? (e.lat !== undefined ? { lat: e.lat, lon: e.lon! } : null), t = e.tags ?? {};
-      if (!c) continue;
-      const kind = t.aeroway === "aerodrome" ? (t.military || t.landuse === "military" || /air ?base|military/i.test(t.name ?? "") ? "Air base" : "Airfield")
-        : t.landuse === "port" || t.landuse === "harbour" || t.harbour ? "Port" : t.military === "barracks" ? "Barracks" : t.military === "naval_base" ? "Naval base" : t.military === "airfield" ? "Air base" : "Military area";
-      const raw = t["name:en"] ?? t.name;
-      const name = raw && raw.length > 3 && !/^[A-Z]{0,2}\d+$/.test(raw) ? raw : kind;
-      const operator = t["operator:en"] ?? t.operator ?? t.military_service;
-      sites.push({ id: `osm-${e.type}-${e.id}`, name, kind, lat: c.lat, lon: c.lon, source: "OpenStreetMap", url: `https://www.openstreetmap.org/${e.type}/${e.id}`, operator, dist: hav([p.lat, p.lon], [c.lat, c.lon]) });
-    }
-    log(`Mapped: <b>${sites.length}</b> military, airfield and port features`);
-  } else log("OpenStreetMap didn't answer: the map still builds");
-  if (wiki.status === "fulfilled") {
-    const items = (wiki.value.query?.geosearch ?? []) as { pageid: number; title: string; lat: number; lon: number; dist: number }[];
-    // Military first, then transport and landmarks; a stadium or a university named after a canal is neither.
-    const civic = /\b(stadium|university|college|school|hospital|mosque|church|club|museum|hotel|mall)\b/i;
-    const rank = (t: string) => /air ?base|airbase|naval|military|army|camp |fort|barracks|garrison/i.test(t) ? 0 : civic.test(t) ? 2 : /\b(airport|port|harbou?r|strait|bridge|dam|canal|island)\b/i.test(t) ? 1 : 2;
-    const top = items.filter((i) => rank(i.title) < 2).sort((a, b) => rank(a.title) - rank(b.title) || a.dist - b.dist).slice(0, 4);
-    for (const it of top) {
-      let extract: string | undefined, thumb: string | undefined, url: string | undefined;
-      try {
-        const s = await (await fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(it.title.replace(/ /g, "_"))}`)).json();
-        extract = s.extract; thumb = s.thumbnail?.source; url = s.content_urls?.desktop?.page;
-      } catch { /* the title is enough */ }
-      sites.push({ id: `wiki-${it.pageid}`, name: it.title, kind: rank(it.title) === 0 ? "Military" : "Infrastructure", lat: it.lat, lon: it.lon, source: "Wikipedia", url, extract, thumb, dist: it.dist });
-    }
-    log(`Described: <b>${top.length}</b> nearby article${top.length === 1 ? "" : "s"}`);
-  }
-  // Wikipedia's described sites first, then the nearest named mapped ones; nearby duplicates of a described site go.
-  const described = sites.filter((s) => s.source === "Wikipedia");
-  const mapped = sites.filter((s) => s.source === "OpenStreetMap" && s.name !== s.kind && !described.some((d) => hav([d.lat, d.lon], [s.lat, s.lon]) < 1500))
-    .sort((a, b) => a.dist - b.dist).filter((s, i, all) => all.findIndex((x) => x.name === s.name) === i).slice(0, 4);
-  const unnamed = sites.filter((s) => s.source === "OpenStreetMap" && s.name === s.kind).sort((a, b) => a.dist - b.dist).filter((s, i, all) => all.findIndex((x) => x.kind === s.kind) === i).slice(0, described.length + mapped.length >= 3 ? 1 : 3);
-  return [...described, ...mapped, ...unnamed];
-}
 
 export function EarthStudio({ game, editor, close, mission }: { game: Game; editor: EditorController; close: () => void; mission: (m: MissionSpec) => void }) {
   const setup = useStore((s) => s.setup);
@@ -125,7 +71,11 @@ export function EarthStudio({ game, editor, close, mission }: { game: Game; edit
   const [query, setQuery] = useState("");
   const [footprint, setFootprint] = useState(1);
   const [log, setLog] = useState<string[]>([]);
-  const [sites, setSites] = useState<Site[] | null>(null);
+  const [sites, setSites] = useState<Site[]>([]);
+  const [scanning, setScanning] = useState(false);
+  const research = useRef<AbortController | null>(null);
+  const building = useRef<AbortController | null>(null);
+  const sidesEdited = useRef(false);
   const [site, setSite] = useState<Site | null>(null);
   const [error, setError] = useState("");
   const [built, setBuilt] = useState<{ id: string; title: string; points: { u: number; v: number }[] } | null>(null);
@@ -163,9 +113,9 @@ export function EarthStudio({ game, editor, close, mission }: { game: Game; edit
   const stageRef = useRef(stage);
   stageRef.current = stage;
 
-  const drawFootprint = (p: Place) => {
+  const drawFootprint = (p: Place, footprint = fp) => {
     const m = map.current!;
-    const b = box(p, fp.radius);
+    const b = box(p, footprint.radius);
     const data = { type: "FeatureCollection" as const, features: [{ type: "Feature" as const, properties: {}, geometry: { type: "Polygon" as const, coordinates: [[[b.w, b.n], [b.e, b.n], [b.e, b.s], [b.w, b.s], [b.w, b.n]]] } }] };
     if (m.getSource("fp")) (m.getSource("fp") as unknown as DataSource).setData(data);
     else {
@@ -185,31 +135,46 @@ export function EarthStudio({ game, editor, close, mission }: { game: Game; edit
     }
   };
 
-  const go = async (p: Place) => {
+  const go = (p: Place) => {
     const m = map.current;
     if (!m) return;
-    setPlace(p); setStage("place"); setLog([]); setSites(null); setSite(null); setError(""); setBuilt(null); setForces(null);
+    research.current?.abort(); building.current?.abort(); sidesEdited.current = false;
+    setPlace(p); setStage("place"); setLog([]); setSites([]); setSite(null); setError(""); setBuilt(null); setForces(null);
     say(`Flying to <b>${p.name}</b>`);
     m.setPadding({ top: 0, bottom: 0, left: 0, right: 420 });
     m.flyTo({ center: [p.lon, p.lat], zoom: 12.6, pitch: 50, bearing: -25, duration: 6500, curve: 1.6, essential: true });
-    await new Promise<void>((r) => m.once("moveend", () => r()));
     drawFootprint(p);
-    try {
-      const country = countryAt(p.lat, p.lon);
-      const found = await scan(p, fp.radius, say);
-      setSites(found);
-      drawSites(found);
-      const best = found.find((s) => /air base|naval|military|barracks/i.test(s.kind)) ?? found[0] ?? null;
-      setSite(best);
-      // The militaries the sources name here, and their likely opponent: the mission's two sides.
-      const sources = found.map((s) => ({ text: [s.name, s.operator, s.extract].filter(Boolean).join(". "), from: `${s.source}: ${s.name}` }));
-      const f = inferForces(await country, sources, nations.map((n) => n.id));
-      if (f) {
-        setForces(f); setFa(f.defender.id); setFb(f.attacker.id); setYouDefend(true);
-        say(`Forces here: <b>${forceName(f.defender.id)}</b> (${f.defender.why}); likely attacker: <b>${forceName(f.attacker.id)}</b> (${f.attacker.why})`);
-      }
-    } catch (e) { setError(e instanceof Error ? e.message : String(e)); setSites([]); }
   };
+
+  // Site research enriches missions in the background. It never gates the build action or its terrain request.
+  const nationIds = nations.map(n => n.id).join(",");
+  useEffect(() => {
+    if (!place) return;
+    const controller = new AbortController(); research.current = controller;
+    const { signal } = controller;
+    let found: Site[] = [], country: string | null = null;
+    setScanning(true); setSites([]); setSite(null);
+    const infer = () => {
+      if (signal.aborted) return;
+      const sources = found.map(s => ({ text: [s.name, s.operator, s.extract].filter(Boolean).join(". "), from: `${s.source}: ${s.name}` }));
+      const forces = inferForces(country, sources, nationIds.split(","));
+      if (forces && !sidesEdited.current) { setForces(forces); setFa(forces.defender.id); setFb(forces.attacker.id); setYouDefend(true); }
+    };
+    void countryAt(place.lat, place.lon, signal).then(code => { country = code; infer(); });
+    void researchSites(place, fp.radius, { signal, mapped: overpass,
+      log: message => { if (!signal.aborted) say(message); },
+      update: list => {
+        if (signal.aborted) return;
+        found = list; setSites(list); drawSites(list);
+        setSite(selected => selected ? list.find(s => s.id === selected.id) ?? selected
+          : list.find(s => /air base|naval|military|barracks/i.test(s.kind)) ?? list[0] ?? null);
+        infer();
+      },
+    }).finally(() => { if (!signal.aborted) setScanning(false); });
+    return () => controller.abort();
+  }, [place, fp.radius, nationIds]); // Helpers use the current map ref; callbacks are scoped to this lookup.
+
+  useEffect(() => () => { research.current?.abort(); building.current?.abort(); }, []);
 
   const search = async () => {
     const q = query.trim();
@@ -226,25 +191,32 @@ export function EarthStudio({ game, editor, close, mission }: { game: Game; edit
   /** The place's roads, water, land cover and buildings, compiled into a map by the website's Earth compiler. */
   const build = async () => {
     if (!place || !map.current) return;
+    const controller = new AbortController(); building.current?.abort(); building.current = controller;
+    const current = () => !controller.signal.aborted && building.current === controller;
     setStage("building"); setError("");
     try {
+      const heights = elevationGrid(place.lat, place.lon, fp.radius, fp.size).catch(() => null);
       say("Reading the place's <b>roads, water and land</b>");
-      const payload = await overpass(terrainQuery(place.lat, place.lon, fp.radius));
+      const payload = await overpass(terrainQuery(place.lat, place.lon, fp.radius), controller.signal);
+      if (!current()) return;
       if (overpassFailure(payload)) throw Error("This area is too dense; choose a smaller footprint.");
       const features = terrainFeatures(payload, terrainBox(place.lat, place.lon, fp.radius));
       say(`Compiling <b>${features.length}</b> features into terrain`);
       const title = place.name.split(",")[0].slice(0, 40);
       const bf = await compileBattlefield({ latitude: place.lat, longitude: place.lon, radius: fp.radius, seed: 42, size: fp.size, players: 2, title }, features);
+      if (!current()) return;
       let files: Record<string, Uint8Array> = { "map.yaml": new TextEncoder().encode(bf.yaml), "map.bin": bf.bin, "map.png": bf.png };
       let id = bf.id;
       // The ground's real hills and valleys (sim Relief.cs), level where the sites a mission may use stand.
       say("Reading the ground's <b>height</b>");
-      const grid = await elevationGrid(place.lat, place.lon, fp.radius, fp.size).catch(() => null);
+      const grid = await heights;
+      if (!current()) return;
       if (grid) {
         const near = [place, ...(sites ?? []).filter((s) => s.dist <= fp.radius)];
         const keep = near.map((s) => ({ ...geoToCell(s.lat, s.lon, place, fp.radius, fp.size), r: 12 }));
         try {
           const shaped = await editor.relief(files, grid, keep);
+          if (!current()) return;
           files = shaped.files;
           id = `${bf.id}-h${shaped.levels}`;
           say(shaped.levels
@@ -254,6 +226,7 @@ export function EarthStudio({ game, editor, close, mission }: { game: Game; edit
       } else say("Ground: kept <b>level</b> (elevation unavailable)");
       say("Engine check: <b>2 start positions, bases connected</b>");
       await editor.addFiles(id, bf.title, bf.players, files);
+      if (!current()) return;
       // The battlefield, draped over the place it came from.
       const m = map.current, b = box(place, fp.radius);
       const url = URL.createObjectURL(new Blob([files["map.png"].slice()], { type: "image/png" }));
@@ -262,16 +235,17 @@ export function EarthStudio({ game, editor, close, mission }: { game: Game; edit
       m.addSource("built", { type: "image", url, coordinates: [[b.w, b.n], [b.e, b.n], [b.e, b.s], [b.w, b.s]] });
       m.addLayer({ id: "built", type: "raster", source: "built", paint: { "raster-opacity": 0, "raster-resampling": "nearest" } }, "fp-fill");
       m.setPaintProperty("built", "raster-opacity-transition", { duration: 1800, delay: 0 });
-      setTimeout(() => m.setPaintProperty("built", "raster-opacity", 0.92), 50);
+      setTimeout(() => { if (current() && map.current === m && m.getLayer("built")) m.setPaintProperty("built", "raster-opacity", 0.92); }, 50);
       m.easeTo({ pitch: 55, bearing: 45, zoom: m.getZoom() + 0.2, duration: 2400 });
       setBuilt({ id, title: bf.title, points: spawnCells(new TextDecoder().decode(files["map.yaml"])) });
       setStage("built");
-    } catch (e) { setError(e instanceof Error ? e.message : String(e)); setStage("place"); }
+    } catch (e) { if (current()) { setError(e instanceof Error ? e.message : String(e)); setStage("place"); } }
   };
 
   // Switching role keeps the sides on the place: you take the other side's nation.
   const switchRole = (defend: boolean) => {
     if (defend === youDefend) return;
+    sidesEdited.current = true;
     setYouDefend(defend); setFa(fb); setFb(fa);
   };
 
@@ -311,19 +285,20 @@ export function EarthStudio({ game, editor, close, mission }: { game: Game; edit
       {place && stage !== "world" && (
         <>
           <div className="es-place hud-panel">
-            <button type="button" className="hud-tool" aria-label="Back to the globe" onClick={() => { setStage("world"); map.current?.setPadding({ top: 260, bottom: 0, left: 0, right: 0 }); map.current?.flyTo({ center: [place.lon, place.lat], zoom: 2.2, pitch: 0, bearing: 0, duration: 3000 }); }}><ArrowLeft /></button>
+            <button type="button" className="hud-tool" aria-label="Back to the globe" onClick={() => { research.current?.abort(); building.current?.abort(); setPlace(null); setStage("world"); map.current?.setPadding({ top: 260, bottom: 0, left: 0, right: 0 }); map.current?.flyTo({ center: [place.lon, place.lat], zoom: 2.2, pitch: 0, bearing: 0, duration: 3000 }); }}><ArrowLeft /></button>
             <span className="es-live" /><b>{place.name}</b>
             <span className="es-coords digits">{Math.abs(place.lat).toFixed(4)}°{place.lat >= 0 ? "N" : "S"} {Math.abs(place.lon).toFixed(4)}°{place.lon >= 0 ? "E" : "W"}</span>
             <span className="es-fp" role="radiogroup" aria-label="Footprint">
-              {FOOTPRINTS.map((f, i) => <button key={f.label} type="button" role="radio" aria-checked={footprint === i} disabled={stage !== "place"} onClick={() => { setFootprint(i); drawFootprint(place); }}>{f.label}</button>)}
+              {FOOTPRINTS.map((f, i) => <button key={f.label} type="button" role="radio" aria-checked={footprint === i} disabled={stage !== "place"} onClick={() => { setFootprint(i); drawFootprint(place, f); }}>{f.label}</button>)}
             </span>
           </div>
           <aside className="es-intel hud-panel" data-testid="es-intel">
-            <header><span className="es-live" /><span className="menu-eyebrow">Analyst · public sources</span></header>
+            <header><span className="es-live" /><span className="menu-eyebrow">Nearby sites · optional research</span></header>
+            <p className="ed-tip">Roads, water and land shape the map. Site names and background research load separately for missions.</p>
             <div className="es-log">{log.map((l, i) => <div key={i} dangerouslySetInnerHTML={{ __html: l }} />)}</div>
             <div className="es-sites">
-              {sites === null && <div className="es-scanning"><LoaderCircle className="menu-spin" size={16} />Scanning…</div>}
-              {sites?.length === 0 && <p className="ed-tip">No military or transport sites are mapped or described here. The battlefield still comes from the place's roads, water and land.</p>}
+              {scanning && <div className="es-scanning" role="status"><LoaderCircle className="menu-spin" size={16} />Researching nearby sites… This won’t delay the map.</div>}
+              {!scanning && sites.length === 0 && <p className="ed-tip">No nearby site information is available. You can still build the battlefield.</p>}
               {sites?.map((s) => (
                 <button key={s.id} type="button" className="es-site" aria-pressed={site?.id === s.id} onClick={() => { setSite(s); map.current?.flyTo({ center: [s.lon, s.lat], zoom: 14, duration: 1600 }); }}>
                   <span className="es-site-th" style={s.thumb ? { backgroundImage: `url("${s.thumb}")` } as CSSProperties : undefined}>{!s.thumb && <MapPin size={20} />}</span>
@@ -341,21 +316,21 @@ export function EarthStudio({ game, editor, close, mission }: { game: Game; edit
             </div>
             {error && <p className="ed-error">{error}</p>}
             <footer>
-              {stage === "place" && <GameButton variant="primary" size="lg" icon={<Globe2 size={16} />} onClick={() => void build()} disabled={sites === null} data-testid="es-build">Build battlefield</GameButton>}
+              {stage === "place" && <GameButton variant="primary" size="lg" icon={<Globe2 size={16} />} onClick={() => void build()} data-testid="es-build">Build battlefield</GameButton>}
               {stage === "building" && <div className="es-scanning"><LoaderCircle className="menu-spin" size={16} />Building the battlefield…</div>}
               {stage === "built" && built && (
                 <div className="es-actions">
                   <div className="es-mission">
                     <span className="menu-eyebrow"><Swords size={12} /> Mission at {site?.name ?? place.name}</span>
                     <div className="es-sides">
-                      <label><span>You</span><SearchSelect size="sm" value={fa} onValueChange={setFa} options={nationOptions} aria-label="Your nation" /></label>
-                      <label><span>Enemy AI</span><SearchSelect size="sm" value={fb} onValueChange={setFb} options={nationOptions} aria-label="Enemy nation" /></label>
+                      <label><span>You</span><SearchSelect size="sm" value={fa} onValueChange={value => { sidesEdited.current = true; setFa(value); }} options={nationOptions} aria-label="Your nation" /></label>
+                      <label><span>Enemy AI</span><SearchSelect size="sm" value={fb} onValueChange={value => { sidesEdited.current = true; setFb(value); }} options={nationOptions} aria-label="Enemy nation" /></label>
                     </div>
                     <div className="es-role" role="radiogroup" aria-label="Your role">
                       <button type="button" role="radio" aria-checked={youDefend} onClick={() => switchRole(true)}><Shield size={13} />You defend it</button>
                       <button type="button" role="radio" aria-checked={!youDefend} onClick={() => switchRole(false)}><Swords size={13} />You attack it</button>
                     </div>
-                    {forces && <p className="es-why">{forceName(forces.defender.id)} holds it: {forces.defender.why}. {forceName(forces.attacker.id)} attacks: {forces.attacker.why}.</p>}
+                    {forces && forces.defender.id === (youDefend ? fa : fb) && forces.attacker.id === (youDefend ? fb : fa) && <p className="es-why">{forceName(forces.defender.id)} holds it: {forces.defender.why}. {forceName(forces.attacker.id)} attacks: {forces.attacker.why}.</p>}
                     <GameButton variant="primary" size="lg" icon={<Swords size={16} />} onClick={startMission} data-testid="es-mission">Start mission</GameButton>
                   </div>
                   <GameButton icon={<Pencil size={14} />} onClick={() => void editor.open({ map: built.id })} data-testid="es-edit">Edit this map</GameButton>

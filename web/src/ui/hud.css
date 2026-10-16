@@ -849,6 +849,7 @@
 .es-fp button[aria-checked="true"] { color: var(--hud-gold, #f1d28b); border-color: rgba(241, 210, 139, .5); }
 .es-intel { position: absolute; top: 72px; right: 16px; bottom: 16px; z-index: 2; display: flex; width: 400px; flex-direction: column; overflow: hidden; border-radius: 14px; animation: menu-rise .4s ease-out; }
 .es-intel header { display: flex; align-items: center; gap: 10px; padding: 14px 16px 6px; }
+.es-intel > .ed-tip { margin: 0; padding: 4px 16px 10px; line-height: 1.5; }
 .es-log { display: flex; flex-direction: column; gap: 2px; padding: 0 16px; font-size: 12px; color: #b8c6d4; }
 .es-log b { color: #5fe0cb; }
 .es-log > div { animation: menu-rise .3s ease-out; }

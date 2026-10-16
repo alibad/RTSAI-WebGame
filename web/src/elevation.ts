@@ -27,7 +27,7 @@ function tile(x: number, y: number): Promise<Float32Array | null> {
   let p = decoded.get(key);
   if (!p) {
     p = (async () => {
-      const r = await fetch(`${TILES}/${key}.webp`, { mode: "cors" });
+      const r = await fetch(`${TILES}/${key}.webp`, { mode: "cors", signal: AbortSignal.timeout(12000) });
       if (!r.ok) return null;
       const bitmap = await createImageBitmap(await r.blob());
       const canvas = new OffscreenCanvas(TILE, TILE);

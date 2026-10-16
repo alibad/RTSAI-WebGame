@@ -68,9 +68,9 @@ export function inferForces(country: string | null, sources: { text: string; fro
 }
 
 /** The country code of a place (OpenStreetMap's Nominatim), or null offshore or offline. */
-export async function countryAt(lat: number, lon: number): Promise<string | null> {
+export async function countryAt(lat: number, lon: number, signal?: AbortSignal): Promise<string | null> {
   try {
-    const r = await (await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=3&lat=${lat}&lon=${lon}`)).json();
+    const r = await (await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=3&lat=${lat}&lon=${lon}`, { signal: AbortSignal.any([...(signal ? [signal] : []), AbortSignal.timeout(12000)]) })).json();
     return r?.address?.country_code ?? null;
   } catch { return null; }
 }
