@@ -1,0 +1,52 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
+import { chromium } from '../web/node_modules/playwright-core/index.mjs';
+import { browserExecutable, browserArgs } from './browser-launch.mjs';
+const base = process.env.RTSAI_TEST_URL;
+if (!base) throw Error('Set RTSAI_TEST_URL to the local preview');
+const out = path.resolve(process.env.RTSAI_TEST_OUT ?? '../artifacts/classic-web-support-20261016');
+fs.mkdirSync(out, { recursive: true });
+const browser = await chromium.launch({ executablePath: browserExecutable(), headless: true, args: browserArgs() });
+const receipt = { passed: false };
+try {
+  const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+  await page.goto(`${base}?profile=public-classic&runtime=interp&private=0`);
+  await page.waitForFunction(() => ['setup', 'error'].includes(window.store?.getState().phase), null, { timeout: 180000 });
+  assert.equal(await page.evaluate(() => window.store.getState().phase), 'setup', await page.evaluate(() => window.store.getState().error));
+  receipt.generated = await page.evaluate(() => window.game.generateMap({ seed: 20261016, size: 64, players: 2, terrain: 'Plains', resources: 'Medium' }));
+  assert.match(receipt.generated, /^gen-/);
+  receipt.opened = await page.evaluate(() => window.game.client.editorOpen({ new: { width: 48, height: 48, title: 'Classic Studio regression' } }));
+  assert(receipt.opened.id, JSON.stringify(receipt.opened));
+  const catalog = await page.evaluate(() => window.game.client.editor({ op: 'catalog' }));
+  assert(catalog.templates.some(t => t.id === 255), 'Classic clear terrain');
+  assert(catalog.templates.some(t => t.id === 1), 'Classic water terrain');
+  assert(catalog.actors.some(a => a.name === 'cnrifle'), 'Custom faction actors stay available in the editor');
+  receipt.catalog = { templates: catalog.templates.length, actors: catalog.actors.length };
+  const water = await page.evaluate(() => window.game.client.editor({ op: 'brush', brush: 'water', radius: 5 }));
+  assert(!water.error, JSON.stringify(water));
+  await page.evaluate(async () => {
+    for (const event of ['down', 'up']) await window.game.client.editor({ op: 'pointer', event, x: 24 * 24, y: 24 * 24, button: 1 });
+  });
+  const history = await page.evaluate(() => window.game.client.editor({ op: 'history' }));
+  assert(!history.error, JSON.stringify(history));
+  assert(history.undo, 'A real water stroke must be undoable');
+  await page.evaluate(() => window.game.client.editor({ op: 'undo' }));
+  const redo = await page.evaluate(() => window.game.client.editor({ op: 'redo' }));
+  assert(redo.undo, 'Undo/redo must preserve the stroke');
+  receipt.water = { undo: history.undo, redo: redo.undo };
+  const saved = await page.evaluate(() => window.game.client.editor({ op: 'save', title: 'Classic Studio regression', author: 'Local verification' }));
+  assert(saved.files, JSON.stringify(saved));
+  const yaml = Buffer.from(saved.files['map.yaml'], 'base64').toString('utf8');
+  assert.match(yaml, /RequiresMod: rtsai-classic-core/);
+  assert.match(yaml, /Tileset: TEMPERAT/);
+  receipt.saved = { requiresMod: 'rtsai-classic-core', tileset: 'TEMPERAT', files: Object.keys(saved.files) };
+  const companion = await (await fetch(new URL('api/companion/status', base))).json();
+  assert.notEqual(companion.grpcPort, 9988, 'A preview must have its own co-commander port');
+  receipt.companionPort = companion.grpcPort;
+  receipt.passed = true;
+  console.log(JSON.stringify(receipt));
+} finally {
+  fs.writeFileSync(path.join(out, 'map-tools-receipt.json'), JSON.stringify(receipt, null, 2));
+  await browser.close();
+}

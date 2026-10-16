@@ -250,7 +250,7 @@ export class Game {
         const title = m.landscape ? generatedMapName(m.seed ?? m.map, m.landscape) : m.title ?? "Random map";
         store.set({
           previews: { ...s.previews, [m.map]: url },
-          setup: { ...s.setup, maps: [{ id: m.map, uid: m.map, title, players, tileset: "TEMPERATE", author: "",
+          setup: { ...s.setup, maps: [{ id: m.map, uid: m.map, title, players, tileset: s.setup.modId === 'rtsai-classic-core' ? 'TEMPERAT' : 'TEMPERATE', author: "",
             generated: true, landscape: m.landscape, gen: waiter?.request, slots: Array.from({ length: players }, (_, i) => `Multi${i}`) }, ...s.setup.maps] },
         });
       }
@@ -342,7 +342,7 @@ export class Game {
       if (known.has(m.id)) continue;
       known.add(m.id);
       previews[m.id] = URL.createObjectURL(new Blob([m.preview.slice()], { type: "image/png" }));
-      added.push({ id: m.id, uid: m.id, title: m.title, players: m.players, tileset: "TEMPERATE", author: "", saved: m.saved, place: m.place,
+      added.push({ id: m.id, uid: m.id, title: m.title, players: m.players, tileset: s.setup?.modId === 'rtsai-classic-core' ? 'TEMPERAT' : 'TEMPERATE', author: "", saved: m.saved, place: m.place,
         slots: Array.from({ length: m.players }, (_, i) => `Multi${i}`) });
     }
     if (added.length) store.set({ setup: { ...s.setup, maps: [...s.setup.maps, ...added] }, previews });

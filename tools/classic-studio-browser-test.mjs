@@ -77,6 +77,7 @@ try {
         if (!building) throw Error('Missing production building');
         g.lookAt(building.sx, building.sy);
       }, barracks);
+      await page.waitForFunction(type => window.store.getState().catalog.find(q => q.type === 'Infantry')?.items.some(i => i.name === type && i.buildable), type, { timeout: 60000 });
       const before = await page.evaluate(type => ({ cash: window.store.getState().ui.cash,
         item: window.store.getState().catalog.find(q => q.type === 'Infantry')?.items.find(i => i.name === type) }), type);
       assert.equal(before.item?.buildable, true, `${type} must be available in its own faction's real queue`);

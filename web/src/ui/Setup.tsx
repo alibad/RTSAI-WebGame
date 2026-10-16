@@ -2,7 +2,7 @@
 // column), opponents (nation, AI type, personality, colour) and the lobby options the mod offers, then start. The
 // chosen map is prepared in the background while the player decides, so starting only builds the world.
 
-import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useState, type CSSProperties, type ReactNode } from "react";
 import { Bot, Brain, Check, ChevronDown, Dices, Map as MapIcon, Plus, SlidersHorizontal, Swords, Users, X } from "lucide-react";
 import { MODERN_NATIONS as MODERN, PLAYER_COLORS as COLORS, SIDE_NAME, nationGroup } from "../sides";
 import { MapStrip, orderMaps } from "./MapStrip";
@@ -67,7 +67,7 @@ export function Setup({ game, utilities }: { game: Game; utilities: ReactNode })
   const sheets = useStore((s) => s.sheets);
 
   const factions = setup.factions.filter((f) => !f.random);
-  const settingsKey = (key: string) => `rtsai.${profile === 'public-classic' ? 'classic' : 'ra2'}.${key}`;
+  const settingsKey = useCallback((key: string) => `rtsai.${profile === 'public-classic' ? 'classic' : 'ra2'}.${key}`, [profile]);
   const [faction, setFaction] = useState<string>(() => {
     const saved = load(settingsKey('faction'), load('rtsai.faction', 'saudi'));
     return factions.some(f => f.id === saved) ? saved : factions[0]?.id;
@@ -93,7 +93,7 @@ export function Setup({ game, utilities }: { game: Game; utilities: ReactNode })
       localStorage.setItem(settingsKey('opponents'), JSON.stringify(opponents));
       localStorage.setItem(settingsKey('options'), JSON.stringify(options));
     } catch { /* private mode */ }
-  }, [faction, mapId, color, opponents, options]);
+  }, [faction, mapId, color, opponents, options, settingsKey]);
 
   // Previews for the map picker; prepare the chosen map once the choice settles.
   useEffect(() => { if (map) game.preview(map.id); }, [game, map]);

@@ -17,6 +17,7 @@ using System.Text;
 using System.Text.Json;
 using OpenRA.FileSystem;
 using OpenRA.Mods.Common.Traits;
+using OpenRA.Mods.Common.MapGenerator;
 using OpenRA.Primitives;
 using OpenRA.Support;
 
@@ -94,6 +95,7 @@ namespace OpenRA.WebSim
 					?? throw new InvalidOperationException($"Unknown landscape {terrain}.");
 
 				var modData = SimHost.ModData;
+				var recovered = SimHost.ModId == "rtsai-classic-core";
 				var info = modData.DefaultRules.Actors[SystemActors.EditorWorld].TraitInfos<MapGeneratorBaseInfo>()
 					.FirstOrDefault(g => g.Type == (SimHost.ModId == "rtsai-classic-core" ? "classic" : Generator))
 					?? throw new InvalidOperationException("This build has no map generator.");
@@ -103,12 +105,18 @@ namespace OpenRA.WebSim
 				var attempts = 0;
 				for (var attempt = 0; attempt < Attempts && map == null; attempt++)
 				{
-					var options = new Dictionary<string, string>(Defaults)
+					var tileset = recovered ? "TEMPERAT" : "TEMPERATE";
+					var options = recovered ? info.Options.ToDictionary(o => o.Id, o => o switch
 					{
-						["Seed"] = (seed + attempt).ToString(CultureInfo.InvariantCulture),
-						["Players"] = players.ToString(CultureInfo.InvariantCulture),
-						["TerrainType"] = terrain,
-					};
+						MapGeneratorBooleanOption v => FieldSaver.FormatValue(v.Default),
+						MapGeneratorIntegerOption v => FieldSaver.FormatValue(v.Default),
+						MapGeneratorMultiIntegerChoiceOption v => FieldSaver.FormatValue(v.Default),
+						MapGeneratorMultiChoiceOption v => v.DefaultFor(modData.DefaultTerrainInfo[tileset], players),
+						_ => throw new InvalidOperationException("Unknown map generator option")
+					}) : new Dictionary<string, string>(Defaults);
+					options["Seed"] = (seed + attempt).ToString(CultureInfo.InvariantCulture);
+					options["Players"] = players.ToString(CultureInfo.InvariantCulture);
+					options["TerrainType"] = recovered && terrain == "Flat" ? "Plains" : terrain;
 					if (Str("resources") is string resources) options["Resources"] = resources;
 
 					// Mirror symmetry and two-fold rotation only work for an even number of players.
@@ -118,7 +126,7 @@ namespace OpenRA.WebSim
 					var args = new MapGenerationArgs
 					{
 						Generator = info.Type,
-						Tileset = SimHost.ModId == "rtsai-classic-core" ? "TEMPERAT" : "TEMPERATE",
+						Tileset = tileset,
 						Size = new Size(size, size),
 						Title = $"{landscape} {(seed + attempt) % 10000:D4}",
 						Author = "RTS AI map generator",
