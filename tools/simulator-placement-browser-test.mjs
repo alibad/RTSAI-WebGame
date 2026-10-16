@@ -37,6 +37,7 @@ try {
   const placed=await page.evaluate(async()=>{
    const c=window.game.client,actor=c.cur.actors.find(a=>c.str(a.type)==='gapowr');
    window.game.lookAt(actor.sx,actor.sy);window.game.cam.zoom=1.5;
+   await window.game.select([actor.id]);
    return {sequence:c.str(actor.sequence),tick:c.cur.header.tick,placement:(await window.game.command({cmd:'placements'})).spawns.find(a=>a.type==='gapowr')};
   });
   assert.notEqual(placed.sequence,'make','the paused building displays its completed body immediately');
