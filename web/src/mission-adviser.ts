@@ -200,6 +200,10 @@ interface Named { id?: number; at: Pt; seen: number; building?: boolean; dead?: 
  * is computed again from the same memory when it is confirmed; orders change the memory once they are applied.
  */
 export class MissionMemory {
+  /** Terrain-derived landing sites and real transport trips; no actor spawning or teleportation. */
+  landings = new Map<string, Pt | null>();
+  voyages = new Map<number, { assigned: number[]; loaded: boolean; returning: boolean; since: number }>();
+  initialFighters: Set<number> | null = null;
   heading = new Map<number, { goal: string; key: string; tick: number; reactive: boolean; tries: number; to?: Pt }>();
   named = new Map<string, Named>();
   scouted = new Set<string>();
@@ -336,7 +340,8 @@ class World {
         sweep: s.sweep && s.sweep.length >= 2 ? s.sweep : null, offset: s.offset ?? 0, live: !killed, tripped });
     }
     this.hasBase = obs.buildings.some((b) => /cnst/.test(baseType(b.kind)) || (ctx.techTree[baseType(b.kind)]?.produces ?? []).length > 0);
-    this.engineers = this.units.filter((u) => u.canCapture || baseType(u.kind) === "engineer").sort(byId);
+    const boarding = new Set([...this.memory.voyages.values()].flatMap(v=>v.assigned));
+    this.engineers = this.units.filter((u) => !boarding.has(u.actorId) && (u.canCapture || baseType(u.kind) === "engineer")).sort(byId);
     this.fighters = this.units.filter((u) => u.canAttack && !nonCombat.has(baseType(u.kind)) && !this.convoyTypes.has(baseType(u.kind)) && !this.engineers.includes(u)).sort(byId);
   }
 
@@ -493,7 +498,11 @@ class World {
   land(p: Pt, max = 14) { return this.grid?.near(p, max) ?? p; }
 
   /** A unit on ground the land grid can walk (ships and boats are not). */
-  onLand(u: AdviserActor) { return !this.grid || this.grid.pass(cellOf(u)) || this.grid.near(cellOf(u), 1) !== null; }
+  onLand(u: AdviserActor) {
+    // A boat beside a quay remains a boat; proximity to a walkable shore must not send it onto land.
+    if (this.ctx.techTree[baseType(u.kind)]?.queue === "Ship") return false;
+    return !this.grid || this.grid.pass(cellOf(u)) || this.grid.near(cellOf(u), 1) !== null;
+  }
 
   /** A unit as the lines name it: "Tanya" (a named hero), "the Engineer". */
   who(u: AdviserActor) {
@@ -837,7 +846,9 @@ function focusOf(w: World): Focus | null {
   const rank = (o: Objective) => (o.secondary ? 1000 : 0) + (o.kind === "survive" ? 500 : 0) + (atSea(o) || chased(o) ? 400 : 0) + (o.limit ? -100 : 0) + far(o) / 10;
   const open = w.objectives.filter((o) => army0(o) && !o.waiting).sort((a, b) => rank(a) - rank(b) || a.i - b.i);
   const upcoming = w.objectives.filter((o) => army0(o) && o.waiting);
-  if (open.length && open[0].kind !== "survive") return { o: open[0], prepare: false };
+  // A defended base must actually hold before preparing a gated assault. Rallying a quarter of the way to the
+  // enemy pulled its starting force beyond its own guns during Relay Under Siege's four-minute defence.
+  if (open.length && (open[0].kind !== "survive" || w.hasBase)) return { o: open[0], prepare: false };
   if (upcoming.length) return { o: upcoming[0], prepare: true };
   return open.length ? { o: open[0], prepare: false } : null;
 }
@@ -979,14 +990,15 @@ function go(w: World, army: AdviserActor[], to: Pt, goal: string, say: (n: numbe
     if (!commands.length) return advice(first.text, "", [], first.key);
     return advice(lead?.commands.length ? lead.text : first.text, lead?.summary || back?.summary || "", commands, `${lead?.key ?? ""}|${back?.key ?? ""}`, { goal, goals });
   }
-  const commands = [...sendAll(movers, action, step), ...sendAll(ships, action, to), ...sendAll(trail, action, w.land(centre, 6))].slice(0, MAX);
+  // At sea the fleet must receive its orders even when a large land army fills the command limit.
+  const commands = [...sendAll(ships, action, to), ...sendAll(movers, action, step), ...sendAll(trail, action, w.land(centre, 6))].slice(0, MAX);
   const [text, summary] = say(commands.length);
   return advice(text, summary, commands, `${stepGoal}:${step.u},${step.v}`, { goal, goals });
 }
 
 /** The army's errand for the focus objective. */
 function armyTask(w: World, f: Focus, army: AdviserActor[]): MissionAdvice | null {
-  const o = f.o, prepare = f.prepare, fixed = !w.hasBase;
+  const o = f.o, prepare = f.prepare, fixed = !w.hasBase || (army.length > 0 && army.every(u=>w.ctx.techTree[baseType(u.kind)]?.queue==="Ship"));
   // Out of money with nothing being built: no more is coming, so the army goes with what it has.
   const broke = w.obs.cash < 500 && !w.obs.production.length && army.length >= 3;
   const units = (n: number) => plural(n, "unit");
@@ -1105,7 +1117,8 @@ function armyTask(w: World, f: Focus, army: AdviserActor[]): MissionAdvice | nul
       // One engineer on its way in is enough: the others stay where they are.
       const capturing = engineers.some((e) => w.memory.heading.get(e.actorId)?.goal === `capture:${o.i}` && !e.idle);
       if (!prepare && !guards.length && id !== undefined && (holding || atDoor) && !capturing) {
-        const able = engineers.filter((e) => (e.captureTargets ?? []).includes(id)).sort((a, b) => dist(cellOf(a), next.p) - dist(cellOf(b), next.p) || a.actorId - b.actorId);
+        // Bring the engineer up behind the escort first, rather than sending a fresh recruit alone across the map.
+        const able = engineers.filter((e) => dist(cellOf(e),next.p)<=15 && (e.captureTargets ?? []).includes(id)).sort((a, b) => dist(cellOf(a), next.p) - dist(cellOf(b), next.p) || a.actorId - b.actorId);
         const goal = `capture:${o.i}`;
         if (able.length) return advice(`${capital(label)} is clear: send your ${w.name(able[0].kind)} to capture it now.`,
           `Capture ${label} with the ${w.name(able[0].kind)}`, [{ action: "capture", actor_id: able[0].actorId, target_actor_id: id }], goal, { goal });
@@ -1225,6 +1238,78 @@ function heroes(w: World): MissionAdvice | null {
 
 // ------------------------------------------------------------------ economy
 
+const amphibiousName = /amphibious.*(?:carrier|transport)|landing ship/i;
+
+/** A shoreline on an objective's landmass, when no ground route exists from the base. */
+function islandGoal(w: World): { name: string; beach: Pt; home: Pt } | null {
+  const grid=w.grid, home=w.base();
+  if(!grid||!home)return null;
+  for(const o of w.objectives.filter(o=>o.status==="active"&&!o.waiting&&(o.kind==="capture"||o.kind==="destroy"))) {
+    for(const name of o.targets??[]) {
+      if(w.ctx.techTree[w.ctx.map.named[name]?.type]?.queue==="Ship")continue;
+      const target=w.where(name);if(!target||!grid.pass(target))continue;
+      if(!w.memory.landings.has(name)) {
+        let beach:Pt|null=null;
+        if(!grid.path(home,target)) {
+          const coast:Pt[]=[];
+          for(let v=2;v<grid.h-2;v+=2)for(let u=2;u<grid.w-2;u+=2) {
+            const p={u,v};
+            if(!grid.pass(p)||dist(p,target)<12||dist(p,target)>55)continue;
+            if([{u:u-1,v},{u:u+1,v},{u,v:v-2},{u,v:v+2}].some(q=>!grid.pass(q)))coast.push(p);
+          }
+          coast.sort((a,b)=>dist(a,home)-dist(b,home));
+          beach=coast.find(p=>!!grid.path(p,target))??null;
+        }
+        w.memory.landings.set(name,beach);
+      }
+      const beach=w.memory.landings.get(name);if(beach)return {name,beach,home};
+    }
+  }
+  return null;
+}
+
+/** Small amphibious shuttles move real infantry and engineers across a disconnected coast. */
+function islandAssault(w: World): MissionAdvice | null {
+  const goal=islandGoal(w);if(!goal)return null;
+  const boats=w.units.filter(u=>(u.passengers??-1)>=0&&amphibiousName.test(w.name(u.kind))).sort(byId);
+  for(const boat of boats) {
+    let trip=w.memory.voyages.get(boat.actorId);
+    if(!trip){trip={assigned:[],loaded:false,returning:false,since:w.tick};w.memory.voyages.set(boat.actorId,trip);}
+    const passengers=boat.passengers??0;
+    const move=(to:Pt,key:string,text:string)=>needsOrder(w,boat,key,to,3)
+      ?advice(text,text,[{action:"move",actor_id:boat.actorId,target_x:to.u,target_y:to.v}],key,{goal:key}):null;
+    if(passengers>0&&(passengers>=trip.assigned.length||w.tick-trip.since>250||trip.loaded)) {
+      trip.loaded=true;
+      // Load under cover, but clear the hostile surface group before sending vulnerable troop carriers across it.
+      const unsafeSea=w.objectives.some(o=>o.status==="active"&&o.kind==="destroy"&&(o.targets??[]).some(t=>w.ctx.techTree[w.ctx.map.named[t]?.type]?.queue==="Ship"&&w.where(t)));
+      if(unsafeSea)continue;
+      if(dist(cellOf(boat),goal.beach)>3)return move(goal.beach,`landing:${boat.actorId}`,`Land the assault team on the island near ${placeName(goal.name)}.`);
+      const h=w.memory.heading.get(boat.actorId),key=`unload:${boat.actorId}`;
+      if(h?.goal===key&&w.tick-h.tick<100)continue;
+      return advice("Unload the assault team on the island shore.","Unload the assault team",[{action:"unload",actor_id:boat.actorId}],key,{goal:key});
+    }
+    if(!passengers&&trip.loaded){trip.loaded=false;trip.returning=true;trip.assigned=[];}
+    if(trip.returning||(!trip.assigned.length&&dist(cellOf(boat),goal.home)>8)) {
+      if(dist(cellOf(boat),goal.home)>5)return move(goal.home,`shuttle:${boat.actorId}`,"Return the amphibious carrier for reinforcements.");
+      trip.returning=false;trip.since=w.tick;
+    }
+    const reserved=new Set([...w.memory.voyages.values()].flatMap(v=>v.assigned));
+    // Four infantry fit the current amphibious carriers; the first engineer joins with a combat escort.
+    const choices=w.units.filter(u=>!reserved.has(u.actorId)&&!w.heroes.has(u.actorId)&&dist(cellOf(u),goal.home)<28&&w.ctx.techTree[baseType(u.kind)]?.queue==="Infantry"
+      &&!!w.grid?.path(cellOf(u),cellOf(boat)))
+      .sort((a,b)=>Number(!!b.canCapture)-Number(!!a.canCapture)
+        ||Number(/anti.?tank|missile team|\bRPG\b/i.test(w.name(b.kind)))-Number(/anti.?tank|missile team|\bRPG\b/i.test(w.name(a.kind)))
+        ||dist(cellOf(a),cellOf(boat))-dist(cellOf(b),cellOf(boat)));
+    while(trip.assigned.length<4&&choices.length)trip.assigned.push(choices.shift()!.actorId);
+    const waiting=trip.assigned.map(id=>w.units.find(u=>u.actorId===id)).filter((u):u is AdviserActor=>!!u);
+    const key=`board:${boat.actorId}`;
+    const board=waiting.filter(u=>{const h=w.memory.heading.get(u.actorId);return !h||h.goal!==key||u.idle;});
+    if(board.length)return advice("The objective is across water: board the engineer and infantry in the amphibious carrier.","Board the island assault team",
+      board.map(u=>({action:"enter_transport" as const,actor_id:u.actorId,target_actor_id:boat.actorId})),key,{goal:key});
+  }
+  return null;
+}
+
 function catalogItem(ctx: MissionContext, test: (item: MissionCatalogItem) => boolean) {
   for (const q of ctx.catalog ?? []) for (const item of q.items) if (test(item)) return item;
   return null;
@@ -1266,6 +1351,51 @@ function missionProduction(w: World): MissionAdvice | null {
     const type = types.find((t) => available.has(t));
     if (have < need && type && !busy(type)) return eco(`Train ${need - have === 1 ? article(w.name(type)) : `${need - have} more of the ${w.name(type)}`}: the objective needs ${need}.`,
       `Train ${need - have} ${w.name(type)}`, Array.from({ length: need - have }, () => ({ action: "train" as const, item_type: type })), `train:${type}`);
+  }
+  // Destroying a surface group needs a fleet. The land-production fallback never trains ships, so this objective
+  // used to keep sending tanks to the shore even after the mission's naval yard was complete.
+  const seaTargets = open.filter(x=>x.kind==="destroy").flatMap(x=>x.targets??[])
+    .filter(t=>ctx.techTree[ctx.map.named[t]?.type]?.queue==="Ship" && w.where(t));
+  if (seaTargets.length) {
+    const type=[...available].filter(t=>ctx.techTree[baseType(t)]?.queue==="Ship"
+      && !/transport|landing|survey|tender|support|air defense|carrier/i.test(w.name(t)))
+      .sort((a,b)=>(ctx.techTree[b]?.cost??0)-(ctx.techTree[a]?.cost??0)||a.localeCompare(b))[0];
+    const have=w.units.filter(u=>u.canAttack&&ctx.techTree[baseType(u.kind)]?.queue==="Ship").length
+      +o.production.filter(p=>ctx.techTree[baseType(p.item)]?.queue==="Ship").length;
+    if(type&&!busy(type)&&have<Math.min(8,seaTargets.length+2)) {
+      const cost=ctx.techTree[type]?.cost??9999;
+      // Do not immediately spend the ship's budget on three more tanks every time the vehicle queue empties.
+      if(o.cash<cost)return eco(`Save $${cost} for ${article(w.name(type))}: the remaining sea targets need a fleet.`,"",[],`save:fleet:${type}`);
+      return eco(`The remaining sea targets need a fleet: build ${article(w.name(type))}.`,`Train 1 ${w.name(type)}`,
+        [{action:"train",item_type:type}],`train:fleet:${type}`);
+    }
+  }
+  if(islandGoal(w)) {
+    const type=[...available].find(t=>amphibiousName.test(w.name(t)));
+    const have=w.units.filter(u=>amphibiousName.test(w.name(u.kind))).length+o.production.filter(p=>amphibiousName.test(w.name(p.item))).length;
+    if(type&&have<3&&!busy(type)&&o.cash>=(ctx.techTree[type]?.cost??9999))
+      return eco("The island needs a landing force: build another amphibious carrier.",`Train 1 ${w.name(type)}`,[{action:"train",item_type:type}],`train:landing:${type}`);
+    const infantry=[...available].find(t=>ctx.techTree[t]?.queue==="Infantry"&&/anti.?tank|missile team|\bRPG\b/i.test(w.name(t)));
+    const troops=w.units.filter(u=>ctx.techTree[baseType(u.kind)]?.queue==="Infantry"&&!u.canCapture).length;
+    if(infantry&&troops<16&&!busy(infantry)&&o.cash>=(ctx.techTree[infantry]?.cost??9999))
+      return eco("Train anti-armour infantry for the amphibious assault.",`Train 3 ${w.name(infantry)}`,Array.from({length:3},()=>({action:"train" as const,item_type:infantry})),"train:landing:infantry");
+  }
+  // Some factions field technicals and missile teams rather than anything named "tank". The generic base adviser
+  // otherwise fills their army with rifles and never uses an idle vehicle queue, even under an armoured attack.
+  const hasTank = [...available].some(t => ctx.techTree[baseType(t)]?.queue === "Vehicle" && /\btank\b|\bMBT\b/i.test(w.name(t)));
+  if (!hasTank) {
+    const counters = [...available].filter(t => /anti.?tank|\bRPG\b|missile team|recoilless|rail technical/i.test(w.name(t)));
+    for (const queue of ["Vehicle", "Infantry"]) {
+      const type = counters.filter(t => ctx.techTree[baseType(t)]?.queue === queue)
+        .sort((a,b)=>(ctx.techTree[a]?.cost??9999)-(ctx.techTree[b]?.cost??9999)||a.localeCompare(b))[0];
+      if (!type || busy(type)) continue;
+      const have = w.units.filter(u => counters.includes(baseType(u.kind))).length + o.production.filter(p => counters.includes(baseType(p.item))).length;
+      const need = Math.max(8, w.enemies.filter(e=>/\btank\b|\bMBT\b/i.test(w.name(e.kind))).length*2);
+      if (have >= need || o.cash < (ctx.techTree[type]?.cost ?? 9999)) continue;
+      const count = Math.min(3, need-have);
+      return eco(`Build an anti-armour screen: train ${count} ${w.name(type)} instead of sending rifles against tanks.`, `Train ${count} ${w.name(type)}`,
+        Array.from({length:count},()=>({action:"train" as const,item_type:type})),`train:anti-armour:${type}`);
+    }
   }
   return null;
 }
@@ -1345,6 +1475,7 @@ function economyStep(w: World): MissionAdvice | null {
  * leaves the same memory, so a recommendation recomputed for confirmation comes out the same. */
 function observe(w: World, now: number) {
   const memory = w.memory;
+  memory.initialFighters ??= new Set(w.fighters.map(u=>u.actorId));
   for (const o of w.objectives.filter((x) => x.kind === "scout"))
     for (const t of o.targets ?? []) {
       const p = w.where(t);
@@ -1413,15 +1544,32 @@ function step(w: World, o: AdviserObservation, ctx: MissionContext): MissionAdvi
   // Units with an errand of their own (engineers, specialists, gate runners) are not the army.
   const errands = w.objectives.filter((x) => special(x) && x.status === "active");
   const own = new Set<number>(w.engineers.map((e) => e.actorId));
+  for(const [id,trip] of w.memory.voyages){own.add(id);for(const passenger of trip.assigned)own.add(passenger);}
   for (const r of errands) for (const u of w.units) if ((r.types ?? []).includes(baseType(u.kind))) own.add(u.actorId);
   for (const u of w.units) { const h = w.memory.heading.get(u.actorId); if (h?.goal.startsWith("scout:") && !u.idle) own.add(u.actorId); }
   // A badly hurt unit the mission needs alive stays out of the fighting.
-  const army = w.fighters.filter((u) => !own.has(u.actorId) && !(w.heroes.has(u.actorId) && (u.hpPercent ?? 1) < 0.5));
+  // The starting column advances; a reserve from newly trained ground units protects the base against later raids.
+  // Previously every replacement marched to the objective, leaving an intact army idle at the plant while its
+  // construction yard was destroyed at home (Sweet Water).
+  const home=w.base();
+  const reserve=new Set(home&&ctx.spec.protect?.length?w.fighters.filter(u=>!ctx.memory.initialFighters?.has(u.actorId)
+    &&!own.has(u.actorId)&&!w.heroes.has(u.actorId)&&ctx.techTree[baseType(u.kind)]?.queue!=="Ship")
+    .sort((a,b)=>dist(cellOf(a),home)-dist(cellOf(b),home)||a.actorId-b.actorId).slice(0,6).map(u=>u.actorId):[]);
+  const army = w.fighters.filter((u) => !reserve.has(u.actorId) && !own.has(u.actorId) && !(w.heroes.has(u.actorId) && (u.hpPercent ?? 1) < 0.5));
   const guard = defend(w, own);
   if (guard) return guard;
   // A mission with a base alternates between the economy and the army, so neither starves the other.
   const economyFirst = ctx.memory.lastKind === "unit";
   if (economyFirst) { const e = economy(w); if (e) return e; }
+  // Sea and land objectives run concurrently: an engineer's shore errand must not leave a completed fleet idle.
+  const fleet=w.fighters.filter(u=>ctx.techTree[baseType(u.kind)]?.queue==="Ship");
+  for(const o of w.objectives.filter(x=>x.status==="active"&&!x.waiting&&x.kind==="destroy")) {
+    const targets=(o.targets??[]).filter(t=>ctx.techTree[ctx.map.named[t]?.type]?.queue==="Ship"&&w.where(t));
+    if(targets.length&&fleet.length>=Math.min(4,targets.length)) {
+      const a=armyTask(w,{o:{...o,targets},prepare:false},fleet);if(a)return a;
+    }
+  }
+  const landing=islandAssault(w);if(landing)return landing;
   for (const r of errands.filter((x) => !x.waiting)) {
     const a = reachSpecial(w, r, w.units.filter((u) => (r.types ?? []).includes(baseType(u.kind))), w.fighters);
     if (a) return a;

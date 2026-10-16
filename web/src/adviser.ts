@@ -72,7 +72,7 @@ export interface AdviserObservation {
 }
 
 export interface AdviserCommand {
-  action: "deploy" | "place_building" | "build" | "train" | "attack_move" | "move" | "attack" | "capture" | "demolish" | "stop" | "set_stance";
+  action: "deploy" | "place_building" | "build" | "train" | "attack_move" | "move" | "attack" | "capture" | "demolish" | "stop" | "set_stance" | "enter_transport" | "unload";
   actor_id?: number;
   /** attack, capture, demolish: the target actor. */
   target_actor_id?: number;

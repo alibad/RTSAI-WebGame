@@ -214,6 +214,75 @@ test("unverified contacts: return fire only, verify by going close, never fire o
   assert.deepEqual(d.commands.map((x) => [x.action, x.target_x]), [["set_stance", 3], ["set_stance", 3]]);
 });
 
+test("a faction without tanks uses its available anti-armour roster instead of endlessly training rifles", () => {
+  const spec = {id:"test",slot:"Me",enemy:"Them",objectives:[{text:"Hold the base.",kind:"survive",seconds:240}]};
+  const map = parseMissionMap(yaml([["Yard","nacnst","Me",10,20]]));
+  const obs = observe({cash:6000,powerProvided:1000,harvesterCount:3,
+    buildings:[unit(1,"nacnst",10,20,{canAttack:false}),unit(2,"napowr",9,20,{canAttack:false}),unit(3,"narefn",11,20,{canAttack:false}),unit(4,"nahand",10,22,{canAttack:false}),unit(5,"naweap",12,22,{canAttack:false}),unit(6,"naradr",8,22,{canAttack:false})],
+    availableProduction:["r2hzrifle","r2hzat","r2hzrecoilless","harv"],units:[unit(10,"r2hzrifle",10,21)]});
+  const a=plan(spec,map,obs);
+  assert(a.commands.length>0);assert(a.commands.every(c=>c.action==='train'&&c.item_type==='r2hzrecoilless'),JSON.stringify(a));
+});
+
+test("hold the base before rallying toward an assault gated behind the survival timer",()=>{
+  const spec={id:"test",slot:"Me",enemy:"Them",protect:["Yard"],objectives:[{text:"Hold the base.",kind:"survive",seconds:240},{text:"Destroy command.",kind:"destroy",targets:["Enemy"],requires:[0]}]};
+  const map=parseMissionMap(yaml([["Yard","nacnst","Me",10,20],["Enemy","gacnst","Them",50,100]]));
+  const obs=observe({units:Array.from({length:8},(_,i)=>unit(i+10,"r2hzat",35+i,65)),buildings:[unit(1,"nacnst",10,20,{canAttack:false})]});
+  const l=live(spec);l.objectives[1].waiting=true;
+  const a=missionAdvice(obs,{spec,live:l,map,memory:new MissionMemory(),techTree,now:0});
+  assert.match(a.text,/back to the base/);assert(a.commands.every(c=>c.target_x===10&&c.target_y===20),JSON.stringify(a));
+});
+
+test("sea objectives build a combat fleet, never transports, rather than another land-only army",()=>{
+  const spec={id:"test",slot:"Me",enemy:"Them",objectives:[{text:"Destroy the surface group.",kind:"destroy",targets:["Boat"]}]};
+  const map=parseMissionMap(yaml([["Yard","gacnst","Me",10,20],["Boat","r2ege","Them",45,80]]));
+  const obs=observe({cash:6000,powerProvided:1000,harvesterCount:3,buildings:[unit(1,"gacnst",10,20,{canAttack:false})],availableProduction:["r2ege","lcrf"]});
+  const memory=new MissionMemory();memory.lastKind="unit";
+  const a=plan(spec,map,obs,memory);assert.deepEqual(a.commands,[{action:"train",item_type:"r2ege"}]);
+  const save=plan(spec,map,{...obs,cash:500},new MissionMemory());assert.match(save.text,/Save \$1200/);assert.equal(save.commands.length,0);
+});
+
+test("a ship at the shoreline is never classified as a land unit",()=>{
+  const spec={id:"test",slot:"Me",objectives:[]};
+  const obs=observe({units:[unit(1,"r2ege",10,20)]});
+  const w=new missionInternals.World(obs,{spec,live:live(spec),map:parseMissionMap(yaml([])),memory:new MissionMemory(),techTree});
+  assert.equal(w.onLand(obs.units[0]),false);
+});
+
+test("new ground reinforcements retain a home guard while the starting column attacks",()=>{
+  const spec={id:"test",slot:"Me",enemy:"Them",protect:["Yard"],objectives:[{text:"Take relay.",kind:"capture",targets:["Relay"]}]};
+  const map=parseMissionMap(yaml([["Yard","gacnst","Me",10,20],["Relay","naradr","Them",45,100]]));
+  const starters=Array.from({length:8},(_,i)=>unit(i+10,"e1",30+i,60));
+  const reserve=Array.from({length:6},(_,i)=>unit(i+30,"e1",10+i,20));
+  const memory=new MissionMemory();memory.initialFighters=new Set(starters.map(u=>u.actorId));
+  const a=plan(spec,map,observe({buildings:[unit(1,"gacnst",10,20,{canAttack:false})],units:[...starters,...reserve]}),memory);
+  assert(a.commands.length);assert(a.commands.every(c=>c.actor_id<30),JSON.stringify(a));
+});
+
+test("a ready fleet receives sea orders while the land army still has a capture objective",()=>{
+  const spec={id:"test",slot:"Me",enemy:"Them",objectives:[{text:"Take relay.",kind:"capture",targets:["Relay"]},{text:"Destroy surface group.",kind:"destroy",targets:["Boat"]}]};
+  const map=parseMissionMap(yaml([["Yard","gacnst","Me",10,20],["Relay","naradr","Them",30,45],["Boat","r2ege","Them",45,80]]));
+  const obs=observe({buildings:[unit(1,"gacnst",10,20,{canAttack:false})],spatial:spatial((u)=>u>35),
+    units:[unit(10,"r2ege",40,75),...Array.from({length:8},(_,i)=>unit(i+20,"e1",10+i,25))]});
+  const a=plan(spec,map,obs);assert(a.commands.some(c=>c.actor_id===10&&c.target_x===45&&c.target_y===80),JSON.stringify(a));
+  assert(a.commands.every(c=>c.actor_id===10),JSON.stringify(a));
+});
+
+test("island assault boards real passengers, crosses water, unloads and returns; confirmation stays identical",()=>{
+  const spec={id:"test",slot:"Me",enemy:"Them",objectives:[{text:"Take island relay.",kind:"capture",targets:["Relay"]}]};
+  const map=parseMissionMap(yaml([["Yard","gacnst","Me",10,20],["Relay","naradr","Them",45,80]]));
+  const memory=new MissionMemory();
+  const team=[unit(2,"engineer",12,22,{canAttack:false,canCapture:true}),...Array.from({length:3},(_,i)=>unit(i+3,"r2trat",13+i,22))];
+  const boat=unit(10,"r2deniz",12,24,{passengers:0});
+  const obs=observe({spatial:spatial(u=>u>=25&&u<=35),buildings:[unit(1,"gacnst",10,20,{canAttack:false})],units:[boat,...team]});
+  const a=plan(spec,map,obs,memory);assert.equal(a.commands.length,4);assert(a.commands.every(c=>c.action==='enter_transport'&&c.target_actor_id===10));
+  assert.deepEqual(plan(spec,map,obs,memory).commands,a.commands);memory.record(a,1000);
+  const b=plan(spec,map,{...obs,tick:1100,units:[{...boat,passengers:4}]},memory);assert.equal(b.commands[0].action,'move');assert(b.commands[0].target_x>35);memory.record(b,1100);
+  const landed={...boat,...at(b.commands[0].target_x,b.commands[0].target_y),passengers:4};
+  const c=plan(spec,map,{...obs,tick:1200,units:[landed]},memory);assert.deepEqual(c.commands,[{action:'unload',actor_id:10}]);memory.record(c,1200);
+  const d=plan(spec,map,{...obs,tick:1300,units:[{...landed,passengers:0}]},memory);assert.match(d.text,/Return the amphibious carrier/);assert.equal(d.commands[0].target_x,10);
+});
+
 test("orders on the wire: the target actor (field 3) and queued (field 7)", () => {
   const bytes = encodeAdviserActions("mission-test-1", 100, [{ action: "demolish", actor_id: 5, target_actor_id: 9, queued: true }]);
   // The request: 1 id (16 bytes), 2 tick (2), then 3 the command { 1 action 24, 2 actor, 3 target actor, 7 queued }.

@@ -118,6 +118,8 @@ export class CoCommander {
   private browserLastLine = "";
   private browserDeciding = false;
   private browserReady = false;
+  /** Accepted orders enter the synchronized queue before their production/movement appears in observations. */
+  private browserNotBeforeTick = 0;
   /** Campaign missions: the mission map's named places and the planner's memory (mission-adviser.ts), per match. */
   private mission: { id: string; map: MissionMap | null; memory: MissionMemory } | null = null;
 
@@ -135,6 +137,7 @@ export class CoCommander {
   endMatch() {
     this.matchRevision++; this.strategyRevision++; this.requestRevision++;
     this.browserProposals.clear(); this.browserSuppressed = ""; this.browserLastLine = ""; this.browserDeciding = false; this.browserReady = false;
+    this.browserNotBeforeTick = 0;
     this.mission = null;
     this.interrupt(); this.receipts.clear();
     for (const request of this.requests) request.abort();
@@ -312,6 +315,7 @@ export class CoCommander {
     const match = this.matchRevision;
     try {
       const observation = await this.browser.observe();
+      if (observation.tick < this.browserNotBeforeTick) return;
       if (match !== this.matchRevision || !this.s.enabled || this.browserDeciding || this.s.uncertainProposalId || store.get().paused || !this.canIssue() || store.get().phase !== "playing") return;
       this.set({ linked: true, error: "", browserThreat: assessThreat(observation) });
       const now = Date.now();
@@ -374,6 +378,9 @@ export class CoCommander {
       const receipt = await this.browser.execute(id, advice.commands, observation.tick);
       if (match !== this.matchRevision) return;
       if (receipt.requestId !== id) throw Error("Mismatched native order receipt");
+      // Wait through the local order latency before planning from the result. Otherwise alternating a unit order
+      // with economy advice can buy the same factory/production batch twice before the first order becomes visible.
+      if (receipt.accepted) this.browserNotBeforeTick = observation.tick + 12;
       // The mission planner leaves units it has sent alone until they arrive.
       if (receipt.accepted && advice.key.startsWith("mission:")) this.mission?.memory.record(advice as MissionAdvice, observation.tick);
       if (!this.receipts.has(id)) this.onEngine({ kind: "executed", id, accepted: receipt.accepted, detail: receipt.detail });

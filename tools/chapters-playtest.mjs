@@ -76,7 +76,7 @@ for (const difficulty of diffs.split(",")) {
       await page.waitForFunction((id) => window.store.getState().phase === "playing" && window.store.getState().ui?.mission?.id === id, mission, { timeout: 600000 });
       await page.evaluate((v) => window.game.client.send({ type: "speed", speed: v }), speed);
       // The co-commander's feed: orders applied or refused, and its lines (new entries since the last look).
-      const state = () => page.evaluate(() => { const s = window.store.getState(); return { win: ["Won", "Lost"].includes(s.ui?.win) ? s.ui.win : "", tick: s.ui?.tick ?? 0, cash: s.ui?.cash ?? 0, m: s.ui?.mission,
+      const state = () => page.evaluate(() => { const s = window.store.getState(); return { phase:s.phase,error:s.error, win: ["Won", "Lost"].includes(s.ui?.win) ? s.ui.win : "", tick: s.ui?.tick ?? 0, cash: s.ui?.cash ?? 0, m: s.ui?.mission,
         feed: s.cc.feed.map((f) => ({ id: f.id, kind: f.kind, text: f.text, state: f.state })) }; });
       let s = await state(), lastMin = -1, lastPush = 0, step = 0, stepStart = 0, seen = 0, applied = 0, refused = 0, line = "";
       const timeline = [], lines = [], refusals = [];
@@ -94,6 +94,7 @@ for (const difficulty of diffs.split(",")) {
       while (!s.win && s.tick < limitMinutes * 1500) {
         await page.waitForTimeout(2000);
         s = await state();
+        if(s.phase==='error')throw Error(s.error||'Simulation entered error phase');
         read();
         while (step < plan.length && stepDone(plan[step])) { step++; stepStart = s.tick; }
         if (step < plan.length && Date.now() - lastPush > 8000) {
@@ -125,12 +126,21 @@ for (const difficulty of diffs.split(",")) {
           lastMin = min;
           const entry = `${min} min $${s.cash}: ${s.m.objectives.map((o) => o.status[0] + (o.progress && !o.progress.includes("seconds") ? `(${o.progress})` : "")).join(" ")} | ${applied} orders | ${line}`;
           timeline.push(entry); console.log(`  ${tag} ${entry}`);
+          fs.writeFileSync(path.join(out, `${mission}-checkpoint.json`), JSON.stringify({tick:s.tick,cash:s.cash,mission:s.m,applied,refused,line,errors},null,2));
         }
       }
       s = await state(); read();
+      let progressSaved=false;
+      if(s.win==='Won') {
+        await page.getByRole('heading',{name:'Operation complete',exact:true}).waitFor({timeout:10000});
+        await page.waitForFunction(({mission,difficulty})=>JSON.parse(localStorage.getItem('rtsai.missions.completed')??'{}')[mission]===difficulty,{mission,difficulty},{timeout:10000});
+        progressSaved=true;
+      }
       await page.screenshot({ path: path.join(out, `${mission}-${difficulty}-${run}.png`) });
       const done = s.m.objectives.filter((o) => o.status === "complete").length;
-      const result = { mission, difficulty, run, seed: scenario.seed, speed, win: s.win || "undecided", minutes: +(s.tick / 1500).toFixed(2), cash: s.cash,
+      const observation = await page.evaluate(() => window.game.client.adviserObserve());
+      fs.writeFileSync(path.join(out, `${mission}-${difficulty}-${run}-observation.json`), JSON.stringify(observation, null, 2));
+      const result = { mission, difficulty, run, seed: scenario.seed, speed, progressSaved, win: s.win || "undecided", minutes: +(s.tick / 1500).toFixed(2), cash: s.cash,
         complete: `${done}/${s.m.objectives.length}`, events: s.m.events ?? [], applied, refused, refusals,
         objectives: s.m.objectives.map((o) => `${o.status}: ${o.text} ${o.progress ?? ""}`.trim()), timeline, lines, errors };
       results.push(result);
