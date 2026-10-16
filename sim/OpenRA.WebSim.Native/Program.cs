@@ -50,6 +50,7 @@ static class Program
 				"musictest" => MusicPlayerTest.Run(opts),
 				"ailabtest" => AiLabTest.Run(opts),
 				"mapgentest" => MapGenTest.Run(opts),
+				"editorresourcetest" => EditorResourcesTest.Run(opts),
 				_ => throw new ArgumentException("Unknown command " + args[0]),
 			};
 		}

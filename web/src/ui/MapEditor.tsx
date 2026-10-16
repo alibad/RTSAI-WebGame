@@ -140,7 +140,7 @@ function Palette({ game, editor }: { game: Game; editor: EditorController }) {
     );
   }
   if (st.tool === "resource") return (
-    <div className="ed-palette hud-panel">
+    <div className="ed-palette hud-panel is-compact" aria-label="Resource palette">
       <div className="ed-res">
         {cat.resources.map((r) => (
           <button key={r} type="button" aria-pressed={st.brush === `resource:${r}`} onClick={() => editor.brushResource(r)} className={cn("ed-res-card", /gem/i.test(r) && "is-gem")}>
@@ -148,7 +148,10 @@ function Palette({ game, editor }: { game: Game; editor: EditorController }) {
           </button>
         ))}
       </div>
-      <p className="ed-tip">Drag over the ground to lay a field · right-click stops</p>
+      <p className="ed-tip">Click or drag on flat, open ground. Slopes and water cannot hold resources. Right-click stops.</p>
+      {st.placement && <p className={cn("ed-placement", !st.placement.added && "is-blocked")} role="status" data-testid="ed-placement">
+        {st.placement.added ? `Painted ${st.placement.added} ${st.brush.slice(9).toLowerCase()} ${st.placement.added === 1 ? "tile" : "tiles"}.` : st.placement.blocked || "No resource tiles changed."}
+      </p>}
     </div>
   );
   if (st.tool === "actor") return (
@@ -172,7 +175,7 @@ function Palette({ game, editor }: { game: Game; editor: EditorController }) {
     </div>
   );
   if (st.tool === "spawn") return (
-    <div className="ed-palette hud-panel"><p className="ed-tip">Click to add a start position. Every start position is a player slot: two for a duel, up to eight.</p></div>
+    <div className="ed-palette hud-panel is-compact"><p className="ed-tip">Click to add a start position. Every start position is a player slot: two for a duel, up to eight.</p></div>
   );
   return (
     <div className="ed-palette hud-panel is-compact"><p className="ed-tip">Click to select · drag to move a unit · drag empty ground to select an area · Delete removes it</p></div>

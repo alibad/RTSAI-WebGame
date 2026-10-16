@@ -43,6 +43,9 @@ namespace OpenRA.WebSim
 		static EditorViewportControllerWidget controller;
 		static int dirtyMin = int.MaxValue, dirtyMax = -1;
 		static string brushName = "select";
+		static readonly HashSet<CPos> resourceStroke = [];
+		static string resourceBlocked;
+		static int2? resourcePrevious;
 
 		public static bool Active => controller != null && SimHost.World?.Type == WorldType.Editor;
 
@@ -188,12 +191,13 @@ namespace OpenRA.WebSim
 			});
 		}
 
-		static string History(World world)
+		static string History(World world, string placement = null)
 		{
 			var actions = world.WorldActor.Trait<EditorActionManager>();
 			var error = EditorWaterBrush.LastError;
 			EditorWaterBrush.LastError = null;
 			return $"{{\"undo\":{(actions.HasUndos() ? "true" : "false")},\"redo\":{(actions.HasRedos() ? "true" : "false")},\"brush\":{Snapshot.Json(brushName)}"
+				+ (placement != null ? $",\"placement\":{placement}" : "")
 				+ (error != null ? $",\"error\":{Snapshot.Json(error)}" : "") + "}";
 		}
 
@@ -204,6 +208,7 @@ namespace OpenRA.WebSim
 		/// </summary>
 		static string SetBrush(World world, JsonElement r)
 		{
+			resourceStroke.Clear(); resourceBlocked = null; resourcePrevious = null;
 			var wr = SimHost.WorldRenderer;
 			var kind = Str(r, "brush") ?? "select";
 			switch (kind)
@@ -250,14 +255,58 @@ namespace OpenRA.WebSim
 		static string Pointer(JsonElement r)
 		{
 			var wr = SimHost.WorldRenderer;
-			var view = wr.Viewport.WorldToViewPx(new int2(Int(r, "x", 0), Int(r, "y", 0)));
+			var point = new int2(Int(r, "x", 0), Int(r, "y", 0));
+			var view = wr.Viewport.WorldToViewPx(point);
 			Viewport.LastMousePos = view;
 			var ev = Str(r, "event") switch { "down" => MouseInputEvent.Down, "up" => MouseInputEvent.Up, _ => MouseInputEvent.Move };
 			var button = (MouseButton)Int(r, "button", 0);
 			var mi = new MouseInput(ev, button, view, int2.Zero, (Modifiers)Int(r, "mods", 0), 1);
-			controller.HandleMouseInput(mi);
+			var resource = controller.CurrentBrush as EditorResourceBrush;
+			var layer = resource != null ? SimHost.World.WorldActor.Trait<IResourceLayer>() : null;
+			var map = SimHost.World.Map;
+			void Apply(MouseInput input)
+			{
+				var c = wr.Viewport.ViewToWorld(input.Location);
+				var before = map.Resources.Contains(c) ? map.Resources[c] : default;
+				controller.HandleMouseInput(input);
+				var after = map.Resources.Contains(c) ? map.Resources[c] : default;
+				if (before.Type != after.Type || before.Index != after.Index) resourceStroke.Add(c);
+				else resourceBlocked = !map.Contains(c) ? "Paint inside the battlefield."
+					: map.Ramp[c] != 0 ? "This is a slope. Choose flat ground for resources."
+					: layer.GetResource(c).Type == resource.ResourceType && before.Index >= layer.GetMaxDensity(resource.ResourceType) ? "This tile already has a full resource deposit."
+					: "This ground cannot hold resources. Choose flat, open ground.";
+			}
+			if (resource != null && button == MouseButton.Left && ev == MouseInputEvent.Down)
+			{
+				resourceStroke.Clear(); resourceBlocked = null;
+				resourcePrevious = point;
+			}
+			if (resource != null && button == MouseButton.Left && ev != MouseInputEvent.Up)
+			{
+				// Browser moves may be coalesced. Sample the segment so a quick drag paints a continuous field.
+				var start = resourcePrevious ?? point;
+				var size = map.Rules.TerrainInfo.TileSize;
+				var steps = Math.Clamp((int)Math.Ceiling(Math.Max(Math.Abs(point.X - start.X) / (size.Width / 4.0), Math.Abs(point.Y - start.Y) / (size.Height / 4.0))), 1, 1024);
+				for (var i = 1; i <= steps; i++)
+				{
+					var sample = new int2(start.X + (point.X - start.X) * i / steps, start.Y + (point.Y - start.Y) * i / steps);
+					Apply(new MouseInput(ev, button, wr.Viewport.WorldToViewPx(sample), int2.Zero, mi.Modifiers, 1));
+				}
+				resourcePrevious = point;
+			}
+			else controller.HandleMouseInput(mi);
 			controller.Tick();
-			return History(SimHost.World);
+			if (controller.CurrentBrush == controller.DefaultBrush) brushName = "select";
+			string placement = null;
+			if (resource != null && button == MouseButton.Left)
+			{
+				if (ev == MouseInputEvent.Up)
+				{
+					placement = $"{{\"added\":{resourceStroke.Count},\"blocked\":{Snapshot.Json(resourceBlocked)}}}";
+					resourcePrevious = null;
+				}
+			}
+			return History(SimHost.World, placement);
 		}
 
 		// ---------------------------------------------------------------- catalog

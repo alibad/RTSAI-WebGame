@@ -789,7 +789,9 @@
 .ed-tools button:hover { color: #eef0e6; background: rgba(255, 255, 255, .06); }
 .ed-tools button[aria-pressed="true"] { color: #241703; background: var(--hud-gold); box-shadow: 0 0 18px rgba(241, 210, 139, .35); }
 .ed-palette { position: absolute; left: 68px; top: 64px; bottom: 12px; z-index: 19; display: flex; width: var(--ed-palette-w); flex-direction: column; gap: 8px; padding: 10px; border-radius: 12px; }
-.ed-palette.is-compact { bottom: auto; }
+.ed-palette.is-compact { bottom: auto; max-height: calc(100% - 76px); overflow-y: auto; }
+.ed-placement { margin: 0; padding: 7px 9px; border-radius: 7px; font-size: 12px; line-height: 1.4; color: #a8ebc1; background: rgba(65, 145, 90, .12); }
+.ed-placement.is-blocked { color: var(--hud-gold); background: rgba(241, 210, 139, .09); }
 .ed-chips { display: flex; flex-wrap: wrap; gap: 4px; }
 .ed-chips button { padding: 3px 8px; border-radius: 999px; font-size: 11px; color: #b9c0ad; border: 1px solid rgba(255, 255, 255, .1); }
 .ed-chips button[aria-selected="true"] { color: var(--hud-gold); border-color: var(--hud-gold-dim, #8a7444); background: rgba(241, 210, 139, .1); }

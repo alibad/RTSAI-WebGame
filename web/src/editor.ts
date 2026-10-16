@@ -8,6 +8,7 @@ import type { Game, GenerateRequest } from "./game";
 import { fromBase64, toBase64, type ElevationGrid } from "./elevation";
 import { store } from "./store";
 import type { IconSprite } from "./render/icons";
+import { EditorPointerStream } from "./editor-pointer";
 
 export type TileSprite = IconSprite & { x: number; y: number };
 export interface EditorTemplate { id: number; size: [number, number]; categories: string[]; tiles: TileSprite[] }
@@ -36,14 +37,15 @@ export interface EditorState {
   /** The last save: the map's id in the library (playable in skirmish and the simulator). */
   saved: string | null;
   thumbs: Record<number, string>;
+  placement: { added: number; blocked?: string } | null;
 }
 
 const initial: EditorState = {
   map: null, opening: null, error: "", catalog: null, tool: "select", brush: "select", category: "", owner: "Neutral", title: "",
-  undo: false, redo: false, dirty: false, saving: false, saved: null, thumbs: {},
+  undo: false, redo: false, dirty: false, saving: false, saved: null, thumbs: {}, placement: null,
 };
 
-type History = { undo?: boolean; redo?: boolean; brush?: string; error?: string };
+type History = { undo?: boolean; redo?: boolean; brush?: string; error?: string; placement?: EditorState["placement"] };
 
 // ---------------------------------------------------------------- the library (this browser)
 
@@ -91,9 +93,16 @@ async function libraryMap(id: string | null): Promise<LibraryMap | null> {
 const b64 = (s: string) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
 
 export class EditorController {
-  private moveInFlight = false;
-  private pendingMove: [number, number] | null = null;
   private down = false;
+  private pointers = new EditorPointerStream(async input => {
+    if (!this.active) return;
+    const map = this.state.map;
+    const h = await this.call({ op: "pointer", ...input });
+    if (!this.active || this.state.map !== map) return;
+    this.history(h);
+    if (input.event === "up") this.patch({ dirty: h.placement ? h.placement.added > 0 || this.state.dirty : true });
+    if (h.brush === "select" && this.state.tool !== "select" && input.button === 2) this.patch({ tool: "select" });
+  }, error => this.fail(error instanceof Error ? error.message : String(error)));
 
   constructor(readonly game: Game) {
     if (!store.get().editor) store.set({ editor: { ...initial } });
@@ -126,6 +135,7 @@ export class EditorController {
 
   /** Opens a map in the editor: {map: id} or {new: {width, height, title}}. */
   async open(spec: { map: string } | { new: { width: number; height: number; title: string } }, label = "map" in spec ? spec.map : "new") {
+    this.pointers.reset(); this.down = false;
     this.patch({ ...initial, opening: label, thumbs: this.state.thumbs });
     try {
       if ("map" in spec) await this.game.ensureMap(spec.map);
@@ -186,11 +196,11 @@ export class EditorController {
   }
 
   private history(h: History) {
-    this.patch({ undo: !!h.undo, redo: !!h.redo, brush: h.brush ?? this.state.brush, ...(h.error ? { error: h.error } : {}) });
+    this.patch({ undo: !!h.undo, redo: !!h.redo, brush: h.brush ?? this.state.brush, ...(h.error ? { error: h.error } : {}), ...(h.placement !== undefined ? { placement: h.placement } : {}) });
   }
 
   setTool(tool: EditorTool) {
-    this.patch({ tool });
+    this.patch({ tool, placement: null });
     if (tool === "select") void this.call({ op: "brush", brush: "select" }).then((h) => this.history(h));
     if (tool === "spawn") void this.call({ op: "brush", brush: "actor", type: "mpspawn", owner: "Neutral" }).then((h) => this.history(h));
   }
@@ -200,33 +210,19 @@ export class EditorController {
   fail(error: string) { this.patch({ error }); }
 
   brushTile(id: number) { void this.call({ op: "brush", brush: "tile", id }).then((h) => this.history(h)); }
-  brushResource(type: string) { void this.call({ op: "brush", brush: "resource", type }).then((h) => this.history(h)); }
+  brushResource(type: string) { this.patch({ placement: null }); void this.call({ op: "brush", brush: "resource", type }).then((h) => this.history(h)); }
   /** Lakes and rivers with shores (sim EditorWaterBrush); `radius` is the stroke's half-width in cells. */
   brushWater(radius: number) { void this.call({ op: "brush", brush: "water", radius }).then((h) => this.history(h)); }
   brushActor(type: string) { void this.call({ op: "brush", brush: "actor", type, owner: this.state.owner }).then((h) => this.history(h)); }
 
-  /** Mouse input on the battlefield, in world px. Moves are coalesced: one in flight, the latest kept. */
+  /** Mouse input in world px. Coalesce moves without losing their buttons or moving them after release. */
   pointer(kind: "down" | "up" | "move", wx: number, wy: number, button: number, mods: number) {
     if (!this.active) return;
-    if (kind === "move") {
-      if (this.moveInFlight) { this.pendingMove = [wx, wy]; return; }
-      this.moveInFlight = true;
-      void this.call({ op: "pointer", event: "move", x: Math.round(wx), y: Math.round(wy), button: this.down ? 1 : 0, mods }).finally(() => {
-        this.moveInFlight = false;
-        const next = this.pendingMove;
-        this.pendingMove = null;
-        if (next) this.pointer("move", next[0], next[1], button, mods);
-      });
-      return;
-    }
     if (kind === "down") this.down = button === 1;
+    // Native brushes sample on down/move. Include the release position before completing the same stroke.
+    if (kind === "up" && this.down) this.pointers.push({ event: "move", x: Math.round(wx), y: Math.round(wy), button: 1, mods });
     if (kind === "up") this.down = false;
-    void this.call({ op: "pointer", event: kind, x: Math.round(wx), y: Math.round(wy), button, mods }).then((h) => {
-      this.history(h);
-      if (kind === "up" || kind === "down") this.patch({ dirty: true });
-      // Right-click drops a brush (the desktop editor's rule): the tool follows.
-      if (h.brush === "select" && this.state.tool !== "select" && button === 2) this.patch({ tool: "select" });
-    });
+    this.pointers.push({ event: kind, x: Math.round(wx), y: Math.round(wy), button: kind === "move" ? this.down ? 1 : 0 : button, mods });
   }
 
   undo() { void this.call({ op: "undo" }).then((h) => this.history(h)); }
@@ -286,6 +282,7 @@ export class EditorController {
   }
 
   close() {
+    this.pointers.reset(); this.down = false;
     this.patch({ ...initial, thumbs: this.state.thumbs });
     if (store.get().phase === "playing") this.game.quit();
   }
