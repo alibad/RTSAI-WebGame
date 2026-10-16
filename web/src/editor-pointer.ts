@@ -4,8 +4,13 @@ export type EditorPointer = { event: "down" | "up" | "move"; x: number; y: numbe
 export class EditorPointerStream {
   private queue: EditorPointer[] = [];
   private running = false;
+  private idle: (() => void)[] = [];
   constructor(private send: (input: EditorPointer) => Promise<void>, private fail: (error: unknown) => void) {}
   reset() { this.queue = []; }
+  settled(): Promise<void> {
+    if (!this.running && !this.queue.length) return Promise.resolve();
+    return new Promise(resolve => this.idle.push(resolve));
+  }
   push(input: EditorPointer) {
     const last = this.queue[this.queue.length - 1];
     if (input.event === "move" && last?.event === "move" && last.button === input.button && last.mods === input.mods) this.queue[this.queue.length - 1] = input;
@@ -20,6 +25,6 @@ export class EditorPointerStream {
         const input = this.queue.shift()!;
         try { await this.send(input); } catch (error) { this.fail(error); }
       }
-    } finally { this.running = false; }
+    } finally { this.running = false; this.idle.splice(0).forEach(resolve => resolve()); }
   }
 }

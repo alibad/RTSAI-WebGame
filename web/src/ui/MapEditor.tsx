@@ -150,7 +150,7 @@ function Palette({ game, editor }: { game: Game; editor: EditorController }) {
       </div>
       <p className="ed-tip">Click or drag on flat, open ground. Slopes and water cannot hold resources. Right-click stops.</p>
       {st.placement && <p className={cn("ed-placement", !st.placement.added && "is-blocked")} role="status" data-testid="ed-placement">
-        {st.placement.added ? `Painted ${st.placement.added} ${st.brush.slice(9).toLowerCase()} ${st.placement.added === 1 ? "tile" : "tiles"}.` : st.placement.blocked || "No resource tiles changed."}
+        {st.placement.added ? `Painted ${st.placement.added} ${st.brush === "resource:Gems" ? "gem" : st.brush.slice(9).toLowerCase()} ${st.placement.added === 1 ? "tile" : "tiles"}.` : st.placement.blocked || "No resource tiles changed."}
       </p>}
     </div>
   );

@@ -9,7 +9,10 @@ const input = (event, x, button = 1, mods = 0) => ({ event, x, y: 100, button, m
 stream.push(input('down', 1));
 stream.push(input('move', 2)); stream.push(input('move', 3)); stream.push(input('move', 4, 1, 4));
 stream.push(input('up', 4)); stream.push(input('move', 5, 0));
-release(); await new Promise(resolve => setTimeout(resolve, 0));
+let savedAfter = false;
+const save = stream.settled().then(() => { assert.equal(sent.at(-1).event, 'move'); savedAfter = true; });
+assert.equal(savedAfter, false, 'Save waits for the current stroke');
+release(); await save;
 assert.deepEqual(sent.map(p => [p.event, p.x, p.button, p.mods]), [['down',1,1,0],['move',3,1,0],['move',4,1,4],['up',4,1,0],['move',5,0,0]], 'Delayed moves retain their buttons/modifiers and finish before release');
 assert.deepEqual(failures, []);
 let unlock;

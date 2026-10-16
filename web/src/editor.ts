@@ -198,22 +198,25 @@ export class EditorController {
   private history(h: History) {
     this.patch({ undo: !!h.undo, redo: !!h.redo, brush: h.brush ?? this.state.brush, ...(h.error ? { error: h.error } : {}), ...(h.placement !== undefined ? { placement: h.placement } : {}) });
   }
+  private afterPointers(op: Record<string, unknown>) {
+    void this.pointers.settled().then(() => this.call(op)).then(h => this.history(h)).catch(error => this.fail(error instanceof Error ? error.message : String(error)));
+  }
 
   setTool(tool: EditorTool) {
     this.patch({ tool, placement: null });
-    if (tool === "select") void this.call({ op: "brush", brush: "select" }).then((h) => this.history(h));
-    if (tool === "spawn") void this.call({ op: "brush", brush: "actor", type: "mpspawn", owner: "Neutral" }).then((h) => this.history(h));
+    if (tool === "select") this.afterPointers({ op: "brush", brush: "select" });
+    if (tool === "spawn") this.afterPointers({ op: "brush", brush: "actor", type: "mpspawn", owner: "Neutral" });
   }
   setCategory(category: string) { this.patch({ category }); }
   setOwner(owner: string) { this.patch({ owner }); }
   setTitle(title: string) { this.patch({ title, dirty: true }); }
   fail(error: string) { this.patch({ error }); }
 
-  brushTile(id: number) { void this.call({ op: "brush", brush: "tile", id }).then((h) => this.history(h)); }
-  brushResource(type: string) { this.patch({ placement: null }); void this.call({ op: "brush", brush: "resource", type }).then((h) => this.history(h)); }
+  brushTile(id: number) { this.afterPointers({ op: "brush", brush: "tile", id }); }
+  brushResource(type: string) { this.patch({ placement: null }); this.afterPointers({ op: "brush", brush: "resource", type }); }
   /** Lakes and rivers with shores (sim EditorWaterBrush); `radius` is the stroke's half-width in cells. */
-  brushWater(radius: number) { void this.call({ op: "brush", brush: "water", radius }).then((h) => this.history(h)); }
-  brushActor(type: string) { void this.call({ op: "brush", brush: "actor", type, owner: this.state.owner }).then((h) => this.history(h)); }
+  brushWater(radius: number) { this.afterPointers({ op: "brush", brush: "water", radius }); }
+  brushActor(type: string) { this.afterPointers({ op: "brush", brush: "actor", type, owner: this.state.owner }); }
 
   /** Mouse input in world px. Coalesce moves without losing their buttons or moving them after release. */
   pointer(kind: "down" | "up" | "move", wx: number, wy: number, button: number, mods: number) {
@@ -225,9 +228,9 @@ export class EditorController {
     this.pointers.push({ event: kind, x: Math.round(wx), y: Math.round(wy), button: kind === "move" ? this.down ? 1 : 0 : button, mods });
   }
 
-  undo() { void this.call({ op: "undo" }).then((h) => this.history(h)); }
-  redo() { void this.call({ op: "redo" }).then((h) => this.history(h)); }
-  deleteSelection() { void this.call({ op: "delete" }).then((h) => this.history(h)); }
+  undo() { this.afterPointers({ op: "undo" }); }
+  redo() { this.afterPointers({ op: "redo" }); }
+  deleteSelection() { this.afterPointers({ op: "delete" }); }
 
   /** Saves into this browser's library (and the map lists); returns the saved map's id. */
   async save(): Promise<string | null> {
@@ -235,6 +238,7 @@ export class EditorController {
     const sourceId = this.state.saved ?? this.state.map;
     this.patch({ saving: true, error: "" });
     try {
+      await this.pointers.settled();
       const r = await this.call<{ id?: string; title?: string; players?: number; files?: Record<string, string>; error?: string }>({ op: "save", title: this.state.title || "Untitled map", author: "RTS AI player" });
       if (!r.id || !r.files) throw Error(r.error ?? "Couldn't save this map.");
       const files = Object.fromEntries(Object.entries(r.files).map(([k, v]) => [k, b64(v)]));
@@ -254,7 +258,8 @@ export class EditorController {
 
   /** The saved map as an .oramap file (a zip of its files), for the desktop editor or sharing. */
   async download() {
-    const id = this.state.saved ?? await this.save();
+    await this.pointers.settled();
+    const id = this.state.dirty || !this.state.saved ? await this.save() : this.state.saved;
     if (!id) return;
     const m = await libraryMap(id);
     if (!m) return;
