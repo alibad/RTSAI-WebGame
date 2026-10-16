@@ -34,9 +34,12 @@ The native replay DLL is hashed separately during registration. Registrations re
 Registering does not restart a running different build; verify its identity and close the known managed server
 before promoting a replacement. Never treat `/api/health` alone as proof that the right game is running.
 
-The accepted 15 October build remains `local-complete-899be6a`: original isometric countries plus project Classic,
-with 333 original art files and 521 original voice/sound clips. Later main consolidation is retained in source;
-it is not advertised as part of that already-tested binary. Its full recipe is recorded beside the receipt.
+The accepted 16 October build is `local-adviser-8151b3d`: one built-in web adviser, original isometric countries
+plus project Classic, with 333 original art files and 521 original voice/sound clips. Both data profiles and the
+AOT runtime use consolidated engine main `27c5038ab9`, recorded as a local override without changing public pins.
+The receipt and recipe live in `D:/rtsai-release/adviser-20261016`. Earlier accepted builds remain recoverable.
+Local AI and Scripted are absent from normal web controls; explicit developer hooks and actual model-readiness
+checks are documented in `PUBLIC-CO-COMMANDER.md`.
 
 ## Local backup
 
