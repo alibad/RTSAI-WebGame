@@ -100,7 +100,7 @@ namespace OpenRA.WebSim
 			Root = root;
 			var marker = Path.Combine(root, "ora", "MOD_ID");
 			ModId = File.Exists(marker) ? File.ReadAllText(marker).Trim() : "rtsai";
-			if (ModId is not ("rtsai" or "rtsai-topdown")) throw new InvalidDataException("Unsupported standalone mode: " + ModId);
+			if (ModId is not ("rtsai" or "rtsai-topdown" or "rtsai-classic-core")) throw new InvalidDataException("Unsupported standalone mode: " + ModId);
 			AppContext.SetSwitch("OpenRA.EmbeddedModAssemblies", true);
 
 			var engineDir = Path.Combine(root, "ora");

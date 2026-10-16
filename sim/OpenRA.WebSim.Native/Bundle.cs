@@ -58,6 +58,8 @@ static class Bundle
 
 	public static int Build(Dictionary<string, string> opts)
 	{
+		if (opts.TryGetValue("game-mode", out var recovered) && recovered == "classic-core")
+			return ClassicBundle.Build(opts);
 		var engine = opts["engine"];
 		var modRoot = opts["mod"];
 		var output = opts["out"];
@@ -357,7 +359,7 @@ static class Bundle
 	}
 
 	/// <summary>A pack read by byte range (never downloaded whole), with a JSON index of each file's offset.</summary>
-	static void WriteLazyPack(string output, IEnumerable<(string Path, string File)> files)
+	internal static void WriteLazyPack(string output, IEnumerable<(string Path, string File)> files)
 	{
 		var index = new StringBuilder("{\"files\":[");
 		var count = 0;
@@ -513,7 +515,7 @@ static class Bundle
 		"web-idle = Idle AI\n";
 
 	// UI-only and lobby-only changes; nothing here alters unit, weapon or economy rules.
-	const string WebRules =
+	internal const string WebRules =
 		"# Web build overlay (RTSAI-WebGame). The page draws the UI in HTML, so the in-game widget root is not loaded.\n" +
 		"World:\n" +
 		"\t-LoadWidgetAtGameStart:\n" +
