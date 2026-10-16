@@ -41,11 +41,13 @@ try {
    return {sequence:c.str(actor.sequence),tick:c.cur.header.tick,placement:(await window.game.command({cmd:'placements'})).spawns.find(a=>a.type==='gapowr')};
   });
   assert.notEqual(placed.sequence,'make','the paused building displays its completed body immediately');
-  await page.mouse.move(1050,900); await page.waitForTimeout(800);
+  await page.mouse.move(1050,900);
+  await page.waitForFunction(()=>window.game.renderer.stats.skipped===0&&window.game.renderer.stats.draws>0,null,{timeout:30000});
+  await page.waitForTimeout(250);
   await page.screenshot({path:`${out}/${profile}-completed-power.png`});
   // The scenario created when Fight starts must not reintroduce construction frames or move the footprint.
   await page.getByTestId('sim-fight').click();
-  await page.waitForFunction(()=>window.store.getState().sandbox?.mode==='run'&&window.store.getState().phase==='playing',null,{timeout:120000});
+  await page.waitForFunction(()=>window.store.getState().sandbox?.mode==='run'&&window.store.getState().phase==='playing'&&window.game.client.cur?.actors.some(a=>window.game.client.str(a.type)==='gapowr'),null,{timeout:120000});
   const run=await page.evaluate(async()=>{
    window.game.setPaused(true); const c=window.game.client,a=c.cur.actors.find(a=>c.str(a.type)==='gapowr');
    return {sequence:c.str(a.sequence),placement:(await window.game.command({cmd:'placements'})).spawns.find(a=>a.type==='gapowr')};
@@ -53,7 +55,7 @@ try {
   assert.notEqual(run.sequence,'make');
   assert.deepEqual([run.placement.x,run.placement.y],[placed.placement.x,placed.placement.y]);
   await page.evaluate(()=>window.game.sandbox.backToEdit());
-  await page.waitForFunction(()=>window.store.getState().sandbox?.mode==='edit'&&window.store.getState().phase==='playing'&&window.game.client.cur.actors.some(a=>window.game.client.str(a.type)==='gapowr'),null,{timeout:120000});
+  await page.waitForFunction(()=>window.store.getState().sandbox?.mode==='edit'&&window.store.getState().phase==='playing'&&window.game.client.cur?.actors.some(a=>window.game.client.str(a.type)==='gapowr'),null,{timeout:120000});
   const restored=await page.evaluate(()=>{const c=window.game.client,a=c.cur.actors.find(a=>c.str(a.type)==='gapowr');return c.str(a.sequence);});
   assert.notEqual(restored,'make'); assert.deepEqual(errors,[]);
   receipt.modes.push({profile,completed:placed,run,restored,checks:['movement categories','category-scoped search','stale placement cleared','completed paused building','same footprint after Fight','completed after Edit']});
