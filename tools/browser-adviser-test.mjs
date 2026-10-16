@@ -22,12 +22,13 @@ try {
   assert.equal(await page.evaluate(()=>window.store.getState().phase),'setup');
   assert.deepEqual(await page.evaluate(()=>{const s=window.store.getState();return {enabled:s.cc.enabled,mode:s.cc.mode,available:s.ccAvailable};}),{enabled:true,mode:'browser',available:true});
   assert(await page.getByRole('switch',{name:'Built-in adviser',exact:true}).isVisible());
-  const mode={profile,checks:['Legacy disabled local preference migrates once to visible browser adviser'],receipts:[]};receipt.modes.push(mode);
+  const mode={profile,checks:['Saved local mode migrates to the built-in adviser without starting local services'],receipts:[]};receipt.modes.push(mode);
   const start=async()=>{await page.evaluate(()=>{const s=window.store.getState(),m=s.setup.maps.find(m=>m.id==='web-arena-four')??s.setup.maps[0];window.game.start(JSON.stringify({map:m.id,seed:777,players:[{slot:m.slots[0],faction:'america',color:'2A6FDB'},{slot:m.slots[1],faction:'iran',bot:'normal',color:'A62121'}],options:{startingunits:'none',startingcash:'10000',fog:'True',explored:'False',shortgame:'False'}}));});await page.waitForFunction(()=>window.store.getState().phase==='playing'&&window.game.cc.pending(),null,{timeout:120000});};
   const pending=()=>page.evaluate(()=>window.game.cc.pending());
   const native=()=>page.evaluate(()=>window.game.client.adviserObserve());
   const apply=async(key='j')=>{const p=await pending();assert(p?.proposalId);await page.locator('canvas.stage').focus();await page.keyboard.press(key);await page.waitForFunction(id=>window.game.cc.receipts.has(id),p.proposalId,{timeout:15000});const r=await page.evaluate(id=>window.game.cc.receipts.get(id),p.proposalId);assert.equal(r.accepted,true,r.detail);mode.receipts.push({proposalId:p.proposalId,...r});return p;};
-  const capture=async(name)=>{await page.waitForFunction(()=>window.game.renderer.stats.draws>0&&window.game.renderer.stats.skipped===0,null,{timeout:15000});await page.screenshot({path:path.join(out,name)});};
+  // An original MCV renders as a voxel model: it has batches but no sprite instances.
+  const capture=async(name)=>{await page.waitForFunction(()=>window.game.renderer.stats.batches>0&&window.game.renderer.stats.skipped===0,null,{timeout:15000});await page.screenshot({path:path.join(out,name)});};
   await start();assert.equal((await pending()).commands[0].action,'deploy');
   await page.getByRole('button',{name:'Apply recommendation (J)',exact:true}).waitFor();
   let observation=await native();assert.equal(observation.buildings.length,0);assert.equal(observation.visibleEnemies.length,0);assert.equal(observation.visibleEnemyBuildings.length,0);
