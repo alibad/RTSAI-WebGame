@@ -42,8 +42,9 @@ support isolated local copies. Static public builds omit local companion,
 the local Map Studio, room-server controls and verification APIs. Direct WebRTC remains
 available, with explicit invite/readiness and restart after disconnect/desync.
 
-The public build's main menu offers isometric only: top-down draws the same unit
-and building art, so the two looked identical; `?game=classic` still opens it.
+The main menu has one entry with no battlefield-view picker; Isometric is the default.
+Classic/top-down remains available through `?game=classic` and saved-match links.
+Its similar presentation did not justify a separate choice in the main menu.
 Its "Map editor" is the engine's own editor world in the browser
 ([EDITOR-SIMULATOR.md](EDITOR-SIMULATOR.md)); "From a real place" runs the
 website's Earth compiler (RTSAI-Web `lib/earth-battlefield.ts`, a byte-identical
