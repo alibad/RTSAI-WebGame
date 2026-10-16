@@ -50,6 +50,15 @@ type History = { undo?: boolean; redo?: boolean; brush?: string; error?: string;
 // ---------------------------------------------------------------- the library (this browser)
 
 export interface LibraryMap { id: string; title: string; players: number; files: Record<string, Uint8Array>; updated: number }
+function compatibleMap(map: LibraryMap) {
+  const mode = store.get().setup?.modId;
+  if (!mode) return true; // Historical runtimes did not identify their foundation.
+  const yaml = map.files['map.yaml'];
+  const required = yaml && /^RequiresMod:\s*(\S+)/m.exec(new TextDecoder().decode(yaml))?.[1];
+  if (!required) return true;
+  return mode === 'rtsai-classic-core' ? ['ra', mode].includes(required)
+    : mode === 'rtsai' ? ['ra2', mode].includes(required) : required === mode;
+}
 const DB = "rtsai-maps", STORE = "maps";
 function db(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
@@ -64,7 +73,7 @@ export async function libraryMaps(): Promise<LibraryMap[]> {
     const d = await db();
     return await new Promise((resolve, reject) => {
       const r = d.transaction(STORE).objectStore(STORE).getAll();
-      r.onsuccess = () => resolve((r.result as LibraryMap[]).sort((a, b) => b.updated - a.updated));
+      r.onsuccess = () => resolve((r.result as LibraryMap[]).filter(compatibleMap).sort((a, b) => b.updated - a.updated));
       r.onerror = () => reject(r.error);
     });
   } catch { return []; }
@@ -119,6 +128,7 @@ export class EditorController {
 
   /** A map's files into the engine's file system and the map lists. */
   private async mount(m: LibraryMap) {
+    if (!compatibleMap(m)) throw new Error('This saved map belongs to another game mode. Open it in that mode; your saved copy is preserved.');
     const s = store.get();
     if (!s.setup) return;
     const files: Record<string, ArrayBuffer> = {};
@@ -129,7 +139,7 @@ export class EditorController {
     const others = s.setup.maps.filter((x) => x.id !== m.id);
     store.set({
       previews: { ...store.get().previews, [m.id]: url },
-      setup: { ...s.setup, maps: [{ id: m.id, uid: m.id, title: m.title, players: m.players, tileset: "TEMPERATE", author: "", library: true, slots: Array.from({ length: m.players }, (_, i) => `Multi${i}`) }, ...others] },
+      setup: { ...s.setup, maps: [{ id: m.id, uid: m.id, title: m.title, players: m.players, tileset: /^Tileset:\s*(\S+)/m.exec(new TextDecoder().decode(m.files['map.yaml']))?.[1] ?? 'TEMPERATE', author: "", library: true, slots: Array.from({ length: m.players }, (_, i) => `Multi${i}`) }, ...others] },
     });
   }
 

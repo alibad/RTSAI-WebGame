@@ -38,6 +38,7 @@ try {
     await page.waitForFunction(() => ['setup', 'error'].includes(window.store?.getState().phase), null, { timeout: 240000 });
     assert.equal(await page.evaluate(() => window.store.getState().phase), 'setup', await page.evaluate(() => window.store.getState().error));
     const setup = await page.evaluate(() => window.store.getState().setup);
+    assert.equal(setup.modId, mode === 'classic' ? 'rtsai-classic-core' : 'rtsai');
     const requiredFactions = new Set(Object.values(registry).filter(u => u.mode === mode).flatMap(u => u.factions.map(f => f.id)));
     for (const id of requiredFactions) assert(setup.factions.some(f => f.id === id), `Missing ${mode} faction ${id}`);
     const tests = mode === 'classic' ? [['england', 'e1'], ['china', 'cnrifle']] : [['america', 'engineer']];
@@ -47,14 +48,17 @@ try {
       const scenario = { map: 'web-arena', seed: 20261016, bare: true,
         players: [{ slot: 'Multi0', faction, color: '2A6FDB' }, { slot: 'Multi1', faction: classic ? 'russia' : 'russia', bot: 'webidle' }],
         options: { startingcash: '10000', fog: 'False', explored: 'True', crates: 'False' },
-        spawns: [{ type: classic ? 'fact' : 'gacnst', player: 0, x: 20, y: 20 },
-          { type: classic ? 'powr' : 'gapowr', player: 0, x: 25, y: 20 },
-          { type: barracks, player: 0, x: 20, y: 25 }, { type: classic ? 'mcv' : 'smcv', player: 1, x: 65, y: 45 }],
+        // Classic uses the map's real western spawn clearing; arbitrary coordinates can block a barracks exit.
+        spawns: [{ type: classic ? 'fact' : 'gacnst', player: 0, x: classic ? 8 : 20, y: classic ? 45 : 20 },
+          { type: classic ? 'powr' : 'gapowr', player: 0, x: classic ? 14 : 25, y: classic ? 45 : 20 },
+          { type: barracks, player: 0, x: classic ? 11 : 20, y: classic ? 49 : 25 },
+          { type: classic ? 'mcv' : 'smcv', player: 1, x: classic ? 90 : 65, y: classic ? 24 : 45 }],
       };
       await page.evaluate(s => window.game.start(JSON.stringify(s)), scenario);
       await page.waitForFunction(() => ['playing', 'error'].includes(window.store.getState().phase), null, { timeout: 240000 });
       assert.equal(await page.evaluate(() => window.store.getState().phase), 'playing', await page.evaluate(() => window.store.getState().error));
       await page.waitForFunction(() => window.store.getState().ui?.tick >= 30, null, { timeout: 60000 });
+      await page.waitForFunction(() => window.game.client.cur?.actors?.length > 0, null, { timeout: 60000 });
       if (type === tests[0][1]) {
         const rows = [];
         for (const [key, unit] of Object.entries(registry).filter(([, unit]) => unit.mode === mode)) {

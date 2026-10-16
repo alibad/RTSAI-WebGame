@@ -95,7 +95,7 @@ namespace OpenRA.WebSim
 
 				var modData = SimHost.ModData;
 				var info = modData.DefaultRules.Actors[SystemActors.EditorWorld].TraitInfos<MapGeneratorBaseInfo>()
-					.FirstOrDefault(g => g.Type == Generator)
+					.FirstOrDefault(g => g.Type == (SimHost.ModId == "rtsai-classic-core" ? "classic" : Generator))
 					?? throw new InvalidOperationException("This build has no map generator.");
 
 				Map map = null;
@@ -118,7 +118,7 @@ namespace OpenRA.WebSim
 					var args = new MapGenerationArgs
 					{
 						Generator = info.Type,
-						Tileset = "TEMPERATE",
+						Tileset = SimHost.ModId == "rtsai-classic-core" ? "TEMPERAT" : "TEMPERATE",
 						Size = new Size(size, size),
 						Title = $"{landscape} {(seed + attempt) % 10000:D4}",
 						Author = "RTS AI map generator",

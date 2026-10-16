@@ -141,7 +141,7 @@ namespace OpenRA.WebSim
 			var modData = SimHost.ModData;
 			width = Math.Clamp(width, 16, 256);
 			height = Math.Clamp(height, 16, 256);
-			var terrain = modData.DefaultTerrainInfo["TEMPERATE"];
+			var terrain = modData.DefaultTerrainInfo[SimHost.ModId == "rtsai-classic-core" ? "TEMPERAT" : "TEMPERATE"];
 			var grid = modData.GetOrCreate<MapGrid>();
 			var maxHeight = grid.MaximumTerrainHeight;
 			var map = new Map(modData, terrain, new Size(width + 2, height + maxHeight + 2));

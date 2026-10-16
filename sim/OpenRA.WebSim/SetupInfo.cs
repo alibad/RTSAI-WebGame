@@ -29,7 +29,7 @@ namespace OpenRA.WebSim
 		{
 			var modData = SimHost.ModData;
 			var rules = modData.DefaultRules;
-			var sb = new StringBuilder("{");
+			var sb = new StringBuilder("{\"modId\":").Append(J(modData.Manifest.Id)).Append(',');
 
 			var factions = rules.Actors[SystemActors.World].TraitInfos<FactionInfo>().Where(f => f.Selectable);
 			sb.Append("\"factions\":[");

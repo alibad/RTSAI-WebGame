@@ -5,6 +5,11 @@ import crypto from 'node:crypto';
 import { spawn } from 'node:child_process';
 
 export function createMapWorkshop(repo) {
+  const classicMod = process.env.RTSAI_WEB_CLASSIC_MOD ?? 'rtsai-topdown';
+  const matchesProfile = (pkg, profile) => {
+    const required = /^RequiresMod:\s*(\S+)/m.exec(fs.readFileSync(path.join(pkg.dir, 'map.yaml'), 'utf8'))?.[1];
+    return profile === 'public-classic' ? required === classicMod : !['rtsai-topdown', 'rtsai-classic-core'].includes(required);
+  };
   const mod = path.resolve(process.env.RTSAI_MAP_MOD_ROOT ?? path.join(repo, '.inputs/mod'));
   const earth = path.resolve(process.env.RTSAI_MAP_OUTPUT_ROOT ?? path.join(repo, 'build/local-maps'));
   const cache = new Map();
@@ -69,7 +74,7 @@ export function createMapWorkshop(repo) {
   async function compile(s,evidence) {
     const compiler=crypto.createHash('sha256');
     for(const file of ['tools/earth-battlefield.py','tools/standalone-maps.py','mods/rtsai/standalone/tilesets/temperat.yaml'])compiler.update(fs.readFileSync(path.join(mod,file)));
-    const identity={...s,features:evidence.features,compiler:compiler.update(fs.readFileSync(path.join(repo,'tools/adapt-topdown-map.py'))).digest('hex')};
+    const identity={...s,classicMod:s.gameMode==='classic'?classicMod:undefined,features:evidence.features,compiler:compiler.update(fs.readFileSync(path.join(repo,'tools/adapt-topdown-map.py'))).digest('hex')};
     const request={...identity,sourceStatus:evidence.sourceStatus};
     const id='earth-'+crypto.createHash('sha256').update(JSON.stringify(identity)).digest('hex').slice(0,16);
     const output=path.join(earth,id);fs.mkdirSync(output,{recursive:true});
@@ -82,7 +87,7 @@ export function createMapWorkshop(repo) {
       const t=setTimeout(()=>{p.kill();reject(new Error('Map compilation timed out.'));},60000);
       p.on('error',e=>{clearTimeout(t);reject(e);});p.on('close',code=>{clearTimeout(t);code===0?resolve():reject(new Error('Map compiler could not create a connected battlefield. '+log.slice(-800)));});
     });
-    if (s.gameMode === 'classic') await new Promise((resolve,reject) => { const p=spawn(python,[path.join(repo,'tools/adapt-topdown-map.py'),'--directory',output],{cwd:repo,env:{...process.env,PYTHONDONTWRITEBYTECODE:'1'}});p.on('error',reject);p.on('close',code=>code===0?resolve():reject(new Error('Classic map adaptation failed'))); });
+    if (s.gameMode === 'classic') await new Promise((resolve,reject) => { const p=spawn(python,[path.join(repo,'tools/adapt-topdown-map.py'),'--directory',output,...(classicMod==='rtsai-classic-core'?['--classic-core']:[])],{windowsHide:true,cwd:repo,env:{...process.env,PYTHONDONTWRITEBYTECODE:'1'}});p.on('error',reject);p.on('close',code=>code===0?resolve():reject(new Error('Classic map adaptation failed'))); });
     return JSON.parse(fs.readFileSync(path.join(output,'earth.json'),'utf8'));
   }
   const handle = async function(req,res,url) {
@@ -94,12 +99,13 @@ export function createMapWorkshop(repo) {
         for(const pkg of packages().filter(m=>m.id.startsWith('earth-'))) {
           const report=JSON.parse(fs.readFileSync(path.join(pkg.dir,'earth.json'),'utf8'));
           const source=`RTSAI-Mod/resources/earth-maps/${pkg.id}/map.yaml`;
-          library.maps.unshift({id:pkg.id,folder:pkg.id,title:report.title,players:report.players,author:'RTS AI · Earth workshop',mod:report.gameMode==='classic'?'rtsai-topdown':'rtsai',source,copies:[source],status:'compatible',reason:'Generated from attributed geographic evidence with project terrain'});
+          const required = /^RequiresMod:\s*(\S+)/m.exec(fs.readFileSync(path.join(pkg.dir,'map.yaml'),'utf8'))?.[1];
+          library.maps.unshift({id:pkg.id,folder:pkg.id,title:report.title,players:report.players,author:'RTS AI · Earth workshop',mod:required,source,copies:[source],status:'compatible',reason:'Generated from attributed geographic evidence with project terrain'});
           library.sourceCopies++;
         }
         return json(res,library);
       }
-      if(p==='/api/maps/packages') return json(res,{maps:packages().filter(m => fs.readFileSync(path.join(m.dir,'map.yaml'),'utf8').includes('RequiresMod: rtsai-topdown') === (url.searchParams.get('profile')==='public-classic')).map(({id})=>({id,files:['map.yaml','map.bin','map.png'].map(name=>({name,url:`api/maps/file/${id}/${name}`}))}))});
+      if(p==='/api/maps/packages') return json(res,{maps:packages().filter(m => matchesProfile(m,url.searchParams.get('profile'))).map(({id})=>({id,files:['map.yaml','map.bin','map.png'].map(name=>({name,url:`api/maps/file/${id}/${name}`}))}))});
       const file=p.match(/^\/api\/maps\/file\/([a-z0-9-]+)\/(map\.yaml|map\.bin|map\.png|map\.oramap|earth\.json|provenance\.json)$/);
       if(file){const pkg=packages().find(m=>m.id===file[1]);if(!pkg)return json(res,{error:'Map not found'},404);const target=path.join(pkg.dir,file[2]);if(!fs.existsSync(target))return json(res,{error:'File not found'},404);res.writeHead(200,{'content-type':file[2].endsWith('.png')?'image/png':'application/octet-stream','cache-control':'no-cache'});return res.end(fs.readFileSync(target));}
       if((p==='/api/maps/evidence'||p==='/api/maps/generate')&&req.method==='POST') {
@@ -116,7 +122,7 @@ export function createMapWorkshop(repo) {
 
     const destination=path.join(root,'mods/rtsai/web/content/maps');
     fs.mkdirSync(destination,{recursive:true});
-    for(const pkg of packages().filter(m => fs.readFileSync(path.join(m.dir,'map.yaml'),'utf8').includes('RequiresMod: rtsai-topdown') === (profile==='public-classic'))) {
+    for(const pkg of packages().filter(m => matchesProfile(m,profile))) {
       const target=path.join(destination,pkg.id);fs.mkdirSync(target,{recursive:true});
       for(const name of ['map.yaml','map.bin','map.png'])fs.copyFileSync(path.join(pkg.dir,name),path.join(target,name));
     }

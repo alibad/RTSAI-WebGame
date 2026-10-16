@@ -82,8 +82,11 @@ static class ClassicBundle
 				.Replace("LoadScreen: RTSAILoadScreen", "LoadScreen: WebLoadScreen")
 				.Replace("Assemblies: ", "Assemblies: OpenRA.WebSim.dll, ");
 			yaml = Bundle.AppendToSection(yaml, "Rules", "ra|web-host.yaml");
+			yaml = Bundle.AppendToSection(yaml, "MapFolders", "ra2|web/content/maps: System");
 			Add("mods/rtsai-classic-core/mod.yaml", Encoding.UTF8.GetBytes(yaml));
 			Add("mods/rtsai-classic-core/web-host.yaml", Encoding.UTF8.GetBytes(Bundle.WebRules));
+			// Keep the directory present before the editor/workshop mounts its saved maps.
+			Add("mods/rtsai/web/content/maps/.keep", []);
 			// A real Classic map supplies terrain, resources and spawn locations. Its rules stay intact.
 			var arena = Path.Combine(classic, "maps/a-nuclear-winter");
 			Tree(arena, "mods/rtsai-classic-core/maps/web-arena/");

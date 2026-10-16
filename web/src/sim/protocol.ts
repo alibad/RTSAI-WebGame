@@ -219,6 +219,7 @@ export interface StartInfo {
 export interface LazyStats { files: number; bytes: number; fetchedBytes: number; cachedBytes: number; fetches: number }
 
 export interface SetupData {
+  modId?: string;
   multiplayer?: boolean;
   missions?: MissionDefinition[];
   factions: { id: string; name: string; side: string; description: string; random: boolean }[];

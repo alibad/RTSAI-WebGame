@@ -35,6 +35,8 @@ namespace OpenRA.WebSim
 		// The random map generator's coast settings (RTSAI-Mod rules/map-generators.yaml, TSMapGenerator@rtsai).
 		public const ushort WaterTile = 322;
 		const string ShoreSegment = "Shore";
+		static ushort WaterFor(Map map) => map.Grid.Type == MapGridType.Rectangular ? (ushort)(map.Tileset == "DESERT" ? 256 : 1) : WaterTile;
+		static string ShoreFor(Map map) => map.Grid.Type == MapGridType.Rectangular ? "Beach" : ShoreSegment;
 		const int MinimumLandSeaThickness = 4, TerrainSmoothing = 4, SmoothingThreshold = 833, MinimumBeachDeviation = 3;
 
 		/// <summary>How far water and its shores keep from a change of ground height (shore pieces are flat).</summary>
@@ -65,7 +67,7 @@ namespace OpenRA.WebSim
 
 		/// <summary>Whether this map's tileset has the generator's water and shore pieces.</summary>
 		public static bool Supported(Map map) =>
-			map.Rules.TerrainInfo is ITemplatedTerrainInfo t && t.Templates.ContainsKey(WaterTile) && MultiBrush.LoadCollection(map, "Segmented").Length > 0;
+			map.Rules.TerrainInfo is ITemplatedTerrainInfo t && t.Templates.ContainsKey(WaterFor(map)) && MultiBrush.LoadCollection(map, "Segmented").Length > 0;
 
 		readonly WorldRenderer worldRenderer;
 		readonly World world;
@@ -190,7 +192,7 @@ namespace OpenRA.WebSim
 
 						stamped[xy] = true;
 						if (map.Tiles.Contains(c))
-							map.Tiles[c] = new TerrainTile(WaterTile, 0);
+							map.Tiles[c] = new TerrainTile(WaterFor(map), 0);
 					}
 			}
 
@@ -236,11 +238,11 @@ namespace OpenRA.WebSim
 				var land = MatrixUtils.BooleanBlotch(plan.Map(w => !w), TerrainSmoothing, SmoothingThreshold, Terraformer.FractionMax, MinimumLandSeaThickness, true);
 				var brushes = MultiBrush.LoadCollection(map, "Segmented");
 				var paths = CellLayerUtils.FromMatrixPoints(MatrixUtils.BordersToPoints(land), map.Tiles)
-					.Select(points => TilingPath.QuickCreate(map, brushes, points, MinimumBeachDeviation, ShoreSegment, ShoreSegment).ExtendEdge(4))
+					.Select(points => TilingPath.QuickCreate(map, brushes, points, MinimumBeachDeviation, ShoreFor(map), ShoreFor(map)).ExtendEdge(4))
 					.ToList();
 				var terraformer = new Terraformer(null, map, Game.ModData, [], Symmetry.Mirror.None, 1);
 				var sides = terraformer.PaintLoopsAndFill(
-					new MersenneTwister(plan.Data.Count(w => w)), paths, Terraformer.Side.In, [new MultiBrush().WithTemplate(map, WaterTile, CVec.Zero)], null, null, null);
+					new MersenneTwister(plan.Data.Count(w => w)), paths, Terraformer.Side.In, [new MultiBrush().WithTemplate(map, WaterFor(map), CVec.Zero)], null, null, null);
 				if (sides == null)
 				{
 					// The shores didn't fit (a stroke too thin or squeezed against other water): nothing changes.
