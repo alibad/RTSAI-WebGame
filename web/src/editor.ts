@@ -244,7 +244,7 @@ export class EditorController {
       const files = Object.fromEntries(Object.entries(r.files).map(([k, v]) => [k, b64(v)]));
       // The engine rewrites terrain/actors, but geographic evidence belongs to the authored map too.
       const previous = await libraryMap(sourceId);
-      for (const name of ["earth.json", "sites.json", "provenance.json"]) if (!files[name] && previous?.files[name]) files[name] = previous.files[name].slice();
+      for (const name of ["earth.json", "sites.json", "geography.json", "provenance.json"]) if (!files[name] && previous?.files[name]) files[name] = previous.files[name].slice();
       const m: LibraryMap = { id: r.id, title: r.title ?? this.state.title, players: r.players ?? 2, files, updated: Date.now() };
       await this.mount(m);
       await keep(m);

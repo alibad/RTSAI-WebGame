@@ -1,0 +1,46 @@
+{
+  "schema": 1,
+  "version": "694e9dd61e999b7c",
+  "areas": [
+    {
+      "schema": 1,
+      "id": "602147a1bc0c1dda",
+      "title": "Cairo city center",
+      "bounds": {
+        "s": 30.030913232375134,
+        "w": 31.220159526900783,
+        "n": 30.057862567624866,
+        "e": 31.251291873099216
+      },
+      "detail": "local",
+      "fetchedAt": "2026-10-16T18:17:16.685Z",
+      "endpoint": "Local Overpass relay (preserved response)",
+      "osmBase": "2026-07-28T02:16:18Z",
+      "sourceSha256": "385d1a138f4ad80bd73ddfdeeb14282299ff43016c236c4f8e547af8b3d91b55",
+      "attribution": "© OpenStreetMap contributors; ODbL 1.0",
+      "file": "area-602147a1bc0c1dda.json",
+      "bytes": 1920463,
+      "sha256": "e2d5c9ee1739886222ce5d6f23dd6e726ebb6995663fc9680e954a76d22e1ab5"
+    },
+    {
+      "schema": 1,
+      "id": "8d1003ed8d960f51",
+      "title": "Cairo selected area",
+      "bounds": {
+        "s": 30.03476395266311,
+        "w": 31.213425303006154,
+        "n": 30.06171328791284,
+        "e": 31.244558859494298
+      },
+      "detail": "local",
+      "fetchedAt": "2026-10-16T18:17:16.569Z",
+      "endpoint": "Local Overpass relay (preserved response)",
+      "osmBase": "2026-10-16T17:41:31Z",
+      "sourceSha256": "457203bbf7995d3b90c0f9c071c5298565f047b3ae12d41d41cfd2d4a7034f82",
+      "attribution": "© OpenStreetMap contributors; ODbL 1.0",
+      "file": "area-8d1003ed8d960f51.json",
+      "bytes": 1757851,
+      "sha256": "f7c3b537d4060fa1676c93e4c68b14660bbeaf66337410fd0058964659f96985"
+    }
+  ]
+}

@@ -20,7 +20,8 @@ import { elevationGrid } from "../elevation";
 import { researchSites, siteDetails, type Place, type Site, type SiteStatus } from "../earth-research";
 import { preloadKnownSites } from "../earth-site-catalog";
 import { mergeSites, type CoreSite } from "../earth-site-model";
-import { overpassFailure, terrainBox, terrainFeatures, terrainQuery } from "@site/lib/earth-evidence";
+import { overpassFailure, terrainBox, terrainFeatures } from "@site/lib/earth-evidence";
+import { acquireTerrain, type TerrainResult } from "../earth-terrain";
 import { regionalGeography } from "@site/lib/earth-region";
 import type { Map as MapLibreMap, Marker } from "maplibre-gl";
 import { searchPlaces, type PlaceResult } from "../place-search";
@@ -57,19 +58,32 @@ async function overpass(query: string, signal?: AbortSignal) {
   for (const url of [...relay, ...OVERPASS]) {
     deadline.throwIfAborted();
     try {
-      const r = await fetch(url, { method: "POST", body: "data=" + encodeURIComponent(query), headers: { "Content-Type": "application/x-www-form-urlencoded" }, signal: AbortSignal.any([deadline, AbortSignal.timeout(20000)]) });
+      const r = await fetch(url, { method: "POST", body: "data=" + encodeURIComponent(query), headers: { "Content-Type": "application/x-www-form-urlencoded" }, signal: AbortSignal.any([deadline, AbortSignal.timeout(relay.includes(url) ? 45000 : 18000)]) });
       if (r.ok) {
         const payload = await r.json();
-        if (!overpassFailure(payload) && Array.isArray(payload.elements)) return payload;
+        if (!overpassFailure(payload) && !payload.remark && Array.isArray(payload.elements)) return payload;
       }
     } catch { /* the next mirror */ }
   }
   throw Error("OpenStreetMap didn't answer. Try again in a moment.");
 }
 const box = (p: Place, radius: number) => terrainBox(p.lat, p.lon, radius);
+function restoredSelection(): { place: Place; footprint: number } | null {
+  try {
+    const params = new URLSearchParams(location.search);
+    const stored = params.has("earthLat") && params.has("earthLon") ? {
+      place: { name: params.get("earthPlace") || "Picked on the map", lat: Number(params.get("earthLat")), lon: Number(params.get("earthLon")) },
+      footprint: FOOTPRINTS.findIndex(f => f.radius === Number(params.get("earthRadius"))),
+    } : JSON.parse(sessionStorage.getItem("rtsai.earth.selection") || "null");
+    if (stored?.place && Number.isFinite(stored.place.lat) && Math.abs(stored.place.lat) <= 84 && Number.isFinite(stored.place.lon) && typeof stored.place.name === "string" && FOOTPRINTS[stored.footprint]) return stored;
+  } catch { /* Storage can be disabled. */ }
+  return null;
+}
 
 export function EarthStudio({ game, editor, close, mission, play }: { game: Game; editor: EditorController; close: () => void; mission: (m: MissionSpec) => void; play: (map: string, you: string, enemy: string) => void }) {
   const setup = useStore((s) => s.setup);
+  const [restored] = useState(restoredSelection);
+  const restoredOnce = useRef(false);
   const mapEl = useRef<HTMLDivElement>(null);
   const map = useRef<MapLibreMap | null>(null);
   const marker = useRef<Marker | null>(null);
@@ -83,7 +97,7 @@ export function EarthStudio({ game, editor, close, mission, play }: { game: Game
   const lookup = useRef<AbortController | null>(null);
   const chooseArea = useRef<(p: Place) => void>(() => {});
   const [basemap, setBasemap] = useState<"satellite" | "streets">("satellite");
-  const [footprint, setFootprint] = useState(1);
+  const [footprint, setFootprint] = useState(restored?.footprint ?? 1);
   const [log, setLog] = useState<string[]>([]);
   const [sites, setSites] = useState<Site[]>([]);
   const [scanning, setScanning] = useState(false);
@@ -102,6 +116,7 @@ export function EarthStudio({ game, editor, close, mission, play }: { game: Game
   const sidesEdited = useRef(false);
   const [site, setSite] = useState<Site | null>(null);
   const [error, setError] = useState("");
+  const [terrain, setTerrain] = useState<TerrainResult | null>(null);
   const [built, setBuilt] = useState<{ id: string; title: string; coastal: boolean; points: { u: number; v: number }[] } | null>(null);
   const nations = playableNations(setup);
   const [fa, setFa] = useState("saudi");
@@ -240,6 +255,15 @@ export function EarthStudio({ game, editor, close, mission, play }: { game: Game
     if (m.getSource("built")) m.removeSource("built");
   };
   chooseArea.current = go;
+  useEffect(() => {
+    if (!ready || restoredOnce.current) return;
+    restoredOnce.current = true;
+    if (restored) chooseArea.current(restored.place);
+  }, [ready, restored]);
+  useEffect(() => {
+    if (!place) return;
+    try { sessionStorage.setItem("rtsai.earth.selection", JSON.stringify({ place, footprint })); } catch { /* Optional continuity across reloads. */ }
+  }, [place, footprint]);
 
   useEffect(() => {
     if (!ready || !map.current) return;
@@ -304,21 +328,25 @@ export function EarthStudio({ game, editor, close, mission, play }: { game: Game
   };
 
   /** The place's roads, water, land cover and buildings, compiled into a map by the website's Earth compiler. */
-  const build = async () => {
+  const build = async (refresh = false) => {
     if (!place || !map.current) return;
     const controller = new AbortController(); building.current?.abort(); building.current = controller;
     const current = () => !controller.signal.aborted && building.current === controller;
-    setStage("building"); setError("");
+    setStage("building"); setError(""); setTerrain(null); setLog([]);
     try {
       const base = regionalGeography(place.lat, place.lon, fp.radius);
       if (fp.radius > 10000 && !base) throw Error("Regional coastlines are currently available around Hormuz. Choose 20 km or smaller elsewhere.");
       const heights = fp.radius <= 10000 ? elevationGrid(place.lat, place.lon, fp.radius, fp.size).catch(() => null) : Promise.resolve(null);
       say("Reading the place's <b>roads, water and land</b>");
-      const payload = await overpass(terrainQuery(place.lat, place.lon, fp.radius), AbortSignal.any([controller.signal, AbortSignal.timeout(base ? 12000 : 55000)])).catch(error => {
+      const evidence = await acquireTerrain(place.lat, place.lon, fp.radius, { title: place.name, signal: controller.signal, refresh,
+        request: (query, signal) => overpass(query, AbortSignal.any([signal, AbortSignal.timeout(base ? 12000 : 55000)])) }).catch(error => {
         if (!base || controller.signal.aborted) throw error;
-        say("Live road details unavailable; using <b>packaged Natural Earth coastlines</b>."); return { elements: [] };
+        say("Live road details unavailable; using <b>packaged Natural Earth coastlines</b>."); return null;
       });
       if (!current()) return;
+      setTerrain(evidence);
+      if (evidence) say(evidence.refreshFailed ? "Live refresh unavailable; kept the <b>saved geography</b>." : evidence.source === "live" ? "Geography downloaded and cached for this area." : "Using <b>saved geography</b>; no live terrain request needed.");
+      const payload = evidence?.snapshot.payload ?? { elements: [] };
       if (overpassFailure(payload)) throw Error("This area is too dense; choose a smaller footprint.");
       const mapped = terrainFeatures(payload, terrainBox(place.lat, place.lon, fp.radius));
       const features = base ? [...base, ...mapped.filter((f: { kind: string }) => f.kind !== "water" && f.kind !== "coastline")] : mapped;
@@ -346,6 +374,7 @@ export function EarthStudio({ game, editor, close, mission, play }: { game: Game
         } catch { say("Ground: kept <b>level</b> (the slopes didn't fit)"); }
       } else say("Ground: kept <b>level</b> (elevation unavailable)");
       files["earth.json"] = new TextEncoder().encode(JSON.stringify(bf.report, null, 2));
+      if (evidence) { const { payload: _, ...provenance } = evidence.snapshot; files["geography.json"] = new TextEncoder().encode(JSON.stringify(provenance, null, 2)); }
       files["sites.json"] = new TextEncoder().encode(JSON.stringify({ schema: 1, dataset: datasetVersion, savedAt: new Date().toISOString(), place, radius: fp.radius, attribution: "© OpenStreetMap contributors (ODbL); Wikipedia metadata and linked article licenses", sites: siteSnapshot.current }, null, 2));
       say(bf.report.validation.connectedBases ? "Terrain check: <b>2 land starts, bases connected</b>" : "Terrain check: <b>2 land starts on separate coasts</b>. Sea or air units needed to cross.");
       await editor.addFiles(id, bf.title, bf.players, files);
@@ -437,6 +466,12 @@ export function EarthStudio({ game, editor, close, mission, play }: { game: Game
                 <GameButton onClick={() => fitArea(place)}>Show whole area</GameButton>
               </div>
               {stage === "built" && <GameButton onClick={() => { building.current?.abort(); setStage("place"); setBuilt(null); setError(""); if (map.current?.getLayer("built")) map.current.removeLayer("built"); if (map.current?.getSource("built")) map.current.removeSource("built"); }}>Change area</GameButton>}
+              {terrain && stage === "built" && <div className="es-site-storage" role="status" data-testid="es-terrain-status">
+                <b>{terrain.source === "live" ? "Geography downloaded" : "Using saved geography"}</b>
+                <small>OpenStreetMap · {new Date(terrain.snapshot.osmBase || terrain.snapshot.fetchedAt).toLocaleDateString()} · {terrain.saved ? "Saved in this browser" : "Available this session"}</small>
+                <small>{terrain.refreshFailed ? "Live refresh unavailable. Your saved terrain is ready to play." : "Covered areas build from saved terrain, including when public mapping services are busy."}</small>
+                <GameButton size="sm" onClick={() => void build(true)}>Refresh geography</GameButton>
+              </div>}
             </section>
             {regionalGeography(place.lat, place.lon, fp.radius) && <section className="es-context" aria-label="Hormuz scenario background">
               <h2>Hormuz · scenario background</h2>
