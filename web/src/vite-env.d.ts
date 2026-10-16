@@ -1,6 +1,8 @@
 /// <reference types="vite/client" />
 
 interface ImportMetaEnv {
+  /** Developer server only: opt into local-model and scripted test hooks. Never enabled by production builds. */
+  readonly VITE_COMPANION_DEV_TOOLS?: string;
   /** "public" in the static public build: the standalone game by default. */
   readonly VITE_DEFAULT_PROFILE?: string;
   /** Static public build: the content-hashed runtime and data roots (e.g. "rt-3f2a1c/"); "rt/", "data/" otherwise. */

@@ -1,5 +1,14 @@
 # Public co-commander: strategy adviser
 
+The web game presents one **Built-in adviser** switch with an explanation. Local AI and Scripted are not player
+choices, including on localhost; saved choices from older versions migrate to the browser adviser. Settings name
+the behavior explicitly: Off, Suggest orders, or Apply automatically. Model/mock hooks require a Vite developer
+server with `VITE_COMPANION_DEV_TOOLS=1`; production builds always use the built-in adviser.
+
+Local tooling reports `localAI.ready` only after real local chat inference, Kokoro speech generation and Whisper
+transcription succeed. Service health or model filenames alone are not readiness. A check expires after a minute;
+stopped, hosted, mock and failed model services never report Ready. Web play does not start or check local models.
+
 The browser strategy adviser reads the native `CompanionRpc.Observe` observation and ports the existing
 Python `Advisor.next_step` and `assess_threat` algorithms. Suggestions cover MCV deployment, ready-building
 placement, power, the opening economy/production order, harvesters, radar, army production and visible threats.

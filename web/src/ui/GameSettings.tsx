@@ -12,8 +12,8 @@ import { Segmented } from "./screen-parts";
 /** The rebindable commands, with Red Alert 2's keys as defaults (preferences.ts). */
 const COMMANDS: [Command, string][] = [["deploy", "Deploy"], ["guard", "Guard"], ["stop", "Stop"], ["scatter", "Scatter"], ["attackmove", "Attack move"],
   ["repair", "Repair"], ["sell", "Sell"], ["typeselect", "Type select"], ["selectall", "Select all"]];
-const ASSIST = [{ value: "off", label: "Off" }, { value: "suggest", label: "Suggest" }, { value: "auto", label: "Auto" }] as const;
-const ASSIST_HINT = { off: "No recommendations and no co-commander strip.", suggest: "Shows a recommended order; J or Apply carries it out.", auto: "Carries out each recommended order as soon as it is made." };
+const ASSIST = [{ value: "off", label: "Off" }, { value: "suggest", label: "Suggest orders" }, { value: "auto", label: "Apply automatically" }] as const;
+const ASSIST_HINT = { off: "Battlefield tips and recommended orders are turned off.", suggest: "You stay in control. Review each order, then press J or Apply.", auto: "The adviser carries out recommended orders for you without asking." };
 
 function Slider({ label, value, min = 0, max = 1, onChange }: { label: string; value: number; min?: number; max?: number; onChange: (value: number) => void }) {
   const fill = ((value - min) / (max - min)) * 100;
@@ -88,10 +88,10 @@ export function GameSettings({ game }: { game: Game }) {
           </div>
           <p className="settings-hint">Red Alert 2's keys. Click a key, then press the letter you want. Attack move is also Ctrl+Shift+click.</p>
         </GameSection>
-        <GameSection icon={<Sparkles size={15} />} title="AI co-commander">
+        <GameSection icon={<Sparkles size={15} />} title="Built-in adviser">
           <div className="settings-row">
             <span>Recommendations<small>{assistNote || ASSIST_HINT[assist]}</small></span>
-            <Segmented label="AI co-commander recommendations" value={assist} options={ASSIST} onChange={setAssist} />
+            <Segmented label="Adviser orders" value={assist} options={ASSIST} onChange={setAssist} />
           </div>
         </GameSection>
         {error && <p role="status" className="settings-error">{error}</p>}

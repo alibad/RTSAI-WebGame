@@ -247,7 +247,7 @@ export function Setup({ game }: { game: Game }) {
 
         <div className="scr-command sk-command">
           {!privateContent && !profile && <span className="scr-hint">Original game files not mounted</span>}
-          {ccAvailable && <CoCommanderToggle game={game} enabled={cc.enabled} mode={cc.mode} error={cc.error} />}
+          {ccAvailable && <CoCommanderToggle game={game} enabled={cc.enabled} error={cc.error} />}
           <GameButton variant="primary" size="lg" className="scr-cta" icon={<Swords size={18} aria-hidden="true" />} onClick={start} disabled={!map}>Start</GameButton>
         </div>
       </main>
@@ -279,26 +279,18 @@ function NationHero({ id, info, units }: { id: string; info?: SetupFaction; unit
   );
 }
 
-/** The AI co-commander for this match: on/off, and which brain (the local AI stack, or a scripted stand-in). */
-function CoCommanderToggle({ game, enabled, mode, error }: { game: Game; enabled: boolean; mode: "mock" | "local" | "browser"; error: string }) {
-  const localAvailable = useStore((s) => s.ccLocalAvailable);
+/** One optional adviser for the web game; implementation/test modes are not player choices. */
+function CoCommanderToggle({ game, enabled, error }: { game: Game; enabled: boolean; error: string }) {
+  const auto = useStore((s) => s.cc.auto);
   return (
-    <div className="sk-cc" data-on={enabled} title={error || "An AI co-commander that advises, answers and proposes orders"}>
-      <button type="button" role="switch" aria-checked={enabled} aria-label="AI co-commander" className="sk-cc-switch" onClick={() => game.cc.setEnabled(!enabled)}>
+    <div className="sk-cc" data-on={enabled}>
+      <button type="button" role="switch" aria-checked={enabled} aria-label="Built-in adviser" aria-describedby="adviser-description" className="sk-cc-switch" onClick={() => game.cc.setEnabled(!enabled)}>
         <Brain size={18} aria-hidden="true" />
-        <span className="sk-cc-text"><b>Co-commander</b><small>{enabled ? (localAvailable ? "On" : "Strategy adviser") : "Off"}</small></span>
+        <span className="sk-cc-text"><b>Built-in adviser</b><small>{enabled ? (auto ? "On · Applies orders automatically" : "On · You approve each order") : "Off"}</small></span>
         <span className="scr-switch-track" aria-hidden="true"><i /></span>
       </button>
-      {enabled && localAvailable && (
-        <span className="sk-cc-modes">
-          {(["browser", "local", "mock"] as const).map((m) => (
-            <button key={m} type="button" aria-pressed={mode === m} onClick={() => game.cc.setMode(m)}>
-              {m === "browser" ? "Strategy adviser" : m === "local" ? "Local AI" : "Scripted"}
-            </button>
-          ))}
-        </span>
-      )}
-      {error && <span className="sk-cc-error" aria-label={error} />}
+      <p id="adviser-description" className="sk-cc-description">Get battlefield tips and recommended orders. No setup needed.</p>
+      {error && <p role="status" className="sk-cc-message">{error}</p>}
     </div>
   );
 }

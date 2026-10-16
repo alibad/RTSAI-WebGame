@@ -151,7 +151,7 @@ export function CoCommander({ game }: { game: Game }) {
               {cc.feed.map((item) => <Line key={item.id} game={game} item={item} />)}
             </div>
             {cc.mode === "browser" ? <div className="cc-foot">
-              <p>Strategy adviser · runs in your browser. You confirm every order.</p>
+              <p>Built-in adviser · {cc.auto ? "Recommended orders are applied automatically." : "Review each recommended order, then choose Apply."}</p>
               <GameButton size="sm" variant="primary" icon={<Sparkles size={14} />} onClick={() => game.cc.ask("What should I do next?")} disabled={!cc.linked || paused}>Next suggestion</GameButton>
             </div> : <form className="cc-foot" onSubmit={(e) => { e.preventDefault(); send(); }}>
               <input value={text} onChange={(e) => setText(e.target.value)} placeholder="Ask for advice or prepare orders…" aria-label="Ask the co-commander" data-cc-input className="cc-input" />

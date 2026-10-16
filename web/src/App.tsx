@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Game } from "./game";
+import { companionDeveloperTools } from "./companion-policy";
 import { useStore } from "./store";
 import { Hud } from "./ui/Hud";
 import { Setup } from "./ui/Setup";
@@ -176,11 +177,11 @@ export default function App() {
 
     const requested = params.get("profile") ?? import.meta.env.VITE_DEFAULT_PROFILE ?? "public";
     const profile = params.get("game") === "classic" || requested === "public-classic" ? "public-classic" : "public";
-    // The strategy adviser uses the native bridge inside this browser. Local model/voice service is optional.
+    // The web game has one built-in adviser. Local/model and mock hooks require an explicit developer build.
     useStore.getState().set({ ccAvailable: true, ccLocalAvailable: false });
-    if (import.meta.env.VITE_STATIC_BUILD !== "1") fetch(new URL("api/companion/status", new URL("./", location.href)))
+    if (companionDeveloperTools) fetch(new URL("api/companion/status", new URL("./", location.href)))
       .then((r) => (r.ok ? r.json() : null)).then((s) => {
-        const local = !!s && typeof s.running === "boolean";
+        const local = s?.localAI?.ready === true;
         useStore.getState().set({ ccLocalAvailable: local });
         if (!local) g.cc.setMode("browser");
       }).catch(() => g.cc.setMode("browser"));

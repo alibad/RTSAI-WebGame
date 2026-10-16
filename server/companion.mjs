@@ -18,6 +18,7 @@ import path from "node:path";
 import { spawn, spawnSync } from "node:child_process";
 import zlib from "node:zlib";
 import { startMockGateway } from "./mock-ai.mjs";
+import { probeLocalAI } from "./local-ai-readiness.mjs";
 
 export const GRPC_PORT = Number(process.env.RTSAI_WEB_COMPANION_GRPC ?? 9988);
 export const CONTROL_PORT = Number(process.env.RTSAI_WEB_COMPANION_PORT ?? 8797);
@@ -240,11 +241,12 @@ export function createCompanion({ repo, appData, log = console.log }) {
   const python = process.env.RTSAI_COMPANION_PYTHON ?? path.join(openraAi, ".venv", process.platform === "win32" ? "Scripts/python.exe" : "bin/python");
   let proc = null, mode = "", mock = null, runtime = null;
   let startGeneration = 0, starting = null, startingMode = "";
+  let localAI = { ready: false, state: "stopped", message: "Local models have not been checked." };
   const output = [];
 
   function start(requested) {
     const want = requested === "mock" ? "mock" : "local";
-    if (proc && mode === want) return Promise.resolve(status());
+    if (proc && mode === want) return want === "local" ? checkLocalAI().then(() => status()) : Promise.resolve(status());
     if (starting && startingMode === want) return starting;
     stop();
     const generation = startGeneration; startingMode = want;
@@ -264,6 +266,7 @@ export function createCompanion({ repo, appData, log = console.log }) {
       env.OPENRA_AI_LOCAL_ROUTER_URL = env.OPENRA_AI_ROUTER_URL;
       env.OPENRA_AI_DATA_DIR = path.join(appData, "companion-mock");
     } else {
+      localAI = { ready: false, state: "checking", message: "Checking local models…" };
       // The local models: the product's runtime gateway, started here with its own settings and ports.
       env.OPENRA_AI_DATA_DIR = process.env.OPENRA_AI_DATA_DIR ?? path.join(appData, "companion-local");
       fs.mkdirSync(env.OPENRA_AI_DATA_DIR, { recursive: true });
@@ -291,6 +294,10 @@ export function createCompanion({ repo, appData, log = console.log }) {
           await new Promise((r) => setTimeout(r, 500));
         }
       }
+      current();
+      await checkLocalAI();
+      current();
+      if (!localAI.ready) throw new Error(localAI.message);
     }
     current();
     fs.mkdirSync(env.OPENRA_AI_DATA_DIR, { recursive: true });
@@ -329,6 +336,7 @@ export function createCompanion({ repo, appData, log = console.log }) {
     if (proc) killTree(proc);
     proc = null;
     mode = "";
+    localAI = { ready: false, state: "stopped", message: "Local models have not been checked." };
   }
 
   function killTree(child) {
@@ -339,7 +347,7 @@ export function createCompanion({ repo, appData, log = console.log }) {
 
   function healthy(port) {
     return new Promise((resolve) => {
-      const r = http.get({ host: "127.0.0.1", port, path: "/health", timeout: 1000 }, (res) => { res.resume(); resolve(res.statusCode < 500); });
+      const r = http.get({ host: "127.0.0.1", port, path: "/health/liveliness", timeout: 1000 }, (res) => { res.resume(); resolve(res.statusCode === 200); });
       r.on("error", () => resolve(false));
       r.on("timeout", () => { r.destroy(); resolve(false); });
     });
@@ -354,7 +362,16 @@ export function createCompanion({ repo, appData, log = console.log }) {
   }
 
   function status() {
-    return { running: !!proc, mode, pid: proc?.pid ?? 0, localRuntime: runtime && runtime.exitCode === null ? runtime.pid : 0, gameConnected: !!worker, grpcPort: GRPC_PORT, controlPort: CONTROL_PORT, relay: stats, log: output.slice(-20) };
+    const fresh = localAI.ready && mode === "local" && !!proc && (EXTERNAL_GATEWAY || runtime?.exitCode === null) && Date.now() - Date.parse(localAI.checkedAt) < 60000;
+    const readiness = localAI.ready && !fresh ? { ...localAI, ready: false, state: "unchecked", message: "Check the local models again before use." } : localAI;
+    return { running: !!proc, mode, localAI: readiness, pid: proc?.pid ?? 0, localRuntime: runtime && runtime.exitCode === null ? runtime.pid : 0, gameConnected: !!worker, grpcPort: GRPC_PORT, controlPort: CONTROL_PORT, relay: stats, log: output.slice(-20) };
+  }
+
+  async function checkLocalAI() {
+    const generation = startGeneration;
+    localAI = { ready: false, state: "checking", message: "Checking local models…" };
+    const result = await probeLocalAI(EXTERNAL_GATEWAY || `http://127.0.0.1:${LOCAL_GATEWAY_PORT}`);
+    if (generation === startGeneration) localAI = result;
   }
 
   /** /companion/api/<path> -> the companion's HTTP API (ask, transcribe, speak, actions, control, state). */

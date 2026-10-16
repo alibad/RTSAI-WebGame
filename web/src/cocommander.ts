@@ -12,6 +12,7 @@ import { MissionMemory, missionAdvice, parseMissionMap, type MissionAdvice, type
 import type { AdviserActionReceipt } from "./sim/adviser-rpc";
 import adviserTree from "./adviser-tree.json";
 import { track } from "./net/track";
+import { companionDeveloperTools } from "./companion-policy";
 
 export interface BrowserAdviser {
   observe(): Promise<AdviserObservation>;
@@ -79,7 +80,7 @@ export function initialCoCommander(): CoCommanderState {
   let saved: Partial<CoCommanderState> & { browserVersion?: number } = {};
   try { saved = JSON.parse(localStorage.getItem("rtsai.cocommander") ?? "{}"); } catch { /* private mode */ }
   return {
-    enabled: import.meta.env.VITE_STATIC_BUILD === "1" && saved.browserVersion !== 1 ? true : saved.enabled ?? true, mode: import.meta.env.VITE_STATIC_BUILD === "1" ? "browser" : saved.mode === "mock" ? "mock" : saved.mode === "local" ? "local" : "browser", muted: saved.muted ?? false, auto: saved.auto === true,
+    enabled: import.meta.env.VITE_STATIC_BUILD === "1" && saved.browserVersion !== 1 ? true : saved.enabled ?? true, mode: companionDeveloperTools && (saved.mode === "mock" || saved.mode === "local") ? saved.mode : "browser", muted: saved.muted ?? false, auto: saved.auto === true,
     running: false, linked: false, listening: false, thinking: false, open: false, feed: [], error: "",
     strategies: null, strategyOpen: false, strategyBusy: false, strategyError: "", offerSteps: true, uncertainProposalId: "", browserThreat: null,
   };
@@ -187,7 +188,7 @@ export class CoCommander {
   }
 
   setEnabled(enabled: boolean) { if (!enabled) this.endMatch(); this.set({ enabled }); }
-  setMode(mode: "mock" | "local" | "browser") { this.set({ mode }); }
+  setMode(mode: "mock" | "local" | "browser") { this.set({ mode: companionDeveloperTools ? mode : "browser" }); }
   /** Auto on: the recommendation waiting now is applied too. */
   setAuto(auto: boolean) { this.set({ auto }); const p = auto ? this.pending() : undefined; if (p) void this.decide(p, true); }
   setOpen(open: boolean) { this.set({ open, ...(open ? { strategyOpen: false } : {}) }); }

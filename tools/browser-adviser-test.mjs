@@ -21,7 +21,7 @@ try {
   await page.goto(`${base}?profile=${profile}&private=0&mode=skirmish`);await page.waitForFunction(()=>['setup','error'].includes(window.store?.getState().phase),null,{timeout:180000});
   assert.equal(await page.evaluate(()=>window.store.getState().phase),'setup');
   assert.deepEqual(await page.evaluate(()=>{const s=window.store.getState();return {enabled:s.cc.enabled,mode:s.cc.mode,available:s.ccAvailable};}),{enabled:true,mode:'browser',available:true});
-  assert(await page.getByRole('switch',{name:'AI co-commander',exact:true}).isVisible());
+  assert(await page.getByRole('switch',{name:'Built-in adviser',exact:true}).isVisible());
   const mode={profile,checks:['Legacy disabled local preference migrates once to visible browser adviser'],receipts:[]};receipt.modes.push(mode);
   const start=async()=>{await page.evaluate(()=>{const s=window.store.getState(),m=s.setup.maps.find(m=>m.id==='web-arena-four')??s.setup.maps[0];window.game.start(JSON.stringify({map:m.id,seed:777,players:[{slot:m.slots[0],faction:'america',color:'2A6FDB'},{slot:m.slots[1],faction:'iran',bot:'normal',color:'A62121'}],options:{startingunits:'none',startingcash:'10000',fog:'True',explored:'False',shortgame:'False'}}));});await page.waitForFunction(()=>window.store.getState().phase==='playing'&&window.game.cc.pending(),null,{timeout:120000});};
   const pending=()=>page.evaluate(()=>window.game.cc.pending());
@@ -53,7 +53,7 @@ try {
   await capture(`${profile}-co-commander-touch.png`);
   // No stale advice or requests survive a world replacement.
   const previous=await pending();await page.evaluate(()=>window.game.quit());await page.waitForFunction(()=>window.store.getState().phase==='setup');await start();const beforeRestart=await page.evaluate(()=>window.__adviserDispatches);await page.evaluate(old=>window.game.cc.decide(old,true),previous);assert.equal(await page.evaluate(()=>window.__adviserDispatches),beforeRestart);mode.checks.push('New world rejects old proposal IDs');
-  await page.evaluate(()=>window.game.quit());await page.waitForFunction(()=>window.store.getState().phase==='setup');await page.getByRole('switch',{name:'AI co-commander',exact:true}).tap();assert.equal(await page.evaluate(()=>window.store.getState().cc.enabled),false);
+  await page.evaluate(()=>window.game.quit());await page.waitForFunction(()=>window.store.getState().phase==='setup');await page.getByRole('switch',{name:'Built-in adviser',exact:true}).tap();assert.equal(await page.evaluate(()=>window.store.getState().cc.enabled),false);
   await page.reload();await page.waitForFunction(()=>window.store?.getState().phase==='setup',null,{timeout:180000});assert.equal(await page.evaluate(()=>window.store.getState().cc.enabled),false);mode.checks.push('Explicit new browser opt-out persists across reload');
   console.log(profile,mode.checks);await context.close();
  }
