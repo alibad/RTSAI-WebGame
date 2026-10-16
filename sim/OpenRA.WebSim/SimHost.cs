@@ -537,6 +537,8 @@ namespace OpenRA.WebSim
 					new LocationInit(new MPos(a.X, a.Y).ToCPos(World.Map)),
 					new FacingInit(new WAngle(a.Facing)),
 					new FactionInit(owner.Faction.InternalName),
+					// Scenario placements start completed, just like preplaced map actors.
+					new SkipMakeAnimsInit(),
 				};
 				if (a.Health > 0 && a.Health < 100)
 					init.Add(new HealthInit(a.Health));

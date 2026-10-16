@@ -72,6 +72,17 @@ sea, drawn from coastlines (the Suez Canal's banks are coastline): RTSAI-Web `li
 
 ## Checks
 
+Simulator placements start as completed actors. Both the paused placement command and the scenario rebuilt by
+Fight/Edit pass the engine's `SkipMakeAnimsInit`, as preplaced map actors do; ordinary building production keeps
+its construction animation. Without that initializer a paused building stayed on the first `make` frame.
+Palette categories come from movement traits (aircraft, infantry, mobile), not the production queue: a helicopter
+built by a vehicle factory still appears in Aircraft. Search stays inside the selected category, and changing
+category/search disarms the old placement brush. Categories unavailable to a nation fall back to an available one.
+
+`websim placementtest --root <unpacked public root>` checks the real catalog and completed buildings before any
+tick, plus their positions after scenario recreation. `tools/simulator-placement-browser-test.mjs` checks both
+public modes in the actual WASM game, including category-scoped search and edit/run/edit preservation.
+
 ```powershell
 node tools/battle-plan-unit-test.mjs
 node tools/ai-lab-unit-test.mjs

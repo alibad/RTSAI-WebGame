@@ -469,6 +469,8 @@ namespace OpenRA.WebSim
 							new LocationInit(cell),
 							new FacingInit(new WAngle(side == 0 ? 768 : 256)),
 							new FactionInit(players[side].Faction.InternalName),
+							// These are completed placements in a paused world, not newly produced buildings.
+							new SkipMakeAnimsInit(),
 						};
 						var health = Int("health", 100);
 						if (health > 0 && health < 100)
@@ -743,7 +745,7 @@ namespace OpenRA.WebSim
 				sb.Append("{\"name\":").Append(J(a.Name))
 					.Append(",\"label\":").Append(J(tooltip != null ? FluentProvider.GetMessage(tooltip.Name) : a.Name))
 					.Append(",\"queue\":").Append(J(queue))
-					.Append(",\"kind\":").Append(J(building != null ? (queue == "Support" ? "defense" : "building") : queue.ToLowerInvariant()))
+					.Append(",\"kind\":").Append(J(PlacementKind(a, queue)))
 					.Append(",\"cost\":").Append(cost)
 					.Append(",\"modern\":").Append(a.Name.StartsWith("r2", StringComparison.Ordinal) ? "true" : "false")
 					.Append(",\"combat\":").Append(a.HasTraitInfo<AttackBaseInfo>() && a.HasTraitInfo<ArmamentInfo>() ? "true" : "false");
@@ -754,6 +756,20 @@ namespace OpenRA.WebSim
 			}
 
 			return sb.Append("]}").ToString();
+		}
+
+		/// <summary>Production queues identify factories, not movement: helicopters may use the vehicle factory.</summary>
+		static string PlacementKind(ActorInfo actor, string queue)
+		{
+			if (actor.HasTraitInfo<BuildingInfo>())
+				return queue == "Support" ? "defense" : "building";
+			if (actor.HasTraitInfo<AircraftInfo>())
+				return "aircraft";
+			if (actor.HasTraitInfo<WithInfantryBodyInfo>())
+				return "infantry";
+			if (actor.HasTraitInfo<MobileInfo>())
+				return queue == "Ship" ? "ship" : "vehicle";
+			return queue.ToLowerInvariant();
 		}
 
 		/// <summary>

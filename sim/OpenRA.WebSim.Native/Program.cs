@@ -43,6 +43,7 @@ static class Program
 				"restoretest" => MatchRestoreTest.Run(opts),
 				"capturetest" => CaptureTest(opts),
 				"contenttest" => ContentTest.Run(opts),
+				"placementtest" => SimulatorPlacementTest.Run(opts),
 				"missiontest" => MissionTest.Run(opts),
 				"soundtest" => SoundTest.Run(opts),
 				"ailabtest" => AiLabTest.Run(opts),

@@ -120,10 +120,13 @@ function EditPanel({ game, sandbox }: { game: Game; sandbox: Sandbox }) {
   useEffect(() => {
     if (phase === "playing" && roster) game.requestIcons(st.units.filter((u) => roster.includes(u.name)).map((u) => u.name), faction);
   }, [game, faction, phase, st.units, roster]);
-  const units = st.units
-    .filter((u) => (!roster || roster.includes(u.name)) && (query ? u.label.toLowerCase().includes(query.toLowerCase()) || u.name.includes(query.toLowerCase()) : u.kind === kind))
-    .sort((a, b) => Number(b.modern) - Number(a.modern) || a.cost - b.cost || a.label.localeCompare(b.label));
   const kinds = KINDS.filter((k) => st.units.some((u) => u.kind === k.id && (!roster || roster.includes(u.name))));
+  const activeKind = kinds.some(k => k.id === kind) ? kind : kinds.find(k => k.id === "vehicle")?.id ?? kinds[0]?.id ?? kind;
+  const category = KINDS.find(k => k.id === activeKind)?.label.toLowerCase() ?? "units";
+  const units = st.units
+    .filter((u) => (!roster || roster.includes(u.name)) && u.kind === activeKind
+      && (!query || u.label.toLowerCase().includes(query.toLowerCase()) || u.name.includes(query.toLowerCase())))
+    .sort((a, b) => Number(b.modern) - Number(a.modern) || a.cost - b.cost || a.label.localeCompare(b.label));
 
   const describe = async () => {
     if (!request.trim() || planning) return;
@@ -156,12 +159,13 @@ function EditPanel({ game, sandbox }: { game: Game; sandbox: Sandbox }) {
 
       <div className="sim-kinds" role="tablist" aria-label="What to place">
         {kinds.map((k) => (
-          <button key={k.id} type="button" role="tab" aria-selected={!query && kind === k.id} title={k.label} onClick={() => { setKind(k.id); setQuery(""); }}>{k.icon}<span>{k.label}</span></button>
+          <button key={k.id} type="button" role="tab" aria-selected={activeKind === k.id} title={k.label} onClick={() => { setKind(k.id); setQuery(""); setHover(null); patch({ brush: null }); }}>{k.icon}<span>{k.label}</span></button>
         ))}
       </div>
-      <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Find a unit or building…"
+      <input value={query} onChange={(e) => { setQuery(e.target.value); setHover(null); patch({ brush: null }); }} placeholder={`Find ${category}…`} aria-label="Search this category"
         className="h-8 rounded-md border border-input bg-field px-2.5 text-[13px] outline-none focus-visible:border-ring" />
       <div className="sim-roster no-scrollbar grid min-h-0 flex-1 auto-rows-max content-start grid-cols-3 gap-[3px] overflow-y-auto" onMouseLeave={() => setHover(null)}>
+        {units.length === 0 && <p className="col-span-3 p-3 text-sm text-[var(--muted-foreground)]" role="status">No {category} match your search.</p>}
         {units.map((u) => (
           <button key={u.name} type="button" title={u.label} draggable data-unit={u.name}
             onDragStart={(e) => { e.dataTransfer.setData("application/x-rtsai-unit", u.name); e.dataTransfer.effectAllowed = "copy"; }}
