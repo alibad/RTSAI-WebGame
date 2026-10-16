@@ -264,6 +264,7 @@ export function EarthStudio({ game, editor, close, mission }: { game: Game; edit
             : "Ground: <b>level</b> (too little relief to show)");
         } catch { say("Ground: kept <b>level</b> (the slopes didn't fit)"); }
       } else say("Ground: kept <b>level</b> (elevation unavailable)");
+      files["earth.json"] = new TextEncoder().encode(JSON.stringify(bf.report, null, 2));
       say(bf.report.validation.connectedBases ? "Terrain check: <b>2 land starts, bases connected</b>" : "Terrain check: <b>2 land starts on separate coasts</b>. Sea or air units needed to cross.");
       await editor.addFiles(id, bf.title, bf.players, files);
       if (!current()) return;
