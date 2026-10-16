@@ -480,14 +480,14 @@ class World {
   }
 
   /** Where to look for something last seen at p: the open ground out of sight nearest to it (and to `from`). */
-  searchSpot(p: Pt, from: Pt): Pt | null {
+  searchSpot(p: Pt, from: Pt, sea = false): Pt | null {
     const grid = this.grid;
     if (!grid) return null;
     let best: Pt | null = null, score = Infinity;
     for (let dv = -40; dv <= 40; dv += 2)
       for (let du = -20; du <= 20; du += 2) {
         const q = { u: p.u + du, v: p.v + dv };
-        if (!grid.pass(q) || grid.seen(q)) continue;
+        if (!grid.inside(q) || (sea ? grid.pass(q) : !grid.pass(q)) || grid.seen(q)) continue;
         const s = dist(q, p) + dist(q, from) * 0.3;
         if (s < score) { score = s; best = q; }
       }
@@ -976,8 +976,10 @@ function engage(w: World, units: AdviserActor[], near: Pt, goal: string, label: 
  */
 function go(w: World, army: AdviserActor[], to: Pt, goal: string, say: (n: number) => [string, string], arrive = 4, action: "attack_move" | "move" = "attack_move") {
   // Not into a surveillance area that must be empty at its sweep: to the nearest ground outside it.
-  const dest = w.forbidden(to) ? w.grid?.near(to, 16, (q) => w.forbidden(q)) ?? w.land(to) : w.land(to), wet = w.grid ? !w.grid.pass(to) : false;
-  const land = army.filter((u) => w.onLand(u)), ships = wet ? army.filter((u) => !w.onLand(u) && needsOrder(w, u, goal, to, arrive + 2)) : [];
+  const dest = w.forbidden(to) ? w.grid?.near(to, 16, (q) => w.forbidden(q)) ?? w.land(to) : w.land(to);
+  // The observation's grid describes ground movement. A shoreline target can be ground-passable and still need
+  // a fleet to approach from water; let the native naval locomotor choose its reachable firing approach.
+  const land = army.filter((u) => w.onLand(u)), ships = army.filter((u) => !w.onLand(u) && needsOrder(w, u, goal, to, arrive + 2));
   const troops = land.some((u) => !w.heroes.has(u.actorId)) ? land.filter((u) => !w.heroes.has(u.actorId)) : land;
   const followers = land.filter((u) => !troops.includes(u));
   const left = (u: AdviserActor) => dist(cellOf(u), dest);
@@ -1014,7 +1016,9 @@ function go(w: World, army: AdviserActor[], to: Pt, goal: string, say: (n: numbe
 
 /** The army's errand for the focus objective. */
 function armyTask(w: World, f: Focus, army: AdviserActor[]): MissionAdvice | null {
-  const o = f.o, prepare = f.prepare, fixed = !w.hasBase || (army.length > 0 && army.every(u=>w.ctx.techTree[baseType(u.kind)]?.queue==="Ship"));
+  const island=islandGoal(w);
+  const landed=!!island&&!!w.grid&&army.length>0&&army.every(u=>!!island.region[u.cellY*w.grid!.w+u.cellX]);
+  const o = f.o, prepare = f.prepare, fixed = !w.hasBase || landed || (army.length > 0 && army.every(u=>w.ctx.techTree[baseType(u.kind)]?.queue==="Ship"));
   // Out of money with nothing being built: no more is coming, so the army goes with what it has.
   const broke = w.obs.cash < 500 && !w.obs.production.length && army.length >= 3;
   const units = (n: number) => plural(n, "unit");
@@ -1050,8 +1054,13 @@ function armyTask(w: World, f: Focus, army: AdviserActor[]): MissionAdvice | nul
       if (!all.length) return null;
       const from = army.length ? centroid(army.map(cellOf)) : w.base() ?? all[0].p;
       // Targets that moved out of sight are looked for after the others.
-      const lost = (t: string) => { const l = w.memory.named.get(t)?.lost; return l && w.tick - l < 1500 ? 1 : 0; };
-      all.sort((a, b) => lost(a.t) - lost(b.t) || dist(a.p, from) - dist(b.p, from) || a.t.localeCompare(b.t));
+      // Losing sight of a mobile target does not make it a priority again one minute later. It may have died;
+      // visit the other known targets before searching for it, and search water for ships rather than dry land.
+      const lost = (t: string) => w.memory.named.get(t)?.lost !== undefined ? 1 : 0;
+      const searching = (t:string) => army.some(u=>!u.idle&&w.memory.heading.get(u.actorId)?.goal.startsWith(`search:${t}:`))?0:1;
+      all.sort((a, b) => lost(a.t) - lost(b.t)
+        || (lost(a.t) ? searching(a.t)-searching(b.t)||(w.memory.search.get(a.t)?.n??0)-(w.memory.search.get(b.t)?.n??0) : 0)
+        || dist(a.p, from) - dist(b.p, from) || a.t.localeCompare(b.t));
       const next = all[0], label = placeName(next.t), left = secondsLeft(o.progress);
       // Charges first: C4 takes a building at once. Each target gets the nearest unit that can charge it and is not on
       // another charge run (one the mission needs alive only when no one else can).
@@ -1101,7 +1110,7 @@ function armyTask(w: World, f: Focus, army: AdviserActor[]): MissionAdvice | nul
         // Another place once this one is reached, in sight, or out of reach (16 seconds on it).
         if (!look || w.grid?.seen(look.spot) || army.some((u) => dist(cellOf(u), look!.spot) <= 4) || w.tick - look.at > 400) {
           const n = (look?.n ?? 0) + 1;
-          const spot = n <= 6 ? w.searchSpot(next.p, from) : null;
+          const spot = n <= 6 ? w.searchSpot(next.p, from, w.ctx.techTree[w.ctx.map.named[next.t]?.type]?.queue==="Ship") : null;
           w.memory.search.set(next.t, { spot: spot ?? next.p, n, at: w.tick });
           look = spot ? { spot, n, at: w.tick } : undefined;
         }
@@ -1298,12 +1307,15 @@ function islandAssault(w: World): MissionAdvice | null {
       ?advice(text,text,[{action:"move",actor_id:boat.actorId,target_x:to.u,target_y:to.v}],key,{goal:key}):null;
     if(passengers>0&&(passengers>=trip.assigned.length||w.tick-trip.since>250||trip.loaded)) {
       trip.loaded=true;
+      // Released passengers must be free to clear the beach even while another passenger is still aboard.
+      // Keeping the whole manifest reserved until the carrier was empty could block its own final exit cell.
+      trip.assigned=trip.assigned.filter(id=>!w.units.some(u=>u.actorId===id&&goal.region[u.cellY*w.grid!.w+u.cellX]));
       // Load under cover, but clear the hostile surface group before sending vulnerable troop carriers across it.
       const unsafeSea=w.objectives.some(o=>o.status==="active"&&o.kind==="destroy"&&(o.targets??[]).some(t=>w.ctx.techTree[w.ctx.map.named[t]?.type]?.queue==="Ship"&&w.where(t)));
       if(unsafeSea)continue;
       if(dist(cellOf(boat),goal.beach)>3)return move(goal.beach,`landing:${boat.actorId}`,`Land the assault team on the island near ${placeName(goal.name)}.`);
       const h=w.memory.heading.get(boat.actorId),key=`unload:${boat.actorId}`;
-      if(h?.goal===key&&w.tick-h.tick<100)continue;
+      if(h?.goal===key&&(!boat.idle||w.tick-h.tick<500))continue;
       return advice("Unload the assault team on the island shore.","Unload the assault team",[{action:"unload",actor_id:boat.actorId}],key,{goal:key});
     }
     if(!passengers&&trip.loaded){trip.loaded=false;trip.returning=true;trip.assigned=[];}
@@ -1316,7 +1328,7 @@ function islandAssault(w: World): MissionAdvice | null {
     const choices=w.units.filter(u=>!reserved.has(u.actorId)&&!w.heroes.has(u.actorId)&&dist(cellOf(u),goal.home)<28&&w.ctx.techTree[baseType(u.kind)]?.queue==="Infantry"
       &&!!w.grid?.path(cellOf(u),cellOf(boat)))
       .sort((a,b)=>Number(!!b.canCapture)-Number(!!a.canCapture)
-        ||Number(/anti.?tank|missile team|\bRPG\b/i.test(w.name(b.kind)))-Number(/anti.?tank|missile team|\bRPG\b/i.test(w.name(a.kind)))
+        ||Number(/anti.?tank|\bAT\b|missile team|\bRPG\b/i.test(w.name(b.kind)))-Number(/anti.?tank|\bAT\b|missile team|\bRPG\b/i.test(w.name(a.kind)))
         ||dist(cellOf(a),cellOf(boat))-dist(cellOf(b),cellOf(boat)));
     while(trip.assigned.length<4&&choices.length)trip.assigned.push(choices.shift()!.actorId);
     const waiting=trip.assigned.map(id=>w.units.find(u=>u.actorId===id)).filter((u):u is AdviserActor=>!!u);
@@ -1377,7 +1389,8 @@ function missionProduction(w: World): MissionAdvice | null {
   if (seaTargets.length) {
     const type=[...available].filter(t=>ctx.techTree[baseType(t)]?.queue==="Ship"
       && !/transport|landing|survey|tender|support|air defense|carrier/i.test(w.name(t)))
-      .sort((a,b)=>(ctx.techTree[b]?.cost??0)-(ctx.techTree[a]?.cost??0)||a.localeCompare(b))[0];
+      .sort((a,b)=>Number(!/missile|destroyer|submarine/i.test(w.name(a)))-Number(!/missile|destroyer|submarine/i.test(w.name(b)))
+        ||(ctx.techTree[b]?.cost??0)-(ctx.techTree[a]?.cost??0)||a.localeCompare(b))[0];
     const have=w.units.filter(u=>u.canAttack&&ctx.techTree[baseType(u.kind)]?.queue==="Ship").length
       +o.production.filter(p=>ctx.techTree[baseType(p.item)]?.queue==="Ship").length;
     if(type&&!busy(type)&&have<Math.min(8,seaTargets.length+2)) {
@@ -1393,7 +1406,7 @@ function missionProduction(w: World): MissionAdvice | null {
     const have=w.units.filter(u=>amphibiousName.test(w.name(u.kind))).length+o.production.filter(p=>amphibiousName.test(w.name(p.item))).length;
     if(type&&have<3&&!busy(type)&&o.cash>=(ctx.techTree[type]?.cost??9999))
       return eco("The island needs a landing force: build another amphibious carrier.",`Train 1 ${w.name(type)}`,[{action:"train",item_type:type}],`train:landing:${type}`);
-    const infantry=[...available].find(t=>ctx.techTree[t]?.queue==="Infantry"&&/anti.?tank|missile team|\bRPG\b/i.test(w.name(t)));
+    const infantry=[...available].find(t=>ctx.techTree[t]?.queue==="Infantry"&&/anti.?tank|\bAT\b|missile team|\bRPG\b/i.test(w.name(t)));
     const troops=w.units.filter(u=>ctx.techTree[baseType(u.kind)]?.queue==="Infantry"&&!u.canCapture).length;
     if(infantry&&troops<16&&!busy(infantry)&&o.cash>=(ctx.techTree[infantry]?.cost??9999))
       return eco("Train anti-armour infantry for the amphibious assault.",`Train 3 ${w.name(infantry)}`,Array.from({length:3},()=>({action:"train" as const,item_type:infantry})),"train:landing:infantry");
@@ -1464,6 +1477,12 @@ function economyStep(w: World): MissionAdvice | null {
   if (base && ["deploy", "place", "build:power"].includes(base.key)) return ours(base);
   const need = missionProduction(w);
   if (need) return need;
+  if(islandGoal(w)) {
+    // Keep the queues and income focused on the fleet and transported infantry. Extra land tanks cannot cross
+    // the strait and were consuming the money needed to finish ships already under construction.
+    if(base&&["train:harvester","build:refinery"].includes(base.key))return ours(base);
+    return null;
+  }
   const guns = defences(w);
   if (guns) return guns;
   if (base) {
@@ -1571,7 +1590,7 @@ function step(w: World, o: AdviserObservation, ctx: MissionContext): MissionAdvi
   // construction yard was destroyed at home (Sweet Water).
   const home=w.base();
   const reserve=new Set(home&&ctx.spec.protect?.length?w.fighters.filter(u=>!ctx.memory.initialFighters?.has(u.actorId)
-    &&!own.has(u.actorId)&&!w.heroes.has(u.actorId)&&ctx.techTree[baseType(u.kind)]?.queue!=="Ship")
+    &&!own.has(u.actorId)&&!w.heroes.has(u.actorId)&&dist(cellOf(u),home)<24&&ctx.techTree[baseType(u.kind)]?.queue!=="Ship")
     .sort((a,b)=>dist(cellOf(a),home)-dist(cellOf(b),home)||a.actorId-b.actorId).slice(0,6).map(u=>u.actorId):[]);
   const army = w.fighters.filter((u) => !reserve.has(u.actorId) && !own.has(u.actorId) && !(w.heroes.has(u.actorId) && (u.hpPercent ?? 1) < 0.5));
   const guard = defend(w, own);

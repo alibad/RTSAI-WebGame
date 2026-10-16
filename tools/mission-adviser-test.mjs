@@ -236,7 +236,7 @@ test("hold the base before rallying toward an assault gated behind the survival 
 test("sea objectives build a combat fleet, never transports, rather than another land-only army",()=>{
   const spec={id:"test",slot:"Me",enemy:"Them",objectives:[{text:"Destroy the surface group.",kind:"destroy",targets:["Boat"]}]};
   const map=parseMissionMap(yaml([["Yard","gacnst","Me",10,20],["Boat","r2ege","Them",45,80]]));
-  const obs=observe({cash:6000,powerProvided:1000,harvesterCount:3,buildings:[unit(1,"gacnst",10,20,{canAttack:false})],availableProduction:["r2ege","lcrf"]});
+  const obs=observe({cash:6000,powerProvided:1000,harvesterCount:3,buildings:[unit(1,"gacnst",10,20,{canAttack:false})],availableProduction:["r2marmara","r2ege","lcrf"]});
   const memory=new MissionMemory();memory.lastKind="unit";
   const a=plan(spec,map,obs,memory);assert.deepEqual(a.commands,[{action:"train",item_type:"r2ege"}]);
   const save=plan(spec,map,{...obs,cash:500},new MissionMemory());assert.match(save.text,/Save \$1200/);assert.equal(save.commands.length,0);
@@ -285,10 +285,45 @@ test("island assault boards real passengers, crosses water, unloads and returns;
 
 test("landed troops advance on their island instead of rallying toward the mainland army's centre",()=>{
   const spec={id:"test",slot:"Me",enemy:"Them",objectives:[{text:"Destroy uplink.",kind:"destroy",targets:["Uplink"]}]};
-  const map=parseMissionMap(yaml([["Yard","gacnst","Me",10,20],["Uplink","naradr","Them",45,90]]));
+  const map=parseMissionMap(yaml([["Yard","gacnst","Me",10,20],["Uplink","naradr","Them",45,110]]));
   const obs=observe({spatial:spatial(u=>u>=25&&u<=35),buildings:[unit(1,"gacnst",10,20,{canAttack:false})],
     units:[...Array.from({length:20},(_,i)=>unit(i+10,"e1",10+i%5,25)),...Array.from({length:4},(_,i)=>unit(i+50,"e1",44+i,80))]});
-  const a=plan(spec,map,obs);assert(a.commands.length);assert(a.commands.every(c=>c.actor_id>=50&&c.target_x>35),JSON.stringify(a));
+  const memory=new MissionMemory();memory.initialFighters=new Set();
+  const a=plan({...spec,protect:['Yard']},map,obs,memory);assert(a.commands.length);assert(a.commands.every(c=>c.actor_id>=50&&c.target_x>35),JSON.stringify(a));
+});
+
+test("island reinforcement recognizes the faction's AT Specialist label",()=>{
+  const spec={id:"test",slot:"Me",enemy:"Them",objectives:[{text:"Destroy uplink.",kind:"destroy",targets:["Uplink"]}]};
+  const map=parseMissionMap(yaml([["Yard","gacnst","Me",10,20],["Uplink","naradr","Them",45,110]]));
+  const obs=observe({cash:1600,availableProduction:['r2trat'],spatial:spatial(u=>u>=25&&u<=35),buildings:[unit(1,'gacnst',10,20,{canAttack:false})]});
+  const a=plan(spec,map,obs);assert(a.commands.some(c=>c.action==='train'&&c.item_type==='r2trat'),JSON.stringify(a));
+});
+
+test("partly unloaded infantry clear the beach instead of remaining reserved inside the carrier manifest",()=>{
+  const spec={id:"test",slot:"Me",enemy:"Them",objectives:[{text:"Destroy uplink.",kind:"destroy",targets:["Uplink"]}]};
+  const map=parseMissionMap(yaml([["Yard","gacnst","Me",10,20],["Uplink","naradr","Them",45,110]]));
+  const memory=new MissionMemory();memory.landings.set('Uplink',{u:36,v:96});memory.voyages.set(10,{assigned:[2,3,4,5],loaded:true,returning:false,since:1});
+  memory.heading.set(10,{goal:'unload:10',key:'mission:unload:10',tick:900,reactive:false,tries:1});
+  const obs=observe({spatial:spatial(u=>u>=25&&u<=35),buildings:[unit(1,'gacnst',10,20,{canAttack:false})],
+    units:[unit(10,'r2deniz',36,96,{passengers:1}),...Array.from({length:3},(_,i)=>unit(i+2,'r2trat',37+i,96))]});
+  plan(spec,map,obs,memory);
+  assert.deepEqual(memory.voyages.get(10).assigned,[5]);
+  const next=plan(spec,map,{...obs,tick:1050},memory);assert(next.commands.some(c=>[2,3,4].includes(c.actor_id)&&c.target_x>35),JSON.stringify(next));
+});
+
+test("a long-lost ship stays behind a currently visible target instead of regaining priority after a minute",()=>{
+  const spec={id:"test",slot:"Me",enemy:"Them",objectives:[{text:"Destroy surface group.",kind:"destroy",targets:["LostBoat","LiveBoat"]}]};
+  const map=parseMissionMap(yaml([["W0","waypoint","Neutral",1,1],["MyBoat","r2ege","Me",40,60],["LostBoat","r2ege","Them",42,62],["LiveBoat","r2ege","Them",50,100]]));
+  const memory=new MissionMemory();memory.offset=10;memory.named.set('LostBoat',{id:12,at:{u:42,v:62},seen:1,lost:1});
+  const obs=observe({tick:4000,spatial:spatial(u=>u>35),units:Array.from({length:4},(_,i)=>unit(i+50,'r2ege',40+i,60)),visibleEnemies:[unit(13,'r2ege',50,100)]});
+  const a=plan(spec,map,obs,memory);assert(a.commands.length);assert(a.commands.every(c=>c.target_x===50&&c.target_y===100),JSON.stringify(a));
+});
+
+test("the fleet approaches shoreline targets even when the ground grid marks their cell passable",()=>{
+  const spec={id:"test",slot:"Me",enemy:"Them",objectives:[{text:"Destroy surface group.",kind:"destroy",targets:["Boat"]}]};
+  const map=parseMissionMap(yaml([["Boat","r2ege","Them",50,100]]));
+  const obs=observe({units:Array.from({length:4},(_,i)=>unit(i+50,'r2ege',20+i,30))});
+  const a=plan(spec,map,obs);assert(a.commands.length);assert(a.commands.every(c=>c.target_x===50&&c.target_y===100),JSON.stringify(a));
 });
 
 test("orders on the wire: the target actor (field 3) and queued (field 7)", () => {

@@ -13,13 +13,14 @@ await Promise.all(Array.from({length:Number(opt('jobs','2'))},async()=>{
   if(!missions.includes(id))throw Error('Unknown mission '+id);
   console.log('START',id);
   const log=fs.openSync(path.join(out,id+'.log'),'w');
-  const child=spawn(process.execPath,['tools/chapters-playtest.mjs',id,opt('difficulty','normal'),'--runs','1','--speed',opt('speed','8'),'--limit',opt('limit','25'),'--url',url,'--out',out],{stdio:['ignore',log,log]});
+  const player=args.includes('--scripted-water')&&id==='sweet-water'?['--player','water']:[];
+  const child=spawn(process.execPath,['tools/chapters-playtest.mjs',id,opt('difficulty','normal'),'--runs','1','--speed',opt('speed','8'),'--limit',opt('limit','25'),'--url',url,'--out',out,...player],{stdio:['ignore',log,log]});
   const watchdog=setTimeout(()=>child.kill(),25*60000);
   const code=await new Promise(resolve=>child.on('exit',resolve));clearTimeout(watchdog);fs.closeSync(log);
   const file=path.join(out,id+'-results.json');
   const result=fs.existsSync(file)?JSON.parse(fs.readFileSync(file,'utf8'))[0]:{mission:id,error:'No report; exit '+code};
   reports.push(result);console.log('FINISH',id,result.win??result.error,result.minutes??'');
-  fs.writeFileSync(path.join(out,'summary.json'),JSON.stringify({url,scope:'Actual unchanged campaign objectives, fog on, normal resources, ordinary Auto player orders; no director or cheats',reports},null,2));
+  fs.writeFileSync(path.join(out,'summary.json'),JSON.stringify({url,scope:'Actual campaign objectives, fog on, normal resources; ordinary Auto orders or explicitly selected careful scripted player. No spawned actors, deleted enemies, resource grants or forced objectives.',reports},null,2));
  }
 }));
 if(reports.some(r=>r.win!=='Won'))process.exitCode=1;

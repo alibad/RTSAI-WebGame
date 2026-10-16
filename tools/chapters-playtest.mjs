@@ -10,6 +10,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { chromium } from "../web/node_modules/playwright-core/index.mjs";
+import { WaterPlayer } from "./campaign-player.mjs";
 
 const argv = process.argv.slice(2);
 const opt = (k, d) => { const i = argv.indexOf(`--${k}`); return i >= 0 ? argv[i + 1] : d; };
@@ -20,7 +21,7 @@ const url = opt("url", "http://127.0.0.1:3492/?profile=public");
 const out = opt("out", "D:/rtsai-campaign/playtest");
 const limitMinutes = Number(opt("limit", 14));
 const director = argv.includes("--director");
-const auto = opt("mode", "auto") !== "suggest";
+const auto = opt("mode", "auto") !== "suggest" && !opt("player", "");
 fs.mkdirSync(out, { recursive: true });
 // Mission goals in order: send the army to `goal` (a named actor) until objective `until` is complete (a number), until
 // the mission event `until` has fired (a string), or for `minutes` of game time. `units` (a pattern of unit types) sends
@@ -70,7 +71,7 @@ for (const difficulty of diffs.split(",")) {
       await page.evaluate((m) => { window.game.wantFactions(null, m.faction); window.game.prepare(m.id); }, spec);
       await page.waitForFunction((id) => { const s = window.store.getState(); return s.preparedMap === id && s.sheets.uploaded >= s.sheets.total; }, mission, { timeout: 600000 });
       // Run 1 uses the campaign's seed; later runs vary it (the co-commander's timing varies too).
-      const scenario = { map: spec.id, mission: spec.id, seed: 2025 + run, players: [{ slot: spec.slot, faction: spec.faction, color: "2A6FDB" }],
+      const scenario = { map: spec.id, mission: spec.id, seed: Number(opt("seed", "2026")) + run - 1, players: [{ slot: spec.slot, faction: spec.faction, color: "2A6FDB" }],
         options: { difficulty, startingcash: "10000", fog: "True", explored: "False" } };
       await page.evaluate((s) => window.game.start(JSON.stringify(s)), scenario);
       await page.waitForFunction((id) => window.store.getState().phase === "playing" && window.store.getState().ui?.mission?.id === id, mission, { timeout: 600000 });
@@ -79,6 +80,8 @@ for (const difficulty of diffs.split(",")) {
       const state = () => page.evaluate(() => { const s = window.store.getState(); return { phase:s.phase,error:s.error, win: ["Won", "Lost"].includes(s.ui?.win) ? s.ui.win : "", tick: s.ui?.tick ?? 0, cash: s.ui?.cash ?? 0, m: s.ui?.mission,
         feed: s.cc.feed.map((f) => ({ id: f.id, kind: f.kind, text: f.text, state: f.state })) }; });
       let s = await state(), lastMin = -1, lastPush = 0, step = 0, stepStart = 0, seen = 0, applied = 0, refused = 0, line = "";
+      const player=opt('player','')==='water'?new WaterPlayer(fs.readFileSync(opt('map-yaml',path.join('content/maps',mission,'map.yaml')),'utf8')):null;
+      let playerTick=-1000;
       const timeline = [], lines = [], refusals = [];
       const read = () => {
         for (const f of s.feed.filter((x) => x.id > seen)) {
@@ -92,9 +95,14 @@ for (const difficulty of diffs.split(",")) {
       const stepDone = (p) => typeof p.until === "string" ? (s.m.events ?? []).includes(p.until)
         : p.minutes ? s.tick - stepStart >= p.minutes * 1500 : s.m.objectives[p.until]?.status === "complete";
       while (!s.win && s.tick < limitMinutes * 1500) {
-        await page.waitForTimeout(2000);
+        await page.waitForTimeout(player?200:2000);
         s = await state();
         if(s.phase==='error')throw Error(s.error||'Simulation entered error phase');
+        if(player&&s.tick-playerTick>=125&&!s.win){
+          const obs=await page.evaluate(async()=>{const {spatial,...o}=await window.game.client.adviserObserve();return o;});
+          await player.tick(obs,s.m,commands=>page.evaluate(commands=>window.game.client.adviserExecute(`campaign-player-${crypto.randomUUID()}`,commands),commands));
+          playerTick=s.tick;
+        }
         read();
         while (step < plan.length && stepDone(plan[step])) { step++; stepStart = s.tick; }
         if (step < plan.length && Date.now() - lastPush > 8000) {
@@ -127,6 +135,10 @@ for (const difficulty of diffs.split(",")) {
           const entry = `${min} min $${s.cash}: ${s.m.objectives.map((o) => o.status[0] + (o.progress && !o.progress.includes("seconds") ? `(${o.progress})` : "")).join(" ")} | ${applied} orders | ${line}`;
           timeline.push(entry); console.log(`  ${tag} ${entry}`);
           fs.writeFileSync(path.join(out, `${mission}-checkpoint.json`), JSON.stringify({tick:s.tick,cash:s.cash,mission:s.m,applied,refused,line,errors},null,2));
+          if(argv.includes('--diagnostic-samples')) {
+            const sample=await page.evaluate(async()=>{const {spatial,...observation}=await window.game.client.adviserObserve();const memory=window.game.cc.mission?.memory;return {observation,memory:memory?{offset:memory.offset,named:[...memory.named],heading:[...memory.heading],search:[...memory.search],voyages:[...memory.voyages]}:null};});
+            fs.writeFileSync(path.join(out,`${mission}-minute-${min}.json`),JSON.stringify(sample,null,2));
+          }
         }
       }
       s = await state(); read();
@@ -140,7 +152,7 @@ for (const difficulty of diffs.split(",")) {
       const done = s.m.objectives.filter((o) => o.status === "complete").length;
       const observation = await page.evaluate(() => window.game.client.adviserObserve());
       fs.writeFileSync(path.join(out, `${mission}-${difficulty}-${run}-observation.json`), JSON.stringify(observation, null, 2));
-      const result = { mission, difficulty, run, seed: scenario.seed, speed, progressSaved, win: s.win || "undecided", minutes: +(s.tick / 1500).toFixed(2), cash: s.cash,
+      const result = { mission, difficulty, run, seed: scenario.seed, speed, player:player?'scripted-water':'Auto',playerLines:player?.lines,playerReceipts:player?.receipts, progressSaved, win: s.win || "undecided", minutes: +(s.tick / 1500).toFixed(2), cash: s.cash,
         complete: `${done}/${s.m.objectives.length}`, events: s.m.events ?? [], applied, refused, refusals,
         objectives: s.m.objectives.map((o) => `${o.status}: ${o.text} ${o.progress ?? ""}`.trim()), timeline, lines, errors };
       results.push(result);
