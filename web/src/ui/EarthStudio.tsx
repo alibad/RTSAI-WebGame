@@ -21,6 +21,7 @@ import { researchSites, type Place, type Site } from "../earth-research";
 import { overpassFailure, terrainBox, terrainFeatures, terrainQuery } from "@site/lib/earth-evidence";
 import { regionalGeography } from "@site/lib/earth-region";
 import type { Map as MapLibreMap, Marker } from "maplibre-gl";
+import { searchPlaces, type PlaceResult } from "../place-search";
 
 type DataSource = { setData(data: unknown): void };
 
@@ -65,7 +66,7 @@ async function overpass(query: string, signal?: AbortSignal) {
 }
 const box = (p: Place, radius: number) => terrainBox(p.lat, p.lon, radius);
 
-export function EarthStudio({ game, editor, close, mission }: { game: Game; editor: EditorController; close: () => void; mission: (m: MissionSpec) => void }) {
+export function EarthStudio({ game, editor, close, mission, play }: { game: Game; editor: EditorController; close: () => void; mission: (m: MissionSpec) => void; play: (map: string, you: string, enemy: string) => void }) {
   const setup = useStore((s) => s.setup);
   const mapEl = useRef<HTMLDivElement>(null);
   const map = useRef<MapLibreMap | null>(null);
@@ -75,6 +76,11 @@ export function EarthStudio({ game, editor, close, mission }: { game: Game; edit
   const [stage, setStage] = useState<"world" | "place" | "building" | "built">("world");
   const [place, setPlace] = useState<Place | null>(null);
   const [query, setQuery] = useState("");
+  const [results, setResults] = useState<PlaceResult[]>([]);
+  const [searching, setSearching] = useState(false);
+  const lookup = useRef<AbortController | null>(null);
+  const chooseArea = useRef<(p: Place) => void>(() => {});
+  const [basemap, setBasemap] = useState<"satellite" | "streets">("satellite");
   const [footprint, setFootprint] = useState(1);
   const [log, setLog] = useState<string[]>([]);
   const [sites, setSites] = useState<Site[]>([]);
@@ -94,31 +100,37 @@ export function EarthStudio({ game, editor, close, mission }: { game: Game; edit
   const fp = FOOTPRINTS[footprint];
   const say = (s: string) => setLog((l) => [...l, s]);
 
-  // The globe: satellite imagery, slowly turning until a place is picked.
+  // The globe stays still until the player explores it. Imagery is fetched only for the visible view.
   useEffect(() => {
     let disposed = false;
-    let spin = 0;
     void Promise.all([import("maplibre-gl"), import("maplibre-gl/dist/maplibre-gl.css")]).then(([lib]) => {
       if (disposed || !mapEl.current) return;
       const m = new lib.Map({
-        container: mapEl.current, center: [46, 23], zoom: 2.2, maxPitch: 70, attributionControl: { compact: true },
+        container: mapEl.current, center: [46, 23], zoom: 2.2, maxPitch: 70, attributionControl: false,
         style: {
           version: 8, projection: { type: "globe" },
-          sources: { sat: { type: "raster", tiles: [ESRI], tileSize: 256, maxzoom: 19, attribution: "Imagery © Esri, Maxar, Earthstar Geographics · Data © OpenStreetMap contributors, Wikipedia" } },
-          layers: [{ id: "sat", type: "raster", source: "sat", paint: { "raster-fade-duration": 250 } }],
+          sources: {
+            sat: { type: "raster", tiles: [ESRI], tileSize: 256, maxzoom: 19, attribution: "Imagery © Esri, Maxar, Earthstar Geographics" },
+            streets: { type: "raster", tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"], tileSize: 256, maxzoom: 19, attribution: '© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap contributors</a>' },
+          },
+          layers: [{ id: "sat", type: "raster", source: "sat", paint: { "raster-fade-duration": 250 } }, { id: "streets", type: "raster", source: "streets", layout: { visibility: "none" } }],
           sky: { "sky-color": "#0b1a2b", "horizon-color": "#3b77b0", "fog-color": "#0b1a2b", "atmosphere-blend": ["interpolate", ["linear"], ["zoom"], 0, 1, 5, 1, 8, 0] },
         },
       });
       map.current = m;
+      m.addControl(new lib.NavigationControl({ showCompass: false }), "bottom-left");
+      m.addControl(new lib.AttributionControl({ compact: false }), "bottom-left");
       const pin = document.createElement("div"); pin.className = "es-center-pin"; pin.title = "Drag to move the battlefield";
       marker.current = new lib.Marker({ element: pin, draggable: true }).setLngLat([46, 23]);
       marker.current.on("dragend", () => { const p = marker.current!.getLngLat(); moveArea.current(p.lat, p.lng); });
-      m.on("click", e => { if (stageRef.current === "place") moveArea.current(e.lngLat.lat, e.lngLat.lng); });
+      m.on("click", e => {
+        if (Math.abs(e.lngLat.lat) > 84) return;
+        if (stageRef.current === "place") moveArea.current(e.lngLat.lat, e.lngLat.lng);
+        if (stageRef.current === "world" && m.isStyleLoaded()) chooseArea.current({ name: "Picked on the map", lat: e.lngLat.lat, lon: ((e.lngLat.lng + 180) % 360 + 360) % 360 - 180 });
+      });
       m.on("load", () => { setReady(true); m.setPadding({ top: 260, bottom: 0, left: 0, right: 0 }); });
-      const turn = () => { if (!disposed && map.current && !map.current.isMoving() && stageRef.current === "world") { const c = map.current.getCenter(); c.lng += 0.03; map.current.jumpTo({ center: c }); } spin = requestAnimationFrame(turn); };
-      spin = requestAnimationFrame(turn);
-    });
-    return () => { disposed = true; cancelAnimationFrame(spin); marker.current?.remove(); map.current?.remove(); map.current = null; };
+    }).catch(() => { if (!disposed) setError("The world map could not load. Close the studio and try again."); });
+    return () => { disposed = true; marker.current?.remove(); map.current?.remove(); map.current = null; };
   }, []);
   const stageRef = useRef(stage);
   stageRef.current = stage;
@@ -169,9 +181,12 @@ export function EarthStudio({ game, editor, close, mission }: { game: Game; edit
   const go = (p: Place) => {
     const m = map.current;
     if (!m) return;
+    if (!Number.isFinite(p.lat) || !Number.isFinite(p.lon) || Math.abs(p.lat) > 84) { setError("Choose a place below 84° latitude so the battlefield fits on the map."); return; }
+    p = { ...p, lon: ((p.lon + 180) % 360 + 360) % 360 - 180 };
+    lookup.current?.abort(); setSearching(false); setResults([]);
     research.current?.abort(); building.current?.abort(); sidesEdited.current = false;
     setPlace(p); setStage("place"); setLog([]); setSites([]); setSite(null); setError(""); setBuilt(null); setForces(null);
-    say(`Flying to <b>${p.name}</b>`);
+    say("Battlefield location selected");
     const next = p.name === "Strait of Hormuz" ? FOOTPRINTS[5] : fp;
     if (p.name === "Strait of Hormuz") setFootprint(5);
     drawFootprint(p, next); fitArea(p, next);
@@ -179,6 +194,13 @@ export function EarthStudio({ game, editor, close, mission }: { game: Game; edit
     if (m.getLayer("built")) m.removeLayer("built");
     if (m.getSource("built")) m.removeSource("built");
   };
+  chooseArea.current = go;
+
+  useEffect(() => {
+    if (!ready || !map.current) return;
+    map.current.setLayoutProperty("sat", "visibility", basemap === "satellite" ? "visible" : "none");
+    map.current.setLayoutProperty("streets", "visibility", basemap === "streets" ? "visible" : "none");
+  }, [basemap, ready]);
 
   // Site research enriches missions in the background. It never gates the build action or its terrain request.
   const nationIds = nations.map(n => n.id).join(",");
@@ -208,18 +230,22 @@ export function EarthStudio({ game, editor, close, mission }: { game: Game; edit
     return () => controller.abort();
   }, [place, fp.radius, nationIds]); // Helpers use the current map ref; callbacks are scoped to this lookup.
 
-  useEffect(() => () => { research.current?.abort(); building.current?.abort(); }, []);
+  useEffect(() => () => { research.current?.abort(); building.current?.abort(); lookup.current?.abort(); }, []);
 
   const search = async () => {
     const q = query.trim();
-    if (!q) return;
-    const hit = SUGGEST.find((s) => s.name.toLowerCase().includes(q.toLowerCase()));
-    if (hit) return go(hit);
+    if (!q || searching) return;
+    lookup.current?.abort();
+    const controller = new AbortController(); lookup.current = controller;
+    setSearching(true); setResults([]); setError("");
     try {
-      const r = await (await fetch(`https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&q=${encodeURIComponent(q)}`)).json();
-      if (!r.length) { setError(`Couldn't find “${q}”. Try a city or landmark.`); return; }
-      void go({ name: String(r[0].display_name).split(",").slice(0, 2).join(","), lat: +r[0].lat, lon: +r[0].lon });
-    } catch { setError("The place search is offline. Pick a suggestion."); }
+      const found = await searchPlaces(q, controller.signal);
+      if (!controller.signal.aborted) {
+        setResults(found);
+        if (!found.length) setError(`Couldn't find “${q}”. Try a city or landmark, or pick a point on the map.`);
+      }
+    } catch { if (!controller.signal.aborted) setError("Place search is unavailable. Retry, pick a suggestion, or choose directly on the map."); }
+    finally { if (lookup.current === controller) setSearching(false); }
   };
 
   /** The place's roads, water, land cover and buildings, compiled into a map by the website's Earth compiler. */
@@ -305,22 +331,31 @@ export function EarthStudio({ game, editor, close, mission }: { game: Game; edit
   };
 
   return (
-    <div className="es-root" data-stage={stage}>
+    <div className="es-root" data-stage={stage} role="region" aria-label="Earth battlefield studio">
       <div ref={mapEl} className="es-map" />
       <button type="button" className="es-close hud-tool" aria-label="Close" onClick={close}><X /></button>
+      <div className="es-basemap" role="group" aria-label="Map appearance">
+        <button type="button" aria-pressed={basemap === "satellite"} disabled={!ready} onClick={() => setBasemap("satellite")}>Satellite</button>
+        <button type="button" aria-pressed={basemap === "streets"} disabled={!ready} onClick={() => setBasemap("streets")}>Street map</button>
+      </div>
       {stage === "world" && (
         <section className="es-world">
           <h1>Where do you want to <em>fight</em>?</h1>
-          <form className="es-search" onSubmit={(e) => { e.preventDefault(); void search(); }}>
+          <form className="es-search" role="search" aria-label="Place search" aria-busy={searching} onSubmit={(e) => { e.preventDefault(); void search(); }}>
             <Search size={20} aria-hidden="true" />
-            <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Any city, base, coast or strait" aria-label="Find a place" data-testid="es-search" />
-            <GameButton type="submit" variant="primary" disabled={!ready}>Fly there</GameButton>
+            <input value={query} onChange={(e) => { lookup.current?.abort(); setSearching(false); setQuery(e.target.value); setResults([]); setError(""); }} placeholder="Search a city, landmark or coast" aria-label="Find a place" data-testid="es-search" maxLength={160} />
+            <GameButton type="submit" variant="primary" disabled={!ready || searching || !query.trim()}>{searching ? "Searching…" : "Search"}</GameButton>
           </form>
+          {searching && <p className="es-map-hint" role="status">Searching for places…</p>}
+          {results.length > 0 && <div className="es-results" aria-label="Place search results"><p role="status">Choose a place · {results.length} results</p><ul>{results.map((r, i) => <li key={`${r.lat}:${r.lon}:${i}`}><button type="button" onClick={() => go({ name: r.name, lat: r.lat, lon: r.lon })}><MapPin size={18} aria-hidden="true" /><span><b>{r.name}</b><small>{r.detail}</small></span></button></li>)}</ul></div>}
+          <p className="es-map-hint">Or explore the world and click a point. Zoom in to choose the exact area.</p>
+          <button type="button" className="es-center-choice" disabled={!ready} onClick={() => { const c = map.current!.getCenter(); chooseArea.current({ name: "Picked on the map", lat: c.lat, lon: c.lng }); }}>Choose view center</button>
           <div className="es-chips">
             {SUGGEST.map((s) => <button key={s.name} type="button" onClick={() => void go(s)} disabled={!ready} data-place={s.name}><i />{s.name}</button>)}
             <button type="button" onClick={() => void go(SURPRISE[Math.floor(Math.random() * SURPRISE.length)])} disabled={!ready}><Dices size={14} />Surprise me</button>
           </div>
-          {error && <p className="ed-error">{error}</p>}
+          {error && <p className="ed-error" role="alert">{error}</p>}
+          <small className="es-search-credit">Place search © OpenStreetMap contributors</small>
         </section>
       )}
       {place && stage !== "world" && (
@@ -377,25 +412,27 @@ export function EarthStudio({ game, editor, close, mission }: { game: Game; edit
               ))}
             </div>
             </div>
-            {error && <p className="ed-error">{error}</p>}
+            {error && <p className="ed-error" role="alert">{error}</p>}
             <footer>
-              {stage === "place" && <GameButton variant="primary" size="lg" icon={<Globe2 size={16} />} onClick={() => void build()} data-testid="es-build">Build battlefield</GameButton>}
+              {stage === "place" && <GameButton variant="primary" size="lg" icon={<Globe2 size={16} />} onClick={() => void build()} data-testid="es-build">Generate battlefield</GameButton>}
               {stage === "building" && <div className="es-scanning"><LoaderCircle className="menu-spin" size={16} />Building the battlefield…</div>}
               {stage === "built" && built && (
                 <div className="es-actions">
-                  {!built.coastal && <div className="es-mission">
+                  <div className="es-sides">
+                    <label><span>You</span><SearchSelect size="sm" value={fa} onValueChange={value => { sidesEdited.current = true; setFa(value); }} options={nationOptions} aria-label="Your nation" /></label>
+                    <label><span>Enemy AI</span><SearchSelect size="sm" value={fb} onValueChange={value => { sidesEdited.current = true; setFb(value); }} options={nationOptions} aria-label="Enemy nation" /></label>
+                  </div>
+                  <GameButton variant="primary" size="lg" icon={<Swords size={16} />} onClick={() => play(built.id, fa, fb)} data-testid="es-play">Play skirmish</GameButton>
+                  <small className="es-play-note">Start now against the AI. This map is also saved in your browser’s map library.</small>
+                  {!built.coastal && <details className="es-mission-extra"><summary>Or create a mission at this place</summary><div className="es-mission">
                     <span className="menu-eyebrow"><Swords size={12} /> Mission at {site?.name ?? place.name}</span>
-                    <div className="es-sides">
-                      <label><span>You</span><SearchSelect size="sm" value={fa} onValueChange={value => { sidesEdited.current = true; setFa(value); }} options={nationOptions} aria-label="Your nation" /></label>
-                      <label><span>Enemy AI</span><SearchSelect size="sm" value={fb} onValueChange={value => { sidesEdited.current = true; setFb(value); }} options={nationOptions} aria-label="Enemy nation" /></label>
-                    </div>
                     <div className="es-role" role="radiogroup" aria-label="Your role">
                       <button type="button" role="radio" aria-checked={youDefend} onClick={() => switchRole(true)}><Shield size={13} />You defend it</button>
                       <button type="button" role="radio" aria-checked={!youDefend} onClick={() => switchRole(false)}><Swords size={13} />You attack it</button>
                     </div>
                     {forces && forces.defender.id === (youDefend ? fa : fb) && forces.attacker.id === (youDefend ? fb : fa) && <p className="es-why">{forceName(forces.defender.id)} holds it: {forces.defender.why}. {forceName(forces.attacker.id)} attacks: {forces.attacker.why}.</p>}
                     <GameButton variant="primary" size="lg" icon={<Swords size={16} />} onClick={startMission} data-testid="es-mission">Start mission</GameButton>
-                  </div>}
+                  </div></details>}
                   {built.coastal && <p className="ed-tip">Regional terrain is ready. Open the editor to place forces and plan your scenario. The quick land-attack mission does not support this coastal map.</p>}
                   <GameButton variant={built.coastal ? "primary" : "secondary"} icon={<Pencil size={14} />} onClick={() => void editor.open({ map: built.id })} data-testid="es-edit">Edit this map</GameButton>
                 </div>

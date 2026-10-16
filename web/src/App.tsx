@@ -153,11 +153,12 @@ function simulatorMap(maps: { id: string; players: number }[]) {
 export default function App() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [game, setGame] = useState<Game | null>(null);
+  const [earthFirst, setEarthFirst] = useState(() => ["earth", "map-studio"].includes(new URLSearchParams(location.search).get("mode") ?? ""));
   const [mode, setMode] = useState<"home" | "skirmish" | "missions" | "simulator" | "editor">(() => {
     const mode = new URLSearchParams(location.search).get("mode");
     // The old Scenario workshop and the Studio's encounters open the battle simulator; the old map studio, the editor.
     return mode === "missions" ? "missions" : mode === "skirmish" ? "skirmish" : mode === "sandbox" || mode === "practice" || mode === "simulator" ? "simulator"
-      : mode === "map-studio" || mode === "editor" ? "editor" : "home";
+      : mode === "map-studio" || mode === "earth" || mode === "editor" ? "editor" : "home";
   });
   const phase = useStore((s) => s.phase);
   const uiHidden = useStore((s) => s.uiHidden);
@@ -227,6 +228,18 @@ export default function App() {
     setMode("home");
   };
   const exitEditor = () => { game?.editor?.close(); setMode("home"); };
+  const openEditor = (earth = false) => { setEarthFirst(earth); setMode("editor"); };
+  const playEarth = (id: string, you: string, enemy: string) => {
+    const setup = useStore.getState().setup;
+    const map = setup?.maps.find(m => m.id === id);
+    if (!game || !setup || !map || map.slots.length < 2) return;
+    game.editor?.close();
+    setMode("skirmish");
+    game.start(JSON.stringify({ map: id, seed: 42, players: [
+      { slot: map.slots[0], faction: you, color: "4F80FF" },
+      { slot: map.slots[1], faction: enemy, color: "FF4848", bot: setup.bots[0]?.type ?? "normal" },
+    ], options: { ...Object.fromEntries((setup.options ?? []).map(o => [o.id, o.default])), cheats: "False", "rtsai-cocommander": "True" } }));
+  };
   // A mission on the fly (the Earth studio): the battle simulator opens on the place's map with both sides placed.
   const startMission = (m: MissionSpec) => {
     useStore.getState().set({ pendingMission: m });
@@ -289,10 +302,10 @@ export default function App() {
     <div className="fixed inset-0" data-playing={playing || undefined} style={simEditing ? ({ "--sidebar-w": "340px" } as React.CSSProperties) : editorMode ? ({ "--sidebar-w": "0px" } as React.CSSProperties) : undefined}>
       <canvas ref={canvasRef} className="stage" tabIndex={0} style={{ right: playing ? "var(--sidebar-w)" : 0, width: playing ? "calc(100% - var(--sidebar-w))" : "100%", visibility: playing ? "visible" : "hidden" }} />
       {game && playing && !uiHidden && !editorMode && (sandboxMode ? <Simulator game={game} exit={exitSimulator} /> : <Hud game={game} />)}
-      {game && editorMode && phase !== "boot" && <MapEditor game={game} exit={exitEditor} test={testInSimulator} mission={startMission} />}
+      {game && editorMode && phase !== "boot" && <MapEditor game={game} exit={exitEditor} test={testInSimulator} mission={startMission} play={playEarth} earthFirst={earthFirst} />}
       {game && phase === "setup" && !sandboxMode && !editorMode && <>
         {mode !== "skirmish" && <div className="menu-utility" data-ui-sfx><MatchLibrary game={game} /><GameSettings game={game} /><Feedback game={game} /></div>}
-        {mode === "home" ? <MainMenu onSkirmish={() => setMode("skirmish")} onCampaign={() => setMode("missions")} onSimulator={() => setMode("simulator")} onEditor={() => setMode("editor")} /> : <>
+        {mode === "home" ? <MainMenu onSkirmish={() => setMode("skirmish")} onCampaign={() => setMode("missions")} onSimulator={() => setMode("simulator")} onEditor={() => openEditor()} onEarth={() => openEditor(true)} /> : <>
           {mode === "missions" ? <Missions game={game} /> : <Setup game={game} utilities={<><MatchLibrary game={game} /><GameSettings game={game} /><Feedback game={game} /></>} />}
           <nav className="menu-subnav scr-subnav" aria-label="Game modes" data-ui-sfx>
             <button type="button" onClick={() => setMode("home")} className="menu-subnav-back" aria-label="Main menu"><ArrowLeft size={15} aria-hidden="true" /><span>Main menu</span></button>
@@ -302,7 +315,7 @@ export default function App() {
             </div>
             {/* Icons only on narrow screens (screens.css .menu-subnav-studio): the row also holds Multiplayer. */}
             <button type="button" className="menu-subnav-studio" aria-label="Battle simulator" title="Battle simulator" onClick={() => setMode("simulator")}><Crosshair size={15} aria-hidden="true" /><span>Battle simulator</span></button>
-            <button type="button" className="menu-subnav-studio" aria-label="Map editor" title="Map editor" onClick={() => setMode("editor")}><MapIcon size={15} aria-hidden="true" /><span>Map editor</span></button>
+            <button type="button" className="menu-subnav-studio" aria-label="Map editor" title="Map editor" onClick={() => openEditor()}><MapIcon size={15} aria-hidden="true" /><span>Map editor</span></button>
           </nav>
         </>}
       </>}

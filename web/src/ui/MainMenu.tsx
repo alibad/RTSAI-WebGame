@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from "react";
-import { BookOpen, Check, ChevronRight, Crosshair, LoaderCircle, Map as MapIcon, MonitorX, Swords, X } from "lucide-react";
+import { BookOpen, Check, ChevronRight, Crosshair, Globe2, LoaderCircle, Map as MapIcon, MonitorX, Swords, X } from "lucide-react";
 import { EA_NOTICE } from "../legal";
 import { useStore } from "../store";
 import { gpuInfo } from "../gpu";
@@ -45,7 +45,7 @@ function GpuNotice() {
   );
 }
 
-export function MainMenu({ onSkirmish, onCampaign, onSimulator, onEditor }: { onSkirmish: () => void; onCampaign: () => void; onSimulator: () => void; onEditor: () => void }) {
+export function MainMenu({ onSkirmish, onCampaign, onSimulator, onEditor, onEarth }: { onSkirmish: () => void; onCampaign: () => void; onSimulator: () => void; onEditor: () => void; onEarth: () => void }) {
   const profile = useStore((s) => s.profile);
   const current = profile === "public-classic" ? "classic" : "isometric";
   const [switching, setSwitching] = useState<View["id"] | null>(null);
@@ -95,6 +95,7 @@ export function MainMenu({ onSkirmish, onCampaign, onSimulator, onEditor }: { on
           <MenuCard wide title="Battle simulator" text="Any map, any forces: drop them in, command one side against the AI." icon={<Crosshair size={20} />} onClick={onSimulator} />
           <MenuCard wide title="Map editor" text="Open, paint and build maps, make random ones, or turn any real place into a battlefield." icon={<MapIcon size={20} />} onClick={onEditor} />
         </div>
+        <button type="button" className="menu-earth" onClick={onEarth}><Globe2 size={18} aria-hidden="true" /><span><b>Play a real place</b><small>Search the world, choose an area, generate and play.</small></span><ChevronRight size={18} aria-hidden="true" /></button>
         <p data-testid="ea-notice" className="menu-notice">{EA_NOTICE}</p>
         <p className="menu-notice"><a href="credits.html" target="_blank" rel="noopener">Credits &amp; licenses</a></p>
       </main>

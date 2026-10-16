@@ -2,6 +2,8 @@
 // it (OpenStreetMap operators, Wikipedia articles: "hosts the United States Air Force") and the country it is in,
 // mapped onto the game's nations, then the likely threat: that side's regional rival. Both stay editable.
 
+import { geocode } from "./place-search";
+
 export interface Force { id: string; why: string }
 
 /** Forces named in text: the first pattern that matches gives the nation. */
@@ -70,7 +72,7 @@ export function inferForces(country: string | null, sources: { text: string; fro
 /** The country code of a place (OpenStreetMap's Nominatim), or null offshore or offline. */
 export async function countryAt(lat: number, lon: number, signal?: AbortSignal): Promise<string | null> {
   try {
-    const r = await (await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=3&lat=${lat}&lon=${lon}`, { signal: AbortSignal.any([...(signal ? [signal] : []), AbortSignal.timeout(12000)]) })).json();
+    const r = await geocode<{ address?: { country_code?: string } }>("reverse", { zoom: "3", lat: String(lat), lon: String(lon) }, signal);
     return r?.address?.country_code ?? null;
   } catch { return null; }
 }

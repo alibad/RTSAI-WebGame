@@ -40,10 +40,10 @@ const SIZES = [64, 96, 128];
 /** The water brush's half-widths in cells. */
 const WATER_WIDTHS: [number, string][] = [[2, "Stream"], [3, "River"], [5, "Lake"]];
 
-function StartScreen({ game, editor, mission }: { game: Game; editor: EditorController; mission: (m: MissionSpec) => void }) {
+function StartScreen({ game, editor, mission, play, earthFirst }: { game: Game; editor: EditorController; mission: (m: MissionSpec) => void; play: (map: string, you: string, enemy: string) => void; earthFirst: boolean }) {
   const st = useStore((s) => s.editor)!;
   const [size, setSize] = useState(96);
-  const [earth, setEarth] = useState(false);
+  const [earth, setEarth] = useState(earthFirst);
   const file = useRef<HTMLInputElement>(null);
   const upload = async (f: File) => {
     try {
@@ -54,7 +54,7 @@ function StartScreen({ game, editor, mission }: { game: Game; editor: EditorCont
   return (
     <div className="scr-root ed-start" data-ui-sfx>
       <ScreenBackdrop image="menu/backdrop.webp" />
-      <main className="scr-content ed-start-body">
+      <main className="scr-content ed-start-body" inert={earth} aria-hidden={earth || undefined}>
         <header className="scr-head"><span className="menu-eyebrow">Build a battlefield</span><h1>Map editor</h1></header>
         {st.error && <p className="ed-error" role="alert">{st.error}</p>}
         <section className="ed-new" aria-label="New map">
@@ -77,7 +77,7 @@ function StartScreen({ game, editor, mission }: { game: Game; editor: EditorCont
         </section>
         {st.opening && <div className="ed-opening" role="status"><span className="spinner" />{st.opening === "random" ? "Making a random map…" : "Opening the map…"}</div>}
       </main>
-      {earth && <EarthStudio game={game} editor={editor} close={() => setEarth(false)} mission={mission} />}
+      {earth && <EarthStudio game={game} editor={editor} close={() => setEarth(false)} mission={mission} play={play} />}
     </div>
   );
 }
@@ -214,7 +214,7 @@ function Editing({ game, editor, test }: { game: Game; editor: EditorController;
   );
 }
 
-export function MapEditor({ game, exit, test, mission }: { game: Game; exit: () => void; test: (map: string) => void; mission: (m: MissionSpec) => void }) {
+export function MapEditor({ game, exit, test, mission, play, earthFirst = false }: { game: Game; exit: () => void; test: (map: string) => void; mission: (m: MissionSpec) => void; play: (map: string, you: string, enemy: string) => void; earthFirst?: boolean }) {
   const [editor] = useState(() => (game.editor ??= new EditorController(game)));
   const st = useStore((s) => s.editor);
   const phase = useStore((s) => s.phase);
@@ -233,7 +233,7 @@ export function MapEditor({ game, exit, test, mission }: { game: Game; exit: () 
   const editing = !!st.map && phase === "playing";
   return (
     <div className="ed-root" style={{ "--ed-palette-w": "300px" } as CSSProperties}>
-      {editing ? <Editing game={game} editor={editor} test={test} /> : <StartScreen game={game} editor={editor} mission={mission} />}
+      {editing ? <Editing game={game} editor={editor} test={test} /> : <StartScreen game={game} editor={editor} mission={mission} play={play} earthFirst={earthFirst} />}
       {!editing && <nav className="menu-subnav scr-subnav" aria-label="Map editor" data-ui-sfx>
         <button type="button" onClick={exit} className="menu-subnav-back" aria-label="Main menu"><ArrowLeft size={15} aria-hidden="true" /><span>Main menu</span></button>
       </nav>}
