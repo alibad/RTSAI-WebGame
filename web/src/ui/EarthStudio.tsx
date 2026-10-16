@@ -90,6 +90,7 @@ export function EarthStudio({ game, editor, close, mission, play }: { game: Game
   const [siteStatus, setSiteStatus] = useState<SiteStatus | null>(null);
   const [siteRefresh, setSiteRefresh] = useState(0);
   const consumedRefresh = useRef(0);
+  const previousSiteArea = useRef("");
   const [knownSites, setKnownSites] = useState<CoreSite[]>([]);
   const [datasetVersion, setDatasetVersion] = useState("");
   const [catalogReady, setCatalogReady] = useState(false);
@@ -253,7 +254,10 @@ export function EarthStudio({ game, editor, close, mission, play }: { game: Game
     const controller = new AbortController(); research.current = controller;
     const { signal } = controller;
     let found: Site[] = [], country: string | null = null;
-    setScanning(true); setSites([]); setSite(null); setSitePage(1); setSiteStatus(null);
+    const areaKey = `${place.lat}:${place.lon}:${fp.radius}`;
+    setScanning(true);
+    if (previousSiteArea.current !== areaKey) { setSites([]); setSite(null); setSitePage(1); setSiteStatus(null); }
+    previousSiteArea.current = areaKey;
     const infer = () => {
       if (signal.aborted) return;
       const sources = found.map(s => ({ text: [s.name, s.operator, s.extract].filter(Boolean).join(". "), from: `${s.source}: ${s.name}` }));

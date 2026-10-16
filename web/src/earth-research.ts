@@ -28,7 +28,7 @@ export async function researchSites(place: Place, radius: number, options: {
     const list = nearby(known, place, radius); update(list); options.known?.(known);
     options.status?.({ count: list.length, storage: sitesAreDurable() ? "browser" : "session", dataset: version, updatedAt: Math.max(0, ...list.map(s => s.updatedAt ?? 0)), refreshing });
   };
-  publish(true);
+  if (known.length) publish(true);
   const [packaged, saved] = await Promise.all([packagedSites(requested, options.force), savedSiteRecords<AreaSnapshot>("area:")]);
   if (signal.aborted) return;
   version = packaged.catalog.manifest?.version ?? version;
