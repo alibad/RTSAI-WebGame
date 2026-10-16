@@ -25,7 +25,7 @@ static class EditorResourcesTest
 		Brush("Gems"); Pointer("down", start);
 		using (var up = JsonDocument.Parse(Pointer("up", start)))
 			Check(up.RootElement.GetProperty("placement").GetProperty("added").GetInt32() == 1, "Gem click must report a changed tile");
-		Check(map.Resources[start].Type == 2, "Gem click must write Gems, not Ore");
+		Check(map.Resources[start].Type == 2, $"Gem click expected {start}; got {map.Resources[start].Type}; placed: {string.Join(';', map.AllCells.Where(c => map.Resources[c].Type != 0).Select(c => $"{c}={map.Resources[c].Type}"))}; zoom {SimHost.WorldRenderer.Viewport.Zoom}");
 		EditorHost.Call("{\"op\":\"undo\"}"); Check(map.Resources[start].Type == 0, "Undo must remove the clicked gem");
 		EditorHost.Call("{\"op\":\"redo\"}"); Check(map.Resources[start].Type == 2, "Redo must restore the gem");
 		EditorHost.Call("{\"op\":\"undo\"}");
