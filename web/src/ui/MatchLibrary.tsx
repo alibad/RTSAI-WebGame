@@ -91,8 +91,8 @@ export function keepRecord(record: MatchRecord) {
 /** Starts a save: resumed where it was saved, or (readonly) its replay from the start. Returns why it cannot. */
 export async function startRecord(game: Game, record: MatchRecord, readonly: boolean): Promise<string> {
   const profile = useStore.getState().profile;
-  if (record.profile !== profile) return "Switch to this save's content profile before loading it.";
-  if (!record.identity || record.identity !== await buildIdentity(profile, runtime())) return "This save requires its original simulator and content build.";
+  if (record.profile !== profile) return `This match was saved in the ${record.profile === "public-classic" ? "Classic / top-down" : "Isometric"} view. Switch views to open it.`;
+  if (!record.identity || record.identity !== await buildIdentity(profile, runtime())) return "This save comes from a different game version and cannot be opened here. Your saved file has been kept.";
   setReplaySpeed(game, 1);
   const position = readonly ? 0 : record.tick;
   game.start(JSON.stringify({ ...record.scenario, webReplay: { log: record.log, tick: position, readonly, end: record.tick, groups: record.groups, selection: record.selection, view: record.view } }), readonly);
@@ -230,7 +230,7 @@ export function MatchLibrary({ game, variant = "menu" }: { game: Game; variant?:
       const record: MatchRecord = { ...rest, id: crypto.randomUUID(), ...(typeof thumb === "string" && thumb.startsWith("data:image/") ? { thumb } : {}) };
       keepRecord(record);
       setFresh(record.id);
-    } catch (error) { setImportError(error instanceof Error && error.message ? error.message : "That file is not a saved match."); }
+    } catch (error) { setImportError(error instanceof Error && error.message.startsWith("This device") ? error.message : "That file is not a saved RTS AI match. Choose a file exported from Saves & replays."); }
   }
 
   const scenario = parseScenario(game.scenarioJson);
@@ -249,6 +249,7 @@ export function MatchLibrary({ game, variant = "menu" }: { game: Game; variant?:
         <FilePickButton accept="application/json,.json" variant="ghost" size="sm" icon={<Upload size={14} />} onFile={(f) => void importFile(f)}>Import</FilePickButton>
       </div>
     </>}>
+      <p className="settings-hint">Saves stay in this browser on this device. Export a save to keep a separate copy or move it to another device.</p>
       {canSave && <section className="lib-current" aria-label="Current match">
         <div className="lib-current-thumb">
           {live ? <img src={live} alt="" /> : <Swords size={26} />}

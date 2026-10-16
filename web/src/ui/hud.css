@@ -162,6 +162,7 @@
 .hud-rotate { position: absolute; inset: 0; z-index: 40; display: grid; place-items: center; background: radial-gradient(ellipse at 50% 45%, #182016, #070907 70%); }
 .hud-rotate div { display: flex; flex-direction: column; align-items: center; gap: 16px; color: var(--hud-gold); font-size: 15px; font-weight: 800; letter-spacing: .2em; text-transform: uppercase; }
 .hud-rotate svg { animation: hud-tilt 2.4s ease-in-out infinite; }
+.hud-rotate p { max-width: 28ch; margin: 0; text-align: center; font-size: 13px; font-weight: 400; letter-spacing: 0; text-transform: none; color: #b9c0ad; }
 @keyframes hud-tilt { 0%, 30% { transform: rotate(0); } 55%, 85% { transform: rotate(-90deg); } }
 
 /* ------------------------------------------------------------------ saves & replays */
@@ -703,6 +704,7 @@
 .sim-side-text small { overflow: hidden; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; color: var(--muted-foreground); }
 .sim-row { display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 8px; }
 .sim-row-label { font-size: 11px; color: var(--muted-foreground); }
+.sim-field-label { margin: 4px 0 -4px; font-size: 11px; color: var(--muted-foreground); }
 .sim-kinds { display: grid; grid-template-columns: repeat(6, 1fr); gap: 2px; }
 .sim-kinds button { display: grid; height: 34px; place-items: center; border-radius: 4px; color: var(--muted-foreground); transition: background .15s, color .15s; }
 .sim-kinds button span { display: none; }

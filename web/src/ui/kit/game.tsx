@@ -1,4 +1,5 @@
 import { useEffect, useRef, type ButtonHTMLAttributes, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 
 // The game's own UI kit: every menu, dialog and panel is built from these so they share one look (ui/kit/game.css):
@@ -23,19 +24,30 @@ export function GameDialog({ title, eyebrow, onClose, footer, size = "md", label
   title: ReactNode; eyebrow?: string; onClose: () => void; footer?: ReactNode; size?: "sm" | "md" | "lg" | "xl"; label?: string; children: ReactNode;
 }) {
   const close = useRef(onClose);
+  const panel = useRef<HTMLDivElement>(null);
   close.current = onClose;
   useEffect(() => {
+    const previous = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const focusable = () => [...(panel.current?.querySelectorAll<HTMLElement>('button:not(:disabled), input:not(:disabled), [tabindex="0"], a[href]') ?? [])].filter(el => el.getClientRects().length > 0);
+    focusable()[0]?.focus({ preventScroll: true });
     const onKey = (e: KeyboardEvent) => {
       // Portaled pickers get the first Escape; keep this dialog open while they restore focus.
-      if (e.key !== "Escape" || document.querySelector('[aria-haspopup="listbox"][aria-expanded="true"], [role="combobox"][aria-expanded="true"]')) return;
+      if (document.querySelector('[aria-haspopup="listbox"][aria-expanded="true"], [role="combobox"][aria-expanded="true"]')) return;
+      if (e.key === "Tab") {
+        const elements = focusable(), first = elements[0], last = elements.at(-1);
+        if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last?.focus(); }
+        else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first?.focus(); }
+        return;
+      }
+      if (e.key !== "Escape") return;
       e.stopPropagation(); close.current();
     };
     addEventListener("keydown", onKey, true);
-    return () => removeEventListener("keydown", onKey, true);
+    return () => { removeEventListener("keydown", onKey, true); if (previous?.isConnected) previous.focus({ preventScroll: true }); };
   }, []);
   const name = label ?? (typeof title === "string" ? title : undefined);
-  return (
-    <div className="gd-overlay" role="dialog" aria-modal="true" aria-label={name} data-ui-sfx onPointerDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+  return createPortal(
+    <div ref={panel} className="gd-overlay" role="dialog" aria-modal="true" aria-label={name} data-ui-sfx onPointerDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <div className={`gd-panel gd-${size}`}>
         <header className="gd-header">
           <div className="min-w-0">{eyebrow && <span className="menu-eyebrow">{eyebrow}</span>}<h2>{title}</h2></div>
@@ -44,7 +56,7 @@ export function GameDialog({ title, eyebrow, onClose, footer, size = "md", label
         <div className="gd-body">{children}</div>
         {footer && <footer className="gd-footer">{footer}</footer>}
       </div>
-    </div>
+    </div>, document.body
   );
 }
 

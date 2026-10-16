@@ -221,7 +221,7 @@ export function Missions({ game }: { game: Game }) {
           {loose.length > 0 && <section className="cp-arc" aria-label="More operations">
             <ol className="cp-missions">{loose.map((m) => missionButton(m, m.campaign))}</ol>
           </section>}
-          {!startable.length && <EmptyState icon={<Target size={20} />} title="No campaign in this game">This game profile has no compatible missions. Use the public RTS AI profile.</EmptyState>}
+          {!startable.length && <EmptyState icon={<Target size={20} />} title="No missions in this view">Choose Isometric from the main menu to play the campaign.</EmptyState>}
         </aside>
 
         {(mission || partOpen) && <section ref={detail} className="cp-detail" aria-label={partOpen ? partEyebrow : "Operation"}>

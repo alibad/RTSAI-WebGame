@@ -22,6 +22,7 @@ import { Flag } from "./Flag";
 import { exitReplay, replayOf, ReplayHud } from "./Replay";
 import { clock, matchKind, matchSides, matchTitle, parseScenario } from "./match-info";
 import { actorName, drawsActor, pictureKey } from "./actor-display";
+import { developerTools } from "../developer-tools";
 
 function HealthBar({ hp, max }: { hp: number; max: number }) {
   const f = max > 0 ? Math.max(0, Math.min(1, hp / max)) : 0;
@@ -199,7 +200,7 @@ function PauseMenu({ game }: { game: Game }) {
   const scenario = parseScenario(game.scenarioJson);
   const sides = matchSides(scenario, setup);
   const close = () => set({ menuOpen: false });
-  const kind = game.sandbox ? "Battle sandbox" : replay ? "Replay" : matchKind(scenario);
+  const kind = game.sandbox ? "Battle simulator" : replay ? "Replay" : matchKind(scenario);
   return (
     <div className="pm-overlay" role="dialog" aria-modal="true" aria-label="Game menu" data-ui-sfx onPointerDown={(e) => { if (e.target === e.currentTarget || (e.target as HTMLElement).classList.contains("pm-scrim")) close(); }}>
       <div className="pm-scrim" />
@@ -243,9 +244,9 @@ function PauseMenu({ game }: { game: Game }) {
           <Toggle on={music} label="Music" icon={<Music />} onChange={(v) => { game.audio.setMusicOn(v); setMusic(v); }} />
           {!touch && <Toggle on={lock} label="Keep the mouse in the game" icon={<MousePointer2 />} onChange={(v) => { game.setMouseLock(v); setLock(v); }} />}
         </div>
-        <div className="pm-foot">
+        {developerTools && <div className="pm-foot">
           <GameButton variant="ghost" size="sm" icon={<BarChart3 size={13} />} aria-pressed={statsOpen} onClick={() => set({ statsOpen: !statsOpen, menuOpen: false })}>Engine stats</GameButton>
-        </div>
+        </div>}
       </div>
     </div>
   );
@@ -309,7 +310,7 @@ function Stats({ game }: { game: Game }) {
 }
 
 /** Phones held upright: the battlefield needs landscape. */
-function RotateHint() {
+export function RotateHint({ onExit, exitLabel = "Back to menu" }: { onExit: () => void; exitLabel?: string }) {
   const [portrait, setPortrait] = useState(() => matchMedia("(pointer: coarse)").matches && window.innerWidth < window.innerHeight && window.innerWidth < 700);
   useEffect(() => {
     const r = () => setPortrait(matchMedia("(pointer: coarse)").matches && window.innerWidth < window.innerHeight && window.innerWidth < 700);
@@ -318,13 +319,15 @@ function RotateHint() {
   }, []);
   if (!portrait) return null;
   return (
-    <div className="hud-rotate">
+    <div className="hud-rotate" role="region" aria-label="Landscape view needed">
       <div>
         <svg viewBox="0 0 64 64" width={76} height={76} fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-label="Turn your device sideways">
           <rect x="20" y="8" width="24" height="44" rx="4" />
           <path d="M28 46h8" />
         </svg>
         Turn sideways
+        <p>The battlefield needs more room. Rotate your device to play.</p>
+        <GameButton onClick={onExit}>{exitLabel}</GameButton>
       </div>
     </div>
   );
@@ -370,7 +373,7 @@ export function Hud({ game }: { game: Game }) {
         <span className="hud-tool-slot" style={{ "--tip": '"Settings"' } as React.CSSProperties}><GameSettings game={game} /></span>
         <span className="hud-tool-slot" style={{ "--tip": '"Feedback"' } as React.CSSProperties}><Feedback game={game} compact /></span>
       </nav>
-      {statsOpen && <Stats game={game} />}
+      {developerTools && statsOpen && <Stats game={game} />}
       {!replay && <Console game={game} />}
       {paused && !menuOpen && !replay && !over && <PausedBanner />}
       <Sidebar game={game} />
@@ -379,7 +382,7 @@ export function Hud({ game }: { game: Game }) {
       {replay && <ReplayHud game={game} />}
       <HotkeySheet />
       {!replay && <Outcome game={game} />}
-      <RotateHint />
+      <RotateHint onExit={() => game.sandbox ? game.sandbox.backToEdit() : game.quit()} exitLabel={game.sandbox ? "Back to setup" : "Back to menu"} />
     </>
   );
 }

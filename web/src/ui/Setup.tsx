@@ -2,13 +2,14 @@
 // column), opponents (nation, AI type, personality, colour) and the lobby options the mod offers, then start. The
 // chosen map is prepared in the background while the player decides, so starting only builds the world.
 
-import { useEffect, useMemo, useState, type CSSProperties } from "react";
+import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from "react";
 import { Bot, Brain, Check, ChevronDown, Dices, Map as MapIcon, Plus, SlidersHorizontal, Swords, Users, X } from "lucide-react";
 import { MODERN_NATIONS as MODERN, PLAYER_COLORS as COLORS, SIDE_NAME, nationGroup } from "../sides";
 import { MapStrip, orderMaps } from "./MapStrip";
 import type { Game } from "../game";
 import { useStore } from "../store";
-import { GameSelect, OptionSelect, SearchSelect, type Option } from "../components/ui/fields";
+import { developerTools } from "../developer-tools";
+import { OptionSelect, SearchSelect, type Option } from "../components/ui/fields";
 import { EA_NOTICE } from "../legal";
 import { Flag, factionIdentity } from "./Flag";
 import { GameButton } from "./kit/game";
@@ -16,6 +17,17 @@ import { Brackets, ScreenBackdrop, Toggle } from "./screen-parts";
 
 // The options most players change; the rest stay one click away.
 const KEY_OPTIONS = ["startingcash", "startingunits", "fog", "explored", "crates", "techlevel"];
+const PLAYER_OPTIONS = new Set([...KEY_OPTIONS, "timelimit", "shortgame", "gamespeed", "factundeploy"]);
+const RULES: Record<string, { name: string; help: string }> = {
+  startingcash: { name: "Starting credits", help: "Money each player starts with." },
+  startingunits: { name: "Starting forces", help: "Units supplied at the start of the match." },
+  techlevel: { name: "Available technology", help: "Limits which units and buildings you can produce." },
+  explored: { name: "Reveal terrain at start", help: "See the map layout without scouting first." },
+  fog: { name: "Fog of war", help: "Hide enemies outside your units’ sight." },
+  crates: { name: "Supply crates", help: "Random pickups appear on the battlefield." },
+  shortgame: { name: "Base destruction victory", help: "Win without hunting down every remaining enemy unit." },
+  factundeploy: { name: "Pack up construction yards", help: "Turn your construction yard back into a mobile construction vehicle." },
+};
 
 /** A few of each modern nation's own units (their roster files, modern-factions/<nation>*.yaml), as their portraits. */
 const SIGNATURE: Record<string, string[]> = {
@@ -27,7 +39,12 @@ const SIGNATURE: Record<string, string[]> = {
   yemen: ["r2ymlr", "r2technical", "r2samad", "r2yrpg"],
   hezbollah: ["r2hzrockets", "r2hztechnical", "r2hzdrone", "r2hzrifle"],
 };
-const PERSONALITY_HINT = "Personalities direct up to eight idle combat units every five seconds using visible contacts. Difficulty and production follow the AI setting; no bonus resources.";
+const PERSONALITIES = [
+  { value: "standard", label: "Balanced", description: "Uses the normal computer opponent's tactics." },
+  { value: "raider", label: "Raider", description: "Sends idle troops to attack enemies it has spotted." },
+  { value: "sentinel", label: "Defender", description: "Keeps idle troops near home to intercept enemies." },
+  { value: "adaptive", label: "Cautious", description: "Regroups idle troops when outnumbered." },
+];
 
 interface Opponent { faction: string; bot: string; color: string; doctrine?: string }
 type SetupFaction = { id: string; name: string; side: string; description: string; random: boolean };
@@ -39,11 +56,10 @@ function load<T>(key: string, fallback: T): T {
 const isSwitch = (o: { values: { value: string }[] }) => o.values.length === 2 && o.values.every((v) => v.value === "True" || v.value === "False");
 const titleCase = (s: string) => s.toLowerCase().replace(/(^|\s)\S/g, (c) => c.toUpperCase());
 
-export function Setup({ game }: { game: Game }) {
+export function Setup({ game, utilities }: { game: Game; utilities: ReactNode }) {
   const setup = useStore((s) => s.setup)!;
   const previews = useStore((s) => s.previews);
   const prepared = useStore((s) => s.preparedMap);
-  const privateContent = useStore((s) => s.privateContent);
   const profile = useStore((s) => s.profile);
   const publicShot = useStore((s) => s.publicShot);
   const cc = useStore((s) => s.cc);
@@ -106,7 +122,8 @@ export function Setup({ game }: { game: Game }) {
       { slot: slots[0], faction, color },
       ...opponents.map((o, i) => ({ slot: slots[i + 1], faction: o.faction, bot: o.bot, color: o.color, doctrine: o.doctrine ?? "standard" })),
     ];
-    const scenario = { map: map.id, seed: Math.floor(Math.random() * 1e9), players, options };
+    const scenario = { map: map.id, seed: Math.floor(Math.random() * 1e9), players,
+      options: developerTools ? options : { ...options, cheats: "False", "rtsai-cocommander": "True" } };
     game.start(JSON.stringify(scenario));
   };
 
@@ -115,7 +132,7 @@ export function Setup({ game }: { game: Game }) {
   const loadingArt = prepared === map?.id && sheets.uploaded < sheets.total;
   const modern = factions.filter((f) => MODERN.has(f.id));
   const classic = factions.filter((f) => !MODERN.has(f.id));
-  const allOptions = setup.options ?? [];
+  const allOptions = (setup.options ?? []).filter(o => developerTools || PLAYER_OPTIONS.has(o.id));
   const shown = allOptions.filter((o) => moreOptions || KEY_OPTIONS.includes(o.id));
   const hidden = allOptions.filter((o) => !KEY_OPTIONS.includes(o.id)).length;
   const updateOpponent = (i: number, patch: Partial<Opponent>) => setOpponents(opponents.map((x, j) => (j === i ? { ...x, ...patch } : x)));
@@ -173,15 +190,16 @@ export function Setup({ game }: { game: Game }) {
             <div className="sk-rule-picks">
               {shown.filter((o) => !isSwitch(o)).map((o) => (
                 <label key={o.id} className="sk-rule">
-                  <span>{o.name}</span>
-                  <OptionSelect size="sm" aria-label={o.name} value={options[o.id] ?? o.default} onValueChange={(v) => setOptions({ ...options, [o.id]: v })}
-                    options={o.values.map((v) => ({ value: v.value, label: v.label }))} />
+                  <span>{RULES[o.id]?.name ?? o.name}</span>
+                  <OptionSelect size="sm" aria-label={RULES[o.id]?.name ?? o.name} value={options[o.id] ?? o.default} onValueChange={(v) => setOptions({ ...options, [o.id]: v })}
+                    options={o.values.map((v) => ({ value: v.value, label: o.id === "startingunits" && v.value === "none" ? "Construction vehicle only" : v.label }))} />
+                  {RULES[o.id] && <small className="sk-rule-help">{RULES[o.id].help}</small>}
                 </label>
               ))}
             </div>
             <div className="sk-rule-switches">
               {shown.filter(isSwitch).map((o) => (
-                <Toggle key={o.id} label={o.name} checked={(options[o.id] ?? o.default) === "True"} onChange={(on) => setOptions({ ...options, [o.id]: on ? "True" : "False" })} />
+                <Toggle key={o.id} label={<>{RULES[o.id]?.name ?? o.name}{RULES[o.id] && <small className="sk-rule-help">{RULES[o.id].help}</small>}</>} checked={(options[o.id] ?? o.default) === "True"} onChange={(on) => setOptions({ ...options, [o.id]: on ? "True" : "False" })} />
               ))}
             </div>
           </div>}
@@ -205,7 +223,7 @@ export function Setup({ game }: { game: Game }) {
                 </div>
               </div>
               <span className="sk-map-status" data-ready={ready} data-error={!!mapError} role="status">
-                {mapError ? <><i className="scr-dot" /> {mapError}</> : ready ? <><i className="scr-dot" /> Ready</> : <><span className="spinner" />{loadingArt ? `Loading art ${Math.round((100 * sheets.uploaded) / Math.max(1, sheets.total))}%` : "Preparing"}</>}
+                {mapError ? <><i className="scr-dot" /> {mapError}</> : ready ? <><i className="scr-dot" /> Ready</> : <><span className="spinner" />{loadingArt ? `Loading ${Math.round((100 * sheets.uploaded) / Math.max(1, sheets.total))}%` : "Preparing map"}</>}
               </span>
             </div>
             <MapStrip game={game} value={map.id} onChange={setMapId} players={opponents.length + 1} />
@@ -223,12 +241,8 @@ export function Setup({ game }: { game: Game }) {
                 <div className="sk-opp-fields">
                   <SearchSelect size="sm" value={o.faction} onValueChange={(v) => updateOpponent(i, { faction: v })} options={factionOptions} aria-label={`Opponent ${i + 1} nation`} />
                   <div className="sk-opp-row">
-                    <OptionSelect size="sm" value={o.bot} onValueChange={(v) => updateOpponent(i, { bot: v })} options={botOptions} aria-label={`Opponent ${i + 1} AI`} />
-                    <span className="sk-opp-personality" title={PERSONALITY_HINT}>
-                      <GameSelect aria-label={`Opponent ${i + 1} personality`} value={o.doctrine ?? "standard"} onChange={(e) => updateOpponent(i, { doctrine: e.target.value })}>
-                        <option value="standard">Standard native AI</option><option value="raider">Raider · pressure observed contacts</option><option value="sentinel">Sentinel · intercept near home</option><option value="adaptive">Adaptive · regroup when outnumbered</option>
-                      </GameSelect>
-                    </span>
+                    <label className="sk-opp-choice"><span>Difficulty</span><OptionSelect size="sm" value={o.bot} onValueChange={(v) => updateOpponent(i, { bot: v })} options={botOptions} aria-label={`Opponent ${i + 1} difficulty`} /></label>
+                    <label className="sk-opp-choice"><span>Tactics</span><OptionSelect size="sm" aria-label={`Opponent ${i + 1} tactics`} value={o.doctrine ?? "standard"} onValueChange={(doctrine) => updateOpponent(i, { doctrine })} options={PERSONALITIES} /></label>
                   </div>
                 </div>
                 {opponents.length > 1 && <button type="button" className="sk-opp-remove" aria-label="Remove opponent" onClick={() => setOpponents(opponents.filter((_, j) => j !== i))}><X size={15} /></button>}
@@ -241,17 +255,19 @@ export function Setup({ game }: { game: Game }) {
             )}
           </div>
 
+          {ccAvailable && <CoCommanderToggle game={game} enabled={cc.enabled} error={cc.error} />}
+
         </section>
 
         <p data-testid="ea-notice" className="scr-notice sk-notice">{EA_NOTICE}</p>
 
-        <div className="scr-command sk-command">
-          {!privateContent && !profile && <span className="scr-hint">Original game files not mounted</span>}
-          {ccAvailable && <CoCommanderToggle game={game} enabled={cc.enabled} error={cc.error} />}
-          <GameButton variant="primary" size="lg" className="scr-cta" icon={<Swords size={18} aria-hidden="true" />} onClick={start} disabled={!map}>Start</GameButton>
-        </div>
       </main>
-      <div className="scr-footbar" aria-hidden="true" />
+      <footer className="sk-footer" aria-label="Match actions">
+        <div className="sk-footer-inner">
+          <div className="menu-utility" data-ui-sfx>{utilities}</div>
+          <GameButton variant="primary" size="lg" className="scr-cta" icon={<Swords size={18} aria-hidden="true" />} onClick={start} disabled={!map || !!mapError}>Start match</GameButton>
+        </div>
+      </footer>
     </div>
   );
 }

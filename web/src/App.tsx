@@ -291,9 +291,9 @@ export default function App() {
       {game && playing && !uiHidden && !editorMode && (sandboxMode ? <Simulator game={game} exit={exitSimulator} /> : <Hud game={game} />)}
       {game && editorMode && phase !== "boot" && <MapEditor game={game} exit={exitEditor} test={testInSimulator} mission={startMission} />}
       {game && phase === "setup" && !sandboxMode && !editorMode && <>
-        <div className="menu-utility" data-ui-sfx><MatchLibrary game={game} /><GameSettings game={game} /><Feedback game={game} /></div>
+        {mode !== "skirmish" && <div className="menu-utility" data-ui-sfx><MatchLibrary game={game} /><GameSettings game={game} /><Feedback game={game} /></div>}
         {mode === "home" ? <MainMenu onSkirmish={() => setMode("skirmish")} onCampaign={() => setMode("missions")} onSimulator={() => setMode("simulator")} onEditor={() => setMode("editor")} /> : <>
-          {mode === "missions" ? <Missions game={game} /> : <Setup game={game} />}
+          {mode === "missions" ? <Missions game={game} /> : <Setup game={game} utilities={<><MatchLibrary game={game} /><GameSettings game={game} /><Feedback game={game} /></>} />}
           <nav className="menu-subnav scr-subnav" aria-label="Game modes" data-ui-sfx>
             <button type="button" onClick={() => setMode("home")} className="menu-subnav-back" aria-label="Main menu"><ArrowLeft size={15} aria-hidden="true" /><span>Main menu</span></button>
             <div className="scr-tabs">

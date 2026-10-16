@@ -1,6 +1,8 @@
 /// <reference types="vite/client" />
 
 interface ImportMetaEnv {
+  /** Explicitly enables engine diagnostics in the development server only. */
+  readonly VITE_DEVELOPER_TOOLS?: string;
   /** Developer server only: opt into local-model and scripted test hooks. Never enabled by production builds. */
   readonly VITE_COMPANION_DEV_TOOLS?: string;
   /** "public" in the static public build: the standalone game by default. */

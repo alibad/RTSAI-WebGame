@@ -55,8 +55,8 @@ function grouped<V extends string | number>(options: readonly Option<V>[]) {
   return groups
 }
 
-function OptionLabel({ option }: { option: Option<string | number> }) {
-  return <>{option.leading}<span className="min-w-0 truncate">{option.label}{option.description ? <small> · {option.description}</small> : null}</span></>
+function OptionLabel({ option, compact = false }: { option: Option<string | number>; compact?: boolean }) {
+  return <>{option.leading}<span className="min-w-0 truncate">{option.label}{!compact && option.description ? <small> · {option.description}</small> : null}</span></>
 }
 
 /** A short, fixed list: shadcn Select. */
@@ -66,7 +66,7 @@ export function OptionSelect<V extends string | number>({ value, onValueChange, 
   return (
     <Select<V> value={value} onValueChange={next => { if (next !== null) onValueChange(next as V) }} items={options.map(o => ({ value: o.value, label: o.label }))} disabled={disabled} modal={false}>
       <SelectTrigger id={id} size={size} className={className} {...aria}>
-        <SelectValue>{(current: V) => { const o = options.find(x => x.value === current); return o ? <OptionLabel option={o} /> : String(current ?? "") }}</SelectValue>
+        <SelectValue>{(current: V) => { const o = options.find(x => x.value === current); return o ? <OptionLabel option={o} compact /> : String(current ?? "") }}</SelectValue>
       </SelectTrigger>
       <SelectContent onClick={e => e.stopPropagation()} className={contentClassName}>
         {groups ? groups.map((g, i) => <React.Fragment key={g.value}>{i > 0 && <SelectSeparator />}<SelectGroup>{g.value && <SelectLabel>{g.value}</SelectLabel>}{g.items.map(item)}</SelectGroup></React.Fragment>) : options.map(item)}

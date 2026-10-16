@@ -111,7 +111,7 @@ export function Multiplayer({ game }: { game: Game }) {
   const everyoneReady = !!lobby && lobby.players.length >= 2 && lobby.players.every(p => p.ready);
   const hint = view.status || (!lobby ? '' : view.host
     ? lobby.players.length < 2 ? 'Send the invite. Friends join from their own browser, anywhere.' : everyoneReady ? 'Everyone is ready. Start when you like.' : 'Waiting for everyone to press Ready.'
-    : mine?.ready ? 'You’re ready. Waiting for the host to start.' : 'Pick your faction and team, then press Ready.');
+    : mine?.ready ? 'You’re ready. Waiting for the host to start.' : 'Pick your nation and team, then press Ready.');
   const close = () => { session.leave(); setOpen(false); };
   const copy = () => navigator.clipboard.writeText(link).then(() => { setCopied(true); setTimeout(() => setCopied(false), 2500); }, () => undefined);
   const choosing = view.stage === 'idle' || view.stage === 'stopped';
@@ -202,7 +202,7 @@ export function Multiplayer({ game }: { game: Game }) {
                   <div className="mp-player-main">
                     <div className="mp-player-title"><strong>Player {id}{me ? ' · You' : ''}</strong><span className={`mp-badge ${i === 0 ? 'host' : p.ready ? 'ready' : ''}`}>{i === 0 ? 'Host' : p.ready ? 'Ready' : 'Not ready'}</span></div>
                     <div className="mp-player-fields">
-                      <label className="mp-field"><span>Faction</span><SearchSelect aria-label={`Player ${id} faction`} className="mp-picker" placeholder="Search factions…" empty="No factions match. Try another name." disabled={!me} value={p.faction} options={factions} onValueChange={faction => session.setSeat({ faction })} /></label>
+                      <label className="mp-field"><span>Nation</span><SearchSelect aria-label={`Player ${id} faction`} className="mp-picker" placeholder="Search nations…" empty="No nations match. Try another name." disabled={!me} value={p.faction} options={factions} onValueChange={faction => session.setSeat({ faction })} /></label>
                       <label className="mp-field"><span>Team</span><OptionSelect aria-label={`Player ${id} team`} className="mp-picker" disabled={!me} value={p.team} options={teams} onValueChange={team => session.setSeat({ team })} /></label>
                     </div>
                   </div>
@@ -214,7 +214,7 @@ export function Multiplayer({ game }: { game: Game }) {
                 <div className="mp-player-main">
                   <div className="mp-player-title"><strong>AI {i + 1}</strong><span className="mp-badge">Computer</span></div>
                   <div className="mp-player-fields">
-                    <label className="mp-field"><span>Faction</span><SearchSelect aria-label={`AI ${i + 1} faction`} className="mp-picker" placeholder="Search factions…" empty="No factions match. Try another name." disabled={!view.host} value={a.faction} options={factions} onValueChange={faction => session.setAi(lobby.ai.map((x, j) => j === i ? { ...x, faction } : x))} /></label>
+                    <label className="mp-field"><span>Nation</span><SearchSelect aria-label={`AI ${i + 1} faction`} className="mp-picker" placeholder="Search nations…" empty="No nations match. Try another name." disabled={!view.host} value={a.faction} options={factions} onValueChange={faction => session.setAi(lobby.ai.map((x, j) => j === i ? { ...x, faction } : x))} /></label>
                     <label className="mp-field"><span>Difficulty</span><OptionSelect aria-label={`AI ${i + 1} difficulty`} className="mp-picker" disabled={!view.host} value={a.bot} options={bots} onValueChange={bot => session.setAi(lobby.ai.map((x, j) => j === i ? { ...x, bot } : x))} /></label>
                     <label className="mp-field"><span>Team</span><OptionSelect aria-label={`AI ${i + 1} team`} className="mp-picker" disabled={!view.host} value={a.team} options={teams} onValueChange={team => session.setAi(lobby.ai.map((x, j) => j === i ? { ...x, team } : x))} /></label>
                   </div>

@@ -8,6 +8,7 @@ import type { Game } from "../game";
 import { useStore } from "../store";
 import { GameButton } from "./kit/game";
 import { replayOf } from "./Replay";
+import { developerTools } from "../developer-tools";
 
 const time = (tick: number) => `${Math.floor(tick / 1500)}:${String(Math.floor(tick / 25) % 60).padStart(2, "0")}`;
 const KIND_ICONS: Record<string, React.ReactNode> = { power: <Zap size={14} />, loss: <Skull size={14} />, production: <Factory size={14} />, cash: <Coins size={14} /> };
@@ -84,10 +85,10 @@ export function CoachPanel({ game }: { game: Game }) {
               {([["Survivors", "alive"], ["Damage dealt", "damageDealt"], ["Shots fired", "shots"]] as const).map(([label, key]) =>
                 <tr key={key}><td>{label}</td><td>{lab.metrics!.sides[0][key]}</td><td>{c.previousPractice?.sides[0][key] ?? "—"}</td></tr>)}
             </tbody></table>}
-            <GameButton size="sm" icon={<RotateCcw size={14} />} onClick={() => { c.live(); game.start(game.scenarioJson); }}>Repeat same seed & forces</GameButton>
-            <p className="text-[11px] text-[#8f9886]">Previous results compare the same seed, forces and objective.</p>
+            <GameButton size="sm" icon={<RotateCcw size={14} />} onClick={() => { c.live(); game.start(game.scenarioJson); }}>Try this battle again</GameButton>
+            <p className="text-[11px] text-[#8f9886]">Replay the same battlefield and forces to compare your results.</p>
           </div>}
-          {!!lab?.doctrines.length && <div className="cv-section">
+          {developerTools && !!lab?.doctrines.length && <div className="cv-section">
             <h3><Radio />AI doctrine</h3>
             {lab.doctrines.map((d) => <div key={d.player} className="cv-doctrine"><b>{d.player} · {d.doctrine}</b><p>{d.decisions.length} tactical decisions · native execution · no bonus resources</p>
               {d.decisions.slice(-3).map((x, i) => <p key={i}><span className="digits">{time(x.tick)}</span> {x.mode}: {x.units} units, {x.observedEnemies} contacts seen</p>)}</div>)}
@@ -95,7 +96,7 @@ export function CoachPanel({ game }: { game: Game }) {
         </div>
         <footer className="cv-foot">
           {game.multiplayer ? <small>Live multiplayer review cannot pause or seek.</small> : <small>Reviewing pauses the battle.</small>}
-          <GameButton size="sm" variant="ghost" icon={<Download size={14} />} onClick={() => c.export()}>Export evidence</GameButton>
+          {developerTools && <GameButton size="sm" variant="ghost" icon={<Download size={14} />} onClick={() => c.export()}>Export evidence</GameButton>}
         </footer>
       </section>}
     </div>

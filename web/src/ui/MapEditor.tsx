@@ -67,7 +67,7 @@ function StartScreen({ game, editor, mission }: { game: Game; editor: EditorCont
             <GameButton size="sm" variant="primary" onClick={() => void editor.open({ new: { width: size, height: size, title: "New map" } })} data-testid="ed-blank">Create</GameButton>
           </div>
           <button type="button" className="ed-new-card" onClick={() => file.current?.click()}>
-            <Upload size={30} strokeWidth={1.4} /><b>Load an .oramap</b><small>A map from the desktop editor or a friend</small>
+            <Upload size={30} strokeWidth={1.4} /><b>Import a map</b><small>Open an .oramap file from the desktop editor or a friend</small>
             <input ref={file} type="file" accept=".oramap,application/zip" hidden onChange={(e) => { const f = e.target.files?.[0]; if (f) void upload(f); e.target.value = ""; }} />
           </button>
         </section>
@@ -157,7 +157,7 @@ function Palette({ game, editor }: { game: Game; editor: EditorController }) {
         <OptionSelect aria-label="Actor owner" value={st.owner} onValueChange={(value) => editor.setOwner(value)}
           options={cat.owners.map((o) => ({ value: o.name, label: o.name }))} size="sm" />
       </label>
-      <div className="ed-search"><Search size={14} /><input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Find a unit, building, tree…" /></div>
+      <div className="ed-search"><Search size={14} /><input aria-label="Find a unit, building or tree" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Find a unit, building, tree…" /></div>
       {!query && <div className="ed-chips" role="tablist" aria-label="Actor categories">
         {actorCategories.map((c) => <button key={c} type="button" role="tab" aria-selected={actorCategory === c} onClick={() => setActorCategory(c)}>{c}</button>)}
       </div>}
@@ -200,7 +200,7 @@ function Editing({ game, editor, test }: { game: Game; editor: EditorController;
         <button type="button" className="hud-tool" aria-label="Delete selection" data-tip="Delete selection · Del" onClick={() => editor.deleteSelection()}><Trash2 /></button>
         <span className="ed-sep" />
         <GameButton size="sm" icon={<Save size={14} />} onClick={() => void editor.save()} data-testid="ed-save">{st.saving ? "Saving…" : st.dirty || !st.saved ? "Save" : "Saved"}</GameButton>
-        <GameButton size="sm" icon={<Download size={14} />} onClick={() => void editor.download()}>.oramap</GameButton>
+        <GameButton size="sm" icon={<Download size={14} />} onClick={() => void editor.download()}>Download map</GameButton>
         <GameButton size="sm" variant="primary" icon={<Swords size={14} />} onClick={() => void editor.save().then((id) => { if (id) testSaved(id); })} data-testid="ed-test">Test in simulator</GameButton>
       </header>
       {st.error && <p className="ed-error ed-error-float" role="alert">{st.error}</p>}

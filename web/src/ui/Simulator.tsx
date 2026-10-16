@@ -4,15 +4,16 @@
 // engine's bot plays the enemy. A timeline records the battle for scrubbing; Edit goes back to the setup.
 
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
-import { Anchor, ArrowLeft, Building2, Castle, Coins, Diamond, Eraser, EyeOff, Map as MapIcon, MousePointerClick, Pause, Plane, Play, Radio, RotateCcw, Shield, ShieldCheck, SkipBack, Sparkles, StepForward, Swords, Target, Trash2, Truck, Undo2, Users, X } from "lucide-react";
+import { Anchor, ArrowLeft, Building2, Castle, Diamond, Eraser, EyeOff, Map as MapIcon, MousePointerClick, Pause, Plane, Play, Radio, RotateCcw, Shield, ShieldCheck, SkipBack, Sparkles, StepForward, Swords, Target, Trash2, Truck, Undo2, Users, X } from "lucide-react";
 import type { Game } from "../game";
 import { AI_SKILLS, type AiSkill, type Sandbox, type SandboxOrder, type SimUnit } from "../sandbox";
 import { planBattle } from "../battle-plan";
 import { useStore } from "../store";
+import { developerTools } from "../developer-tools";
 import { SearchSelect, type Option } from "../components/ui/fields";
 import { cn } from "../lib/utils";
 import { SIDE_COLORS, nationGroup, playableNations } from "../sides";
-import { GameMenu, Hud, Rank } from "./Hud";
+import { GameMenu, Hud, Rank, RotateHint } from "./Hud";
 import { Flag } from "./Flag";
 import { GameButton } from "./kit/game";
 import { MapStrip } from "./MapStrip";
@@ -52,7 +53,7 @@ function Seg<T extends string | number>({ value, options, onChange, label }: { v
   return (
     <div className="hud-inset flex p-[2px]" role="radiogroup" aria-label={label}>
       {options.map((o) => (
-        <button key={String(o.value)} type="button" role="radio" aria-checked={value === o.value} title={o.title} onClick={() => onChange(o.value)}
+        <button key={String(o.value)} type="button" role="radio" aria-checked={value === o.value} aria-label={typeof o.label === 'string' ? undefined : o.title} title={o.title} onClick={() => onChange(o.value)}
           className={cn("grid h-[26px] flex-1 place-items-center rounded-[2px] px-2 text-[12px] text-[var(--muted-foreground)]",
             value === o.value && "bg-[rgba(241,210,139,0.14)] text-[var(--hud-gold)] shadow-[inset_0_0_0_1px_var(--hud-gold-dim)]")}>
           {o.label}
@@ -174,9 +175,10 @@ function EditPanel({ game, sandbox }: { game: Game; sandbox: Sandbox }) {
       </div>
       {(hover || st.brush) && <UnitCard game={game} unit={(hover ?? st.units.find((u) => u.name === st.brush))!} faction={faction} side={side} pinned={!hover} />}
       <div className="grid grid-cols-2 gap-2">
-        <Seg<number> label="Rank" value={settings.level} onChange={(level) => setSide({ level })} options={[0, 1, 2].map((n) => ({ value: n, label: n ? <Rank rank={n} /> : "–", title: ["Rookie", "Veteran", "Elite"][n] }))} />
-        <Seg<number> label="How many" value={st.count} onChange={(count) => patch({ count })} options={[1, 3, 5, 10].map((n) => ({ value: n, label: `×${n}` }))} />
+        <div><p className="sim-field-label">Unit rank</p><Seg<number> label="Rank" value={settings.level} onChange={(level) => setSide({ level })} options={[0, 1, 2].map((n) => ({ value: n, label: n ? <Rank rank={n} /> : "New", title: ["Rookie", "Veteran", "Elite"][n] }))} /></div>
+        <div><p className="sim-field-label">Place at once</p><Seg<number> label="How many" value={st.count} onChange={(count) => patch({ count })} options={[1, 3, 5, 10].map((n) => ({ value: n, label: `×${n}` }))} /></div>
       </div>
+      <p className="sim-field-label">First order when the battle starts</p>
       <Seg<SandboxOrder> label="Opening order" value={settings.order} onChange={(order) => {
         if (order === "move") patch({ pickDestination: side, sides: Object.assign([...st.sides], { [side]: { ...settings, order } }) as typeof st.sides });
         else setSide({ order });
@@ -185,9 +187,10 @@ function EditPanel({ game, sandbox }: { game: Game; sandbox: Sandbox }) {
         { value: "hold", label: "Hold", title: "Stay and defend" },
         { value: "move", label: st.pickDestination === side ? "Click map" : "Move", title: "Move to a point (click the battlefield)" },
       ]} />
+      <p className="sim-field-label">Starting credits for each side</p>
       <div className="grid grid-cols-[1fr_auto] gap-2">
-        <Seg<number> label="Starting money" value={st.money} onChange={(m) => sandbox.setMoney(m)} options={MONEY.map((m) => ({ value: m, label: m ? `${m / 1000}k` : <Coins size={13} />, title: m ? `${m.toLocaleString()} credits each to build with` : "No money: only what you place" }))} />
-        <button type="button" className={cn("sim-fog hud-inset", st.fog && "is-on")} aria-pressed={st.fog} title="Fog of war" onClick={() => sandbox.setFog(!st.fog)}><EyeOff size={14} /></button>
+        <Seg<number> label="Starting money" value={st.money} onChange={(m) => sandbox.setMoney(m)} options={MONEY.map((m) => ({ value: m, label: m ? `${m / 1000}k` : "0", title: m ? `${m.toLocaleString()} credits each to build with` : "No money: only what you place" }))} />
+        <button type="button" className={cn("sim-fog hud-inset", st.fog && "is-on")} aria-label="Fog of war: hide unexplored ground" aria-pressed={st.fog} title="Fog of war: hide unexplored ground" onClick={() => sandbox.setFog(!st.fog)}><EyeOff size={14} /></button>
       </div>
       <form className="sim-describe" onSubmit={(e) => { e.preventDefault(); void describe(); }}>
         <input value={request} onChange={(e) => setRequest(e.target.value)} placeholder="Describe it: 8 Karrar tanks attack 6 Abrams" aria-label="Describe the battle" data-testid="sim-describe" />
@@ -239,11 +242,11 @@ function Timeline({ game, sandbox }: { game: Game; sandbox: Sandbox }) {
       <div className="rp-bar" role="group" aria-label="Battle timeline" data-ui-sfx>
         <GameButton size="sm" icon={<Undo2 size={14} />} onClick={() => sandbox.backToEdit()} data-testid="sim-edit">Edit</GameButton>
         <Score />
-        <button type="button" className="rp-btn" aria-label="Start" data-tip="Start" data-tip-pos="top" onClick={() => sandbox.scrub(0)}><SkipBack /></button>
+        <button type="button" className="rp-btn" aria-label="Back to beginning" data-tip="Back to beginning" data-tip-pos="top" onClick={() => sandbox.scrub(0)}><SkipBack /></button>
         <button type="button" className={cn("rp-play", !running && "is-play")} aria-label={running ? "Pause" : "Play"} onClick={() => (live ? sandbox.setPaused(!st.paused) : st.playing ? sandbox.stopPlayback() : sandbox.playReplay())}>
           {running ? <Pause /> : <Play />}
         </button>
-        <button type="button" className="rp-btn" aria-label="Step one tick" data-tip="Step one tick" data-tip-pos="top" onClick={() => sandbox.step()}><StepForward /></button>
+        <button type="button" className="rp-btn" aria-label="Advance one frame" data-tip="Advance one frame" data-tip-pos="top" onClick={() => sandbox.step()}><StepForward /></button>
         <div className="rp-track">
           <div className="rp-rail"><div className="rp-fill" style={{ width: `${pct}%` }} /></div>
           <input className="rp-range" type="range" min={0} max={Math.max(0, len - 1)} value={pos} onChange={(e) => sandbox.scrub(Number(e.target.value))} aria-label="Replay position" />
@@ -257,7 +260,7 @@ function Timeline({ game, sandbox }: { game: Game; sandbox: Sandbox }) {
         </div>
         <GameButton size="sm" variant={live ? "primary" : "secondary"} icon={<Radio size={13} />} onClick={() => sandbox.goLive()} title={`Tick ${tick}`}>Live</GameButton>
         <GameButton size="sm" icon={<RotateCcw size={14} />} onClick={() => sandbox.run()}>Rerun</GameButton>
-        {import.meta.env.VITE_STATIC_BUILD !== "1" && <GameButton size="sm" icon={<ShieldCheck size={14} />} title={verify || "Replay this run in the native engine and compare"} onClick={() => game.requestVerify()}>Verify</GameButton>}
+        {developerTools && <GameButton size="sm" icon={<ShieldCheck size={14} />} title={verify || "Replay this run in the native engine and compare"} onClick={() => game.requestVerify()}>Verify</GameButton>}
       </div>
     </div>
   );
@@ -285,10 +288,11 @@ export function Simulator({ game, exit }: { game: Game; exit: () => void }) {
       <aside className="hud-panel sb-side sim-panel" style={{ width: "var(--sidebar-w)" }} onContextMenu={(e) => e.preventDefault()}>
         <div className="sb-side-head">
           <b>Battle simulator</b>
-          <span className="menu-eyebrow"><Shield size={11} /> Real engine</span>
+          {developerTools && <span className="menu-eyebrow"><Shield size={11} /> Real engine</span>}
         </div>
         <EditPanel game={game} sandbox={sandbox} />
       </aside>
+      <RotateHint onExit={exit} />
     </>
   );
 }

@@ -78,6 +78,9 @@ export function HotkeySheet() {
   if (!open) return null;
   return (
     <GameDialog eyebrow="Help" title="Controls" size="xl" onClose={() => set({ keysOpen: false })}>
+      <GameSection icon={<MousePointer2 size={14} />} title="Getting started">
+        <p>Click a unit to select it, or drag across the battlefield to select a group. Right-click the ground to move; right-click an enemy to attack. Choose a building or unit from the build menu to produce it.</p>
+      </GameSection>
       <div className="hk-grid">
         {GROUPS.map(([title, icon, rows]) => (
           <GameSection key={title} icon={icon} title={title}>

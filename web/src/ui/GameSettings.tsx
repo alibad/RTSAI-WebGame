@@ -12,7 +12,7 @@ import { Segmented } from "./screen-parts";
 
 /** The rebindable commands, with Red Alert 2's keys as defaults (preferences.ts). */
 const COMMANDS: [Command, string][] = [["deploy", "Deploy"], ["guard", "Guard"], ["stop", "Stop"], ["scatter", "Scatter"], ["attackmove", "Attack move"],
-  ["repair", "Repair"], ["sell", "Sell"], ["typeselect", "Type select"], ["selectall", "Select all"]];
+  ["repair", "Repair"], ["sell", "Sell"], ["typeselect", "Select matching units"], ["selectall", "Select all units"]];
 const ASSIST = [{ value: "off", label: "Off" }, { value: "suggest", label: "Suggest orders" }, { value: "auto", label: "Apply automatically" }] as const;
 const ASSIST_HINT = { off: "Battlefield tips and recommended orders are turned off.", suggest: "You stay in control. Review each order, then press J or Apply.", auto: "The adviser carries out recommended orders for you without asking." };
 
@@ -65,14 +65,15 @@ export function GameSettings({ game }: { game: Game }) {
       <GameButton variant="ghost" size="sm" icon={<RotateCcw size={14} />} onClick={() => { update({ ...defaults, bindings: {} }); void updateLanguage("faction"); setAssist("suggest"); setError(""); }}>Reset settings</GameButton>
       <GameButton variant="primary" onClick={close}>Done</GameButton>
     </>}>
+        <p className="settings-hint">Changes are saved automatically in this browser.</p>
         <GameSection icon={<Volume2 size={15} />} title="Sound">
           {volumes.map(([key, label]) => <Slider key={key} label={label} value={values[key]} onChange={(value) => update({ [key]: value })} />)}
         </GameSection>
         <GameSection icon={<Mic size={15} />} title="Unit voices">
           <label className="settings-row">
-            <span>Language<small>Falls back to the original voice.</small></span>
+            <span>Language<small>Units use their original recording when a translation is unavailable.</small></span>
             <OptionSelect aria-label="Unit voice language" value={language} onValueChange={(value) => void updateLanguage(value)}
-              options={[{ value: "faction", label: "Faction language" }, { value: "en", label: "English" }]} />
+              options={[{ value: "faction", label: "Nation’s language" }, { value: "en", label: "English" }]} />
           </label>
           {playing && <GameButton size="sm" className="mt-3" onClick={() => { const current = ++revision.current; void game.client.previewVoice().then((result) => { if (current === revision.current) setError(String(result.error ?? (result.played ? "" : "Voice audio is loading. Preview again shortly."))); }); }}>Preview selected unit voice</GameButton>}
         </GameSection>
@@ -87,7 +88,7 @@ export function GameSettings({ game }: { game: Game }) {
               </label>
             ))}
           </div>
-          <p className="settings-hint">Red Alert 2's keys. Click a key, then press the letter you want. Attack move is also Ctrl+Shift+click.</p>
+          <p className="settings-hint">Select a key, then press a letter to change it. Attack move sends units to a destination while fighting enemies along the way; you can also use Ctrl+Shift+click.</p>
         </GameSection>
         <GameSection icon={<Sparkles size={15} />} title="Built-in adviser">
           <div className="settings-row">
