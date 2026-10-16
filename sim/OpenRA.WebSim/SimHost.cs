@@ -110,7 +110,9 @@ namespace OpenRA.WebSim
 			Platform.OverrideSupportDir(supportDir);
 
 			// Settings are read from (never written to) the support dir.
-			Game.InitializeSettings(new Arguments("Game.Platform=Null", "Game.FetchNews=false", "Debug.SendSystemInformation=false"));
+			// This embedded host has a renderer (WebPlatform below). Calling it Null makes Game.IsHeadless true,
+			// so SpriteEffect never enters ScreenMap: deaths, explosions and splashes tick but are never drawn.
+			Game.InitializeSettings(new Arguments("Game.Platform=Web", "Game.FetchNews=false", "Debug.SendSystemInformation=false"));
 			foreach (var channel in new[] { "perf", "debug", "server", "sound", "graphics", "geoip", "nat", "client", "lua", "exception" })
 				Log.AddChannel(channel, logFiles ? channel + ".log" : null);
 
