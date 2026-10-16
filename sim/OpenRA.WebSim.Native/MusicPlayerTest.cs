@@ -13,14 +13,20 @@ static class MusicPlayerTest
 	sealed class Sink : WebSoundEngine.IAudioSink
 	{
 		public int Chunks;
+		public string First40;
+		double offset;
 		public readonly List<bool> Pauses = [];
 		public void Source(int id, int channels, int bits, int rate, ReadOnlySpan<byte> pcm) { }
 		public void Play(int sound, int source, bool loop, bool relative, float x, float y, float volume, bool attenuate) { }
-		public void Stream(int sound, int channels, int bits, int rate, ReadOnlySpan<byte> pcm, bool end, float volume) { Chunks++; }
+		public void Stream(int sound, int channels, int bits, int rate, ReadOnlySpan<byte> pcm, bool end, float volume)
+		{
+			Chunks++;
+			if (offset == 40 && First40 == null) First40 = Convert.ToBase64String(pcm[..Math.Min(256, pcm.Length)]);
+		}
 		public void Stop(int sound) { }
 		public void Volume(int sound, float volume) { }
 		public void Pause(int sound, bool paused) { Pauses.Add(paused); }
-		public void SeekStart(int sound, double seconds) { }
+		public void SeekStart(int sound, double seconds) { offset = seconds; }
 	}
 
 	public static int Run(Dictionary<string, string> opts)
@@ -37,6 +43,7 @@ static class MusicPlayerTest
 		if (tracks.Length < 2) throw new Exception("Missing soundtrack library");
 		Ui.Command(JsonSerializer.Serialize(new { cmd = "music-play", id = tracks[0] }));
 		if (Game.Sound.CurrentMusic?.Filename != tracks[0]) throw new Exception("Track selection failed");
+		Ui.State(); // The browser reads metadata before enabling the seek slider.
 		Ui.Command("{\"cmd\":\"music-pause\"}");
 		Ui.Command("{\"cmd\":\"music-seek\",\"seconds\":40}");
 		if (Math.Abs(Game.Sound.MusicSeekPosition - 40) > .1 || Game.Sound.MusicPlaying) throw new Exception("Paused seek failed");
@@ -63,7 +70,7 @@ static class MusicPlayerTest
 		Ui.Command(JsonSerializer.Serialize(new { cmd = "music-play", id = tracks[^1] }));
 		Ui.Command("{\"cmd\":\"music-next\"}");
 		if (Game.Sound.CurrentMusic?.Filename != tracks[0]) throw new Exception("Playlist must wrap");
-		Console.WriteLine(JsonSerializer.Serialize(new { passed = true, tracks = tracks.Length, chunks = sink.Chunks, pauses = sink.Pauses }));
+		Console.WriteLine(JsonSerializer.Serialize(new { passed = true, tracks = tracks.Length, chunks = sink.Chunks, pauses = sink.Pauses, seekedSong = tracks[0], firstPcmAt40 = sink.First40 }));
 		return 0;
 	}
 }
