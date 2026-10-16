@@ -45,7 +45,9 @@ try{
   await page.route(unavailable,r=>r.abort());
   await page.getByRole('button',{name:'Watch story introduction',exact:true}).click();
   await page.getByRole('status').filter({hasText:'The video could not load'}).waitFor({timeout:30000});
-  await page.unroute(unavailable);console.log('Missing-video fallback passed.');
+  await page.unroute(unavailable);
+  await page.getByRole('button',{name:'Close story introduction',exact:true}).click();
+  console.log('Missing-video fallback passed.');
  }
  // Every real catalog mission launches through the player UI and advances native ticks.
  for(const def of (progressOnly?[]:catalog)){
