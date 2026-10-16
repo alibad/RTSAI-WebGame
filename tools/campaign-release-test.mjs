@@ -57,7 +57,14 @@ try{
  await page.locator(`button[data-chapter="${def.id}"]`).click();
  console.log('Preparing native progress fixture.');
  await page.waitForFunction(id=>{const s=window.store.getState();return s.preparedMap===id&&s.sheets.uploaded>=s.sheets.total;},def.id,{timeout:120000});
- await page.evaluate(m=>window.game.start(JSON.stringify({map:m.id,seed:2026,players:[{slot:m.slot,faction:m.faction,color:'2A6FDB'}],options:{difficulty:'normal',fog:'True',explored:'False'},operation:{id:m.id,title:m.title,faction:m.faction,slot:m.slot,enemy:m.enemy,objectives:[{text:'Controlled acceptance: survive three seconds',kind:'survive',seconds:3}]}})),def);
+ const fixture=fail=>page.evaluate(({m,fail})=>window.game.start(JSON.stringify({map:m.id,seed:2026,players:[{slot:m.slot,faction:m.faction,color:'2A6FDB'}],options:{difficulty:'normal',fog:'True',explored:'False'},operation:{id:m.id,title:m.title,faction:m.faction,slot:m.slot,enemy:m.enemy,objectives:[{text:'Controlled acceptance: survive three seconds',kind:'survive',seconds:3,...(fail?{limit:1}:{})}]}})),{m:def,fail});
+ await fixture(true);await playing(def.id);
+ await page.waitForFunction(()=>window.store.getState().ui?.win==='Lost',null,{timeout:60000});
+ await page.getByRole('heading',{name:'Regroup and retry',exact:true}).waitFor();
+ assert.equal(await page.evaluate(()=>JSON.parse(localStorage.getItem('rtsai.missions.completed')??'{}')['jizan-corridor']),undefined);
+ await page.getByRole('button',{name:'Retry this chapter',exact:true}).click();await setup();
+ await page.waitForFunction(id=>{const s=window.store.getState();return s.preparedMap===id&&s.sheets.uploaded>=s.sheets.total;},def.id,{timeout:120000});
+ await fixture(false);
  await playing(def.id);
  console.log('Native progress fixture launched.');
  await page.waitForFunction(()=>window.store.getState().ui?.win==='Won',null,{timeout:60000});
@@ -74,7 +81,7 @@ try{
  assert.equal(await page.locator('button[data-chapter="hodeidah-lifeline"]').getAttribute('aria-pressed'),'true');
  assert.match(await page.locator('button[data-chapter="jizan-corridor"]').innerText(),/Completed/);
  assert.equal(errors.length,0,JSON.stringify(errors));
- const report={passed:true,url:base,checkedAt:new Date().toISOString(),films,launches,nativeProgressFixture:{objective:'survive three seconds',outcome:'Won',storage:true,nextChapter:true,reload:true,fullCampaignPlaythrough:false},errors};
+ const report={passed:true,url:base,checkedAt:new Date().toISOString(),films,launches,nativeProgressFixture:{objective:'survive three seconds (failure case: one-second deadline)',outcomes:['Lost','Won'],lossDoesNotComplete:true,storage:true,nextChapter:true,nextMissionLaunched:true,reload:true,fullCampaignPlaythrough:false},errors};
  fs.writeFileSync(path.join(out,'release-acceptance.json'),JSON.stringify(report,null,2));console.log('PASS:',films.length,'films,',launches.length,'mission launches; native progress fixture and reload.');
 }catch(e){fs.writeFileSync(path.join(out,'failure.json'),JSON.stringify({error:String(e),state:await state().catch(()=>null),loading:await page.evaluate(()=>({prepared:window.store.getState().preparedMap,sheets:window.store.getState().sheets,stage:window.store.getState().stage})).catch(()=>null),films,launches,errors},null,2));await page.screenshot({path:path.join(out,'failure.png')}).catch(()=>{});throw e;}
 finally{await browser.close();}
