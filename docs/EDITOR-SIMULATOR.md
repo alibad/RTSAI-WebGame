@@ -83,6 +83,14 @@ category/search disarms the old placement brush. Categories unavailable to a nat
 tick, plus their positions after scenario recreation. `tools/simulator-placement-browser-test.mjs` checks both
 public modes in the actual WASM game, including category-scoped search and edit/run/edit preservation.
 
+Combat uses the same OpenRA death traits, falling husks, effects and snapshots as skirmish. The embedded host must
+identify its platform as `Web`, not `Null`: `Game.IsHeadless` makes spatial sprite effects skip ScreenMap registration,
+which silently hid infantry deaths and explosions even while their animations ticked. `UnitExplode` and its aircraft
+crash descendants choose a land explosion or water splash from terrain, independently of overlapping actors.
+`websim effectstest --root <unpacked root> --map twin-fords` exercises modern/original infantry and helicopter/jet
+deaths in simulator and ordinary worlds; use `classic-coast` for Classic. `tools/combat-effects-browser-test.mjs`
+captures actual weapon kills through WASM and WebGL in both modes, including the falling wreck before impact.
+
 ```powershell
 node tools/battle-plan-unit-test.mjs
 node tools/ai-lab-unit-test.mjs

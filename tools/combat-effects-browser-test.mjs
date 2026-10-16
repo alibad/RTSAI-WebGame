@@ -14,21 +14,24 @@ try {
   for(const simulator of [true,false]) {
    const page=await browser.newPage({viewport:{width:1440,height:1000}}),errors=[];
    page.on('pageerror',e=>errors.push(String(e)));
+   page.on('console',m=>{if(m.type()==='error')console.log('browser:',m.text());});
    await page.route('**/*',r=>{const u=new URL(r.request().url());return ['127.0.0.1','localhost'].includes(u.hostname)||['blob:','data:'].includes(u.protocol)?r.continue():r.abort();});
    await page.goto(`${base}?profile=${profile}${simulator?'&mode=simulator':''}`);
    await page.waitForFunction(sim=>sim?window.store?.getState().sandbox?.units?.length>0:window.store?.getState().phase==='setup',simulator,{timeout:240000});
-   await page.evaluate(m=>window.game.prepare(m),map);
-   await page.waitForFunction(m=>window.store.getState().preparedMap===m,map,{timeout:180000});
+   console.log(`Ready ${profile} ${simulator?'simulator':'skirmish'}`);
+   if(!simulator){await page.evaluate(m=>window.game.prepare(m),map);await page.waitForFunction(m=>window.store.getState().preparedMap===m||window.store.getState().phase==='error',map,{timeout:180000});}
    for(const unit of ['r2basij','r2ah64sa']) {
     const air=unit==='r2ah64sa',f=fixtures.find(c=>c.unit===unit&&c.water===air);
-    const placements=[{id:unit,side:1,u:f.u,v:f.v,health:1,order:air?'engage':'hold'},{id:air?'r2sads':'r2sang',side:0,u:f.shooterU,v:f.shooterV,order:'hold'}];
-    if(simulator) {
-     await page.evaluate(async({map,placements})=>{window.game.sandbox.configure({map});await window.game.sandbox.plan('saudi','iran',placements);},{map,placements});
-    }else {
-     const scenario={map,bare:false,players:[{slot:'Multi0',faction:'saudi'},{slot:'Multi1',faction:'iran',bot:'webidle'}],options:{fog:'False',explored:'True',crates:'False'},spawns:placements.map(p=>({type:p.id,player:p.side,x:p.u,y:p.v,health:p.health??100,order:p.order}))};
-     await page.evaluate(s=>window.game.start(JSON.stringify(s),true),scenario);
-    }
+    console.log(`Starting ${profile} ${simulator} ${unit}`);
+    const placements=[{id:unit,side:1,u:f.u,v:f.v,health:1,order:air?'move':'hold',...(air?{destination:{u:f.u+1,v:f.v+1}}:{})},{id:'r2sang',side:0,u:f.shooterU,v:f.shooterV,order:'hold'},{id:'r2bradley',side:1,u:5,v:50,order:'hold'}];
+    const scenario={map,bare:simulator,sandbox:simulator,players:[{slot:'Multi0',faction:'saudi'},{slot:'Multi1',faction:'iran',bot:'webidle'}],options:{fog:'False',explored:'True',crates:'False',shortgame:'False'},placements};
+    await page.evaluate(({scenario,simulator})=>{if(simulator){window.game.sandbox.configure({map:scenario.map});window.game.sandbox.patch({mode:'run',paused:true,replay:null});}window.game.start(JSON.stringify(scenario),true);},{scenario,simulator});
+    await page.waitForFunction(()=>window.store.getState().phase==='playing',null,{timeout:120000});
+    await page.evaluate(f=>{const g=window.game,i=g.info;g.cam.zoom=2;g.lookAt(i.cellOrigin[0]+(2*f.u+(f.v&1))*i.tileSize[0]/2,i.cellOrigin[1]+f.v*i.tileSize[1]/2);},f);
+    // A new human player's visibility traits settle on the first tick; the editor's spectator did not need one.
+    await page.evaluate(()=>window.game.client.send({type:'step'}));
     await page.waitForFunction(unit=>window.store.getState().phase==='playing'&&window.game.client.cur?.actors.some(a=>window.game.client.str(a.type)===unit),unit,{timeout:120000});
+    console.log('Visible actors ready');
     await page.waitForFunction(()=>{const c=window.game.client;return c.sheetList.filter(s=>s.group==='fx'||s.group===''||s.group.split('+').some(g=>['saudi','iran'].includes(g))).every(s=>window.game.renderer.hasTexture(s.id));},null,{timeout:60000});
     await page.evaluate(({unit,air})=>{
      const game=window.game,c=game.client;
@@ -46,7 +49,11 @@ try {
      };
      window.restoreEffectProbe=()=>{c.onSnapshot=old;};
     },{unit,air});
-    if(simulator)await page.evaluate(()=>window.game.sandbox.run());else await page.evaluate(()=>window.game.setPaused(false));
+    await page.evaluate(()=>window.game.setPaused(false));
+    if(air){
+     await page.waitForFunction(()=>window.game.client.cur.actors.some(a=>window.game.client.str(a.type)==='r2ah64sa'&&a.worldZ>=1500),null,{timeout:15000});
+     await page.evaluate(async f=>{window.game.setPaused(true);await window.game.command({cmd:'spawn',type:'r2sads',player:0,u:f.shooterU,v:f.shooterV});window.game.setPaused(false);},f);
+    }
     try { await page.waitForFunction(()=>window.effectProbe?.done,null,{timeout:45000}); }
     catch(e){console.log(await page.evaluate(()=>({probe:window.effectProbe,actors:window.game.client.cur?.actors.map(a=>({name:window.game.client.str(a.type),hp:a.hp,z:a.worldZ})),error:window.store.getState().error})));throw e;}
     await page.waitForFunction(()=>window.game.renderer.stats.skipped===0,null,{timeout:30000});
