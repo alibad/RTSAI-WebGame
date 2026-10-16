@@ -10,7 +10,7 @@ fs.mkdirSync(out, { recursive: true });
 const browser = await chromium.launch({ executablePath: browserExecutable(), headless: true,
   args: [...browserArgs(), '--autoplay-policy=no-user-gesture-required'] });
 try {
-  const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+  const page = await browser.newPage({ viewport: { width: 1440, height: 900 }, hasTouch: true });
   await page.route('**/*', route => /^(https?:\/\/(127\.0\.0\.1|localhost)(:|\/)|blob:|data:)/.test(route.request().url()) ? route.continue() : route.abort());
   const errors = [];
   page.on('pageerror', error => errors.push(String(error)));
@@ -101,6 +101,12 @@ try {
     await page.setViewportSize(viewport);
     await page.evaluate(dir => { document.documentElement.dir = dir; }, dir);
     await page.waitForTimeout(300);
+    if (name === 'phone' || name === 'phone-rtl') {
+      const slider = await position.boundingBox();
+      const maximum = Number(await position.getAttribute('max'));
+      await position.tap({ position: { x: 6 + (slider.width - 12) * .6, y: slider.height / 2 } });
+      await page.waitForFunction(target => Math.abs(window.game.audio.musicPlayback().elapsed - target) < 1, maximum * (dir === 'rtl' ? .4 : .6), { timeout: 30000 });
+    }
     const box = await page.locator('.np-panel').boundingBox();
     assert(box && box.x >= 0 && box.y >= 0 && box.x + box.width <= viewport.width && box.y + box.height <= viewport.height, `${name}: popup must fit`);
     await page.screenshot({ path: `${out}/${name}.png` });
