@@ -1,0 +1,46 @@
+// Regression for mixed builds, omitted asset packs, port collisions and simultaneous launches.
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import http from 'node:http';
+import crypto from 'node:crypto';
+import { execFile, execFileSync } from 'node:child_process';
+import { promisify } from 'node:util';
+import { fileURLToPath } from 'node:url';
+import { verifyAcceptedBuild } from './local-game.mjs';
+const repo = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const state = path.join(process.env.LOCALAPPDATA ?? os.homedir(), 'RTSAI-WebGame/launcher');
+const config = JSON.parse(fs.readFileSync(path.join(state, 'current.json')));
+const run = promisify(execFile);
+const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'rtsai-launcher-'));
+const sha = bytes => crypto.createHash('sha256').update(bytes).digest('hex');
+let tests = 0;
+const pass = name => { tests++; console.log(`PASS ${name}`); };
+await verifyAcceptedBuild(config); pass('accepted full build');
+await assert.rejects(verifyAcceptedBuild({ ...config, data: path.dirname(config.data) }), /does not cover the selected payload/); pass('wrong data directory rejected');
+await assert.rejects(verifyAcceptedBuild({ ...config, receiptSha256: '0'.repeat(64) }), /receipt changed/); pass('changed receipt rejected');
+await assert.rejects(verifyAcceptedBuild({ ...config, nativeSha256: '0'.repeat(64) }), /Native replay host changed/); pass('changed native host rejected');
+const receipt = JSON.parse(fs.readFileSync(config.receipt));
+const tamper = path.join(temp, 'tampered.txt'); fs.writeFileSync(tamper, 'changed');
+receipt.checksums.push({ path: tamper, sha256: sha('original') });
+const altered = path.join(temp, 'receipt.json'); fs.writeFileSync(altered, JSON.stringify(receipt));
+await assert.rejects(verifyAcceptedBuild({ ...config, receipt: altered, receiptSha256: sha(fs.readFileSync(altered)) }), /Accepted build changed/); pass('tampered payload rejected');
+receipt.variant = 'project-only'; fs.writeFileSync(altered, JSON.stringify(receipt));
+await assert.rejects(verifyAcceptedBuild({ ...config, receipt: altered, receiptSha256: sha(fs.readFileSync(altered)) }), /Wrong accepted game variant/); pass('substitute-art build rejected');
+const occupied = http.createServer((req, res) => res.end('{"ok":true}'));
+await new Promise(resolve => occupied.listen(0, '127.0.0.1', resolve));
+try {
+  await assert.rejects(run(process.execPath, ['tools/local-game.mjs', 'start', '--port', String(occupied.address().port)], { cwd: repo, windowsHide: true }), /another or unverified build/);
+  assert.equal((await fetch(`http://127.0.0.1:${occupied.address().port}`)).status, 200);
+  pass('healthy wrong listener rejected and left running');
+} finally { await new Promise(resolve => occupied.close(resolve)); }
+const port = process.env.RTSAI_LAUNCHER_TEST_PORT ?? '38665';
+const env = { ...process.env, RTSAI_WEB_DIST: temp, RTSAI_WEB_DATA: temp, RTSAI_WEB_BUILD: temp, RTSAI_WEBGAME_PORT: '1' };
+const commands = await Promise.all([1, 2].map(() => run(process.execPath, ['tools/local-game.mjs', 'start', '--port', port], { cwd: repo, env, windowsHide: true })));
+const rows = commands.map(row => JSON.parse(row.stdout));
+assert.ok(rows.every(row => row.buildId === config.buildId && row.url.includes(`:${port}/`)));
+const active = await (await fetch(`http://127.0.0.1:${port}/api/local-build`)).json();
+assert.equal(active.buildId, config.buildId); pass('concurrent launch reuses the verified server despite poisoned environment');
+assert.equal(execFileSync('git', ['-C', repo, 'branch', '--show-current'], { encoding: 'utf8' }).trim(), 'main');
+console.log(`PASS ${tests} launcher regression groups. Fixture: ${temp}`);

@@ -71,6 +71,7 @@ const websim = path.join(path.resolve(process.env.RTSAI_WEB_BUILD ?? repo), "bin
 const runtimes = { interp: path.join(data, "wasm-interp", "wwwroot"), aot: path.join(data, "wasm-aot", "wwwroot") };
 // The public profile (standalone mod, project art only) has its own bundle and runtimes under data/public.
 const profiles = { public: path.join(data, "public"), "public-classic": path.join(data, "public-classic") };
+const verifiedLocalBuild = process.env.RTSAI_VERIFIED_LOCAL_BUILD ? JSON.parse(process.env.RTSAI_VERIFIED_LOCAL_BUILD) : null;
 // Runtime variants (size experiments, e.g. ?runtime=aot-lean) live next to the default builds as wasm-<variant>.
 const runtimeDir = (profile, runtime) => path.join(profile ? profiles[profile] : data, `wasm-${runtime}`, "wwwroot");
 
@@ -314,6 +315,9 @@ const server = http.createServer(async (req, res) => {
     }
     if (p === "/api/verify" && req.method === "POST") return await verify(req, res);
     if (p === "/api/overpass" && req.method === "POST") return await overpassRelay(req, res);
+    if (p === "/api/local-build") {
+      return verifiedLocalBuild ? json(res, verifiedLocalBuild) : json(res, { error: "This server was not started by the verified local launcher" }, 409);
+    }
     if (p === "/api/health") {
       return json(res, {
         ok: true, private: fs.existsSync(privateFiles), runtimes: Object.keys(runtimes).filter((k) => fs.existsSync(runtimes[k])),
