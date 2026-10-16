@@ -3,7 +3,7 @@ type RecordValue = { id: string; value: unknown; used: number; bytes: number };
 const memory = new Map<string, RecordValue>();
 let opening: Promise<IDBDatabase> | null = null;
 let durable = typeof indexedDB !== "undefined";
-let hydrated: Promise<void> | null = null;
+let allRecords: Promise<void> | null = null;
 const db = () => opening ??= new Promise<IDBDatabase>((resolve, reject) => {
   if (typeof indexedDB === "undefined") return reject(Error("Browser storage unavailable"));
   const request = indexedDB.open("rtsai-earth-sites", 1);
@@ -24,18 +24,20 @@ export async function savedSiteRecord<T>(id: string): Promise<T | null> {
   return null;
 }
 export async function savedSiteRecords<T>(prefix: string): Promise<T[]> {
-  try {
-    const d = await db();
-    const records = await new Promise<RecordValue[]>((resolve, reject) => {
-      const r = d.transaction("records").objectStore("records").getAll(); r.onsuccess = () => resolve(r.result); r.onerror = () => reject(r.error);
-    });
-    for (const r of records) memory.set(r.id, r);
-  } catch { durable = false; }
+  await (allRecords ??= (async () => {
+    try {
+      const d = await db();
+      const records = await new Promise<RecordValue[]>((resolve, reject) => {
+        const r = d.transaction("records").objectStore("records").getAll(); r.onsuccess = () => resolve(r.result); r.onerror = () => reject(r.error);
+      });
+      for (const r of records) if (!memory.has(r.id)) memory.set(r.id, r);
+    } catch { durable = false; }
+  })());
   return [...memory.values()].filter(r => r.id.startsWith(prefix)).map(r => r.value as T);
 }
 export async function keepSiteRecord(id: string, value: unknown) {
   // Include old on-disk records in eviction accounting, even when this session has not opened their areas.
-  await (hydrated ??= savedSiteRecords("__hydrate_only__").then(() => undefined));
+  await savedSiteRecords("__hydrate_only__");
   const record = { id, value, used: Date.now(), bytes: new TextEncoder().encode(JSON.stringify(value)).length };
   if (record.bytes > 2000000) return false;
   memory.set(id, record);

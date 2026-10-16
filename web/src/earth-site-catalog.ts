@@ -21,7 +21,7 @@ async function pack<T>(entry: { file: string; sha256: string; bytes: number }): 
 }
 export function preloadKnownSites(force = false): Promise<SiteCatalog> {
   if (force) loading = null;
-  return loading ??= (async () => {
+  const base = loading ??= (async () => {
     const old = await savedSiteRecord<{ manifest: SiteManifest; checked: number }>("manifest");
     let manifest = old?.manifest ?? null;
     if (force || !old || Date.now() - old.checked > 86400000) try {
@@ -33,9 +33,10 @@ export function preloadKnownSites(force = false): Promise<SiteCatalog> {
     } catch { /* Last good manifest also works offline. */ }
     let sites: CoreSite[] = [];
     if (manifest) try { sites = await pack<CoreSite[]>(manifest.overview); } catch { /* Browser discoveries remain available. */ }
-    const areas = await savedSiteRecords<AreaSnapshot>("area:");
-    return { manifest, sites: mergeSites(sites, ...areas.map(a => a.sites)) };
+    return { manifest, sites: mergeSites(sites) };
   })();
+  // Static packs are shared, but reopening the studio must also include discoveries saved since its first visit.
+  return base.then(async catalog => ({ ...catalog, sites: mergeSites(catalog.sites, ...(await savedSiteRecords<AreaSnapshot>("area:")).map(a => a.sites)) }));
 }
 export async function packagedSites(bounds: Bounds, force = false) {
   // The overview already contains every marker. Bound optional regional metadata even if future packs overlap.

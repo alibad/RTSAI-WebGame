@@ -38,7 +38,9 @@ assert.ok(updates.findIndex(s => s.length > 0) < updates.findIndex(s => s.length
 assert.equal(requests.filter(r => r.includes('/summary/')).length, 0, 'No article fan-out during discovery');
 assert.equal(requests.filter(r => r.includes('manifest.json')).length, 1);
 assert.equal(requests.filter(r => r.includes('/region-')).length, 1, 'Only the Cairo region pack loads');
-assert.equal((await api.preloadKnownSites()).sites.length, 27);
+const reopened = await api.preloadKnownSites();
+assert.ok(reopened.sites.length >= manifest.count);
+assert.ok(reopened.sites.some(s => s.id === 'osm-node-800039'), 'Reopened globe includes discoveries from the same session');
 const before = requests.length;
 await api.researchSites({ ...place, lat: place.lat + .002 }, 1500, options);
 assert.equal(requests.length, before, 'Fresh neighboring area reuses saved core data');
