@@ -111,13 +111,13 @@ export function CoCommander({ game }: { game: Game }) {
     : cc.error || hud?.state === "error" ? "error" : cc.linked && cc.running ? "ready" : "offline";
   const last = [...cc.feed].reverse().find((f) => f.kind !== "proposal");
   const line = cc.listening ? "Listening…" : cc.thinking ? "Thinking…" : cc.error ? cc.error
-    : last?.text ?? (hud?.message.replace(/^AI\s*•\s*/, "") || "Hold V to talk");
+    : last?.text ?? (hud?.message.replace(/^AI\s*•\s*/, "") || (cc.mode === "browser" ? "Watching the battlefield for useful tips." : "Hold V to talk"));
   const pending = game.cc.pending() ?? cc.feed.find(f => f.state === "applying");
   const threat = cc.mode === "browser" ? cc.browserThreat : hud?.threat;
   const send = () => { const t = text; setText(""); game.cc.ask(t); };
 
   return (
-    <div aria-label="AI co-commander" className={`cc-root${mission ? " has-mission" : ""}${cc.open || cc.strategyOpen ? " is-open" : ""}`}>
+    <div aria-label={cc.mode === "browser" ? "Built-in adviser" : "AI co-commander"} className={`cc-root${mission ? " has-mission" : ""}${cc.open || cc.strategyOpen ? " is-open" : ""}`}>
       <div className="cc-col" onMouseDown={(e) => e.stopPropagation()}>
         <div className="cc-strip">
           <Avatar state={state} />

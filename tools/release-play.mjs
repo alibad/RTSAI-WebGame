@@ -210,7 +210,7 @@ function buildRuntime(rel, pin, inputs, profiles) {
   say(`dotnet publish (AOT, several minutes): engine ${pin.slice(0, 10)}, mod ${inputs}; log ${logFile}`);
   const fd = fs.openSync(logFile, "w");
   try {
-    execFileSync(config.dotnet ?? "dotnet", ["publish", "sim/OpenRA.WebSim.Browser/OpenRA.WebSim.Browser.csproj", "-c", "Release",
+    execFileSync(config.dotnet ?? "dotnet", ["publish", "sim/OpenRA.WebSim.Browser/OpenRA.WebSim.Browser.csproj", "-c", "Release", "--runtime", "browser-wasm", "-p:DefineConstants=BROWSER",
       "-p:WebProfile=public", `-p:EngineRoot=${engine.replaceAll("\\", "/")}/`, `-p:ModRoot=${inputs.replaceAll("\\", "/")}/mod/`,
       `-p:WebBuildRoot=${path.join(work, "web-build").replaceAll("\\", "/")}/`, "-p:Aot=true", "-o", out],
     { cwd: repo, stdio: ["ignore", fd, fd], env: { ...process.env, TEMP: tmp, TMP: tmp } });

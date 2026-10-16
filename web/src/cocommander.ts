@@ -218,7 +218,7 @@ export class CoCommander {
     this.strategyRevision++;
     this.mission = null;
     this.set({ feed: [], linked: false, ...(this.s.mode === "browser" ? { running: true, error: "" } : {}), thinking: false, strategies: null, strategyError: "", strategyBusy: false, strategyOpen: false, uncertainProposalId: "", browserThreat: null });
-    this.push("system", this.s.mode === "browser" ? "Co-commander Â· Browser strategy adviser" : this.s.mode === "mock" ? "Co-commander online (scripted brain)" : "Co-commander online");
+    this.push("system", this.s.mode === "browser" ? (this.s.auto ? "Built-in adviser ready. Recommended orders will be applied automatically." : "Built-in adviser ready. Review a recommended order, then choose Apply.") : this.s.mode === "mock" ? "Co-commander online (scripted test)" : "Co-commander online");
     this.lastPoll = 0; this.pace = { tick: 0, at: 0, speed: 1 };
     // A 250 ms clock: at the usual one look a second it fires every fourth tick, as the old one-second timer did.
     if (!this.poll) this.poll = setInterval(() => { if (Date.now() - this.lastPoll >= this.pollEvery() - 125) { this.lastPoll = Date.now(); void this.offers(); } }, 250);

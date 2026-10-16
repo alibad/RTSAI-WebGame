@@ -4,6 +4,7 @@ import type { Game } from "../game";
 import { COMMAND_KEYS, RESERVED_KEYS, defaults, preferences, savePreferences, type Command, type Preferences } from "../preferences";
 import { readVoiceLanguage, normalizeVoiceLanguage } from "../voice-language";
 import { useStore } from "../store";
+import { companionDeveloperTools } from "../companion-policy";
 import { Button } from "../components/ui/button";
 import { OptionSelect } from "../components/ui/fields";
 import { GameButton, GameDialog, GameSection } from "./kit/game";
@@ -57,7 +58,7 @@ export function GameSettings({ game }: { game: Game }) {
   function close() { setOpen(false); setError(""); }
   // The voice bus carries the campaign's radio calls, and the co-commander's spoken replies where it can speak.
   const volumes = [["master", "Master volume"], ["effects", "Effects volume"], ["music", "Music volume"],
-    ["voice", import.meta.env.VITE_STATIC_BUILD === "1" ? "Radio voices" : "Radio and companion voices"]] as const;
+    ["voice", companionDeveloperTools ? "Radio and companion voices" : "Radio voices"]] as const;
   return <>
     <Button size="sm" variant="outline" aria-label="Settings" onClick={() => setOpen(true)}><SettingsIcon size={14} aria-hidden="true" />Settings</Button>
     {open && <GameDialog eyebrow="Settings" title="Game settings" onClose={close} footer={<>

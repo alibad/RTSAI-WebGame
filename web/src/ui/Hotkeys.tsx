@@ -5,6 +5,7 @@
 
 import { CircleHelp, Crosshair, Hammer, Layers, Monitor, MousePointer2, Gamepad2 } from "lucide-react";
 import { useStore } from "../store";
+import { companionDeveloperTools } from "../companion-policy";
 import { keyFor, type Command } from "../preferences";
 import { GameDialog, GameSection, Kbd } from "./kit/game";
 import { AttackMoveIcon, DeployIcon, GuardIcon, RepairIcon, ScatterIcon, SellIcon, StopIcon } from "./icons";
@@ -63,8 +64,8 @@ const GROUPS: [string, React.ReactNode, Row[]][] = [
     [["Pause"], "Pause"],
     [["M"], "Mute"],
     [["?"], "This sheet"],
-    [["J"], "Apply the co-commander's recommendation (Ctrl+⌫ reject)"],
-    ...(import.meta.env.VITE_STATIC_BUILD !== "1" ? [
+    [["J"], "Apply the adviser's recommended order (Ctrl+⌫ reject)"],
+    ...(companionDeveloperTools ? [
     [["V"], "Co-commander: hold to talk"],
     [["Ctrl", "Space"], "Co-commander: type"],
     ] as [string[], string][] : []),
