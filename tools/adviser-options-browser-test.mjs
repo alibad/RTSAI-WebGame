@@ -8,12 +8,12 @@ fs.mkdirSync(out, { recursive: true });
 const browser = await chromium.launch({ executablePath: browserExecutable(), args: browserArgs(), headless: true });
 const results = [];
 try {
-  for (const [name, viewport, savedMode, rtl] of [['desktop', { width: 1440, height: 1000 }, 'local', false], ['phone', { width: 390, height: 844 }, 'mock', false], ['rtl', { width: 390, height: 844 }, 'local', true]]) {
+  for (const [name, viewport, savedMode, rtl, savedEnabled = true] of [['desktop', { width: 1440, height: 1000 }, 'local', false], ['phone', { width: 390, height: 844 }, 'mock', false], ['rtl', { width: 390, height: 844 }, 'local', true], ['saved-off', { width: 1440, height: 1000 }, 'local', false, false]]) {
     const context = await browser.newContext({ viewport, isMobile: name === 'phone', hasTouch: name === 'phone' });
-    await context.addInitScript(({ savedMode, rtl }) => {
-      localStorage.setItem('rtsai.cocommander', JSON.stringify({ enabled: true, mode: savedMode, auto: false }));
+    await context.addInitScript(({ savedMode, rtl, savedEnabled }) => {
+      localStorage.setItem('rtsai.cocommander', JSON.stringify({ enabled: savedEnabled, mode: savedMode, auto: false }));
       if (rtl) document.addEventListener('DOMContentLoaded', () => document.documentElement.dir = 'rtl');
-    }, { savedMode, rtl });
+    }, { savedMode, rtl, savedEnabled });
     const page = await context.newPage(); const errors = [], companionRequests = [];
     page.on('pageerror', error => errors.push(String(error)));
     page.on('request', request => { if (/\/api\/companion|\/companion\//.test(request.url())) companionRequests.push(request.url()); });
@@ -21,7 +21,8 @@ try {
     const toggle = page.getByRole('switch', { name: 'Built-in adviser', exact: true });
     await toggle.waitFor({ timeout: 180000 }); await toggle.scrollIntoViewIfNeeded();
     assert.equal(await page.locator('.sk-cc button').count(), 1);
-    assert.equal(await toggle.getAttribute('aria-checked'), 'true');
+    assert.equal(await toggle.getAttribute('aria-checked'), String(savedEnabled));
+    if (!savedEnabled) await toggle.click();
     await page.getByText('Get battlefield tips and recommended orders. No setup needed.', { exact: true }).waitFor();
     assert.equal(await page.evaluate(() => window.store.getState().cc.mode), 'browser');
     await page.evaluate(() => { window.game.cc.setMode('local'); window.game.cc.setMode('mock'); });

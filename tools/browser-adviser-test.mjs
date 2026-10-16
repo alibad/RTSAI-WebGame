@@ -15,7 +15,7 @@ const receipt={scope:'Real native Observe, proposal confirmation and native orde
 try {
  for(const profile of ['public','public-classic']){
   const context=await browser.newContext({viewport:{width:1440,height:900},hasTouch:true});page=await context.newPage();
-  await context.addInitScript(()=>{if(!localStorage.getItem('rtsai.cocommander'))localStorage.setItem('rtsai.cocommander',JSON.stringify({enabled:false,mode:'local',muted:true}));});
+  await context.addInitScript(()=>{if(!localStorage.getItem('rtsai.cocommander'))localStorage.setItem('rtsai.cocommander',JSON.stringify({enabled:true,mode:'local',muted:true}));});
   await context.route('**/*',r=>{const u=new URL(r.request().url());if(/\/(companion\/|api\/companion)/.test(u.pathname))receipt.localServiceRequests.push(u.pathname);return u.origin===new URL(base).origin&&r.request().method()==='GET'?r.continue():r.abort();});
   page.on('pageerror',e=>receipt.errors.push(String(e)));
   await page.goto(`${base}?profile=${profile}&private=0&mode=skirmish`);await page.waitForFunction(()=>['setup','error'].includes(window.store?.getState().phase),null,{timeout:180000});

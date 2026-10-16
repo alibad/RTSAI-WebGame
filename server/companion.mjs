@@ -246,7 +246,10 @@ export function createCompanion({ repo, appData, log = console.log }) {
 
   function start(requested) {
     const want = requested === "mock" ? "mock" : "local";
-    if (proc && mode === want) return want === "local" ? checkLocalAI().then(() => status()) : Promise.resolve(status());
+    if (proc && mode === want) return want === "local" ? checkLocalAI().then(() => {
+      if (!localAI.ready) throw new Error(localAI.message);
+      return status();
+    }) : Promise.resolve(status());
     if (starting && startingMode === want) return starting;
     stop();
     const generation = startGeneration; startingMode = want;

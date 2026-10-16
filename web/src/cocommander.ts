@@ -80,7 +80,7 @@ export function initialCoCommander(): CoCommanderState {
   let saved: Partial<CoCommanderState> & { browserVersion?: number } = {};
   try { saved = JSON.parse(localStorage.getItem("rtsai.cocommander") ?? "{}"); } catch { /* private mode */ }
   return {
-    enabled: import.meta.env.VITE_STATIC_BUILD === "1" && saved.browserVersion !== 1 ? true : saved.enabled ?? true, mode: companionDeveloperTools && (saved.mode === "mock" || saved.mode === "local") ? saved.mode : "browser", muted: saved.muted ?? false, auto: saved.auto === true,
+    enabled: saved.enabled ?? true, mode: companionDeveloperTools && (saved.mode === "mock" || saved.mode === "local") ? saved.mode : "browser", muted: saved.muted ?? false, auto: saved.auto === true,
     running: false, linked: false, listening: false, thinking: false, open: false, feed: [], error: "",
     strategies: null, strategyOpen: false, strategyBusy: false, strategyError: "", offerSteps: true, uncertainProposalId: "", browserThreat: null,
   };
@@ -204,6 +204,7 @@ export class CoCommander {
     if (match !== this.matchRevision) throw new Error("Cancelled companion launch");
     this.set({ running: !!status.running, error: status.error ?? "", feed: [] });
     if (!status.running) throw new Error(status.error || "The co-commander could not start.");
+    if (this.s.mode === "local" && status.localAI?.ready !== true) throw new Error(status.localAI?.message || "The local models have not passed their readiness checks.");
     const contractResponse = await this.request(new URL(`${API}v1/contract`, base()));
     const contract = await contractResponse.json();
     if (match !== this.matchRevision) throw new Error("Cancelled companion launch");
