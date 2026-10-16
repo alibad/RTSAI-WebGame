@@ -5,12 +5,13 @@ import { chromium } from '../web/node_modules/playwright-core/index.mjs';
 import { browserExecutable, browserArgs } from './browser-launch.mjs';
 
 const url = process.env.RTSAI_TEST_URL ?? 'http://127.0.0.1:3490/?profile=public&runtime=interp';
-const out = 'artifacts/now-playing';
+const out = process.env.RTSAI_TEST_OUT ?? 'artifacts/now-playing';
 fs.mkdirSync(out, { recursive: true });
 const browser = await chromium.launch({ executablePath: browserExecutable(), headless: true,
   args: [...browserArgs(), '--autoplay-policy=no-user-gesture-required'] });
 try {
   const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+  await page.route('**/*', route => /^(https?:\/\/(127\.0\.0\.1|localhost)(:|\/)|blob:|data:)/.test(route.request().url()) ? route.continue() : route.abort());
   const errors = [];
   page.on('pageerror', error => errors.push(String(error)));
   await page.goto(url);
@@ -24,17 +25,44 @@ try {
   const track = await page.evaluate(() => window.store.getState().ui.music);
   assert(track.duration > 0, 'The current track must have its measured duration');
   await page.getByRole('button', { name: 'Now playing music', exact: true }).click();
-  await page.getByText(track.title, { exact: true }).waitFor();
+  await page.locator('.np-title').filter({ hasText: track.title }).waitFor();
+  const library = await page.evaluate(() => window.game.command({ cmd: 'music-list' }));
+  assert(library.tracks.length >= 2);
+  assert.equal(await page.locator('.np-tracks li').count(), library.tracks.length);
+  const select = async song => {
+    await page.getByRole('button', { name: `Play ${song.title}`, exact: true }).click();
+    await page.waitForFunction(id => window.store.getState().ui?.music?.id === id && window.game.audio.musicPlayback().active && !window.game.audio.musicPlayback().paused, song.id, { timeout: 90000 });
+    assert.equal(await page.getByRole('button', { name: `Play ${song.title}`, exact: true }).getAttribute('aria-current'), 'true');
+  };
+  await select(library.tracks.at(-1));
+  await select(library.tracks[0]);
+  await page.getByRole('button', { name: 'Next track', exact: true }).click();
+  await page.waitForFunction(id => window.store.getState().ui?.music?.id !== id, library.tracks[0].id);
+  await page.getByRole('button', { name: 'Previous track', exact: true }).click();
+  await page.waitForFunction(id => window.store.getState().ui?.music?.id === id && window.game.audio.musicPlayback().active, library.tracks[0].id);
   await page.waitForTimeout(1200);
   const a = await page.evaluate(() => window.game.audio.musicPlayback().elapsed);
   await page.waitForTimeout(1200);
   assert((await page.evaluate(() => window.game.audio.musicPlayback().elapsed)) > a + .5);
+  await page.getByRole('button', { name: 'Pause music', exact: true }).click();
+  await page.waitForFunction(() => window.game.audio.musicPlayback().paused);
+  const musicPaused = await page.evaluate(() => window.game.audio.musicPlayback().elapsed);
+  await page.waitForTimeout(1300);
+  assert(Math.abs(await page.evaluate(() => window.game.audio.musicPlayback().elapsed) - musicPaused) < .1, 'Music-only pause freezes queued PCM');
+  assert.equal(await page.evaluate(() => window.game.audio.context().state), 'running', 'Effects still run during music-only pause');
+  await page.getByRole('button', { name: 'Play music', exact: true }).click();
+  await page.waitForFunction(() => !window.game.audio.musicPlayback().paused);
+  await page.waitForTimeout(700);
+  assert(await page.evaluate(() => window.game.audio.musicPlayback().elapsed) > musicPaused + .3);
+  await page.getByLabel('Music volume', { exact: true }).fill('37');
+  assert.equal(await page.evaluate(() => JSON.parse(localStorage.getItem('rtsai.preferences.v1')).music), .37);
   await page.getByRole('button', { name: 'Mute music', exact: true }).click();
   assert.deepEqual(await page.evaluate(() => ({ music: window.game.audio.musicOn, effects: window.game.audio.soundOn })), { music: false, effects: true });
   await page.getByRole('button', { name: 'Unmute music', exact: true }).click();
   for (const [name, viewport, dir] of [
     ['desktop', { width: 1440, height: 900 }, 'ltr'],
     ['phone', { width: 844, height: 390 }, 'ltr'],
+    ['phone-portrait', { width: 390, height: 844 }, 'ltr'],
     ['phone-rtl', { width: 844, height: 390 }, 'rtl'],
   ]) {
     await page.setViewportSize(viewport);
@@ -55,5 +83,6 @@ try {
   assert(Math.abs(await page.evaluate(() => window.game.audio.musicPlayback().elapsed) - frozen) < .1, 'Paused audio freezes the track clock');
   await page.evaluate(() => window.game.setPaused(false));
   assert.deepEqual(errors, []);
-  console.log('PASS real soundtrack:', track, '; progress, music-only mute, paused clock, Escape/focus, desktop/phone/RTL popup');
+  fs.writeFileSync(`${out}/receipt.json`, JSON.stringify({ passed: true, url, track, tracks: library.tracks, tests: ['select first/last', 'previous/next', 'PCM pause/resume with effects running', 'volume persistence', 'mute', 'match pause', 'Escape/focus', 'desktop/phone/RTL popup'] }, null, 2));
+  console.log('PASS real soundtrack:', track, ';', library.tracks.length, 'tracks, selection, previous/next, real pause/resume, volume, mute, match pause, Escape/focus, desktop/phone/RTL popup');
 } finally { await browser.close(); }
