@@ -8526,7 +8526,7 @@
     {
       "filename": "standalone/audio/music/rtsai-final-push.ogg",
       "category": "music",
-      "sha256": "ad6f6b895df6d7798c7acebbeea329ed013a533e0cd216eb35535ec2d3393ce2",
+      "sha256": "c287687a12762f28539c46d78e3713c6f831c5f04f4b5e9609f25bad759a3eda",
       "source": "tools/standalone-music.py",
       "engine": "ACE-Step 1.5 text2music (XL turbo DiT + 5Hz LM planner), local BeTenshi music service",
       "license": "MIT (code and weights); the output carries no third-party rights"
