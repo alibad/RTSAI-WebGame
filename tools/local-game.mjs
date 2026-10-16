@@ -26,9 +26,10 @@ const atomicJson = (file, value) => {
   fs.renameSync(temp, file);
 };
 function git(...args) { return execFileSync('git', ['-C', repo, ...args], { encoding: 'utf8', windowsHide: true }).trim(); }
-function serverIdentity() {
-  const files = fs.readdirSync(path.join(repo, 'server')).filter(name => name.endsWith('.mjs')).sort();
-  return sha(Buffer.concat(files.map(name => Buffer.concat([Buffer.from(name), fs.readFileSync(path.join(repo, 'server', name))]))));
+function serverIdentity(config) {
+  const directory = path.join(config.serverRoot ?? repo, 'server');
+  const files = fs.readdirSync(directory).filter(name => name.endsWith('.mjs')).sort();
+  return sha(Buffer.concat(files.map(name => Buffer.concat([Buffer.from(name), fs.readFileSync(path.join(directory, name))]))));
 }
 
 export async function verifyAcceptedBuild(config) {
@@ -43,6 +44,8 @@ export async function verifyAcceptedBuild(config) {
   git('merge-base', '--is-ancestor', source, 'main');
   if (!config.scenarios || !config.scenarioFiles?.length) throw new Error('Accepted scenarios are not frozen; register this build again.');
   for (const entry of config.scenarioFiles) if (await hashFile(entry.path) !== entry.sha256) throw new Error(`Accepted scenario changed: ${entry.path}`);
+  if (config.serverRoot && !config.serverFiles?.length) throw new Error('Accepted server sources are missing');
+  for (const entry of config.serverFiles ?? []) if (await hashFile(entry.path) !== entry.sha256) throw new Error(`Accepted server source changed: ${entry.path}`);
   const entries = new Map(receipt.checksums.map(entry => [path.resolve(entry.path).toLowerCase(), entry.sha256]));
   const required = [path.join(config.page, 'index.html'), path.join(config.page, 'build-local.json'), path.join(config.page, 'NOTICE')];
   for (const profile of ['public', 'public-classic']) {
@@ -61,7 +64,7 @@ export async function verifyAcceptedBuild(config) {
   const twin = path.join(config.native, 'bin/OpenRA.WebSim.Native-public/Release/net10.0/websim.dll');
   if (!fs.existsSync(twin) || await hashFile(twin) !== config.nativeSha256) throw new Error('Native replay host changed or is missing');
   for (const entry of config.nativeFiles ?? []) if (await hashFile(entry.path) !== entry.sha256) throw new Error(`Native replay dependency changed: ${entry.path}`);
-  return { receipt, receiptSha256: sha(bytes), serverSha256: serverIdentity() };
+  return { receipt, receiptSha256: sha(bytes), serverSha256: serverIdentity(config) };
 }
 
 async function probe(port) {
@@ -149,6 +152,17 @@ async function main() {
       if (fs.statSync(absolute).isFile()) config.nativeFiles.push({ path: absolute, sha256: await hashFile(absolute) });
     }
     const source = read(receipt).sources['RTSAI-WebGame'].head;
+    // Freeze the server too: a later edit in the canonical checkout must not change an accepted game's host.
+    config.serverRoot = path.join(state, 'inputs', config.buildId, 'source');
+    config.serverFiles = [];
+    for (const rel of git('ls-tree', '-r', '--name-only', source, '--', 'server', 'tools/adapt-topdown-map.py').split('\n').filter(Boolean)) {
+      const contents = execFileSync('git', ['-C', repo, 'show', `${source}:${rel}`], { windowsHide: true });
+      const file = path.join(config.serverRoot, rel);
+      fs.mkdirSync(path.dirname(file), { recursive: true });
+      if (fs.existsSync(file) && await hashFile(file) !== sha(contents)) throw new Error(`Frozen server source was modified: ${file}`);
+      fs.writeFileSync(file, contents);
+      config.serverFiles.push({ path: file, sha256: sha(contents) });
+    }
     config.scenarios = path.join(state, 'inputs', config.buildId, 'scenarios');
     config.scenarioFiles = [];
     for (const rel of git('ls-tree', '-r', '--name-only', source, '--', 'scenarios').split('\n').filter(Boolean)) {
@@ -181,8 +195,12 @@ async function main() {
       RTSAI_WEB_MOCK_AI_PORT: String(port + 5003), RTSAI_WEB_LOCAL_AI_PORT: String(port + 5004),
       RTSAI_VERIFIED_LOCAL_BUILD: JSON.stringify({ buildId: config.buildId, receiptSha256: identity.receiptSha256, serverSha256: identity.serverSha256, page: config.page, data: config.data, native: config.native, scenarios: config.scenarios, grpcPort: port + 5000, pid: process.pid, launchId: process.env.RTSAI_LOCAL_LAUNCH_ID }),
     });
-    delete process.env.RTSAI_MAP_MOD_ROOT; delete process.env.RTSAI_MAP_OUTPUT_ROOT; delete process.env.RTSAI_SITE_PUBLIC;
-    await import(pathToFileURL(path.join(repo, 'server/serve.mjs')).href);
+    // Preserve the canonical locations of mutable player maps and local art when the host itself is frozen.
+    process.env.RTSAI_MAP_MOD_ROOT = path.join(repo, '.inputs/mod');
+    process.env.RTSAI_MAP_OUTPUT_ROOT = path.join(repo, 'build/local-maps');
+    process.env.RTSAI_SITE_PUBLIC = path.resolve(repo, '../RTSAI-Web/public');
+    process.env.RTSAI_OPENRA_AI = path.resolve(repo, '../OpenRA-AI');
+    await import(pathToFileURL(path.join(config.serverRoot ?? repo, 'server/serve.mjs')).href);
     return;
   }
   if (command === 'verify') { await verifyAcceptedBuild(config); console.log(`Verified ${config.buildId}`); return; }

@@ -104,6 +104,13 @@ def main():
     if args.launcher_registration:
         registration = json.loads(args.launcher_registration.read_text(encoding='utf-8-sig'))
         shutil.copy2(args.launcher_registration, out / 'launcher-registration.json')
+        for entry in registration.get('serverFiles', []):
+            original = Path(entry['path'])
+            copy = out / 'accepted-server' / original.relative_to(Path(registration['serverRoot']))
+            copy.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(original, copy)
+            if sha(copy) != entry['sha256']:
+                raise ValueError(f'Accepted server source changed: {original}')
         native = Path(registration['native'])
         for entry in registration['nativeFiles']:
             original = Path(entry['path'])
