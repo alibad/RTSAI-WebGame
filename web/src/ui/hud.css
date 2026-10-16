@@ -922,6 +922,10 @@
 .es-basemap button[aria-pressed="true"] { color: #171b10; background: var(--hud-gold); }
 .es-mission-extra summary { cursor: pointer; min-height: 40px; padding-block: 10px; color: #b9c6d3; font-size: 12px; }
 .es-play-note { color: #aab6c3; font-size: 12px; line-height: 1.4; }
+.es-site-storage { display: flex; flex-direction: column; gap: 6px; margin: 8px 14px; padding: 12px; border: 1px solid var(--hud-edge); border-radius: 9px; color: #b9c6d3; }
+.es-site-storage b { color: #5fe0cb; font-size: 13px; }
+.es-site-storage small { font-size: 11px; line-height: 1.5; }
+.es-site-storage > div { display: flex; flex-wrap: wrap; gap: 8px; }
 .es-intel footer { flex-shrink: 0; max-height: 72%; overflow-y: auto; }
 .es-root .maplibregl-ctrl-group { background: #172012; border: 1px solid var(--hud-edge-hi); }
 .es-root .maplibregl-ctrl-group button { width: 44px; height: 44px; }

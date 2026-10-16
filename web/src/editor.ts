@@ -77,6 +77,17 @@ async function keep(map: LibraryMap) {
   });
 }
 
+async function libraryMap(id: string | null): Promise<LibraryMap | null> {
+  if (!id) return null;
+  try {
+    const d = await db();
+    return await new Promise((resolve, reject) => {
+      const r = d.transaction(STORE).objectStore(STORE).get(id);
+      r.onsuccess = () => resolve(r.result ?? null); r.onerror = () => reject(r.error);
+    });
+  } catch { return null; }
+}
+
 const b64 = (s: string) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
 
 export class EditorController {
@@ -225,11 +236,15 @@ export class EditorController {
   /** Saves into this browser's library (and the map lists); returns the saved map's id. */
   async save(): Promise<string | null> {
     if (!this.active || this.state.saving) return null;
+    const sourceId = this.state.saved ?? this.state.map;
     this.patch({ saving: true, error: "" });
     try {
       const r = await this.call<{ id?: string; title?: string; players?: number; files?: Record<string, string>; error?: string }>({ op: "save", title: this.state.title || "Untitled map", author: "RTS AI player" });
       if (!r.id || !r.files) throw Error(r.error ?? "Couldn't save this map.");
       const files = Object.fromEntries(Object.entries(r.files).map(([k, v]) => [k, b64(v)]));
+      // The engine rewrites terrain/actors, but geographic evidence belongs to the authored map too.
+      const previous = await libraryMap(sourceId);
+      for (const name of ["earth.json", "sites.json", "provenance.json"]) if (!files[name] && previous?.files[name]) files[name] = previous.files[name].slice();
       const m: LibraryMap = { id: r.id, title: r.title ?? this.state.title, players: r.players ?? 2, files, updated: Date.now() };
       await this.mount(m);
       await keep(m);
@@ -245,7 +260,7 @@ export class EditorController {
   async download() {
     const id = this.state.saved ?? await this.save();
     if (!id) return;
-    const m = (await libraryMaps()).find((x) => x.id === id);
+    const m = await libraryMap(id);
     if (!m) return;
     const zip = zipStore(m.files);
     const a = document.createElement("a");

@@ -1,97 +1,89 @@
-// Optional context for missions. Never a prerequisite for compiling geographic terrain.
-export type Place = { name: string; lat: number; lon: number };
-export type Site = { id: string; name: string; kind: string; lat: number; lon: number; source: "OpenStreetMap" | "Wikipedia"; url?: string; extract?: string; thumb?: string; operator?: string; dist: number; snapshot?: string };
-
-// Public geographic references checked against these article revisions, not current force positions.
+// Saved geography first. Live discovery refreshes bounded areas, never a document per marker.
+import { areaFor, boundsAt, contains, DETAIL_TTL, mappedSites, mergeSites, nearby, RETRY_DELAY, SITE_TTL, siteQuery, sources, type AreaSnapshot, type CoreSite, type Place, type Site, type Source } from "./earth-site-model";
+import { packagedSites } from "./earth-site-catalog";
+import { keepSiteRecord, savedSiteRecord, savedSiteRecords, sitesAreDurable } from "./earth-site-storage";
+export type { Place, Site } from "./earth-site-model";
+export type SiteStatus = { count: number; storage: "browser" | "session"; dataset: string; updatedAt: number; refreshing: boolean };
 const REFERENCES = [
   { name: "Khasab Airport", lat: 26.17083, lon: 56.24056, revision: 1371388595 },
   { name: "Qeshm International Airport", lat: 26.7546389, lon: 55.9023528, revision: 1374048451 },
 ];
-
 export function referenceSites(place: Place, radius: number): Site[] {
-  const dy = radius / 111320, dx = dy / Math.cos(place.lat * Math.PI / 180);
-  return REFERENCES.filter(p => Math.abs(p.lat - place.lat) <= dy && Math.abs(p.lon - place.lon) <= dx).map(p => ({ ...p,
-    id: `reference-${p.revision}`, kind: "Airfield", source: "Wikipedia", snapshot: "Reference checked 16 Oct 2026",
-    extract: "Geographic reference. Current operations are not verified.", url: `https://en.wikipedia.org/w/index.php?oldid=${p.revision}`, dist: distance(place, p),
-  }));
+  return nearby(REFERENCES.map(p => ({ ...p, id: `reference-${p.revision}`, kind: "Airfield", source: "Wikipedia" as const, snapshot: "Reference checked 16 Oct 2026",
+    extract: "Geographic reference. Current operations are not verified.", url: `https://en.wikipedia.org/w/index.php?oldid=${p.revision}` })), place, radius);
 }
-
-const distance = (a: Place | Site, b: Place | Site) => {
-  const r = Math.PI / 180, dl = (b.lat - a.lat) * r, dn = (b.lon - a.lon) * r;
-  return 6371000 * 2 * Math.asin(Math.sqrt(Math.sin(dl / 2) ** 2 + Math.cos(a.lat * r) * Math.cos(b.lat * r) * Math.sin(dn / 2) ** 2));
-};
-
 async function json(url: string, signal: AbortSignal) {
-  const response = await fetch(url, { signal });
-  if (!response.ok) throw Error(`Source returned ${response.status}`);
-  return response.json();
+  const r = await fetch(url, { signal }); if (!r.ok) throw Error(`Source returned ${r.status}`); return r.json();
 }
-
-/** Independent, bounded lookups. Publish titles/coordinates before optional article summaries finish. */
+const inFlight = new Map<string, Promise<{ sites: CoreSite[]; complete: boolean }>>();
 export async function researchSites(place: Place, radius: number, options: {
-  signal: AbortSignal;
-  mapped: (query: string, signal: AbortSignal) => Promise<{ elements?: unknown[] }>;
-  update: (sites: Site[]) => void;
-  log: (message: string) => void;
+  signal: AbortSignal; mapped: (query: string, signal: AbortSignal) => Promise<{ elements?: unknown[]; remark?: string }>;
+  update: (sites: Site[]) => void; known?: (sites: CoreSite[]) => void; log: (message: string) => void; status?: (value: SiteStatus) => void; force?: boolean;
 }) {
-  const { signal, mapped, update, log } = options;
-  const reference = referenceSites(place, radius);
-  let osm: Site[] = [], wiki: Site[] = [];
-  const publish = () => {
-    // Keep mapped cards as articles arrive, so an already selected mission target never disappears.
-    const named = osm.filter(s => s.name !== s.kind)
-      .sort((a, b) => a.dist - b.dist).filter((s, i, all) => all.findIndex(x => x.name === s.name) === i).slice(0, 4);
-    const unnamed = osm.filter(s => s.name === s.kind).sort((a, b) => a.dist - b.dist)
-      .filter((s, i, all) => all.findIndex(x => x.kind === s.kind) === i).slice(0, wiki.length + named.length >= 3 ? 1 : 3);
-    const live = [...wiki, ...named, ...unnamed];
-    if (!signal.aborted) update([...live, ...reference.filter(r => !live.some(s => s.name.toLowerCase() === r.name.toLowerCase()))]);
+  const { signal, mapped, update, log } = options, area = areaFor(place, radius), requested = boundsAt(place, radius * 1.6);
+  await new Promise(resolve => setTimeout(resolve, 300)); if (signal.aborted) return;
+  let known: CoreSite[] = referenceSites(place, radius), version = "Local discoveries";
+  const publish = (refreshing: boolean) => {
+    if (signal.aborted) return;
+    const list = nearby(known, place, radius); update(list); options.known?.(known);
+    options.status?.({ count: list.length, storage: sitesAreDurable() ? "browser" : "session", dataset: version, updatedAt: Math.max(0, ...list.map(s => s.updatedAt ?? 0)), refreshing });
   };
-  publish();
-  if (reference.length) log(`Loaded <b>${reference.length}</b> sourced geographic references (checked 16 Oct 2026)`);
-  const osmWork = async () => {
-    const requestSignal = AbortSignal.any([signal, AbortSignal.timeout(15000)]);
-    const dy = radius * 1.4 / 110540, dx = radius * 1.4 / (111320 * Math.cos(place.lat * Math.PI / 180));
-    const bb = `${place.lat - dy},${place.lon - dx},${place.lat + dy},${place.lon + dx}`;
-    const query = `[out:json][timeout:15];(nwr["landuse"="military"](${bb});nwr["military"](${bb});nwr["aeroway"="aerodrome"](${bb});nwr["landuse"~"^(port|harbour)$"](${bb});nwr["harbour"](${bb});nwr["industrial"="port"](${bb});nwr["seamark:type"="harbour"](${bb}););out tags center;`;
-    log("Looking for nearby sites in <b>OpenStreetMap</b> (optional)");
+  publish(true);
+  const [packaged, saved] = await Promise.all([packagedSites(requested, options.force), savedSiteRecords<AreaSnapshot>("area:")]);
+  if (signal.aborted) return;
+  version = packaged.catalog.manifest?.version ?? version;
+  known = mergeSites(known, packaged.catalog.sites, ...packaged.regions.map(r => r.sites), ...saved.map(s => s.sites));
+  const same = saved.find(s => s.id === area.id);
+  const snapshot: AreaSnapshot = same ? { ...same, sites: [...same.sites], checked: { ...same.checked }, attempted: { ...same.attempted } }
+    : { id: area.id, bounds: area.bounds, updatedAt: 0, checked: {}, attempted: {}, sites: [] };
+  const covered = (source: Source) => Math.max(0,
+    ...saved.filter(s => contains(s.bounds, requested)).map(s => s.checked[source] ?? 0),
+    ...packaged.regions.filter(r => contains(r.bounds, requested)).map(r => r.coverage[source] ?? 0));
+  const needed = sources.filter(source => options.force || (Date.now() - covered(source) > SITE_TTL && Date.now() - (snapshot.attempted[source] ?? 0) > RETRY_DELAY));
+  publish(needed.length > 0); log(`Loaded <b>${nearby(known, place, radius).length}</b> known sites from saved datasets`);
+  const work = async (source: Source) => {
+    const key = `${area.id}:${source}`;
     try {
-      const payload = await mapped(query, requestSignal);
-      type Element = { id: number; type: string; lat?: number; lon?: number; center?: { lat: number; lon: number }; tags?: Record<string, string> };
-      osm = ((payload.elements ?? []) as Element[]).flatMap(e => {
-        const c = e.center ?? (e.lat !== undefined && e.lon !== undefined ? { lat: e.lat, lon: e.lon } : null), t = e.tags ?? {};
-        if (!c) return [];
-        const kind = t.aeroway === "aerodrome" ? (t.military || t.landuse === "military" || /air ?base|military/i.test(t.name ?? "") ? "Air base" : "Airfield")
-          : t.landuse === "port" || t.landuse === "harbour" || t.harbour || t.industrial === "port" || t["seamark:type"] === "harbour" ? "Port" : t.military === "barracks" ? "Barracks" : t.military === "naval_base" ? "Naval base" : t.military === "airfield" ? "Air base" : "Military area";
-        const raw = t["name:en"] ?? t.name;
-        const name = raw && raw.length > 3 && !/^[A-Z]{0,2}\d+$/.test(raw) ? raw : kind;
-        const site: Site = { id: `osm-${e.type}-${e.id}`, name, kind, ...c, source: "OpenStreetMap", url: `https://www.openstreetmap.org/${e.type}/${e.id}`,
-          operator: t["operator:en"] ?? t.operator ?? t.military_service, dist: distance(place, { ...c, name }) };
-        return [site];
-      });
-      if (!signal.aborted) { publish(); log(`Live OpenStreetMap lookup: <b>${osm.length}</b> mapped sites`); }
-    } catch { if (!signal.aborted) log("Nearby mapped sites unavailable. Battlefield building is unaffected."); }
+      let promise = inFlight.get(key);
+      if (!promise) {
+        // Shared refresh fills the cache even if a moving view is cancelled; its own deadline bounds the work.
+        const deadline = AbortSignal.timeout(source === "OpenStreetMap" ? 15000 : 12000);
+        promise = source === "OpenStreetMap" ? mapped(siteQuery(area.bounds), deadline).then(p => ({ sites: mappedSites(p, Date.now()), complete: true })) : (async () => {
+          const dy = area.radius * .8 / 111320, dx = dy / Math.cos(area.place.lat * Math.PI / 180);
+          const points = area.radius > 10000 ? [[area.place.lat, area.place.lon], [area.place.lat + dy, area.place.lon], [area.place.lat - dy, area.place.lon], [area.place.lat, area.place.lon + dx], [area.place.lat, area.place.lon - dx]] : [[area.place.lat, area.place.lon]];
+          const responses = await Promise.allSettled(points.map(([lat, lon]) => json(`https://en.wikipedia.org/w/api.php?action=query&list=geosearch&gscoord=${lat}|${lon}&gsradius=10000&gslimit=500&format=json&origin=*`, deadline)));
+          const valid = responses.filter(r => r.status === "fulfilled" && Array.isArray(r.value.query?.geosearch));
+          if (!valid.length) throw Error("No article response");
+          const relevant = /air ?base|airbase|naval|military|army|camp |fort|barracks|garrison|\b(airport|port|harbou?r|strait|bridge|dam|canal|island)\b/i;
+          type Article = { pageid: number; title: string; lat: number; lon: number };
+          return { sites: mergeSites(valid.flatMap(r => r.status === "fulfilled" ? (r.value.query.geosearch as Article[]).filter(a => relevant.test(a.title) && !/stadium|university|school|hospital|mosque|church|club|museum|hotel|mall/i.test(a.title))
+            .map(a => ({ id: `wiki-${a.pageid}`, name: a.title, kind: /military|air ?base|naval|barracks|fort/i.test(a.title) ? "Military" : "Infrastructure", lat: a.lat, lon: a.lon, source: "Wikipedia" as const, url: `https://en.wikipedia.org/wiki/${encodeURIComponent(a.title.replaceAll(" ", "_"))}`, updatedAt: Date.now() })) : [])), complete: valid.length === points.length };
+        })();
+        inFlight.set(key, promise); void promise.finally(() => inFlight.delete(key)).catch(() => undefined);
+      }
+      const result = await promise, records = result.sites;
+      snapshot.attempted[source] = Date.now(); if (result.complete) snapshot.checked[source] = Date.now(); snapshot.updatedAt = Date.now();
+      snapshot.sites = mergeSites(snapshot.sites.filter(s => s.source !== source), records);
+      await keepSiteRecord(`area:${area.id}`, { ...snapshot, sites: [...snapshot.sites], checked: { ...snapshot.checked }, attempted: { ...snapshot.attempted } });
+      known = mergeSites(known, records); publish(true);
+      if (!signal.aborted) log(`Saved <b>${records.length}</b> ${source} site records in this browser`);
+    } catch {
+      snapshot.attempted[source] = Date.now();
+      await keepSiteRecord(`area:${area.id}`, { ...snapshot, sites: [...snapshot.sites], checked: { ...snapshot.checked }, attempted: { ...snapshot.attempted } });
+      if (!signal.aborted) log(`${source} refresh unavailable; saved sites remain available.`);
+    }
   };
-  const wikiWork = async () => {
-    log("Looking up <b>Wikipedia</b> context (optional)");
-    try {
-      const dy = radius * .8 / 111320, dx = dy / Math.cos(place.lat * Math.PI / 180);
-      const points = radius > 10000 ? [[place.lat, place.lon], [place.lat + dy, place.lon], [place.lat - dy, place.lon], [place.lat, place.lon + dx], [place.lat, place.lon - dx]] : [[place.lat, place.lon]];
-      const responses = await Promise.allSettled(points.map(([lat, lon]) => json(`https://en.wikipedia.org/w/api.php?action=query&list=geosearch&gscoord=${lat}|${lon}&gsradius=10000&gslimit=30&format=json&origin=*`, AbortSignal.any([signal, AbortSignal.timeout(12000)]))));
-      const civic = /\b(stadium|university|college|school|hospital|mosque|church|club|museum|hotel|mall)\b/i;
-      const rank = (title: string) => /air ?base|airbase|naval|military|army|camp |fort|barracks|garrison/i.test(title) ? 0 : civic.test(title) ? 2 : /\b(airport|port|harbou?r|strait|bridge|dam|canal|island)\b/i.test(title) ? 1 : 2;
-      type Article = { pageid: number; title: string; lat: number; lon: number; dist: number };
-      const found = responses.flatMap(r => r.status === "fulfilled" ? (r.value.query?.geosearch ?? []) as Article[] : []);
-      const top = found.filter((it, i) => found.findIndex(other => other.pageid === it.pageid) === i).map(it => ({ ...it, dist: distance(place, { ...it, name: it.title }) })).filter(i => rank(i.title) < 2).sort((a, b) => rank(a.title) - rank(b.title) || a.dist - b.dist).slice(0, 6);
-      wiki = top.map(it => ({ id: `wiki-${it.pageid}`, name: it.title, kind: rank(it.title) === 0 ? "Military" : "Infrastructure", lat: it.lat, lon: it.lon,
-        source: "Wikipedia", url: `https://en.wikipedia.org/wiki/${encodeURIComponent(it.title.replace(/ /g, "_"))}`, dist: it.dist }));
-      publish();
-      await Promise.allSettled(top.map(async it => {
-        const summary = await json(`https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(it.title.replace(/ /g, "_"))}`, AbortSignal.any([signal, AbortSignal.timeout(8000)]));
-        wiki = wiki.map(s => s.id === `wiki-${it.pageid}` ? { ...s, extract: summary.extract, thumb: summary.thumbnail?.source, url: summary.content_urls?.desktop?.page ?? s.url } : s);
-        publish();
-      }));
-      if (!signal.aborted) log(`Live Wikipedia lookup: <b>${top.length}</b> nearby article${top.length === 1 ? "" : "s"}`);
-    } catch { if (!signal.aborted) log("Wikipedia context unavailable. Battlefield building is unaffected."); }
-  };
-  await Promise.allSettled([osmWork(), wikiWork()]);
+  await Promise.allSettled(needed.map(work)); publish(false);
+}
+/** Only the selected article's text. Marker loading never fans out into article summaries. */
+export async function siteDetails(site: Site, signal: AbortSignal): Promise<Partial<Site>> {
+  if (site.source !== "Wikipedia" || !site.id.startsWith("wiki-") || !site.url?.startsWith("https://en.wikipedia.org/wiki/")) return {};
+  const key = `detail:${site.id}`, cached = await savedSiteRecord<{ updatedAt: number; detail: Partial<Site> }>(key);
+  if (cached && Date.now() - cached.updatedAt < DETAIL_TTL) return cached.detail;
+  try {
+    const title = decodeURIComponent(site.url.slice("https://en.wikipedia.org/wiki/".length));
+    const summary = await json(`https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(title)}`, AbortSignal.any([signal, AbortSignal.timeout(8000)]));
+    const detail = { extract: typeof summary.extract === "string" ? summary.extract.slice(0, 1600) : undefined, snapshot: `Article context saved ${new Date().toLocaleDateString()} · see source for license` };
+    await keepSiteRecord(key, { updatedAt: Date.now(), detail }); return detail;
+  } catch { return cached?.detail ?? {}; }
 }

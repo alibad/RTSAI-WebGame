@@ -1,0 +1,67 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
+import crypto from 'node:crypto';
+import { build } from '../web/node_modules/esbuild/lib/main.js';
+
+const result = await build({ stdin: { contents: 'export * from "./earth-research"; export * from "./earth-site-model"; export * from "./earth-site-storage"; export * from "./earth-site-catalog";', resolveDir: path.resolve('web/src') }, bundle: true, platform: 'node', format: 'esm', write: false });
+const api = await import(`data:text/javascript;base64,${Buffer.from(result.outputFiles[0].text).toString('base64')}`);
+const manifest = JSON.parse(fs.readFileSync('web/public/earth-sites/manifest.json'));
+for (const entry of [manifest.overview, ...manifest.regions]) {
+  const body = fs.readFileSync(path.join('web/public/earth-sites', entry.file));
+  assert.equal(body.length, entry.bytes);
+  assert.equal(crypto.createHash('sha256').update(body).digest('hex'), entry.sha256, 'Published pack integrity');
+}
+const overview = JSON.parse(fs.readFileSync(path.join('web/public/earth-sites', manifest.overview.file)));
+assert.equal(new Set(overview.map(s => s.id)).size, manifest.count);
+globalThis.location = { href: 'http://127.0.0.1:3496/' };
+const place = { name: 'Cairo', lat: 30.0444, lon: 31.2357 }, requests = [];
+let mapped = 0, fail = false;
+globalThis.fetch = async url => {
+  requests.push(String(url));
+  const u = new URL(url);
+  if (u.pathname.startsWith('/earth-sites/')) return new Response(fs.readFileSync(path.join('web/public/earth-sites', path.basename(u.pathname))));
+  if (fail) throw Error('offline');
+  if (u.pathname.includes('/summary/')) return Response.json({ extract: 'A selected article, cached separately.' });
+  assert.equal(u.hostname, 'en.wikipedia.org', 'No Firestore or per-marker requests');
+  return Response.json({ query: { geosearch: [{ pageid: 900001, title: 'Port Example', lat: place.lat, lon: place.lon }] } });
+};
+const options = { signal: new AbortController().signal, mapped: async () => {
+  mapped++; if (fail) throw Error('offline');
+  return { elements: Array.from({ length: 40 }, (_, i) => ({ type: 'node', id: 800000 + i, lat: place.lat + i / 100000, lon: place.lon, tags: { military: 'barracks', name: `Known barracks ${i}` } })) };
+}, update: () => {}, log: () => {} };
+const updates = [], states = [];
+await Promise.all([api.researchSites(place, 1500, { ...options, update: list => updates.push(list), status: s => states.push(s) }), api.researchSites(place, 1500, options)]);
+assert.equal(mapped, 1, 'Concurrent area lookups coalesce');
+assert.ok(updates.some(sites => sites.length >= 40), 'All discovered markers survive, rather than truncating to four cards');
+assert.ok(updates.findIndex(s => s.length > 0) < updates.findIndex(s => s.length >= 40), 'Saved sites publish before new discoveries');
+assert.equal(requests.filter(r => r.includes('/summary/')).length, 0, 'No article fan-out during discovery');
+assert.equal(requests.filter(r => r.includes('manifest.json')).length, 1);
+assert.equal(requests.filter(r => r.includes('/region-')).length, 1, 'Only the Cairo region pack loads');
+assert.equal((await api.preloadKnownSites()).sites.length, 27);
+const before = requests.length;
+await api.researchSites({ ...place, lat: place.lat + .002 }, 1500, options);
+assert.equal(requests.length, before, 'Fresh neighboring area reuses saved core data');
+assert.equal(mapped, 1);
+const article = updates.at(-1).find(s => s.id === 'wiki-900001');
+assert.ok(article);
+assert.match((await api.siteDetails(article, options.signal)).extract, /selected article/);
+const detailsBefore = requests.length;
+assert.match((await api.siteDetails(article, options.signal)).extract, /selected article/);
+assert.equal(requests.length, detailsBefore, 'Selected article cache avoids repeat downloads');
+fail = true;
+let offline = [];
+await api.researchSites(place, 1500, { ...options, force: true, update: s => { offline = s; } });
+assert.ok(offline.length >= 40, 'Failed refresh retains the saved site set');
+const failedCount = mapped;
+await api.researchSites(place, 1500, options);
+assert.equal(mapped, failedCount, 'Failed refresh has a retry cooldown');
+const cancelled = new AbortController(); cancelled.abort();
+await api.researchSites(place, 1500, { ...options, signal: cancelled.signal });
+assert.equal(mapped, failedCount, 'Cancelled view never issues a lookup');
+assert.equal(api.areaFor(place, 1500).id, api.areaFor({ ...place, lat: place.lat + .002 }, 1500).id);
+const dedup = api.mergeSites([{ ...article, updatedAt: 1 }], [{ ...article, name: 'New name', updatedAt: 2 }]);
+assert.equal(dedup.length, 1); assert.equal(dedup[0].name, 'New name');
+assert.throws(() => api.mappedSites({ elements: [], remark: 'timeout' }, Date.now()), /Incomplete/);
+assert.equal(states.at(-1).refreshing, false);
+console.log('Earth sites: versioned packs, area-only loading, all records, deduplication, shared refresh, freshness, failure retention, cooldown, cancellation, lazy article details and zero Firestore requests passed.');

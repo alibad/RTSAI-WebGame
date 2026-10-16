@@ -17,7 +17,9 @@ import { Flag } from "./Flag";
 import { GameButton } from "./kit/game";
 import { compileBattlefield } from "@site/lib/earth-battlefield";
 import { elevationGrid } from "../elevation";
-import { researchSites, type Place, type Site } from "../earth-research";
+import { researchSites, siteDetails, type Place, type Site, type SiteStatus } from "../earth-research";
+import { preloadKnownSites } from "../earth-site-catalog";
+import { mergeSites, type CoreSite } from "../earth-site-model";
 import { overpassFailure, terrainBox, terrainFeatures, terrainQuery } from "@site/lib/earth-evidence";
 import { regionalGeography } from "@site/lib/earth-region";
 import type { Map as MapLibreMap, Marker } from "maplibre-gl";
@@ -85,6 +87,15 @@ export function EarthStudio({ game, editor, close, mission, play }: { game: Game
   const [log, setLog] = useState<string[]>([]);
   const [sites, setSites] = useState<Site[]>([]);
   const [scanning, setScanning] = useState(false);
+  const [siteStatus, setSiteStatus] = useState<SiteStatus | null>(null);
+  const [siteRefresh, setSiteRefresh] = useState(0);
+  const consumedRefresh = useRef(0);
+  const [knownSites, setKnownSites] = useState<CoreSite[]>([]);
+  const [datasetVersion, setDatasetVersion] = useState("");
+  const [catalogReady, setCatalogReady] = useState(false);
+  const [sitePage, setSitePage] = useState(1);
+  const pickSite = useRef<(site: Site) => void>(() => {});
+  const siteSnapshot = useRef<Site[]>([]);
   const research = useRef<AbortController | null>(null);
   const building = useRef<AbortController | null>(null);
   const sidesEdited = useRef(false);
@@ -124,6 +135,8 @@ export function EarthStudio({ game, editor, close, mission, play }: { game: Game
       marker.current = new lib.Marker({ element: pin, draggable: true }).setLngLat([46, 23]);
       marker.current.on("dragend", () => { const p = marker.current!.getLngLat(); moveArea.current(p.lat, p.lng); });
       m.on("click", e => {
+        const layers = ["sites-dot", "sites-clusters"].filter(id => m.getLayer(id));
+        if (layers.length && m.queryRenderedFeatures(e.point, { layers }).length) return;
         if (Math.abs(e.lngLat.lat) > 84) return;
         if (stageRef.current === "place") moveArea.current(e.lngLat.lat, e.lngLat.lng);
         if (stageRef.current === "world" && m.isStyleLoaded()) chooseArea.current({ name: "Picked on the map", lat: e.lngLat.lat, lon: ((e.lngLat.lng + 180) % 360 + 360) % 360 - 180 });
@@ -169,13 +182,44 @@ export function EarthStudio({ game, editor, close, mission, play }: { game: Game
   useEffect(() => { marker.current?.setDraggable(stage === "place"); }, [stage]);
   const drawSites = (list: Site[]) => {
     const m = map.current!;
-    const data = { type: "FeatureCollection" as const, features: list.map((s) => ({ type: "Feature" as const, properties: { id: s.id, kind: s.kind }, geometry: { type: "Point" as const, coordinates: [s.lon, s.lat] } })) };
+    const data = { type: "FeatureCollection" as const, features: list.map((s) => ({ type: "Feature" as const, properties: { id: s.id, name: s.name, kind: s.kind, source: s.source, url: s.url }, geometry: { type: "Point" as const, coordinates: [s.lon, s.lat] } })) };
     if (m.getSource("sites")) (m.getSource("sites") as unknown as DataSource).setData(data);
     else {
-      m.addSource("sites", { type: "geojson", data });
-      m.addLayer({ id: "sites-halo", type: "circle", source: "sites", paint: { "circle-radius": 16, "circle-color": "#5fe0cb", "circle-opacity": 0.15, "circle-stroke-color": "#5fe0cb", "circle-stroke-width": 1.5 } });
-      m.addLayer({ id: "sites-dot", type: "circle", source: "sites", paint: { "circle-radius": 5, "circle-color": "#5fe0cb", "circle-stroke-color": "#03231e", "circle-stroke-width": 2 } });
+      m.addSource("sites", { type: "geojson", data, cluster: true, clusterRadius: 36, clusterMaxZoom: 11 });
+      m.addLayer({ id: "sites-clusters", type: "circle", source: "sites", filter: ["has", "point_count"], paint: { "circle-radius": ["step", ["get", "point_count"], 14, 20, 20, 100, 28], "circle-color": "#11453c", "circle-stroke-color": "#5fe0cb", "circle-stroke-width": 2 } });
+      m.addLayer({ id: "sites-halo", type: "circle", source: "sites", filter: ["!", ["has", "point_count"]], paint: { "circle-radius": 16, "circle-color": "#5fe0cb", "circle-opacity": 0.15, "circle-stroke-color": "#5fe0cb", "circle-stroke-width": 1.5 } });
+      m.addLayer({ id: "sites-dot", type: "circle", source: "sites", filter: ["!", ["has", "point_count"]], paint: { "circle-radius": 5, "circle-color": "#5fe0cb", "circle-stroke-color": "#03231e", "circle-stroke-width": 2 } });
+      m.on("click", "sites-clusters", e => { const f = e.features?.[0]; if (f?.geometry.type === "Point") m.easeTo({ center: f.geometry.coordinates as [number, number], zoom: Math.min(15, m.getZoom() + 3) }); });
+      m.on("click", "sites-dot", e => {
+        const f = e.features?.[0]; if (f?.geometry.type !== "Point" || !f.properties) return;
+        const [lon, lat] = f.geometry.coordinates;
+        if (stageRef.current === "world") chooseArea.current({ name: String(f.properties.name), lat, lon });
+        else pickSite.current({ ...f.properties, lat, lon, dist: 0 } as Site);
+      });
     }
+  };
+  useEffect(() => {
+    let disposed = false;
+    void preloadKnownSites().then(catalog => { if (!disposed) { setKnownSites(catalog.sites); setDatasetVersion(catalog.manifest?.version ?? ""); setCatalogReady(true); } });
+    return () => { disposed = true; };
+  }, []);
+  useEffect(() => { if (ready) drawSites(mergeSites(knownSites, sites).map(s => ({ ...s, dist: 0 }))); }, [ready, knownSites, sites]);
+  pickSite.current = s => { setSite(s); map.current?.flyTo({ center: [s.lon, s.lat], zoom: fp.radius > 10000 ? map.current.getZoom() : 14, duration: 800 }); };
+  siteSnapshot.current = sites;
+  useEffect(() => {
+    if (!site) return;
+    const controller = new AbortController(), selected = site;
+    void siteDetails(selected, controller.signal).then(detail => {
+      if (controller.signal.aborted || !Object.keys(detail).length) return;
+      setSite(s => s?.id === selected.id ? { ...s, ...detail } : s);
+      setSites(list => list.map(s => s.id === selected.id ? { ...s, ...detail } : s));
+    });
+    return () => controller.abort();
+  }, [site?.id]);
+  const exportSites = () => {
+    const data = { schema: 1, dataset: datasetVersion, savedAt: new Date().toISOString(), place, radius: fp.radius, scope: "Known public geographic sites; not a complete inventory or current force positions", attribution: "© OpenStreetMap contributors (ODbL); Wikipedia metadata and linked article licenses", sites: place ? sites : knownSites };
+    const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }));
+    const a = document.createElement("a"); a.href = url; a.download = "rtsai-known-sites.json"; a.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
   };
 
   const go = (p: Place) => {
@@ -209,7 +253,7 @@ export function EarthStudio({ game, editor, close, mission, play }: { game: Game
     const controller = new AbortController(); research.current = controller;
     const { signal } = controller;
     let found: Site[] = [], country: string | null = null;
-    setScanning(true); setSites([]); setSite(null);
+    setScanning(true); setSites([]); setSite(null); setSitePage(1); setSiteStatus(null);
     const infer = () => {
       if (signal.aborted) return;
       const sources = found.map(s => ({ text: [s.name, s.operator, s.extract].filter(Boolean).join(". "), from: `${s.source}: ${s.name}` }));
@@ -217,18 +261,25 @@ export function EarthStudio({ game, editor, close, mission, play }: { game: Game
       if (forces && !sidesEdited.current) { setForces(forces); setFa(forces.defender.id); setFb(forces.attacker.id); setYouDefend(true); }
     };
     void countryAt(place.lat, place.lon, signal).then(code => { country = code; infer(); });
-    void researchSites(place, fp.radius, { signal, mapped: overpass,
+    const force = siteRefresh !== consumedRefresh.current; consumedRefresh.current = siteRefresh;
+    void researchSites(place, fp.radius, { signal, mapped: overpass, force,
+      status: value => { if (!signal.aborted) { setSiteStatus(value); if (value.dataset !== "Local discoveries") setDatasetVersion(value.dataset); } },
+      known: list => { if (!signal.aborted) setKnownSites(previous => mergeSites(previous, list)); },
       log: message => { if (!signal.aborted) say(message); },
       update: list => {
         if (signal.aborted) return;
-        found = list; setSites(list); drawSites(list);
-        setSite(selected => selected ? list.find(s => s.id === selected.id) ?? selected
+        found = list;
+        setSites(previous => list.map(s => {
+          const old = previous.find(p => p.id === s.id);
+          return old?.extract ? { ...s, extract: old.extract, snapshot: old.snapshot } : s;
+        }));
+        setSite(selected => selected ? { ...(list.find(s => s.id === selected.id) ?? selected), ...(selected.extract ? { extract: selected.extract, snapshot: selected.snapshot } : {}) }
           : list.find(s => /air base|naval|military|barracks/i.test(s.kind)) ?? list[0] ?? null);
         infer();
       },
     }).finally(() => { if (!signal.aborted) setScanning(false); });
     return () => controller.abort();
-  }, [place, fp.radius, nationIds]); // Helpers use the current map ref; callbacks are scoped to this lookup.
+  }, [place, fp.radius, nationIds, siteRefresh]); // Cache refresh is independent of map generation.
 
   useEffect(() => () => { research.current?.abort(); building.current?.abort(); lookup.current?.abort(); }, []);
 
@@ -291,6 +342,7 @@ export function EarthStudio({ game, editor, close, mission, play }: { game: Game
         } catch { say("Ground: kept <b>level</b> (the slopes didn't fit)"); }
       } else say("Ground: kept <b>level</b> (elevation unavailable)");
       files["earth.json"] = new TextEncoder().encode(JSON.stringify(bf.report, null, 2));
+      files["sites.json"] = new TextEncoder().encode(JSON.stringify({ schema: 1, dataset: datasetVersion, savedAt: new Date().toISOString(), place, radius: fp.radius, attribution: "© OpenStreetMap contributors (ODbL); Wikipedia metadata and linked article licenses", sites: siteSnapshot.current }, null, 2));
       say(bf.report.validation.connectedBases ? "Terrain check: <b>2 land starts, bases connected</b>" : "Terrain check: <b>2 land starts on separate coasts</b>. Sea or air units needed to cross.");
       await editor.addFiles(id, bf.title, bf.players, files);
       if (!current()) return;
@@ -356,6 +408,8 @@ export function EarthStudio({ game, editor, close, mission, play }: { game: Game
           </div>
           {error && <p className="ed-error" role="alert">{error}</p>}
           <small className="es-search-credit">Place search © OpenStreetMap contributors</small>
+          <p className="es-map-hint" role="status">{knownSites.length} known sites preloaded · {datasetVersion ? `Saved dataset ${datasetVersion.slice(0, 8)}` : catalogReady ? "Local discoveries" : "Loading saved dataset…"}</p>
+          <button type="button" className="es-center-choice" onClick={exportSites} disabled={!knownSites.length}>Download site dataset</button>
         </section>
       )}
       {place && stage !== "world" && (
@@ -389,14 +443,19 @@ export function EarthStudio({ game, editor, close, mission, play }: { game: Game
               <small>Sources reviewed 16 Oct 2026. This builder imports geography and site names, not verified minefields or live forces. Recreate forces in the map editor.</small>
               <small>Coastlines: <a href="https://www.naturalearthdata.com/downloads/10m-physical-vectors/10m-land/" target="_blank" rel="noopener">Natural Earth 1:10 million</a>, generalized for a regional game map.</small>
             </section>}
-            <header><span className="es-live" /><span className="menu-eyebrow">Nearby sites · optional research</span></header>
-            <p className="ed-tip">Roads, water and land shape the map. Site names and background research load separately for missions.</p>
+            <header><span className="es-live" /><span className="menu-eyebrow">Known sites · {sites.length} in this area</span></header>
+            <div className="es-site-storage" role="status">
+              <b>{siteStatus?.storage === "browser" ? "Saved in this browser" : siteStatus ? "Session cache · browser storage unavailable" : "Loading saved dataset…"}</b>
+              <small>Dataset {datasetVersion.slice(0, 8) || "local"} · {siteStatus?.updatedAt ? `Updated ${new Date(siteStatus.updatedAt).toLocaleDateString()}` : "No dated area snapshot yet"}</small>
+              <small>Public geographic references, not verified current operations. Markers include all known records; article details load when selected.</small>
+              <div><GameButton size="sm" disabled={scanning} onClick={() => setSiteRefresh(n => n + 1)}>Refresh sites</GameButton><GameButton size="sm" disabled={!sites.length} onClick={exportSites}>Download sites</GameButton></div>
+            </div>
             <div className="es-log">{log.map((l, i) => <div key={i} dangerouslySetInnerHTML={{ __html: l }} />)}</div>
             <div className="es-sites">
               {scanning && <div className="es-scanning" role="status"><LoaderCircle className="menu-spin" size={16} />Researching nearby sites… This won’t delay the map.</div>}
               {!scanning && sites.length === 0 && <p className="ed-tip">No nearby site information is available. You can still build the battlefield.</p>}
-              {sites?.map((s) => (
-                <button key={s.id} type="button" className="es-site" aria-pressed={site?.id === s.id} onClick={() => { setSite(s); map.current?.flyTo({ center: [s.lon, s.lat], zoom: fp.radius > 10000 ? map.current.getZoom() : 14, duration: 800 }); }}>
+              {sites.slice(0, sitePage * 30).map((s) => (
+                <button key={s.id} type="button" className="es-site" aria-pressed={site?.id === s.id} onClick={() => pickSite.current(s)}>
                   <span className="es-site-th" style={s.thumb ? { backgroundImage: `url("${s.thumb}")` } as CSSProperties : undefined}>{!s.thumb && <MapPin size={20} />}</span>
                   <span className="es-site-body">
                     <b>{s.name}</b>
@@ -410,6 +469,7 @@ export function EarthStudio({ game, editor, close, mission, play }: { game: Game
                   </span>
                 </button>
               ))}
+              {sites.length > sitePage * 30 && <GameButton onClick={() => setSitePage(n => n + 1)}>Show 30 more sites</GameButton>}
             </div>
             </div>
             {error && <p className="ed-error" role="alert">{error}</p>}

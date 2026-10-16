@@ -1,0 +1,169 @@
+{
+  "schema": 1,
+  "version": "65633ea234c79d57",
+  "count": 27,
+  "updatedAt": 1792172787056,
+  "scope": "Known public geographic sites in the listed snapshots. Not a complete world inventory or current force positions.",
+  "overview": {
+    "file": "overview-ba1b388b7804411d.json",
+    "sha256": "ba1b388b7804411dc63d859f9b4bef20fd27d26d2b8f08b8b1c7e06a0de80496",
+    "bytes": 5868
+  },
+  "regions": [
+    {
+      "schema": 1,
+      "id": "cairo",
+      "name": "Greater Cairo",
+      "bounds": [
+        29.819822206252244,
+        30.976263749990643,
+        30.268977793747755,
+        31.49513625000936
+      ],
+      "updatedAt": 1792172740921,
+      "coverage": {},
+      "sources": [
+        {
+          "provider": "Wikipedia",
+          "license": "CC0 geographic metadata; linked articles carry their own licenses",
+          "url": "https://www.mediawiki.org/wiki/API:Geosearch",
+          "radius": 10000
+        },
+        {
+          "provider": "OpenStreetMap",
+          "license": "ODbL-1.0",
+          "url": "https://www.openstreetmap.org/copyright",
+          "note": "Preserved local public-source response. Original query bounds unavailable; no full-region coverage claim."
+        }
+      ],
+      "file": "region-cairo-580146fd55d5ba45.json",
+      "sha256": "580146fd55d5ba45892896c43d778d9fb0618ca0f8fe843dccee7470975aac51",
+      "bytes": 3374,
+      "count": 13
+    },
+    {
+      "schema": 1,
+      "id": "hormuz",
+      "name": "Strait of Hormuz",
+      "bounds": [
+        25.92626661875674,
+        55.64651323733055,
+        27.273733381243265,
+        57.153486762669445
+      ],
+      "updatedAt": 1792172752801,
+      "coverage": {},
+      "sources": [
+        {
+          "provider": "Wikipedia",
+          "license": "CC0 geographic metadata; linked articles carry their own licenses",
+          "url": "https://www.mediawiki.org/wiki/API:Geosearch",
+          "radius": 10000
+        }
+      ],
+      "file": "region-hormuz-309b88ab0688a655.json",
+      "sha256": "309b88ab0688a65501d7c90328a90fed8044a5dde8b3d753557c4bcc8dca9967",
+      "bytes": 564,
+      "count": 1
+    },
+    {
+      "schema": 1,
+      "id": "qatar",
+      "name": "Al Udeid and Doha",
+      "bounds": [
+        24.892722206252245,
+        51.06686851636461,
+        25.341877793747756,
+        51.562931483635396
+      ],
+      "updatedAt": 1792172775727,
+      "coverage": {},
+      "sources": [
+        {
+          "provider": "Wikipedia",
+          "license": "CC0 geographic metadata; linked articles carry their own licenses",
+          "url": "https://www.mediawiki.org/wiki/API:Geosearch",
+          "radius": 10000
+        }
+      ],
+      "file": "region-qatar-80ae84a5757dd6ba.json",
+      "sha256": "80ae84a5757dd6ba858e0554cb6a8d50ce37fb304713a2518e0082bec774d649",
+      "bytes": 595,
+      "count": 1
+    },
+    {
+      "schema": 1,
+      "id": "references",
+      "name": "Previously checked Hormuz references",
+      "bounds": [
+        26,
+        55.8,
+        26.9,
+        56.4
+      ],
+      "updatedAt": 1792108800000,
+      "coverage": {},
+      "sources": [
+        {
+          "provider": "Wikipedia",
+          "license": "Geographic facts with revision links",
+          "note": "Preserved from the existing Earth studio reference list, checked 16 Oct 2026; not current force positions"
+        }
+      ],
+      "file": "region-references-71d23673bb5cd264.json",
+      "sha256": "71d23673bb5cd264c5ddd5c01a3c6c6411692bdc8937cae5375254e892fcbef3",
+      "bytes": 795,
+      "count": 2
+    },
+    {
+      "schema": 1,
+      "id": "riyadh",
+      "name": "Riyadh",
+      "bounds": [
+        24.489022206252244,
+        46.428078976872385,
+        24.938177793747755,
+        46.922521023127615
+      ],
+      "updatedAt": 1792172764162,
+      "coverage": {},
+      "sources": [
+        {
+          "provider": "Wikipedia",
+          "license": "CC0 geographic metadata; linked articles carry their own licenses",
+          "url": "https://www.mediawiki.org/wiki/API:Geosearch",
+          "radius": 10000
+        }
+      ],
+      "file": "region-riyadh-4fb5efa759229b43.json",
+      "sha256": "4fb5efa759229b4378487a384af2576992d70d299463fcdc92770e7d09bce725",
+      "bytes": 1894,
+      "count": 7
+    },
+    {
+      "schema": 1,
+      "id": "suez",
+      "name": "Ismailia and Suez Canal",
+      "bounds": [
+        30.412337765001794,
+        32.10928775316262,
+        30.771662234998203,
+        32.52671224683738
+      ],
+      "updatedAt": 1792172787056,
+      "coverage": {},
+      "sources": [
+        {
+          "provider": "Wikipedia",
+          "license": "CC0 geographic metadata; linked articles carry their own licenses",
+          "url": "https://www.mediawiki.org/wiki/API:Geosearch",
+          "radius": 10000
+        }
+      ],
+      "file": "region-suez-97dac68bb3082c47.json",
+      "sha256": "97dac68bb3082c47b720e3e67f067040953eb19db4c801502668a45ed5bd1157",
+      "bytes": 1059,
+      "count": 3
+    }
+  ]
+}
