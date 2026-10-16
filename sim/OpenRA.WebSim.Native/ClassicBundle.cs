@@ -87,7 +87,7 @@ static class ClassicBundle
 			// A real Classic map supplies terrain, resources and spawn locations. Its rules stay intact.
 			var arena = Path.Combine(classic, "maps/a-nuclear-winter");
 			Tree(arena, "mods/rtsai-classic-core/maps/web-arena/");
-			Tree(arena, "mods/rtsai-classic-core/maps/web-arena-four/");
+			Tree(Path.Combine(classic, "maps/chernobyl"), "mods/rtsai-classic-core/maps/web-arena-four/");
 			Tree(support, "support/Content/ra/v2/", installed: true);
 			Add("ora/classic-inputs.json", Encoding.UTF8.GetBytes(JsonSerializer.Serialize(new { localOnly = true, mod = "rtsai-classic-core", files = inventory })));
 			pack.Add("ora/BUNDLE_ID", Encoding.UTF8.GetBytes(Convert.ToHexString(identity.GetHashAndReset())[..20].ToLowerInvariant()));
