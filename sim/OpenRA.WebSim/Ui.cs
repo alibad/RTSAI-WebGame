@@ -949,6 +949,7 @@ namespace OpenRA.WebSim
 			var sight = a.TraitInfos<RevealsShroudInfo>().Select(r => r.Range.Length).DefaultIfEmpty(0).Max();
 			var sb = new StringBuilder("{");
 			sb.Append("\"name\":").Append(J(type))
+				.Append(",\"contentRevision\":").Append(J(SharedContent.Revision()))
 				.Append(",\"label\":").Append(J(tooltip != null ? FluentProvider.GetMessage(tooltip.Name) : type))
 				.Append(",\"description\":").Append(J(description != null ? FluentProvider.GetMessage(description) : ""))
 				.Append(",\"cost\":").Append(a.TraitInfoOrDefault<ValuedInfo>()?.Cost ?? 0)

@@ -11,6 +11,11 @@ import sys
 ROOT = Path(__file__).resolve().parents[1]
 
 def standalone(mod):
+    shared = mod / 'tools/shared-content.py'
+    shared_content = None
+    if shared.is_file():
+        shared_content = json.loads(subprocess.check_output(
+            [sys.executable, str(shared), 'check', '--root', str(mod)], text=True))
     manifest = mod / 'mods/rtsai/mod.yaml'
     text = manifest.read_text(encoding='utf-8')
     if not (mod/'mods/rtsai/standalone/base-kit.yaml').is_file(): raise ValueError('Missing standalone base-kit')
@@ -21,6 +26,7 @@ def standalone(mod):
     for ext in ['*.mix', '*.bag', '*.idx', '*.vqa', '*.bik']:
         if next((mod/'mods/rtsai').rglob(ext), None): raise ValueError('Owned-game/archive/video payload in public input')
     return {'manifestSha256': hashlib.sha256(manifest.read_bytes()).hexdigest(), 'profile': 'standalone-main',
+            'sharedContent': shared_content,
             'provenanceFiles': [p for p in ['docs/standalone-deliverables.json','docs/standalone-art-provenance.md','resources/art-provenance.json'] if (mod/p).exists()]}
 
 def main():

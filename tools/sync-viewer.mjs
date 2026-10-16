@@ -9,4 +9,5 @@ import { fileURLToPath } from "node:url";
 const repo = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const i = process.argv.indexOf("--from");
 const site = path.resolve(repo, i > 0 ? process.argv[i + 1] : process.env.RTSAI_SITE_ROOT ?? "../RTSAI-Web");
+execFileSync(process.execPath, ['scripts/sync-shared-content.mjs'], { cwd: site, stdio: 'inherit' });
 execFileSync(process.execPath, ["--import", "tsx", "scripts/export-viewer-data.mts", path.join(repo, "web", "public", "viewer")], { cwd: site, stdio: "inherit" });
