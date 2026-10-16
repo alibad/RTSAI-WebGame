@@ -29,7 +29,7 @@
     "mod": "C:/Users/Admin/Code/hq/games/RTSAI-Mod",
     "engine": "C:/Users/Admin/Code/hq/games/OpenRA",
     "site": "C:/Users/Admin/Code/hq/games/RTSAI-Web",
-    "engineBranch": "fork/rtsai/engine"
+    "engineBranch": "fork/main"
   },
   "inputsSearch": ["D:/rtsai-play-release/inputs"],
   "inputsRoots": ["D:/"],

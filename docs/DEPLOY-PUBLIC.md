@@ -31,7 +31,7 @@ node tools/release-play.mjs abort        # gives up a prepared release
    data's mod snapshot.
    - The live runtime's source comes from `runtimeSource` in the live BUILD.json, or from `knownRuntimes` in
      `tools/release-play.json` for roots older than that field.
-   - The build uses a Git-free copy of the pinned engine, which must already be on `alibad/OpenRA` `rtsai/engine`.
+     - The build uses a Git-free copy of the pinned engine, which must already be on `alibad/OpenRA` `main` (canonical `OpenRA`, remote `fork/main`).
      It is stamped as `tools/public.py` stamps its copy.
    - The mod snapshot is the `tools/prepare-inputs.py` output whose mod identity is the data's (`--inputs`, or the
      folders listed in `inputsSearch`).
