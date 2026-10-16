@@ -37,11 +37,15 @@ try {
   pass('healthy wrong listener rejected and left running');
 } finally { await new Promise(resolve => occupied.close(resolve)); }
 const port = process.env.RTSAI_LAUNCHER_TEST_PORT ?? '38665';
-const env = { ...process.env, RTSAI_WEB_DIST: temp, RTSAI_WEB_DATA: temp, RTSAI_WEB_BUILD: temp, RTSAI_WEBGAME_PORT: '1' };
+const env = { ...process.env, RTSAI_WEB_DIST: temp, RTSAI_WEB_DATA: temp, RTSAI_WEB_BUILD: temp, RTSAI_WEBGAME_PORT: '1', RTSAI_WEB_SCENARIOS: temp, RTSAI_WEB_COMPANION_GRPC: '1' };
 const commands = await Promise.all([1, 2].map(() => run(process.execPath, ['tools/local-game.mjs', 'start', '--port', port], { cwd: repo, env, windowsHide: true })));
 const rows = commands.map(row => JSON.parse(row.stdout));
 assert.ok(rows.every(row => row.buildId === config.buildId && row.url.includes(`:${port}/`)));
 const active = await (await fetch(`http://127.0.0.1:${port}/api/local-build`)).json();
 assert.equal(active.buildId, config.buildId); pass('concurrent launch reuses the verified server despite poisoned environment');
+assert.equal(active.grpcPort, Number(port) + 5000);
+const companion = await (await fetch(`http://127.0.0.1:${port}/api/companion/status`)).json();
+assert.equal(companion.grpcPort, active.grpcPort);
+assert.equal(companion.controlPort, Number(port) + 5001); pass('AI bridge uses this build\'s dedicated ports');
 assert.equal(execFileSync('git', ['-C', repo, 'branch', '--show-current'], { encoding: 'utf8' }).trim(), 'main');
 console.log(`PASS ${tests} launcher regression groups. Fixture: ${temp}`);

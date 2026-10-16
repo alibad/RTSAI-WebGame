@@ -12,7 +12,9 @@ and voices, and the native replay host. Scenario files are frozen from the accep
 source edits cannot change the running build's missions. It then checks the live server identity and actual HTTP payloads.
 A mismatched listener, modified file or missing build causes an error. It never falls back to another build,
 switches ports automatically, downloads content or kills a listener. It starts a detached server when needed.
-Concurrent launches share a lock. Server logs and process records live beside `current.json`.
+Concurrent launches share a lock. Server logs and process records live beside `current.json`. The companion uses
+dedicated ports derived from the selected game port (43664/43665 for the default game), avoiding older previews'
+bridge on 9988. An occupied bridge is an error, never a connection to a different game's AI.
 
 The accepted build's source commit must be in canonical main. New source commits do **not** silently replace
 the accepted game. Launcher output reports both the accepted source and current main. Build, test and register

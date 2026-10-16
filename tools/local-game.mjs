@@ -32,7 +32,7 @@ function serverIdentity() {
 }
 
 export async function verifyAcceptedBuild(config) {
-  if (config.schema !== 1 || !Number.isInteger(config.port) || config.port < 1024 || config.port > 65535) throw new Error('Invalid local launcher registration');
+  if (config.schema !== 1 || !Number.isInteger(config.port) || config.port < 1024 || config.port > 60531) throw new Error('Invalid local launcher registration or reserved companion ports');
   const bytes = fs.readFileSync(config.receipt);
   if (sha(bytes) !== config.receiptSha256) throw new Error('Accepted-build receipt changed. Register a newly verified build explicitly.');
   const receipt = JSON.parse(bytes.toString('utf8').replace(/^\uFEFF/, ''));
@@ -74,12 +74,12 @@ async function portBusy(port) {
     socket.once('error', () => resolve(false));
   });
 }
-function matching(active, config, identity) {
-  return active?.buildId === config.buildId && active.receiptSha256 === identity.receiptSha256 && active.serverSha256 === identity.serverSha256 && samePath(active.page, config.page) && samePath(active.data, config.data) && samePath(active.native, config.native) && active.scenarios && samePath(active.scenarios, config.scenarios);
+function matching(active, config, identity, port) {
+  return active?.buildId === config.buildId && active.receiptSha256 === identity.receiptSha256 && active.serverSha256 === identity.serverSha256 && samePath(active.page, config.page) && samePath(active.data, config.data) && samePath(active.native, config.native) && active.scenarios && samePath(active.scenarios, config.scenarios) && active.grpcPort === port + 5000;
 }
 async function verifyHttp(port, config, identity) {
   const active = await probe(port);
-  if (!matching(active, config, identity)) throw new Error(`Port ${port} is serving another or unverified build. It has been left untouched.`);
+  if (!matching(active, config, identity, port)) throw new Error(`Port ${port} is serving another or unverified build. It has been left untouched.`);
   for (const [url, file] of [['/', path.join(config.page, 'index.html')], ['/build-local.json', path.join(config.page, 'build-local.json')], ['/rt/public/aot/_framework/runtime-identity.json', path.join(config.data, 'public/wasm-aot/wwwroot/_framework/runtime-identity.json')]]) {
     const response = await fetch(`http://127.0.0.1:${port}${url}`, { signal: AbortSignal.timeout(15000), cache: 'no-store' });
     if (!response.ok || sha(Buffer.from(await response.arrayBuffer())) !== await hashFile(file)) throw new Error(`Server payload does not match the accepted build: ${url}`);
@@ -113,6 +113,7 @@ export async function startAcceptedBuild(config, { port = config.port } = {}) {
   if (await portBusy(port)) {
     await verifyHttp(port, config, identity);
   } else {
+    if (port + 5004 > 65535) throw new Error('Invalid port or reserved companion ports');
     const stdout = fs.openSync(path.join(state, `server-${port}.log`), 'a');
     const stderr = fs.openSync(path.join(state, `server-${port}.err.log`), 'a');
     const child = spawn(process.execPath, [fileURLToPath(import.meta.url), 'serve', '--port', String(port)], {
@@ -170,11 +171,15 @@ async function main() {
     if (!process.env.RTSAI_EXPECTED_REGISTRATION || sha(fs.readFileSync(registry)) !== process.env.RTSAI_EXPECTED_REGISTRATION) throw new Error('Registration changed while starting');
     const identity = await verifyAcceptedBuild(config);
     const port = Number(option('--port', String(config.port)));
+    // Older previews may still own the historical bridge port. Never attach this game's AI to that bridge.
+    if (port + 5004 > 65535 || await portBusy(port + 5000)) throw new Error('The accepted game companion bridge port is unavailable; no fallback bridge was used.');
     Object.assign(process.env, {
       RTSAI_WEBGAME_PORT: String(port), RTSAI_WEB_DIST: config.page, RTSAI_WEB_DATA: config.data, RTSAI_WEB_BUILD: config.native,
       RTSAI_WEB_SCRATCH: path.join(state, 'scratch', config.buildId), RTSAI_WEB_BR_CACHE: path.join(state, 'compression', config.buildId),
       RTSAI_WEB_SCENARIOS: config.scenarios,
-      RTSAI_VERIFIED_LOCAL_BUILD: JSON.stringify({ buildId: config.buildId, receiptSha256: identity.receiptSha256, serverSha256: identity.serverSha256, page: config.page, data: config.data, native: config.native, scenarios: config.scenarios, pid: process.pid, launchId: process.env.RTSAI_LOCAL_LAUNCH_ID }),
+      RTSAI_WEB_COMPANION_GRPC: String(port + 5000), RTSAI_WEB_COMPANION_PORT: String(port + 5001),
+      RTSAI_WEB_MOCK_AI_PORT: String(port + 5003), RTSAI_WEB_LOCAL_AI_PORT: String(port + 5004),
+      RTSAI_VERIFIED_LOCAL_BUILD: JSON.stringify({ buildId: config.buildId, receiptSha256: identity.receiptSha256, serverSha256: identity.serverSha256, page: config.page, data: config.data, native: config.native, scenarios: config.scenarios, grpcPort: port + 5000, pid: process.pid, launchId: process.env.RTSAI_LOCAL_LAUNCH_ID }),
     });
     delete process.env.RTSAI_MAP_MOD_ROOT; delete process.env.RTSAI_MAP_OUTPUT_ROOT; delete process.env.RTSAI_SITE_PUBLIC;
     await import(pathToFileURL(path.join(repo, 'server/serve.mjs')).href);
