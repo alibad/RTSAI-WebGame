@@ -28,7 +28,7 @@ class FakeContext {
   createGain() { return { gain: { value: 1 }, connect() {} }; }
   createStereoPanner() { return { pan: { value: 0 }, connect(node) { return node; } }; }
   createBuffer(channels, frames, rate) { const data = Array.from({ length: channels }, () => new Float32Array(frames)); return { getChannelData: n => data[n], duration: frames / rate }; }
-  createBufferSource() { return { buffer: null, connect(node) { return { connect: next => ({ connect: () => next }) }; }, start() { started.push(this.buffer); }, stop() {} }; }
+  createBufferSource() { return { buffer: null, connect(node) { return { connect: next => ({ connect: () => next }) }; }, start(at, offset = 0) { started.push(this.buffer); this.at = at; this.offset = offset; }, stop() {}, disconnect() {} }; }
 }
 globalThis.webkitAudioContext = FakeContext;
 assert.ok(createAudioContext({ latencyHint: "interactive" }) instanceof FakeContext, "Prefixed Safari constructor is supported");
@@ -38,5 +38,22 @@ audio.source(1, 1, 16, 24000, new Int16Array([0, 16384, -32768]).buffer);
 audio.play(1, 1, false, true, 0, 0, 1, false);
 assert.equal(started.length, 1);
 assert.deepEqual([...started[0].getChannelData(0)], [0, .5, -1], "PCM reaches normal playback unchanged");
+// A music pause retains queued PCM and resumes from the same sample without suspending game effects.
+const ctx = audio.context();
+ctx.createGain = () => ({ gain: { value: 1 }, connect() {}, disconnect() {} });
+audio.stream(5, 1, 16, 100, new Int16Array(150).buffer, false, 1);
+audio.stream(5, 1, 16, 100, new Int16Array(150).buffer, true, 1);
+ctx.currentTime = 1.05;
+audio.pause(5, true);
+assert.equal(audio.musicPlayback().elapsed, 1);
+ctx.currentTime = 20;
+assert.equal(audio.musicPlayback().elapsed, 1, "Music clock stays frozen while effects context advances");
+assert.equal(ctx.state, "running", "Music pause never suspends effects");
+audio.pause(5, false);
+ctx.currentTime = 20.5;
+assert.equal(audio.musicPlayback().elapsed, 1.5, "Music resumes without a skipped queue or elapsed jump");
+audio.pause(5, true);
+audio.stop(5);
+assert.equal(audio.musicPlayback().active, false, "Switching tracks clears even a paused final chunk");
 delete globalThis.AudioContext; delete globalThis.webkitAudioContext;
 console.log("Audio capability checks passed: optional and prefixed Web Audio, blocked contexts, normal PCM playback.");

@@ -47,6 +47,7 @@ static class Program
 				"effectstest" => CombatEffectsTest.Run(opts),
 				"missiontest" => MissionTest.Run(opts),
 				"soundtest" => SoundTest.Run(opts),
+				"musictest" => MusicPlayerTest.Run(opts),
 				"ailabtest" => AiLabTest.Run(opts),
 				"mapgentest" => MapGenTest.Run(opts),
 				_ => throw new ArgumentException("Unknown command " + args[0]),

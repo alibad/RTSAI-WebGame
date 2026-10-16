@@ -285,6 +285,9 @@ namespace OpenRA.WebSim.Browser
 		[JSExport]
 		public static string Command(string json) => Ui.Command(json);
 
+		[JSExport]
+		public static void PauseAudio(bool paused) => WebSoundEngine.PauseAll(paused);
+
 		/// <summary>A cameo sprite (sheet, channel, uv, size, palette row) as JSON, or "" when the actor has none.</summary>
 		[JSExport]
 		public static string Icon(string actor) => Ui.Icon(actor);

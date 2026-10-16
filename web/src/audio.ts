@@ -24,7 +24,8 @@ interface Playing {
   positional: boolean;
 }
 
-interface Stream { gain: GainNode; next: number; started: number; nodes: AudioBufferSourceNode[]; volume: number; duration?: number }
+interface MusicChunk { buffer: AudioBuffer; at: number; node?: AudioBufferSourceNode }
+interface Stream { gain: GainNode; queued: number; started: number; chunks: MusicChunk[]; volume: number; duration?: number; paused: boolean; position: number }
 
 export class AudioEngine {
   private ctx: AudioContext | null = null;
@@ -121,24 +122,36 @@ export class AudioEngine {
     if (!s) {
       const gain = ctx.createGain();
       gain.connect(this.music);
-      s = { gain, next: ctx.currentTime + 0.05, started: ctx.currentTime + 0.05, nodes: [], volume };
+      s = { gain, queued: 0, started: ctx.currentTime + 0.05, chunks: [], volume, paused: false, position: 0 };
       this.streams.set(sound, s);
     }
     s.gain.gain.value = this.musicOn ? volume : 0;
     if (pcm.byteLength > 0) {
-      const node = ctx.createBufferSource();
-      node.buffer = this.toBuffer(ctx, channels, bits, rate, pcm);
-      node.connect(s.gain);
-      const at = Math.max(s.next, ctx.currentTime + 0.02);
-      node.start(at);
-      s.next = at + node.buffer.duration;
-      s.nodes.push(node);
-      node.onended = () => { s!.nodes = s!.nodes.filter((n) => n !== node); };
+      const chunk = { buffer: this.toBuffer(ctx, channels, bits, rate, pcm), at: s.queued };
+      s.queued += chunk.buffer.duration;
+      s.chunks.push(chunk);
+      if (!s.paused) this.scheduleChunk(sound, s, chunk);
     }
     if (end) {
-      s.duration = s.next - s.started;
-      setTimeout(() => { if (this.streams.get(sound) === s) this.streams.delete(sound); }, Math.max(0, (s.next - ctx.currentTime) * 1000) + 500);
+      s.duration = s.queued;
+      if (!s.chunks.length && !s.paused) this.streams.delete(sound);
     }
+  }
+
+  private scheduleChunk(sound: number, stream: Stream, chunk: MusicChunk) {
+    const ctx = this.ctx!;
+    const node = ctx.createBufferSource();
+    node.buffer = chunk.buffer;
+    node.connect(stream.gain);
+    const offset = Math.max(0, stream.position - chunk.at);
+    chunk.node = node;
+    node.onended = () => {
+      node.disconnect();
+      stream.chunks = stream.chunks.filter(c => c !== chunk);
+      if (stream.duration !== undefined && !stream.chunks.length && !stream.paused && this.streams.get(sound) === stream)
+        this.streams.delete(sound);
+    };
+    node.start(Math.max(ctx.currentTime, stream.started + chunk.at + offset), offset);
   }
 
   /** Read the actual output clock: it freezes with Web Audio when the match is paused. */
@@ -146,9 +159,10 @@ export class AudioEngine {
     const stream = [...this.streams.values()].at(-1);
     const ctx = this.ctx;
     return {
-      elapsed: stream && ctx ? Math.max(0, Math.min(ctx.currentTime, stream.next) - stream.started) : 0,
+      elapsed: stream && ctx ? Math.max(0, Math.min(stream.queued, stream.paused ? stream.position : ctx.currentTime - stream.started)) : 0,
       duration: stream?.duration ?? 0,
-      active: !!stream && !!stream.nodes.length,
+      active: !!stream && !!stream.chunks.length,
+      paused: stream?.paused ?? false,
       suspended: ctx?.state === "suspended",
       muted: !this.musicOn || this.muted || preferences.music === 0 || preferences.master === 0,
     };
@@ -159,7 +173,11 @@ export class AudioEngine {
       const p = this.playing.get(id);
       if (p) { try { p.node.stop(); } catch { /* already ended */ } this.playing.delete(id); }
       const s = this.streams.get(id);
-      if (s) { for (const n of s.nodes) try { n.stop(); } catch { /* ended */ } this.streams.delete(id); }
+      if (s) {
+        for (const c of s.chunks) if (c.node) { c.node.onended = null; try { c.node.stop(); } catch { /* ended */ } c.node.disconnect(); }
+        s.gain.disconnect();
+        this.streams.delete(id);
+      }
     };
     if (sound < 0) for (const id of [...this.playing.keys(), ...this.streams.keys()]) stopOne(id);
     else stopOne(sound);
@@ -176,6 +194,24 @@ export class AudioEngine {
   pause(sound: number, paused: boolean) {
     if (sound < 0 && this.ctx) {
       if (paused) this.ctx.suspend(); else void this.ctx.resume().catch(() => {});
+      return;
+    }
+    const s = this.streams.get(sound);
+    if (!s || !this.ctx || s.paused === paused) return;
+    if (paused) {
+      s.position = Math.max(0, Math.min(s.queued, this.ctx.currentTime - s.started));
+      s.paused = true;
+      for (const c of s.chunks) if (c.node) {
+        c.node.onended = null;
+        try { c.node.stop(); } catch { /* ended */ }
+        c.node.disconnect();
+        c.node = undefined;
+      }
+      s.chunks = s.chunks.filter(c => c.at + c.buffer.duration > s.position);
+    } else {
+      s.paused = false;
+      s.started = this.ctx.currentTime - s.position;
+      for (const c of s.chunks) this.scheduleChunk(sound, s, c);
     }
   }
 

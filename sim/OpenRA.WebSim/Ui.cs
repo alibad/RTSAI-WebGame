@@ -358,6 +358,33 @@ namespace OpenRA.WebSim
 
 			switch (cmd)
 			{
+				case "music-list":
+				{
+					var playlist = world.WorldActor.TraitOrDefault<MusicPlaylist>();
+					return "{\"tracks\":[" + string.Join(",", (playlist?.AvailablePlaylist() ?? [])
+						.Select(song => "{\"id\":" + J(song.Filename) + ",\"title\":" + J(song.Title) + "}")) + "]}";
+				}
+
+				case "music-play":
+				case "music-next":
+				case "music-previous":
+				{
+					var playlist = world.WorldActor.TraitOrDefault<MusicPlaylist>();
+					if (playlist == null)
+						break;
+					var song = cmd == "music-next" ? playlist.GetNextSong()
+						: cmd == "music-previous" ? playlist.GetPrevSong()
+						: Str("id") is string id ? playlist.AvailablePlaylist().FirstOrDefault(m => m.Filename == id)
+						: playlist.CurrentSong() ?? playlist.GetNextSong();
+					if (song != null)
+						playlist.Play(song);
+					break;
+				}
+
+				case "music-pause":
+					Game.Sound.PauseMusic();
+					break;
+
 				case "produce":
 				{
 					// Left click on a cameo: place a finished building, resume a held item, or queue more.

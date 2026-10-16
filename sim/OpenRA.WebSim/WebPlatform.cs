@@ -503,11 +503,14 @@ namespace OpenRA.WebSim
 			for (var i = Streams.Count - 1; i >= 0; i--)
 			{
 				var s = Streams[i];
-				if (s.Stopped || s.Stream == null)
+				if (s.Stopped || s.Complete)
 				{
+					s.Stream?.Dispose();
 					Streams.RemoveAt(i);
 					continue;
 				}
+				if (s.Stream == null || s.Paused || s.AllPaused)
+					continue;
 
 				var bytesPerSecond = s.Channels * s.Bits / 8 * s.Rate;
 				if (s.SentSeconds - s.Elapsed > 3.0)
@@ -529,7 +532,6 @@ namespace OpenRA.WebSim
 					s.Duration = s.SentSeconds;
 					s.Stream.Dispose();
 					s.Stream = null;
-					Streams.RemoveAt(i);
 				}
 			}
 		}
@@ -537,10 +539,20 @@ namespace OpenRA.WebSim
 		public void PauseSound(ISound sound, bool paused)
 		{
 			if (sound is WebSound s)
+			{
+				s.Paused = paused;
 				Sink?.Pause(s.Id, paused);
+			}
 		}
 
-		public void SetAllSoundsPaused(bool paused) => Sink?.Pause(-1, paused);
+		public void SetAllSoundsPaused(bool paused) => PauseAll(paused);
+
+		public static void PauseAll(bool paused)
+		{
+			foreach (var s in Streams)
+				s.AllPaused = paused;
+			Sink?.Pause(-1, paused);
+		}
 
 		public void SetSoundVolume(float volume, ISound music, ISound video)
 		{
@@ -602,6 +614,14 @@ namespace OpenRA.WebSim
 		}
 
 		public double Elapsed => clock.Elapsed.TotalSeconds;
+		bool paused, allPaused;
+		public bool Paused { get => paused; set { paused = value; UpdateClock(); } }
+		public bool AllPaused { get => allPaused; set { allPaused = value; UpdateClock(); } }
+		void UpdateClock()
+		{
+			if (paused || allPaused) clock.Stop();
+			else clock.Start();
+		}
 
 		float volume;
 		public float Volume

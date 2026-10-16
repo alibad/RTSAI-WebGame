@@ -998,7 +998,7 @@ export class Game {
   }
 
   command<T = Record<string, unknown>>(cmd: Record<string, unknown>) {
-    if (this.coach.review && !["stats", "ai-lab", "placements", "units"].includes(String(cmd.cmd))) return Promise.resolve({ error: "Return live before issuing orders." } as T);
+    if (this.coach.review && !["stats", "ai-lab", "placements", "units"].includes(String(cmd.cmd)) && !String(cmd.cmd).startsWith("music-")) return Promise.resolve({ error: "Return live before issuing orders." } as T);
     return this.client.command<T>(cmd);
   }
 

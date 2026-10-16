@@ -332,6 +332,7 @@ function start(scenario: string, startPaused = false, companion: boolean | "brow
   post({ type: "progress", stage: "Building the world" });
   bake?.beginCapture();
   const info = JSON.parse(S.Start(scenario));
+  S.PauseAudio(startPaused);
   if (spec.webReplay && !spec.webReplay.readonly) {
     for (const [index, ids] of (spec.webReplay.groups ?? []).entries()) {
       S.Select(JSON.stringify(ids), false); S.Command(JSON.stringify({ cmd: "group", action: "create", index }));
@@ -592,7 +593,7 @@ self.onmessage = async (e: MessageEvent<ToWorker>) => {
         browserAdviser = false; cancelAdviserCalls();
         if (network) network.stopped = true;
         stopLoop(); relay?.close(); S.EndGame(); break;
-      case "pause": if (network) break; paused = m.paused; if (paused) refresh(); break;
+      case "pause": if (network) break; paused = m.paused; S.PauseAudio(paused); if (paused) refresh(); break;
       case "view":
         S?.View(m.x0 | 0, m.y0 | 0, m.x1 | 0, m.y1 | 0);
         if (running && paused) refresh();
@@ -614,7 +615,10 @@ self.onmessage = async (e: MessageEvent<ToWorker>) => {
       }
       case "command": {
         let json: string;
-        try { json = replayEnd !== null ? JSON.stringify({ error: "Replays are read-only" }) : S.Command(m.json); } catch (err) { json = JSON.stringify({ error: String(err instanceof Error ? err.message : err) }); }
+        try {
+          const music = String(JSON.parse(m.json).cmd).startsWith("music-");
+          json = replayEnd !== null && !music ? JSON.stringify({ error: "Replays are read-only" }) : S.Command(m.json);
+        } catch (err) { json = JSON.stringify({ error: String(err instanceof Error ? err.message : err) }); }
         post({ type: "reply", req: m.req, json });
         sendUi(); // mode changes show without waiting for the next tick
         break;
