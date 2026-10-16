@@ -68,9 +68,9 @@ export function NowPlaying({ game }: { game: Game }) {
       <PopoverTitle className="np-title">{track?.title || "Battlefield soundtrack"}</PopoverTitle>
       <p className="np-subtitle">{paused ? "Resume the match to change or play music." : "Pick any track. The soundtrack continues automatically."}</p>
       {track && <div className="np-timeline">
-        {duration > 0 ? <input className="np-seek" type="range" aria-label="Track position" aria-valuetext={`${time(seekTo ?? elapsed)} of ${time(duration)}`} min={0} max={Math.max(0, duration - .25)} step="0.1" value={seekTo ?? elapsed} disabled={busy || paused || !playback.active}
+        {duration > 0 ? <input className="np-seek" type="range" aria-label="Track position" aria-valuetext={`${time(seekTo ?? elapsed)} of ${time(duration)}`} min={0} max={Math.max(0, duration - .25)} step="0.1" value={seekTo ?? elapsed} disabled={paused || (!playback.active && !busy)} aria-busy={busy && seekTo !== null}
           style={{ "--progress": `${Math.min(100, (seekTo ?? elapsed) / duration * 100)}%` } as React.CSSProperties}
-          onChange={event => setSeekTo(Number(event.target.value))}
+          onChange={event => { if (!busy) setSeekTo(Number(event.target.value)); }}
           onPointerUp={event => { if (!busy) void seek(Number(event.currentTarget.value)); }}
           onPointerCancel={() => setSeekTo(null)}
           onKeyUp={event => { if (["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Home", "End", "PageUp", "PageDown"].includes(event.key) && !busy) void seek(Number(event.currentTarget.value)); }}
