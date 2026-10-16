@@ -42,6 +42,17 @@ static class CombatEffectsTest
 				new CenterPositionInit(world.Map.CenterOfCell(cell) + new WVec(0, 0, unit is "r2ah64sa" or "orca" ? 3072 : 0)),
 				new SkipMakeAnimsInit()
 			});
+			if (water && actor.TraitOrDefault<Aircraft>() is { } aircraft)
+			{
+				// Fixed-wing wrecks keep moving: aim along the river so this tests a water impact, not a bank.
+				foreach (var angle in Enumerable.Range(0, 8).Select(i => new WAngle(i * 128)))
+				{
+					var step = aircraft.FlyStep(angle);
+					if (Enumerable.Range(0, 45).All(i => world.Map.Contains(world.Map.CellContaining(actor.CenterPosition + step * i))
+						&& world.Map.GetTerrainInfo(world.Map.CellContaining(actor.CenterPosition + step * i)).Type == "Water"))
+					{ aircraft.Facing = angle; break; }
+				}
+			}
 			actor.Kill(actor, new BitSet<DamageType>("BulletDeath"));
 			var seen = new HashSet<string>();
 			var frames = 0;
@@ -62,7 +73,11 @@ static class CombatEffectsTest
 				}
 			}
 			var passed = frames > 3 && (unit is "r2ah64sa" or "orca" ? fallFrames > 3 && seen.Contains(water ? "large_watersplash" : "large_twlt") : seen.Any(s => s.StartsWith("die")));
-			results.Add(new { simulator, unit, water, frames, fallFrames, sequences = seen.Order().ToArray(), passed });
+			var uv = cell.ToMPos(world.Map);
+			var shore = world.Map.AllCells.Where(c => world.Map.Contains(c) && world.Map.GetTerrainInfo(c).Type == "Clear")
+				.Where(c => (world.Map.CenterOfCell(c) - world.Map.CenterOfCell(cell)).Length >= 2048)
+				.OrderBy(c => (world.Map.CenterOfCell(c) - world.Map.CenterOfCell(cell)).Length).First().ToMPos(world.Map);
+			results.Add(new { simulator, unit, water, u = uv.U, v = uv.V, shooterU = shore.U, shooterV = shore.V, frames, fallFrames, sequences = seen.Order().ToArray(), passed });
 			if (!baseline && !passed) throw new Exception(JsonSerializer.Serialize(results));
 		}
 		Console.WriteLine(JsonSerializer.Serialize(new { passed = !baseline, baseline, cases = results }));
