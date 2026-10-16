@@ -85,7 +85,11 @@ namespace OpenRA.WebSim
 			OnProgress(name);
 			var start = Stopwatch.GetTimestamp();
 			var allocated = GC.GetTotalAllocatedBytes();
-			a();
+			try { a(); }
+			catch (TargetInvocationException error) when (error.InnerException != null)
+			{
+				throw new InvalidDataException($"{name}: {error.GetBaseException()}", error);
+			}
 			Timings[name] = Stopwatch.GetElapsedTime(start).TotalMilliseconds;
 			Timings["mem." + name] = MemoryMB();
 			Timings["alloc." + name] = (GC.GetTotalAllocatedBytes() - allocated) / 1048576.0;
@@ -112,7 +116,7 @@ namespace OpenRA.WebSim
 			// Settings are read from (never written to) the support dir.
 			// This embedded host has a renderer (WebPlatform below). Calling it Null makes Game.IsHeadless true,
 			// so SpriteEffect never enters ScreenMap: deaths, explosions and splashes tick but are never drawn.
-			Game.InitializeSettings(new Arguments("Game.Platform=Web", "Game.FetchNews=false", "Debug.SendSystemInformation=false"));
+			Game.InitializeSettings(new Arguments("Game.Platform=Web", "Game.FetchNews=false", "Game.EnableDiscordService=false", "Debug.SendSystemInformation=false"));
 			foreach (var channel in new[] { "perf", "debug", "server", "sound", "graphics", "geoip", "nat", "client", "lua", "exception" })
 				Log.AddChannel(channel, logFiles ? channel + ".log" : null);
 

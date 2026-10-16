@@ -86,9 +86,15 @@ try {
         const g = window.game, s = g.client.cur;
         return s?.actors.some(a => a.owner === s.header.localPlayer && g.client.str(a.type) === type);
       }, type, { timeout: 180000 });
-      const after = await page.evaluate(() => ({ cash: window.store.getState().ui.cash, tick: window.store.getState().ui.tick }));
+      const after = await page.evaluate(type => {
+        const g = window.game, s = g.client.cur;
+        const actor = s.actors.find(a => a.owner === s.header.localPlayer && g.client.str(a.type) === type);
+        return { cash: window.store.getState().ui.cash, tick: window.store.getState().ui.tick, hp: actor.hp, maxHp: actor.maxHp };
+      }, type);
       assert.equal(before.cash - after.cash, before.item.cost);
-      receipt.production.push({ mode, faction, type, cost: before.item.cost, cashBefore: before.cash, cashAfter: after.cash, tick: after.tick });
+      assert.equal(after.hp, expected(`${mode}:${type}`, `${mode}-web`).health);
+      assert.equal(after.maxHp, after.hp);
+      receipt.production.push({ mode, faction, type, cost: before.item.cost, cashBefore: before.cash, cashAfter: after.cash, ...after });
       await page.screenshot({ path: path.join(out, `${mode}-${type}-trained.png`) });
       console.log(`PASS ${mode}/${faction}: trained ${type}, charged exactly ${before.item.cost}`);
     }
