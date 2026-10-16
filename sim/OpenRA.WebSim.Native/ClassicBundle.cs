@@ -26,6 +26,7 @@ static class ClassicBundle
 		Directory.CreateDirectory(Path.GetDirectoryName(output));
 		using var identity = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
 		var inventory = new List<object>();
+		var art = new List<(string Path, string File)>();
 		using (var stream = File.Create(output + ".tmp"))
 		using (var pack = new Pack.Writer(stream))
 		{
@@ -35,17 +36,31 @@ static class ClassicBundle
 				identity.AppendData(bytes);
 				pack.Add(name, bytes);
 			}
+			void Asset(string name, string file)
+			{
+				var bytes = File.ReadAllBytes(file);
+				if ((name.EndsWith(".png") || name.EndsWith(".shp")) && bytes.Length >= 32768)
+				{
+					identity.AppendData(Encoding.UTF8.GetBytes(name + "|" + bytes.Length + "|"));
+					identity.AppendData(bytes);
+					art.Add((name, file));
+				}
+				else Add(name, bytes);
+			}
 			void Tree(string source, string target, bool installed = false)
 			{
 				foreach (var file in Directory.EnumerateFiles(source, "*", SearchOption.AllDirectories).Order(StringComparer.Ordinal))
 				{
 					var rel = Path.GetRelativePath(source, file).Replace('\\', '/');
 					if (rel.Split('/').Any(p => p.StartsWith('.')) || rel.EndsWith(".pyc") || rel.EndsWith(".vqa")) continue;
+					// Classic imports the desktop chrome/strings, not the unrelated RA2 art and soundtrack.
+					if (target == "mods/rtsai/" && (rel.StartsWith("standalone/") || rel.StartsWith("modern-factions/") && rel != "modern-factions/loading-tips.ftl" || rel.StartsWith("maps/") || rel.StartsWith("audio/"))) continue;
 					// Installed movie/music packages are unrelated to unit editing and remain on disk.
 					if (installed && (rel.StartsWith("movies/") || rel is "scores.mix" or "general.mix")) continue;
 					var bytes = File.ReadAllBytes(file);
 					if (file.EndsWith(".ttf") || file.EndsWith(".otf")) bytes = [];
-					Add(target + rel, bytes);
+					if (!installed && (rel.EndsWith(".png") || rel.EndsWith(".shp"))) Asset(target + rel, file);
+					else Add(target + rel, bytes);
 					if (installed) inventory.Add(new { path = rel, sha256 = Convert.ToHexString(SHA256.HashData(bytes)).ToLowerInvariant(), bytes = bytes.Length });
 				}
 			}
@@ -61,7 +76,7 @@ static class ClassicBundle
 			{
 				var rel = Path.GetRelativePath(classic, file).Replace('\\', '/');
 				if (rel == "mod.yaml" || rel.Split('/').Any(p => p.StartsWith('.')) || rel.EndsWith(".pyc")) continue;
-				Add("mods/rtsai-classic-core/" + rel, File.ReadAllBytes(file));
+				Asset("mods/rtsai-classic-core/" + rel, file);
 			}
 			var yaml = File.ReadAllText(Path.Combine(classic, "mod.yaml")).Replace("\r\n", "\n")
 				.Replace("LoadScreen: RTSAILoadScreen", "LoadScreen: WebLoadScreen")
@@ -79,8 +94,8 @@ static class ClassicBundle
 		}
 		File.Move(output + ".tmp", output, true);
 		// The local pack contains its audio; it must not accidentally reuse the adapter's lazy indexes.
-		foreach (var name in new[] { "web-art", "web-audio" })
-			Bundle.WriteLazyPack(Path.Combine(Path.GetDirectoryName(output), name + ".pack"), []);
+		Bundle.WriteLazyPack(Path.Combine(Path.GetDirectoryName(output), "web-art.pack"), art);
+		Bundle.WriteLazyPack(Path.Combine(Path.GetDirectoryName(output), "web-audio.pack"), []);
 		Console.WriteLine($"Recovered Classic local bundle: {new FileInfo(output).Length / 1048576.0:F1} MB; {inventory.Count} installed inputs indexed.");
 		return 0;
 	}
