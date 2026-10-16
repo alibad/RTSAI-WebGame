@@ -21,6 +21,7 @@ await verifyAcceptedBuild(config); pass('accepted full build');
 await assert.rejects(verifyAcceptedBuild({ ...config, data: path.dirname(config.data) }), /does not cover the selected payload/); pass('wrong data directory rejected');
 await assert.rejects(verifyAcceptedBuild({ ...config, receiptSha256: '0'.repeat(64) }), /receipt changed/); pass('changed receipt rejected');
 await assert.rejects(verifyAcceptedBuild({ ...config, nativeSha256: '0'.repeat(64) }), /Native replay host changed/); pass('changed native host rejected');
+await assert.rejects(verifyAcceptedBuild({ ...config, scenarioFiles: [{ path: config.scenarioFiles[0].path, sha256: '0'.repeat(64) }] }), /Accepted scenario changed/); pass('changed scenarios rejected');
 const receipt = JSON.parse(fs.readFileSync(config.receipt));
 const tamper = path.join(temp, 'tampered.txt'); fs.writeFileSync(tamper, 'changed');
 receipt.checksums.push({ path: tamper, sha256: sha('original') });

@@ -41,6 +41,8 @@ export async function verifyAcceptedBuild(config) {
   const source = receipt.sources?.['RTSAI-WebGame']?.head;
   if (!source) throw new Error('Missing accepted source identity');
   git('merge-base', '--is-ancestor', source, 'main');
+  if (!config.scenarios || !config.scenarioFiles?.length) throw new Error('Accepted scenarios are not frozen; register this build again.');
+  for (const entry of config.scenarioFiles) if (await hashFile(entry.path) !== entry.sha256) throw new Error(`Accepted scenario changed: ${entry.path}`);
   const entries = new Map(receipt.checksums.map(entry => [path.resolve(entry.path).toLowerCase(), entry.sha256]));
   const required = [path.join(config.page, 'index.html'), path.join(config.page, 'build-local.json'), path.join(config.page, 'NOTICE')];
   for (const profile of ['public', 'public-classic']) {
@@ -73,7 +75,7 @@ async function portBusy(port) {
   });
 }
 function matching(active, config, identity) {
-  return active?.buildId === config.buildId && active.receiptSha256 === identity.receiptSha256 && active.serverSha256 === identity.serverSha256 && samePath(active.page, config.page) && samePath(active.data, config.data) && samePath(active.native, config.native);
+  return active?.buildId === config.buildId && active.receiptSha256 === identity.receiptSha256 && active.serverSha256 === identity.serverSha256 && samePath(active.page, config.page) && samePath(active.data, config.data) && samePath(active.native, config.native) && active.scenarios && samePath(active.scenarios, config.scenarios);
 }
 async function verifyHttp(port, config, identity) {
   const active = await probe(port);
@@ -81,6 +83,10 @@ async function verifyHttp(port, config, identity) {
   for (const [url, file] of [['/', path.join(config.page, 'index.html')], ['/build-local.json', path.join(config.page, 'build-local.json')], ['/rt/public/aot/_framework/runtime-identity.json', path.join(config.data, 'public/wasm-aot/wwwroot/_framework/runtime-identity.json')]]) {
     const response = await fetch(`http://127.0.0.1:${port}${url}`, { signal: AbortSignal.timeout(15000), cache: 'no-store' });
     if (!response.ok || sha(Buffer.from(await response.arrayBuffer())) !== await hashFile(file)) throw new Error(`Server payload does not match the accepted build: ${url}`);
+  }
+  for (const name of ['skirmish-originals.json', 'skirmish-classic.json']) {
+    const response = await fetch(`http://127.0.0.1:${port}/scenarios/${name}`, { signal: AbortSignal.timeout(15000), cache: 'no-store' });
+    if (!response.ok || sha(Buffer.from(await response.arrayBuffer())) !== await hashFile(path.join(config.scenarios, name))) throw new Error(`Server is using different scenario inputs: ${name}`);
   }
   return active;
 }
@@ -141,6 +147,17 @@ async function main() {
       const absolute = path.join(nativeDir, file);
       if (fs.statSync(absolute).isFile()) config.nativeFiles.push({ path: absolute, sha256: await hashFile(absolute) });
     }
+    const source = read(receipt).sources['RTSAI-WebGame'].head;
+    config.scenarios = path.join(state, 'inputs', config.buildId, 'scenarios');
+    config.scenarioFiles = [];
+    for (const rel of git('ls-tree', '-r', '--name-only', source, '--', 'scenarios').split('\n').filter(Boolean)) {
+      const contents = execFileSync('git', ['-C', repo, 'show', `${source}:${rel}`], { windowsHide: true });
+      const file = path.join(config.scenarios, path.relative('scenarios', rel));
+      fs.mkdirSync(path.dirname(file), { recursive: true });
+      if (fs.existsSync(file) && await hashFile(file) !== sha(contents)) throw new Error(`Frozen scenario was modified: ${file}`);
+      fs.writeFileSync(file, contents);
+      config.scenarioFiles.push({ path: file, sha256: sha(contents) });
+    }
     await verifyAcceptedBuild(config);
     if (fs.existsSync(registry)) fs.copyFileSync(registry, path.join(state, `previous-${Date.now()}.json`));
     atomicJson(registry, config);
@@ -156,7 +173,8 @@ async function main() {
     Object.assign(process.env, {
       RTSAI_WEBGAME_PORT: String(port), RTSAI_WEB_DIST: config.page, RTSAI_WEB_DATA: config.data, RTSAI_WEB_BUILD: config.native,
       RTSAI_WEB_SCRATCH: path.join(state, 'scratch', config.buildId), RTSAI_WEB_BR_CACHE: path.join(state, 'compression', config.buildId),
-      RTSAI_VERIFIED_LOCAL_BUILD: JSON.stringify({ buildId: config.buildId, receiptSha256: identity.receiptSha256, serverSha256: identity.serverSha256, page: config.page, data: config.data, native: config.native, pid: process.pid, launchId: process.env.RTSAI_LOCAL_LAUNCH_ID }),
+      RTSAI_WEB_SCENARIOS: config.scenarios,
+      RTSAI_VERIFIED_LOCAL_BUILD: JSON.stringify({ buildId: config.buildId, receiptSha256: identity.receiptSha256, serverSha256: identity.serverSha256, page: config.page, data: config.data, native: config.native, scenarios: config.scenarios, pid: process.pid, launchId: process.env.RTSAI_LOCAL_LAUNCH_ID }),
     });
     delete process.env.RTSAI_MAP_MOD_ROOT; delete process.env.RTSAI_MAP_OUTPUT_ROOT; delete process.env.RTSAI_SITE_PUBLIC;
     await import(pathToFileURL(path.join(repo, 'server/serve.mjs')).href);

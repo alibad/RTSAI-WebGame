@@ -62,6 +62,7 @@ async function overpassRelay(req, res) {
 
 const sitePublic = path.resolve(process.env.RTSAI_SITE_PUBLIC ?? path.join(repo, "..", "RTSAI-Web", "public"));
 const data = path.resolve(process.env.RTSAI_WEB_DATA ?? path.join(repo, "data"));
+const scenarios = path.resolve(process.env.RTSAI_WEB_SCENARIOS ?? path.join(repo, "scenarios"));
 const appData = path.join(process.env.LOCALAPPDATA ?? os.homedir(), "RTSAI-WebGame");
 const privateDir = path.join(appData, "private");
 const privateFiles = path.join(privateDir, "files");
@@ -367,7 +368,7 @@ const server = http.createServer(async (req, res) => {
       return f && fs.existsSync(f) ? sendFile(req, res, f, { immutable: true }) : res.writeHead(404).end();
     }
     if (p.startsWith("/scenarios/")) {
-      const f = safeJoin(path.join(repo, "scenarios"), p.slice(11));
+      const f = safeJoin(scenarios, p.slice(11));
       return f ? sendFile(req, res, f, { compress: false }) : res.writeHead(400).end();
     }
     const rel = p === "/" ? "index.html" : p.slice(1);

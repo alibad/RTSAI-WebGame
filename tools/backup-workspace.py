@@ -112,6 +112,13 @@ def main():
             shutil.copy2(original, copy)
             if sha(copy) != entry['sha256']:
                 raise ValueError(f'Native replay dependency changed: {original}')
+        for entry in registration.get('scenarioFiles', []):
+            original = Path(entry['path'])
+            copy = out / 'accepted-scenarios' / original.relative_to(Path(registration['scenarios']))
+            copy.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(original, copy)
+            if sha(copy) != entry['sha256']:
+                raise ValueError(f'Accepted scenario changed: {original}')
     for name in ['HANDOFF-CODEX.md', 'AGENTS.md']:
         shutil.copy2(WORKSPACE / name, out / name)
     save(out / 'backup.json', dict(schema=1, scope='Full Git bundles and registered working-file recovery; generated ignored caches indexed, not copied', repositories=reports, previousRecovery=str(args.previous_recovery) if args.previous_recovery else None))

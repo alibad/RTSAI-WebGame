@@ -8,7 +8,8 @@ The desktop native game keeps its separate launcher.
 The selected game is an explicitly accepted build, not whichever `web/dist`, data folder, port or environment
 variable happens to exist. Selection lives in `%LOCALAPPDATA%/RTSAI-WebGame/launcher/current.json`.
 Each launch checks every recorded file, the page identity, both modes' runtime identities, original-country art
-and voices, and the native replay host. It then checks the live server identity and actual HTTP payloads.
+and voices, and the native replay host. Scenario files are frozen from the accepted source revision, so subsequent
+source edits cannot change the running build's missions. It then checks the live server identity and actual HTTP payloads.
 A mismatched listener, modified file or missing build causes an error. It never falls back to another build,
 switches ports automatically, downloads content or kills a listener. It starts a detached server when needed.
 Concurrent launches share a lock. Server logs and process records live beside `current.json`.
