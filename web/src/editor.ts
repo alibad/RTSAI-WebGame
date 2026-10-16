@@ -99,7 +99,7 @@ export class EditorController {
     const map = this.state.map;
     const h = await this.call({ op: "pointer", ...input });
     if (!this.active || this.state.map !== map) return;
-    this.history(h);
+    if (input.event !== "move" || h.error) this.history(h);
     if (input.event === "up") this.patch({ dirty: h.placement ? h.placement.added > 0 || this.state.dirty : true });
     if (h.brush === "select" && this.state.tool !== "select" && input.button === 2) this.patch({ tool: "select" });
   }, error => this.fail(error instanceof Error ? error.message : String(error)));
