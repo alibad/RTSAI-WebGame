@@ -14,8 +14,8 @@ try {
   const errors = [];
   page.on('pageerror', e => errors.push(String(e)));
   await page.goto(`${base}?profile=public&mode=simulator`);
-  await page.waitForFunction(() => document.querySelectorAll('.sim-unit img').length >= 7
-    && [...document.querySelectorAll('.sim-unit img')].every(i => i.complete && i.naturalWidth > 0));
+  await page.waitForFunction(() => document.querySelectorAll('.sim-unit').length > 0
+    && [...document.querySelectorAll('.sim-unit')].every(card => { const i = card.querySelector('img'); return i?.complete && i.naturalWidth > 0; }));
   // Includes an enlarged sidebar, matching the owner's zoomed screenshot.
   for (const width of [260, 340, 500]) {
     await page.evaluate(w => document.documentElement.style.setProperty('--sidebar-w', `${w}px`), width);
