@@ -18,7 +18,9 @@ try {
   await page.waitForFunction(() => ['setup', 'error'].includes(window.store?.getState().phase), null, { timeout: 180000 });
   assert.equal(await page.evaluate(() => window.store.getState().phase), 'setup', await page.evaluate(() => window.store.getState().error));
   console.log('Game ready; starting real skirmish');
-  await page.evaluate(s => window.game.start(s), fs.readFileSync('scenarios/skirmish-public.json', 'utf8'));
+  const scenario = JSON.parse(fs.readFileSync(process.env.RTSAI_TEST_SCENARIO ?? (url.includes('profile=public-classic') ? 'scenarios/skirmish-classic.json' : 'scenarios/skirmish-public.json'), 'utf8'));
+  if (process.env.RTSAI_TEST_SANDBOX === '1') scenario.sandbox = true;
+  await page.evaluate(s => window.game.start(JSON.stringify(s)), scenario);
   await page.waitForFunction(() => window.store.getState().phase === 'playing', null, { timeout: 180000 });
   await page.locator('canvas.stage').click({ position: { x: 500, y: 300 } });
   await page.waitForFunction(() => window.store.getState().ui?.music?.duration > 0 && window.game.audio.musicPlayback().active, null, { timeout: 90000 });
