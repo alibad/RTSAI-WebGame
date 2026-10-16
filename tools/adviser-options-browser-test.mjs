@@ -40,6 +40,19 @@ try {
     assert.equal(await toggle.getAttribute('aria-checked'), 'false');
     await page.locator('.sk-cc').screenshot({ path: `${out}/${name}-off.png` });
     await toggle.click(); assert.equal(await toggle.getAttribute('aria-checked'), 'true');
+    await page.getByRole('button', { name: 'Settings', exact: true }).click();
+    const orders = page.getByRole('radiogroup', { name: 'Adviser orders', exact: true });
+    await orders.scrollIntoViewIfNeeded();
+    const dialog = await page.getByRole('dialog').boundingBox();
+    for (const label of ['Off', 'Suggest orders', 'Apply automatically']) {
+      const option = orders.getByRole('radio', { name: label, exact: true });
+      const r = await option.boundingBox();
+      assert.ok(r && r.x >= dialog.x && r.x + r.width <= dialog.x + dialog.width, 'order choices must fit inside the settings dialog');
+    }
+    await orders.getByRole('radio', { name: 'Apply automatically', exact: true }).click();
+    await page.screenshot({ path: `${out}/${name}-settings.png` });
+    await page.keyboard.press('Escape');
+    await page.getByText('On · Applies orders automatically', { exact: true }).waitFor();
     assert.deepEqual(errors, []);
     results.push({ name, savedMode, mode: 'browser', companionRequests: 0, keyboardSwitch: true, fitsViewport: true, passed: true });
     await context.close();
