@@ -30,6 +30,8 @@ const browser = await chromium.launch({ executablePath: browserExecutable(), hea
 try {
   for (const mode of ['classic', 'ra2']) {
     const profile = mode === 'classic' ? 'public-classic' : 'public';
+    const content = await (await fetch(new URL(`data/${profile}/content-profile.json`, base))).json();
+    assert.equal(content.unitRevision, manifest.revision);
     const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
     const page = await context.newPage();
     const errors = [];
