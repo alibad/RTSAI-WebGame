@@ -336,7 +336,7 @@ async function smoke(rel, roots, profiles, local, site) {
   try {
     for (let i = 0; i < 40 && !(await fetch(`http://127.0.0.1:${port}/`).then((r) => r.ok).catch(() => false)); i++) await sleep(250);
     const runs = profiles.includes("public-classic") ? undefined : "public:skirmish-public,public:battle-originals,public:skirmish-public";
-    const args = [path.join(repo, "tools", "release-smoke.mjs"), `http://127.0.0.1:${port}/`, "--shots", path.join(rel, "smoke-shots"), ...(runs ? ["--runs", runs] : [])];
+    const args = [path.join(repo, "tools", "release-smoke.mjs"), `http://127.0.0.1:${port}/`, "--shots", path.join(rel, "smoke-shots"), "--asset-origin", host, ...(runs ? ["--runs", runs] : [])];
     let out;
     try { out = run(process.execPath, args, { stdio: ["ignore", "pipe", "inherit"] }); } catch (e) { out = String(e.stdout ?? ""); }
     const line = out.split("\n").find((l) => l.startsWith("RESULT "));

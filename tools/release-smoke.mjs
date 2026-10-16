@@ -7,7 +7,7 @@
 // high-water mark, which WebAssembly never gives back.)
 // tools/release-play.mjs runs it before every release; it also works against any static build (tools/static-serve.mjs).
 //   node tools/release-smoke.mjs <url> [--runs public:skirmish-public,public:battle-originals,public:skirmish-public,public:skirmish-public,public-classic:skirmish-classic]
-//     [--seconds 8] [--shots <dir>]
+//     [--seconds 8] [--shots <dir>] [--asset-origin https://trusted-game-cdn.example]
 // Prints one line "RESULT <json>" and exits 1 if a check failed.
 import fs from "node:fs";
 import path from "node:path";
@@ -23,15 +23,18 @@ if (!url || url.startsWith("--")) throw new Error("usage: node tools/release-smo
 const runs = opt("runs", "public:skirmish-public,public:battle-originals,public:skirmish-public,public:skirmish-public,public-classic:skirmish-classic").split(",").map((r) => r.split(":"));
 const seconds = Number(opt("seconds", 8));
 const shots = opt("shots");
+const assetOrigins = new Set(argv.flatMap((a, i) => a === "--asset-origin" ? [new URL(argv[i + 1]).origin] : []));
 if (shots) fs.mkdirSync(shots, { recursive: true });
 
 const browser = await chromium.launch({ executablePath: browserExecutable(), headless: true, args: [...browserArgs(), "--disable-background-timer-throttling"] });
 const page = await browser.newPage({ viewport: { width: 1600, height: 900 } });
 if (["127.0.0.1", "localhost"].includes(new URL(url).hostname)) {
-  // Local QA must not emit production analytics or depend on hosted services.
+  // Local QA must not emit production analytics. Release tests may explicitly read their game's asset CDN;
+  // unrelated hosts and outbound writes stay blocked.
   await page.route("**/*", route => {
     const target = new URL(route.request().url());
     return ["127.0.0.1", "localhost"].includes(target.hostname) || ["blob:", "data:"].includes(target.protocol)
+      || (assetOrigins.has(target.origin) && ["GET", "HEAD"].includes(route.request().method()))
       ? route.continue() : route.abort();
   });
 }

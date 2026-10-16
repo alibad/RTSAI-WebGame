@@ -128,7 +128,13 @@ namespace OpenRA.WebSim
 				ui.UiSpace = true;
 			Game.Sound = new Sound(platform, Game.Settings.Sound);
 
-			Time("boot.moddata", () => Game.ModData = new ModData(manifest, mods, true));
+			Time("boot.moddata", () =>
+			{
+				Game.ModData = new ModData(manifest, mods, true);
+				// Consolidated engines also contain Classic's desktop bridge under this short name. The
+				// embedded host must use the SDK mod's bridge (and its web RPC shim), never the desktop thread.
+				Game.ModData.ObjectCreator.SetTypeOverride("CompanionBridgeInfo", typeof(OpenRA.Mods.RTSAI.Traits.CompanionBridgeInfo));
+			});
 			Time("boot.loaders", () =>
 			{
 				Game.ModData.InitializeLoaders(Game.ModData.DefaultFileSystem);
