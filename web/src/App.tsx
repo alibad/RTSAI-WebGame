@@ -296,6 +296,7 @@ export default function App() {
   useEffect(() => { if (game && phase === "setup") game.requestCursors(); }, [game, phase]);
 
   const playing = phase === "playing";
+  const classicCore = useStore((s) => s.setup?.modId === "rtsai-classic-core");
   const editorMode = mode === "editor";
   const simEditing = useStore((s) => sandboxMode && s.sandbox?.mode === "edit");
   return (
@@ -311,7 +312,7 @@ export default function App() {
             <button type="button" onClick={() => setMode("home")} className="menu-subnav-back" aria-label="Main menu"><ArrowLeft size={15} aria-hidden="true" /><span>Main menu</span></button>
             <div className="scr-tabs">
               <button type="button" aria-current={mode === "skirmish" ? "page" : undefined} onClick={() => setMode("skirmish")}>Skirmish</button>
-              <button type="button" aria-current={mode === "missions" ? "page" : undefined} onClick={() => setMode("missions")}>Campaign</button>
+              <button type="button" disabled={classicCore} title={classicCore ? "Classic campaigns are available in the desktop game." : undefined} aria-current={mode === "missions" ? "page" : undefined} onClick={() => setMode("missions")}>Campaign</button>
             </div>
             {/* Icons only on narrow screens (screens.css .menu-subnav-studio): the row also holds Multiplayer. */}
             <button type="button" className="menu-subnav-studio" aria-label="Battle simulator" title="Battle simulator" onClick={() => setMode("simulator")}><Crosshair size={15} aria-hidden="true" /><span>Battle simulator</span></button>
