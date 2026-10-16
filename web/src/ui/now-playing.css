@@ -29,4 +29,12 @@
 .np-tracks button:hover:not(:disabled) { background: #ffffff0b; }
 .np-tracks button[aria-current] { border-color: #d9bc6a66; color: var(--hud-gold); background: #d9bc6a10; }
 .np-track-number { display: grid; place-items: center; inline-size: 20px; flex: 0 0 auto; font-variant-numeric: tabular-nums; font-size: 11px; color: #9aa48e; }
+@media (max-height: 520px) {
+  .np-panel[data-slot] { padding: 12px; }
+  .np-title { margin-block-start: 8px; font-size: 18px; }
+  .np-subtitle { margin-block-start: 4px; font-size: 11px; }
+  .np-timeline { margin-block: 10px 8px; }
+  .np-transport { margin-block: 8px; }
+  .np-library-heading { margin-block: 10px 4px; padding-block-start: 8px; }
+}
 @media (prefers-reduced-motion: reduce) { .np-progress > span { transition: none; } }

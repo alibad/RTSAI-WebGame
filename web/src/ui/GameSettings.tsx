@@ -21,7 +21,7 @@ function Slider({ label, value, min = 0, max = 1, onChange }: { label: string; v
   return (
     <label className="settings-slider">
       <span>{label}<b>{Math.round(value * 100)}%</b></span>
-      <input aria-label={label} type="range" min={min} max={max} step="0.05" value={value} style={{ "--fill": `${fill}%` } as React.CSSProperties} onChange={(e) => onChange(Number(e.target.value))} />
+      <input aria-label={label} type="range" min={min} max={max} step={max === 1 ? "0.01" : "0.05"} value={value} style={{ "--fill": `${fill}%` } as React.CSSProperties} onChange={(e) => onChange(Number(e.target.value))} />
     </label>
   );
 }
