@@ -55,5 +55,14 @@ assert.equal(audio.musicPlayback().elapsed, 1.5, "Music resumes without a skippe
 audio.pause(5, true);
 audio.stop(5);
 assert.equal(audio.musicPlayback().active, false, "Switching tracks clears even a paused final chunk");
+audio.seekStart(6, 40);
+audio.stream(6, 1, 16, 100, new Int16Array(150).buffer, false, 1);
+assert.equal(audio.musicPlayback().elapsed, 40, "A seeked stream reports the absolute song position");
+ctx.currentTime += .55;
+assert(Math.abs(audio.musicPlayback().elapsed - 40.5) < .001);
+audio.pause(6, true);
+ctx.currentTime += 10;
+assert(Math.abs(audio.musicPlayback().elapsed - 40.5) < .001, "Paused seeked music keeps its absolute position");
+audio.stop(6);
 delete globalThis.AudioContext; delete globalThis.webkitAudioContext;
 console.log("Audio capability checks passed: optional and prefixed Web Audio, blocked contexts, normal PCM playback.");

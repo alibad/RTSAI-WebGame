@@ -56,6 +56,35 @@ try {
   await page.waitForFunction(() => !window.game.audio.musicPlayback().paused);
   await page.waitForTimeout(700);
   assert(await page.evaluate(() => window.game.audio.musicPlayback().elapsed) > musicPaused + .3);
+  const finale = library.tracks.find(song => song.title === 'Final Push');
+  await select(finale);
+  await page.waitForFunction(() => window.store.getState().ui?.music?.duration > 0);
+  const finaleDuration = await page.evaluate(() => window.store.getState().ui.music.duration);
+  assert(finaleDuration >= 60 && finaleDuration < 100, 'The orchestral replacement must be in the actual packed game');
+  const position = page.getByRole('slider', { name: 'Track position', exact: true });
+  const seekMouse = async (seconds, drag = false) => {
+    const box = await position.boundingBox();
+    const max = Number(await position.getAttribute('max'));
+    const x = box.x + 6 + (box.width - 12) * seconds / max, y = box.y + box.height / 2;
+    if (drag) {
+      await page.mouse.move(box.x + box.width / 2, y); await page.mouse.down();
+      await page.mouse.move(x, y, { steps: 8 }); await page.mouse.up();
+    } else await page.mouse.click(x, y);
+    await page.waitForFunction(target => Math.abs(window.game.audio.musicPlayback().elapsed - target) < 1, seconds, { timeout: 30000 });
+  };
+  await seekMouse(40);
+  await page.getByRole('button', { name: 'Pause music', exact: true }).click();
+  await page.waitForFunction(() => window.game.audio.musicPlayback().paused);
+  await seekMouse(30, true);
+  assert.equal(await page.evaluate(() => window.game.audio.musicPlayback().paused), true, 'Dragging while paused must stay paused');
+  const seekPaused = await page.evaluate(() => window.game.audio.musicPlayback().elapsed);
+  await page.waitForTimeout(800);
+  assert(Math.abs(await page.evaluate(() => window.game.audio.musicPlayback().elapsed) - seekPaused) < .1);
+  await position.press('Home');
+  await page.waitForFunction(() => window.game.audio.musicPlayback().elapsed < .2 && window.game.audio.musicPlayback().paused);
+  await page.getByRole('button', { name: 'Play music', exact: true }).click();
+  await page.waitForFunction(() => !window.game.audio.musicPlayback().paused);
+  await seekMouse(12, true);
   const volume = page.getByLabel('Music volume', { exact: true });
   await volume.press('Home');
   for (let i = 0; i < 37; i++) await volume.press('ArrowRight');
@@ -90,6 +119,6 @@ try {
   assert(Math.abs(await page.evaluate(() => window.game.audio.musicPlayback().elapsed) - frozen) < .1, 'Paused audio freezes the track clock');
   await page.evaluate(() => window.game.setPaused(false));
   assert.deepEqual(errors, []);
-  fs.writeFileSync(`${out}/receipt.json`, JSON.stringify({ passed: true, url, track, tracks: library.tracks, tests: ['select first/last', 'previous/next', 'PCM pause/resume with effects running', 'volume persistence', 'mute', 'match pause', 'Escape/focus', 'desktop/phone/RTL popup'] }, null, 2));
+  fs.writeFileSync(`${out}/receipt.json`, JSON.stringify({ passed: true, url, track, finaleDuration, tracks: library.tracks, tests: ['every track', 'previous/next', 'PCM pause/resume with effects running', '40-second click seek', '30-second paused drag seek', 'keyboard seek to start', '12-second drag seek', 'orchestral replacement packed', 'volume persistence', 'mute', 'match pause', 'Escape/focus', 'desktop/phone/RTL popup'] }, null, 2));
   console.log('PASS real soundtrack:', track, ';', library.tracks.length, 'tracks, selection, previous/next, real pause/resume, volume, mute, match pause, Escape/focus, desktop/phone/RTL popup');
 } finally { await browser.close(); }

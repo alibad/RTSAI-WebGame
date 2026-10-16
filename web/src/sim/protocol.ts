@@ -401,6 +401,7 @@ export type FromWorker = (
   | { type: "audio"; op: "stop"; sound: number }
   | { type: "audio"; op: "volume"; sound: number; volume: number }
   | { type: "audio"; op: "pause"; sound: number; paused: boolean }
+  | { type: "audio"; op: "seekStart"; sound: number; seconds: number }
   | { type: "cursor"; cursor: string; seq: number }
   | { type: "cursorset"; data: ArrayBuffer }
   | { type: "ordered"; count: number; t: number; tick: number }

@@ -10,6 +10,15 @@
 .np-timeline { margin-block: 20px 16px; }
 .np-progress { block-size: 4px; border-radius: 4px; background: #ffffff19; overflow: hidden; }
 .np-progress > span { display: block; block-size: 100%; border-radius: inherit; background: var(--hud-gold); transition: width .25s linear; }
+.np-seek { appearance: none; display: block; inline-size: 100%; block-size: 28px; margin: -12px 0 -8px; background: transparent; cursor: pointer; touch-action: none; }
+.np-seek::-webkit-slider-runnable-track { block-size: 4px; border-radius: 4px; background: linear-gradient(to right, var(--hud-gold) var(--progress), #ffffff19 var(--progress)); }
+.np-seek::-moz-range-track { block-size: 4px; border-radius: 4px; background: #ffffff19; }
+.np-seek::-moz-range-progress { block-size: 4px; background: var(--hud-gold); }
+.np-seek::-webkit-slider-thumb { appearance: none; inline-size: 12px; block-size: 12px; margin-block-start: -4px; border: 1px solid #f3e3b0; border-radius: 50%; background: var(--hud-gold); box-shadow: 0 0 0 4px #d9bc6a18; }
+.np-seek::-moz-range-thumb { inline-size: 12px; block-size: 12px; border: 1px solid #f3e3b0; border-radius: 50%; background: var(--hud-gold); }
+.np-seek:disabled { opacity: .45; cursor: default; }
+.np-seek-hint { margin-block-start: 5px; color: #a5af9c; font-size: 10px; }
+[dir="rtl"] .np-seek::-webkit-slider-runnable-track { background: linear-gradient(to left, var(--hud-gold) var(--progress), #ffffff19 var(--progress)); }
 .np-times { display: flex; justify-content: space-between; margin-block-start: 8px; font-size: 11px; font-variant-numeric: tabular-nums; color: #b3b9aa; }
 .np-panel button { cursor: pointer; }
 .np-panel button:disabled { opacity: .45; cursor: default; }

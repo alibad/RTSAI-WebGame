@@ -385,6 +385,23 @@ namespace OpenRA.WebSim
 					Game.Sound.PauseMusic();
 					break;
 
+				case "music-seek":
+				{
+					var song = Game.Sound.CurrentMusic;
+					var playlist = world.WorldActor.TraitOrDefault<MusicPlaylist>();
+					if (song == null || playlist == null || song.Length <= 0)
+						return "{\"error\":\"Wait for the track to load before seeking.\"}";
+					var seconds = r.TryGetProperty("seconds", out var value) && value.TryGetDouble(out var number) && double.IsFinite(number) ? number : 0;
+					var playing = Game.Sound.MusicPlaying;
+					WebSoundEngine.SeekMusic(Math.Clamp(seconds, 0, Math.Max(0, song.Length - 0.25)), () =>
+					{
+						Game.Sound.StopMusic();
+						playlist.Play(song);
+						if (!playing) Game.Sound.PauseMusic();
+					});
+					break;
+				}
+
 				case "produce":
 				{
 					// Left click on a cameo: place a finished building, resume a held item, or queue more.

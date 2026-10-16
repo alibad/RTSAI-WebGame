@@ -300,6 +300,7 @@ export class Game {
         case "stop": a.stop(m.sound); break;
         case "volume": a.volume(m.sound, m.volume); break;
         case "pause": a.pause(m.sound, m.paused); break;
+        case "seekStart": a.seekStart(m.sound, m.seconds); break;
       }
     });
     c.on("bench", (m) => store.set({ verify: `${m.ticks} ticks in ${m.ms.toFixed(0)} ms = ${(m.ms / m.ticks).toFixed(2)} ms/tick` }));

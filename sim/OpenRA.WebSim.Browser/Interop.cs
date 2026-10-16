@@ -61,6 +61,9 @@ namespace OpenRA.WebSim.Browser
 		[JSImport("soundPause", "websim")]
 		static partial void SoundPause(int sound, bool paused);
 
+		[JSImport("soundSeekStart", "websim")]
+		static partial void SoundSeekStart(int sound, double seconds);
+
 		sealed class AudioSink : WebSoundEngine.IAudioSink
 		{
 			public void Source(int id, int channels, int bits, int rate, ReadOnlySpan<byte> pcm) => SoundSource(id, channels, bits, rate, MemoryMarshal.CreateSpan(ref MemoryMarshal.GetReference(pcm), pcm.Length));
@@ -69,6 +72,7 @@ namespace OpenRA.WebSim.Browser
 			public void Stop(int sound) => SoundStop(sound);
 			public void Volume(int sound, float volume) => SoundVolume(sound, volume);
 			public void Pause(int sound, bool paused) => SoundPause(sound, paused);
+			public void SeekStart(int sound, double seconds) => SoundSeekStart(sound, seconds);
 		}
 
 		[JSImport("spriteLoad", "websim")]

@@ -20,6 +20,7 @@ static class MusicPlayerTest
 		public void Stop(int sound) { }
 		public void Volume(int sound, float volume) { }
 		public void Pause(int sound, bool paused) { Pauses.Add(paused); }
+		public void SeekStart(int sound, double seconds) { }
 	}
 
 	public static int Run(Dictionary<string, string> opts)
@@ -37,6 +38,8 @@ static class MusicPlayerTest
 		Ui.Command(JsonSerializer.Serialize(new { cmd = "music-play", id = tracks[0] }));
 		if (Game.Sound.CurrentMusic?.Filename != tracks[0]) throw new Exception("Track selection failed");
 		Ui.Command("{\"cmd\":\"music-pause\"}");
+		Ui.Command("{\"cmd\":\"music-seek\",\"seconds\":40}");
+		if (Math.Abs(Game.Sound.MusicSeekPosition - 40) > .1 || Game.Sound.MusicPlaying) throw new Exception("Paused seek failed");
 		var before = Game.Sound.MusicSeekPosition;
 		var chunks = sink.Chunks;
 		Thread.Sleep(150);
@@ -46,6 +49,8 @@ static class MusicPlayerTest
 		Ui.Command("{\"cmd\":\"music-play\"}");
 		Thread.Sleep(80);
 		if (!Game.Sound.MusicPlaying || Game.Sound.MusicSeekPosition < before + .04f) throw new Exception("Resume failed");
+		Ui.Command("{\"cmd\":\"music-seek\",\"seconds\":12}");
+		if (Math.Abs(Game.Sound.MusicSeekPosition - 12) > .1 || !Game.Sound.MusicPlaying) throw new Exception("Backward playing seek failed");
 		WebSoundEngine.PauseAll(true);
 		before = Game.Sound.MusicSeekPosition;
 		Thread.Sleep(80);

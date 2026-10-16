@@ -15,6 +15,7 @@ export function NowPlaying({ game }: { game: Game }) {
   const [tracks, setTracks] = useState<{ id: string; title: string }[] | null>(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [seekTo, setSeekTo] = useState<number | null>(null);
   const [volume, setVolume] = useState(() => preferences.music);
   const [playback, setPlayback] = useState(() => game.audio.musicPlayback());
   useEffect(() => {
@@ -35,8 +36,18 @@ export function NowPlaying({ game }: { game: Game }) {
   }, [game]);
   const duration = track?.duration || playback.duration;
   const elapsed = duration ? Math.min(duration, playback.elapsed) : playback.elapsed;
-  const status = paused ? "Match paused" : playback.paused ? "Music paused" : playback.muted ? "Music muted" : playback.suspended ? "Click to enable audio" : playback.active ? "Now playing" : track ? "Loading music…" : "Choose a track";
+  const status = busy && seekTo !== null ? "Seeking…" : paused ? "Match paused" : playback.paused ? "Music paused" : playback.muted ? "Music muted" : playback.suspended ? "Click to enable audio" : playback.active ? "Now playing" : track ? "Loading music…" : "Choose a track";
   const playing = playback.active && !playback.paused;
+  async function seek(seconds: number) {
+    setSeekTo(seconds);
+    setBusy(true);
+    setError("");
+    try {
+      const reply = await game.command({ cmd: "music-seek", seconds });
+      if (reply.error) throw new Error(String(reply.error));
+    } catch { setError("Couldn't move to that position. Please try again."); }
+    finally { setSeekTo(null); setBusy(false); setPlayback(game.audio.musicPlayback()); }
+  }
   async function command(cmd: string, id?: string) {
     setBusy(true);
     setError("");
@@ -57,8 +68,15 @@ export function NowPlaying({ game }: { game: Game }) {
       <PopoverTitle className="np-title">{track?.title || "Battlefield soundtrack"}</PopoverTitle>
       <p className="np-subtitle">{paused ? "Resume the match to change or play music." : "Pick any track. The soundtrack continues automatically."}</p>
       {track && <div className="np-timeline">
-        {duration > 0 ? <div className="np-progress" role="progressbar" aria-label="Track playback" aria-valuemin={0} aria-valuemax={Math.ceil(duration)} aria-valuenow={Math.floor(elapsed)} aria-valuetext={`${time(elapsed)} of ${time(duration)}`}><span style={{ width: `${Math.min(100, elapsed / duration * 100)}%` }} /></div> : <div className="np-progress" />}
-        <div className="np-times"><span>{time(elapsed)}</span><span>{duration > 0 ? time(duration) : "Streaming"}</span></div>
+        {duration > 0 ? <input className="np-seek" type="range" aria-label="Track position" aria-valuetext={`${time(seekTo ?? elapsed)} of ${time(duration)}`} min={0} max={Math.max(0, duration - .25)} step="0.1" value={seekTo ?? elapsed} disabled={busy || paused || !playback.active}
+          style={{ "--progress": `${Math.min(100, (seekTo ?? elapsed) / duration * 100)}%` } as React.CSSProperties}
+          onChange={event => setSeekTo(Number(event.target.value))}
+          onPointerUp={event => { if (!busy) void seek(Number(event.currentTarget.value)); }}
+          onPointerCancel={() => setSeekTo(null)}
+          onKeyUp={event => { if (["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Home", "End", "PageUp", "PageDown"].includes(event.key) && !busy) void seek(Number(event.currentTarget.value)); }}
+          onBlur={() => { if (seekTo !== null && !busy) void seek(seekTo); }} /> : <div className="np-progress" />}
+        <div className="np-times"><span>{time(seekTo ?? elapsed)}</span><span>{duration > 0 ? time(duration) : "Streaming"}</span></div>
+        <p className="np-seek-hint">Click or drag to jump to any part.</p>
       </div>}
       <div className="np-transport" role="group" aria-label="Music playback">
         <button type="button" aria-label="Previous track" disabled={busy || paused || !tracks?.length} onClick={() => void command("music-previous")}><SkipBack size={19} /></button>

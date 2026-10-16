@@ -38,6 +38,7 @@ export class AudioEngine {
   private sources = new Map<number, AudioBuffer>();
   private playing = new Map<number, Playing>();
   private streams = new Map<number, Stream>();
+  private streamOffsets = new Map<number, number>();
   private listener = { x: 0, y: 0 };
   soundOn = true;
   musicOn = true;
@@ -122,7 +123,9 @@ export class AudioEngine {
     if (!s) {
       const gain = ctx.createGain();
       gain.connect(this.music);
-      s = { gain, queued: 0, started: ctx.currentTime + 0.05, chunks: [], volume, paused: false, position: 0 };
+      const offset = this.streamOffsets.get(sound) ?? 0;
+      this.streamOffsets.delete(sound);
+      s = { gain, queued: offset, started: ctx.currentTime + 0.05 - offset, chunks: [], volume, paused: false, position: offset };
       this.streams.set(sound, s);
     }
     s.gain.gain.value = this.musicOn ? volume : 0;
@@ -137,6 +140,8 @@ export class AudioEngine {
       if (!s.chunks.length && !s.paused) this.streams.delete(sound);
     }
   }
+
+  seekStart(sound: number, seconds: number) { this.streamOffsets.set(sound, Math.max(0, seconds)); }
 
   private scheduleChunk(sound: number, stream: Stream, chunk: MusicChunk) {
     const ctx = this.ctx!;
@@ -159,7 +164,7 @@ export class AudioEngine {
     const stream = [...this.streams.values()].at(-1);
     const ctx = this.ctx;
     return {
-      elapsed: stream && ctx ? Math.max(0, Math.min(stream.queued, stream.paused ? stream.position : ctx.currentTime - stream.started)) : 0,
+      elapsed: stream && ctx ? Math.max(stream.position, Math.min(stream.queued, stream.paused ? stream.position : ctx.currentTime - stream.started)) : 0,
       duration: stream?.duration ?? 0,
       active: !!stream && !!stream.chunks.length,
       paused: stream?.paused ?? false,
@@ -170,6 +175,7 @@ export class AudioEngine {
 
   stop(sound: number) {
     const stopOne = (id: number) => {
+      this.streamOffsets.delete(id);
       const p = this.playing.get(id);
       if (p) { try { p.node.stop(); } catch { /* already ended */ } this.playing.delete(id); }
       const s = this.streams.get(id);
@@ -179,7 +185,7 @@ export class AudioEngine {
         this.streams.delete(id);
       }
     };
-    if (sound < 0) for (const id of [...this.playing.keys(), ...this.streams.keys()]) stopOne(id);
+    if (sound < 0) for (const id of [...this.playing.keys(), ...this.streams.keys(), ...this.streamOffsets.keys()]) stopOne(id);
     else stopOne(sound);
   }
 

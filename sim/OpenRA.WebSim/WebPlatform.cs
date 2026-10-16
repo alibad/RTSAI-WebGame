@@ -454,6 +454,7 @@ namespace OpenRA.WebSim
 			void Stop(int sound);
 			void Volume(int sound, float volume);
 			void Pause(int sound, bool paused);
+			void SeekStart(int sound, double seconds);
 		}
 
 		public static IAudioSink Sink;
@@ -463,6 +464,17 @@ namespace OpenRA.WebSim
 
 		static int nextId;
 		static readonly List<WebSound> Streams = [];
+		static double musicStart;
+		static bool allPaused;
+
+		// Ogg's decoder is forward-only. Reopen through the playlist and discard PCM in bounded chunks,
+		// rather than retaining minutes of decoded audio or changing the desktop engine's sound contract.
+		public static void SeekMusic(double seconds, Action restart)
+		{
+			musicStart = Math.Max(0, seconds);
+			try { restart(); }
+			finally { musicStart = 0; }
+		}
 
 		public bool Dummy => Sink == null;
 		public float Volume { get; set; } = 1f;
@@ -491,8 +503,23 @@ namespace OpenRA.WebSim
 			if (Sink == null)
 				return null;
 
-			var sound = new WebSound(++nextId, double.MaxValue) { Volume = volume, Stream = stream, Channels = channels, Bits = sampleBits, Rate = sampleRate };
+			var frameBytes = channels * sampleBits / 8;
+			var wanted = (long)(musicStart * sampleRate) * frameBytes;
+			long skipped = 0;
+			if (wanted > 0)
+			{
+				var scratch = new byte[64 * 1024 / frameBytes * frameBytes];
+				while (skipped < wanted)
+				{
+					var n = stream.Read(scratch, 0, (int)Math.Min(scratch.Length, wanted - skipped));
+					if (n == 0) break;
+					skipped += n;
+				}
+			}
+			var offset = skipped / (double)(sampleRate * frameBytes);
+			var sound = new WebSound(++nextId, double.MaxValue) { Volume = volume, Stream = stream, Channels = channels, Bits = sampleBits, Rate = sampleRate, Offset = offset, SentSeconds = offset, AllPaused = allPaused };
 			Streams.Add(sound);
+			Sink.SeekStart(sound.Id, offset);
 			Pump();
 			return sound;
 		}
@@ -549,6 +576,7 @@ namespace OpenRA.WebSim
 
 		public static void PauseAll(bool paused)
 		{
+			allPaused = paused;
 			foreach (var s in Streams)
 				s.AllPaused = paused;
 			Sink?.Pause(-1, paused);
@@ -605,6 +633,7 @@ namespace OpenRA.WebSim
 		public Stream Stream;
 		public int Channels, Bits, Rate;
 		public double SentSeconds;
+		public double Offset;
 		public byte[] Chunk;
 
 		public WebSound(int id, double duration)
@@ -613,7 +642,7 @@ namespace OpenRA.WebSim
 			Duration = duration;
 		}
 
-		public double Elapsed => clock.Elapsed.TotalSeconds;
+		public double Elapsed => Offset + clock.Elapsed.TotalSeconds;
 		bool paused, allPaused;
 		public bool Paused { get => paused; set { paused = value; UpdateClock(); } }
 		public bool AllPaused { get => allPaused; set { allPaused = value; UpdateClock(); } }

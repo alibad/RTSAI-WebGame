@@ -182,6 +182,7 @@ async function init(msg: Extract<ToWorker, { type: "init" }>) {
     soundStop: (sound: number) => post({ type: "audio", op: "stop", sound }),
     soundVolume: (sound: number, volume: number) => post({ type: "audio", op: "volume", sound, volume }),
     soundPause: (sound: number, paused: boolean) => post({ type: "audio", op: "pause", sound, paused }),
+    soundSeekStart: (sound: number, seconds: number) => post({ type: "audio", op: "seekStart", sound, seconds }),
     // Prebaked sprite sheets (SpriteStore.cs).
     spriteLoad: (key: string) => bake?.load(key) ?? new Uint8Array(0),
     spriteSaved: (key: string, table: Uint8Array, ids: ArrayLike<number>) => bake?.saved(key, table, ids),
