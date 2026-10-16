@@ -123,6 +123,21 @@ class Grid {
   pass(p: Pt) { return this.inside(p) && this.passable[p.v * this.w + p.u] === 1; }
   seen(p: Pt) { return this.inside(p) && this.visible[p.v * this.w + p.u] === 1; }
 
+  /** Connected ground cells, used to keep an island force separate from troops still awaiting transport. */
+  region(start: Pt) {
+    const cells=new Uint8Array(this.w*this.h), todo:Pt[]=[start];
+    if(!this.pass(start))return cells;
+    cells[start.v*this.w+start.u]=1;
+    for(let i=0;i<todo.length;i++) {
+      const c=toC(todo[i]);
+      for(const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1],[1,1],[-1,-1],[1,-1],[-1,1]]) {
+        const p=fromC(c.x+dx,c.y+dy),j=p.v*this.w+p.u;
+        if(this.pass(p)&&!cells[j]){cells[j]=1;todo.push(p);}
+      }
+    }
+    return cells;
+  }
+
   /** The nearest passable cell (searching out in rings), optionally also outside `avoid`. */
   near(p: Pt, max = 14, avoid?: (q: Pt) => boolean): Pt | null {
     if (this.pass(p) && !avoid?.(p)) return p;
@@ -202,6 +217,7 @@ interface Named { id?: number; at: Pt; seen: number; building?: boolean; dead?: 
 export class MissionMemory {
   /** Terrain-derived landing sites and real transport trips; no actor spawning or teleportation. */
   landings = new Map<string, Pt | null>();
+  regions = new Map<string, Uint8Array>();
   voyages = new Map<number, { assigned: number[]; loaded: boolean; returning: boolean; since: number }>();
   initialFighters: Set<number> | null = null;
   heading = new Map<number, { goal: string; key: string; tick: number; reactive: boolean; tries: number; to?: Pt }>();
@@ -1241,28 +1257,30 @@ function heroes(w: World): MissionAdvice | null {
 const amphibiousName = /amphibious.*(?:carrier|transport)|landing ship/i;
 
 /** A shoreline on an objective's landmass, when no ground route exists from the base. */
-function islandGoal(w: World): { name: string; beach: Pt; home: Pt } | null {
+function islandGoal(w: World): { name: string; beach: Pt; home: Pt; region: Uint8Array } | null {
   const grid=w.grid, home=w.base();
   if(!grid||!home)return null;
   for(const o of w.objectives.filter(o=>o.status==="active"&&!o.waiting&&(o.kind==="capture"||o.kind==="destroy"))) {
     for(const name of o.targets??[]) {
       if(w.ctx.techTree[w.ctx.map.named[name]?.type]?.queue==="Ship")continue;
       const target=w.where(name);if(!target||!grid.pass(target))continue;
+      if(!w.memory.regions.has(name))w.memory.regions.set(name,grid.region(target));
+      const region=w.memory.regions.get(name)!;
       if(!w.memory.landings.has(name)) {
         let beach:Pt|null=null;
-        if(!grid.path(home,target)) {
+        if(!region[home.v*grid.w+home.u]) {
           const coast:Pt[]=[];
           for(let v=2;v<grid.h-2;v+=2)for(let u=2;u<grid.w-2;u+=2) {
             const p={u,v};
-            if(!grid.pass(p)||dist(p,target)<12||dist(p,target)>55)continue;
+            if(!region[v*grid.w+u]||dist(p,target)<12||dist(p,target)>55)continue;
             if([{u:u-1,v},{u:u+1,v},{u,v:v-2},{u,v:v+2}].some(q=>!grid.pass(q)))coast.push(p);
           }
           coast.sort((a,b)=>dist(a,home)-dist(b,home));
-          beach=coast.find(p=>!!grid.path(p,target))??null;
+          beach=coast[0]??null;
         }
         w.memory.landings.set(name,beach);
       }
-      const beach=w.memory.landings.get(name);if(beach)return {name,beach,home};
+      const beach=w.memory.landings.get(name);if(beach)return {name,beach,home,region};
     }
   }
   return null;
@@ -1577,7 +1595,12 @@ function step(w: World, o: AdviserObservation, ctx: MissionContext): MissionAdvi
   const scout = scouting(w, army);
   if (scout) return scout;
   const focus = focusOf(w);
-  if (focus) { const a = armyTask(w, focus, army); if (a) return a; }
+  if (focus) {
+    const island=islandGoal(w);
+    // Troops on the far shore must not rally back toward the centroid of the large army still on the mainland.
+    const assault=island&&w.grid?army.filter(u=>!!island.region[u.cellY*w.grid!.w+u.cellX]):army;
+    const a = armyTask(w, focus, assault); if (a) return a;
+  }
   if (!economyFirst) { const e = economy(w); if (e) return e; }
   return status(w, focus);
 }

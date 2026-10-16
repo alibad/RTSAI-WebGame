@@ -283,6 +283,14 @@ test("island assault boards real passengers, crosses water, unloads and returns;
   const d=plan(spec,map,{...obs,tick:1300,units:[{...landed,passengers:0}]},memory);assert.match(d.text,/Return the amphibious carrier/);assert.equal(d.commands[0].target_x,10);
 });
 
+test("landed troops advance on their island instead of rallying toward the mainland army's centre",()=>{
+  const spec={id:"test",slot:"Me",enemy:"Them",objectives:[{text:"Destroy uplink.",kind:"destroy",targets:["Uplink"]}]};
+  const map=parseMissionMap(yaml([["Yard","gacnst","Me",10,20],["Uplink","naradr","Them",45,90]]));
+  const obs=observe({spatial:spatial(u=>u>=25&&u<=35),buildings:[unit(1,"gacnst",10,20,{canAttack:false})],
+    units:[...Array.from({length:20},(_,i)=>unit(i+10,"e1",10+i%5,25)),...Array.from({length:4},(_,i)=>unit(i+50,"e1",44+i,80))]});
+  const a=plan(spec,map,obs);assert(a.commands.length);assert(a.commands.every(c=>c.actor_id>=50&&c.target_x>35),JSON.stringify(a));
+});
+
 test("orders on the wire: the target actor (field 3) and queued (field 7)", () => {
   const bytes = encodeAdviserActions("mission-test-1", 100, [{ action: "demolish", actor_id: 5, target_actor_id: 9, queued: true }]);
   // The request: 1 id (16 bytes), 2 tick (2), then 3 the command { 1 action 24, 2 actor, 3 target actor, 7 queued }.
