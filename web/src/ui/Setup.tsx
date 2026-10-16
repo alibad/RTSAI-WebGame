@@ -67,24 +67,31 @@ export function Setup({ game, utilities }: { game: Game; utilities: ReactNode })
   const sheets = useStore((s) => s.sheets);
 
   const factions = setup.factions.filter((f) => !f.random);
-  const [faction, setFaction] = useState<string>(() => load("rtsai.faction", "saudi"));
-  const [mapId, setMapId] = useState<string>(() => new URLSearchParams(location.search).get("map") ?? load("rtsai.map", setup.maps.find((m) => m.id === "tournament-2A" || m.id === "twin-fords")?.id ?? setup.maps[0]?.id));
+  const settingsKey = (key: string) => `rtsai.${profile === 'public-classic' ? 'classic' : 'ra2'}.${key}`;
+  const [faction, setFaction] = useState<string>(() => {
+    const saved = load(settingsKey('faction'), load('rtsai.faction', 'saudi'));
+    return factions.some(f => f.id === saved) ? saved : factions[0]?.id;
+  });
+  const [mapId, setMapId] = useState<string>(() => new URLSearchParams(location.search).get("map") ?? load(settingsKey('map'), setup.maps.find((m) => m.id === "tournament-2A" || m.id === "twin-fords")?.id ?? setup.maps[0]?.id));
   const map = setup.maps.find((m) => m.id === mapId) ?? setup.maps[0];
-  const [color, setColor] = useState<string>(() => load("rtsai.color", COLORS[0]));
+  const [color, setColor] = useState<string>(() => load(settingsKey('color'), load('rtsai.color', COLORS[0])));
   const [moreOptions, setMoreOptions] = useState(false);
-  const [opponents, setOpponents] = useState<Opponent[]>(() => load("rtsai.opponents", [{ faction: "iran", bot: setup.bots[0]?.type ?? "normal", color: COLORS[1] }]));
+  const [opponents, setOpponents] = useState<Opponent[]>(() => load<Opponent[]>(settingsKey('opponents'), load('rtsai.opponents', [{ faction: "iran", bot: setup.bots[0]?.type ?? "normal", color: COLORS[1] }])).map(o => ({ ...o,
+    faction: factions.some(f => f.id === o.faction) ? o.faction : factions[0]?.id,
+    bot: setup.bots.some(b => b.type === o.bot) ? o.bot : setup.bots[0]?.type,
+  })));
   const [options, setOptions] = useState<Record<string, string>>(() => ({
     ...Object.fromEntries((setup.options ?? []).map((o) => [o.id, o.default])),
-    ...load<Record<string, string>>("rtsai.options", {}),
+    ...load<Record<string, string>>(settingsKey('options'), {}),
   }));
 
   useEffect(() => {
     try {
-      localStorage.setItem("rtsai.faction", JSON.stringify(faction));
-      localStorage.setItem("rtsai.map", JSON.stringify(mapId));
-      localStorage.setItem("rtsai.color", JSON.stringify(color));
-      localStorage.setItem("rtsai.opponents", JSON.stringify(opponents));
-      localStorage.setItem("rtsai.options", JSON.stringify(options));
+      localStorage.setItem(settingsKey('faction'), JSON.stringify(faction));
+      localStorage.setItem(settingsKey('map'), JSON.stringify(mapId));
+      localStorage.setItem(settingsKey('color'), JSON.stringify(color));
+      localStorage.setItem(settingsKey('opponents'), JSON.stringify(opponents));
+      localStorage.setItem(settingsKey('options'), JSON.stringify(options));
     } catch { /* private mode */ }
   }, [faction, mapId, color, opponents, options]);
 
