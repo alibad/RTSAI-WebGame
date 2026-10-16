@@ -1,13 +1,13 @@
 {
   "schema": 1,
-  "version": "65633ea234c79d57",
-  "count": 27,
-  "updatedAt": 1792172787056,
+  "version": "0c5f93fab4aef9a1",
+  "count": 48,
+  "updatedAt": 1792173289000,
   "scope": "Known public geographic sites in the listed snapshots. Not a complete world inventory or current force positions.",
   "overview": {
-    "file": "overview-ba1b388b7804411d.json",
-    "sha256": "ba1b388b7804411dc63d859f9b4bef20fd27d26d2b8f08b8b1c7e06a0de80496",
-    "bytes": 5868
+    "file": "overview-e5ec56873384e9b9.json",
+    "sha256": "e5ec56873384e9b998163abc93d7e1bd90ef1948f1b4bea8c71d44f4a0669a7c",
+    "bytes": 10378
   },
   "regions": [
     {
@@ -20,7 +20,7 @@
         30.268977793747755,
         31.49513625000936
       ],
-      "updatedAt": 1792172740921,
+      "updatedAt": 1792173289000,
       "coverage": {},
       "sources": [
         {
@@ -34,12 +34,19 @@
           "license": "ODbL-1.0",
           "url": "https://www.openstreetmap.org/copyright",
           "note": "Preserved local public-source response. Original query bounds unavailable; no full-region coverage claim."
+        },
+        {
+          "provider": "OpenStreetMap",
+          "license": "ODbL-1.0",
+          "url": "https://www.openstreetmap.org/copyright",
+          "file": "cairo-osm-preserved-22a384a4d4ed8327.json",
+          "note": "Exact bounded query and public-source response preserved; no full-region coverage claim."
         }
       ],
-      "file": "region-cairo-580146fd55d5ba45.json",
-      "sha256": "580146fd55d5ba45892896c43d778d9fb0618ca0f8fe843dccee7470975aac51",
-      "bytes": 3374,
-      "count": 13
+      "file": "region-cairo-5966927c503873f7.json",
+      "sha256": "5966927c503873f7c1d21b48976ccd65ac6dabeccbf0b1bd266614b7637fcec1",
+      "bytes": 8131,
+      "count": 34
     },
     {
       "schema": 1,

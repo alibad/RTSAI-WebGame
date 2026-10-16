@@ -17,7 +17,7 @@ All known IDs survive discovery; the old four-mapped-site / six-article selectio
 
 Small moves reuse a normalized coverage area. Requests are delayed 300 ms to discard transient pointer moves; concurrent source/area lookups share a promise. Successful empty results are cached too. Failed refreshes retain saved sites and wait five minutes before another automatic attempt. A cancelled view cannot publish stale UI updates; an already running bounded request may still finish and fill the cache. Optional site research never gates terrain generation or play.
 
-The shipped baseline currently contains 27 sourced records across six packs (Cairo, Hormuz, Riyadh, Qatar, Suez, and two earlier checked references). It is **not a complete global inventory**. Wikipedia snapshots record a bounded 10 km geosearch, and OSM collection failures do not become false full-region coverage claims. New public discoveries are saved locally; they are not uploaded into a global user-writable catalog.
+The shipped baseline currently contains 48 sourced records across six packs (Cairo, Hormuz, Riyadh, Qatar, Suez, and two earlier checked references). It is **not a complete global inventory**. Wikipedia snapshots record a bounded 10 km geosearch, and OSM collection failures do not become false full-region coverage claims. New public discoveries are saved locally; they are not uploaded into a global user-writable catalog. The initial Cairo OSM discoveries were promoted into this shared baseline from their intact attributed reply and exact bounded query.
 
 ## Canonical dataset and updates
 
