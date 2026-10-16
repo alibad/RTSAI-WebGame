@@ -225,7 +225,7 @@
 
 /* The co-commander beside Start. */
 .sk-cc { display: flex; flex-direction: column; align-items: stretch; gap: 5px; min-width: 0; padding: 10px 14px; border-radius: 8px; border: 1px solid var(--hud-edge-hi); background: rgba(12, 15, 11, .94); backdrop-filter: blur(6px); box-shadow: 0 8px 22px rgba(0, 0, 0, .45); }
-.sk-cc-switch { display: flex; align-items: center; gap: 10px; min-height: 32px; color: #8f9886; }
+.sk-cc-switch { display: flex; align-items: center; gap: 10px; min-height: 44px; color: #8f9886; }
 .sk-cc-switch .scr-switch-track { margin-inline-start: auto; flex-shrink: 0; }
 .sk-cc-description { margin: 0; max-width: 34ch; font-size: 11px; line-height: 1.45; color: #a5ad9a; }
 .sk-cc-message { margin: 0; max-width: 34ch; font-size: 11px; line-height: 1.45; color: #ff9c86; }
@@ -587,8 +587,7 @@
   .sk-opp-row { grid-template-columns: minmax(0, 1fr); }
   .sk-opp-remove { position: absolute; top: 6px; right: 6px; width: 26px; height: 26px; }
   .sk-opp-fields { padding-right: 26px; }
-  .sk-cc { height: 50px; padding: 0 10px; }
-  .sk-cc-text small { display: none; }
+  .sk-cc { height: auto; padding: 10px; }
 
   .cp-hero { grid-template-columns: minmax(0, 1fr); gap: 14px; padding: 14px; }
   .cp-hero-text h2 { font-size: 28px; }

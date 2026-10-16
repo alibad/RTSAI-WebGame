@@ -30,6 +30,11 @@ try {
     assert.deepEqual(companionRequests, []);
     const box = await page.locator('.sk-cc').boundingBox();
     assert.ok(box.x >= 0 && box.x + box.width <= viewport.width + 1, 'adviser control must fit the screen');
+    for (const selector of ['.sk-cc-description', '.sk-cc-text small']) {
+      const text = await page.locator(selector).boundingBox();
+      assert.ok(text && text.y >= box.y && text.y + text.height <= box.y + box.height, 'all explanatory text must fit inside the card');
+    }
+    assert.ok((await toggle.boundingBox()).height >= 44, 'switch needs a full touch target');
     await page.locator('.sk-cc').screenshot({ path: `${out}/${name}-on.png` });
     await toggle.focus(); await page.keyboard.press('Space');
     assert.equal(await toggle.getAttribute('aria-checked'), 'false');
