@@ -39,11 +39,27 @@ try{
   await page.getByRole('button',{name:'Watch story introduction',exact:true}).click();await movie(def.id);
   if(def.id==='sweet-water')await page.screenshot({path:path.join(out,'campaign.png')});
  }
+ if(!progressOnly){
+  await page.locator('button[data-chapter="jizan-corridor"]').click();
+  const unavailable=url=>/\/jizan-corridor\/(briefing\.mp4)$|campaign-video\/jizan-corridor\.mp4$/.test(url.href);
+  await page.route(unavailable,r=>r.abort());
+  await page.getByRole('button',{name:'Watch story introduction',exact:true}).click();
+  await page.getByRole('status').filter({hasText:'The video could not load'}).waitFor({timeout:30000});
+  await page.unroute(unavailable);console.log('Missing-video fallback passed.');
+ }
  // Every real catalog mission launches through the player UI and advances native ticks.
  for(const def of (progressOnly?[]:catalog)){
   await page.locator(`button[data-chapter="${def.id}"]`).click();
   const start=page.getByRole('button',{name:'Start mission',exact:true});
-  await start.click({timeout:600000});await playing(def.id);
+  if(def.id==='jizan-corridor'){
+   await page.getByRole('button',{name:'Play briefing & deploy',exact:true}).click({timeout:600000});
+   await page.waitForFunction(()=>document.querySelector('video')?.readyState>=2,null,{timeout:120000});
+   await page.locator('video').evaluate(async v=>{v.muted=true;v.currentTime=v.duration-0.2;await v.play();});
+  }else if(def.id==='hodeidah-lifeline'){
+   await page.getByRole('button',{name:'Play briefing & deploy',exact:true}).click({timeout:600000});
+   await page.getByRole('button',{name:'Skip introduction and deploy',exact:true}).click({timeout:600000});
+  }else await start.click({timeout:600000});
+  await playing(def.id);
   await page.waitForFunction(()=>window.store.getState().ui.tick>25,null,{timeout:60000});
   const s=await page.evaluate(()=>window.store.getState().ui.mission);
   assert.deepEqual(s.objectives.map(o=>o.text),def.objectives.map(o=>o.text));
@@ -89,7 +105,7 @@ try{
  assert.equal(await page.locator('button[data-chapter="hodeidah-lifeline"]').getAttribute('aria-pressed'),'true');
  assert.match(await page.locator('button[data-chapter="jizan-corridor"]').innerText(),/Completed/);
  assert.equal(errors.length,0,JSON.stringify(errors));
- const report={passed:true,url:base,checkedAt:new Date().toISOString(),films,launches,adviser,nativeProgressFixture:{objective:'survive three seconds (failure case: one-second deadline)',outcomes:['Lost','Won'],lossDoesNotComplete:true,storage:true,nextChapter:true,nextMissionLaunched:true,reload:true,fullCampaignPlaythrough:false},errors};
+ const report={passed:true,url:base,checkedAt:new Date().toISOString(),films,launches,adviser,videoFailureFallback:!progressOnly,launchAfterFilm:!progressOnly,skipFilm:!progressOnly,nativeProgressFixture:{objective:'survive three seconds (failure case: one-second deadline)',outcomes:['Lost','Won'],lossDoesNotComplete:true,storage:true,nextChapter:true,nextMissionLaunched:true,reload:true,fullCampaignPlaythrough:false},errors};
  fs.writeFileSync(path.join(out,'release-acceptance.json'),JSON.stringify(report,null,2));console.log('PASS:',films.length,'films,',launches.length,'mission launches; native progress fixture and reload.');
 }catch(e){fs.writeFileSync(path.join(out,'failure.json'),JSON.stringify({error:String(e),state:await state().catch(()=>null),loading:await page.evaluate(()=>({prepared:window.store.getState().preparedMap,sheets:window.store.getState().sheets,stage:window.store.getState().stage})).catch(()=>null),films,launches,errors},null,2));await page.screenshot({path:path.join(out,'failure.png')}).catch(()=>{});throw e;}
 finally{await browser.close();}
