@@ -53,6 +53,7 @@ static class Program
 				"editorresourcetest" => EditorResourcesTest.Run(opts),
 				"editorbridgetest" => EditorBridgesTest.Run(opts),
 				"editortestterrain" => EditorTerrainTest.Run(opts),
+				"editorwatertest" => EditorWaterTest.Run(opts),
 				_ => throw new ArgumentException("Unknown command " + args[0]),
 			};
 		}

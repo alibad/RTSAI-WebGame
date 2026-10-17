@@ -38,6 +38,9 @@ namespace OpenRA.WebSim
 		static ushort WaterFor(Map map) => map.Grid.Type == MapGridType.Rectangular ? (ushort)(map.Tileset == "DESERT" ? 256 : 1) : WaterTile;
 		static string ShoreFor(Map map) => map.Grid.Type == MapGridType.Rectangular ? "Beach" : ShoreSegment;
 		const int MinimumLandSeaThickness = 4, TerrainSmoothing = 4, SmoothingThreshold = 833, MinimumBeachDeviation = 3;
+		// Room for smoothing, shore templates and the extended coastline paths around a stroke. Joining the sea
+		// must not give a local brush permission to regenerate every coast and small island on the map.
+		const int RetileMargin = TerrainSmoothing + MinimumLandSeaThickness + MinimumBeachDeviation + 4;
 
 		/// <summary>How far water and its shores keep from a change of ground height (shore pieces are flat).</summary>
 		const int LevelMargin = 3;
@@ -221,6 +224,7 @@ namespace OpenRA.WebSim
 				var plan = Matrix<bool>.Zip(stamped, flat, (a, b) => a && b);
 				if (session.Plan != null)
 					plan = Matrix<bool>.Zip(session.Plan, plan, (a, b) => a || b);
+				var edited = plan.Clone();
 				MergeTouchingWater(plan);
 				if (!plan.Data.Any(w => w))
 				{
@@ -255,9 +259,30 @@ namespace OpenRA.WebSim
 					return;
 				}
 
+				var affected = new Matrix<bool>(bounds.Width, bounds.Height);
+				foreach (var p in edited.Enumerate().Where(p => p.Value))
+					for (var dy = -RetileMargin; dy <= RetileMargin; dy++)
+						for (var dx = -RetileMargin; dx <= RetileMargin; dx++)
+						{
+							var xy = p.Xy + new int2(dx, dy);
+							if (affected.ContainsXY(xy)) affected[xy] = true;
+						}
+
 				for (var i = 0; i < cells.Length; i++)
 				{
 					var mpos = cells[i];
+					var c = mpos.ToCPos(map);
+					if (!affected[c.X - bounds.Left, c.Y - bounds.Top])
+					{
+						// The generator smooths the connected water body globally. Keep its results only near
+						// the actual strokes, preserving distant terrain, heights and resources exactly.
+						if (!Same(map.Tiles[mpos], pre.Tiles[i])) map.Tiles[mpos] = pre.Tiles[i];
+						if (map.Height[mpos] != pre.Heights[i]) map.Height[mpos] = pre.Heights[i];
+						if (map.Resources[mpos].Type != pre.Resources[i].Type || map.Resources[mpos].Index != pre.Resources[i].Index)
+							map.Resources[mpos] = pre.Resources[i];
+						continue;
+					}
+
 					var changed = !Same(map.Tiles[mpos], pre.Tiles[i]) || map.Height[mpos] != pre.Heights[i];
 					// No ore on the water and its shores.
 					if (changed && map.Resources[mpos].Type != 0)
@@ -269,7 +294,7 @@ namespace OpenRA.WebSim
 					session.Painted[mpos] = map.Tiles[mpos];
 				}
 
-				session.Plan = plan;
+				session.Plan = edited;
 				LastError = null;
 				after = Capture();
 				afterSession = session;
