@@ -162,9 +162,10 @@ function Palette({ game, editor }: { game: Game; editor: EditorController }) {
         </div>
       </div>
       <button type="button" className="ed-flatten" aria-pressed={st.brush === "flatten"} onClick={() => editor.brushFlatten()}><Mountain size={18} /><b>Flatten ground</b></button>
-      <p className="ed-tip">{st.brush === "flatten" ? "Drag, then release to level dry ground to the height where you start. Then choose Ore or Gems to paint your field. Water stays intact." : "Click or drag to paint a field. On slopes, use Flatten ground first. Right-click stops."}</p>
+      <p className="ed-tip">{st.brush === "flatten" ? "Drag a field or a connected path, then release. Slopes join the surrounding ground automatically. Touching resource fields join the level area; rivers and buildings stay intact." : "Click or drag to paint a field. Use Flatten ground to prepare connected fields and paths. Right-click stops."}</p>
       {st.placement && <p className={cn("ed-placement", !st.placement.added && "is-blocked")} role="status" data-testid="ed-placement">
         {st.placement.added ? st.brush === "flatten" ? `Flattened ${st.placement.added} ground ${st.placement.added === 1 ? "tile" : "tiles"}.` : `Painted ${st.placement.added} ${st.brush === "resource:Gems" ? "gem" : st.brush.slice(9).toLowerCase()} ${st.placement.added === 1 ? "tile" : "tiles"}.` : st.placement.blocked || (st.brush === "flatten" ? "This ground is already level." : "No resource tiles changed.")}
+        {st.placement.added > 0 && st.brush === "flatten" && st.placement.blocked && <small className="ed-ground-note">Riverbanks and structures kept intact.</small>}
       </p>}
     </div>
   );

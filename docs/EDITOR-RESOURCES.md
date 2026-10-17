@@ -6,7 +6,9 @@ The native resource layer allows resources on flat clear, rough and road tiles. 
 
 Choose a round brush diameter of 1, 3, 5 or 9 cells in the resource palette (5 by default). The width persists when switching between Ore, Gems and Flatten ground. Arrow keys and Home/End operate the width choices; the pointer guide shows the approximate projected brush size at the current zoom. The native terrain hit test determines the actual cells.
 
-Flatten ground samples the height at the start of the drag, gathers the dry cells along it, then levels the patch on release. It replaces sloped or unsuitable ground with the tileset's flat clear ground. A small apron is fitted with native ramp tiles to join the plateau to the surrounding terrain. Water, shores, actors and resource fields outside the painted area are protected. If the level cannot be joined, the stroke restores its original terrain and explains why. One undo restores the tiles, elevations and resources of the complete stroke, including its apron. Both game modes use their own default terrain.
+Flatten ground gathers the dry cells of a field or corridor, then plans the complete surface before applying it on release. The starting height is preferred; the nearest compatible level is used when riverbanks or structures constrain it. Touching resource deposits join as complete level fields, preserving every resource tile. Transitions expand as needed instead of rejecting ordinary ground because a fixed three-cell apron cannot fit. Riverbanks, structures and unrelated deposits remain protected. A protected boundary can be retained while the rest of the dry area is prepared. Both game modes use their own flat clear terrain; native ramps join the boundary, retaining the surrounding ground style where possible.
+
+No-op or blocked strokes never create an empty undo entry. One undo restores every changed terrain tile, elevation and resource, including the transition apron. The native Cairo regression uses the player's preserved map, reproduces the river-side and gem-field cases, and checks a continuous route with the engine's tracked-vehicle locomotor through an edited corridor.
 
 Pointer input captures buttons/modifiers at enqueue time. Moves can coalesce within a stroke; down/up remain ordered. Native resource strokes sample the segment between moves, including the release point, so fast dragging paints continuously. A stroke remains one undo action. Save, download, undo and brush changes wait for queued pointer input. Download saves dirty edits even when an older saved copy exists.
 
@@ -17,6 +19,7 @@ Checks:
 ```
 node tools/editor-pointer-test.mjs
 websim editorresourcetest --root <local native VFS>
+websim editortestterrain --root <local native VFS> --map-file <preserved Cairo .oramap>
 npm --prefix web run build
 ```
 
