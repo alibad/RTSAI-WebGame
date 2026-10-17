@@ -98,7 +98,7 @@ static class OriginalRa2Test
     static int Suicide(World world, Actor source, Actor target, string type)
     {
         var weapon = world.Map.Rules.Weapons[type == "terror" ? "ea-retail-terrorbomb" : "ea-retail-demobomb"];
-        var blasts = weapon.Warheads.OfType<DamageWarhead>().ToArray();
+        var blasts = weapon.Warheads.OfType<SpreadDamageWarhead>().ToArray();
         if (blasts.Length != 1 || blasts[0].Damage != (type == "terror" ? 225 : 300) || blasts[0].Delay != 0)
             throw new Exception("Incorrect original suicide blast profile");
         var before = target.Trait<Health>().HP;
