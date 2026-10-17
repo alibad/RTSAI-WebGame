@@ -20,12 +20,13 @@
     "mutable": [
       "campaign-v2/"
     ],
-    "$retired": "Historical data roots archived outside the deployment to stay below Cloudflare's 20,000-file limit. 17 October: retire superseded Act III data-b9e5e3bcdeec for original-country restoration; preserve current live roots.",
+    "$retired": "Historical data roots archived outside the deployment to stay below Cloudflare's 20,000-file limit. 18 October: retire pre-restoration data-790a042d842e for the original-animation/icon update; retain current live data-a3b0d296fd95 for rollback.",
     "retiredDir": "D:/rtsai-ea-build/play-cdn-retired",
     "retired": [
       "data-169d5132ea83/",
       "data-d455a47b2a2d/",
-      "data-b9e5e3bcdeec/"
+      "data-b9e5e3bcdeec/",
+      "data-790a042d842e/"
     ]
   },
   "vercel": {
