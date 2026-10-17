@@ -43,7 +43,7 @@ static class EditorTerrainTest
 			});
 		}
 		void Check(bool condition, string message) { if (!condition) throw new InvalidOperationException(message); }
-		int2 Point(int x, int y) => new(1890 + (x - 592) * 5 / 3, 960 + (y - 622) * 5 / 3);
+		int2 Point(int x, int y) => new((int)Math.Round(1890 + (x - 592) / 0.6), (int)Math.Round(960 + (y - 622) / 0.6));
 		CPos Hit(int2 p) => wr.Viewport.ViewToWorld(wr.Viewport.WorldToViewPx(p));
 		string Pointer(string ev, int2 p) => EditorHost.Call($"{{\"op\":\"pointer\",\"event\":\"{ev}\",\"x\":{p.X},\"y\":{p.Y},\"button\":1}}");
 		foreach (var test in new[] { ("reported river-side failure", Point(234, 900), Point(234, 900)), ("beside existing gems", Point(650, 740), Point(650, 740)), ("field edge", Point(800, 480), Point(800, 480)), ("connected corridor", Point(340, 880), Point(850, 680)) })
@@ -67,6 +67,8 @@ static class EditorTerrainTest
 			Check(rendered.All(e => Math.Abs((moved[e.Key].SpriteY - e.Value.SpriteY) - (moved[e.Key].GroundY - e.Value.GroundY)) < 0.01f), "Existing resource sprites must follow their ground height");
 			var flat = core.Count(c => map.Ramp[c] == 0);
 			Check(flat >= core.Count * 9 / 10, test.Item1 + $" must create a coherent flat field, got {flat}/{core.Count} cells");
+			if (test.Item2 == test.Item3)
+				Check(EditorFieldBrush.Footprint(Hit(test.Item2), 4).Where(c => map.Contains(c) && !water.Contains(c) && !actors.PreviewsAtCell(c).Any()).All(c => map.Ramp[c] == 0), "A subsequent resource stamp must fit at the same screen position");
 			if (test.Item1 == "connected corridor")
 			{
 				var start = Hit(test.Item2); var end = Hit(test.Item3);

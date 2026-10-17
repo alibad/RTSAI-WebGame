@@ -28,6 +28,10 @@ namespace OpenRA.WebSim
 			note = null;
 			bool Open(CPos c) => map.Contains(c) && !Water(map, c) && !actors.PreviewsAtCell(c).Any();
 			var ground = painted.Where(Open).ToHashSet();
+			// Leave a level shoulder before the slope transition. Levelling moves the isometric surface
+			// beneath the pointer; the next resource stamp must still fit at the same screen position.
+			foreach (var c in ground.ToArray())
+				foreach (var d in CVec.Directions) if (Open(c + d)) ground.Add(c + d);
 			// A field is one level surface. Touching its edge joins the whole deposit instead of pinning
 			// every ore/gem tile as an obstacle and rejecting the neighbouring brush stroke.
 			var queue = new Queue<CPos>(ground);
