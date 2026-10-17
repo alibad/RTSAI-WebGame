@@ -43,7 +43,8 @@
     "engineBranch": "fork/main"
   },
   "inputsSearch": [
-    "D:/rtsai-play-release/inputs"
+    "D:/rtsai-play-release/inputs",
+    "D:/rtsai-play-release/inputs/r3-20261015"
   ],
   "inputsRoots": [
     "D:/"

@@ -292,7 +292,9 @@ function siteCheckout() {
   // The viewer data and the faction catalog (web/src/data/factions.json) are generated and ignored by Git: regenerate
   // them, or the page ships whatever an earlier sync left (build snapshots may not contain generated catalogs).
   fs.rmSync(path.join(repo, "web", "public", "viewer"), { recursive: true, force: true });
-  run(process.execPath, [path.join(repo, "tools", "sync-viewer.mjs"), "--from", dir], { stdio: ["ignore", "ignore", "inherit"] });
+  // The website's reviewed generated metadata is committed with its release. Regenerating it from a sibling Mod
+  // would mix local editing candidates into a production page whose runtime and data use frozen published inputs.
+  run(process.execPath, [path.join(repo, "tools", "sync-viewer.mjs"), "--from", dir, "--published"], { stdio: ["ignore", "ignore", "inherit"] });
   run(process.execPath, [path.join(repo, "tools", "sync-catalog.mjs"), "--from", dir], { stdio: ["ignore", "ignore", "inherit"] });
   return { dir, commit };
 }
