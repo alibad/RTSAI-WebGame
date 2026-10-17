@@ -47,6 +47,11 @@ const runtimes = { interp: path.join(data, "wasm-interp", "wwwroot"), aot: path.
 // The public profile (standalone mod, project art only) has its own bundle and runtimes under data/public.
 const profiles = { public: path.join(data, "public"), "public-classic": path.join(data, "public-classic") };
 const verifiedLocalBuild = process.env.RTSAI_VERIFIED_LOCAL_BUILD ? JSON.parse(process.env.RTSAI_VERIFIED_LOCAL_BUILD) : null;
+// The launcher verifies these immutable registrations before starting this host. Keep old sessions' lazy
+// byte-range reads bound to their own packs when a different build is promoted on the same port.
+const localBuilds = new Map((process.env.RTSAI_LOCAL_BUILDS ? JSON.parse(process.env.RTSAI_LOCAL_BUILDS) : [])
+  .map(build => [build.buildId, build]));
+if (verifiedLocalBuild) localBuilds.set(verifiedLocalBuild.buildId, verifiedLocalBuild);
 // Runtime variants (size experiments, e.g. ?runtime=aot-lean) live next to the default builds as wasm-<variant>.
 const runtimeDir = (profile, runtime) => path.join(profile ? profiles[profile] : data, `wasm-${runtime}`, "wwwroot");
 
@@ -283,6 +288,21 @@ const server = http.createServer(async (req, res) => {
   if (p === "/play") p = "/";
   else if (p.startsWith("/play/")) p = p.slice(5);
   try {
+    let build = null;
+    const scoped = p.match(/^\/local-builds\/([a-zA-Z0-9_-]+)(\/.*)?$/);
+    if (scoped) {
+      build = localBuilds.get(scoped[1]);
+      if (!build) return res.writeHead(410, { "content-type": "text/plain" }).end("This local build is unavailable. Open the game launcher to load the current build.");
+      if (!scoped[2]) return res.writeHead(307, { location: `${p}/${url.search}`, "cache-control": "no-store" }).end();
+      p = scoped[2];
+      url.pathname = p;
+      if (p === "/api/verify" && build.buildId !== verifiedLocalBuild?.buildId)
+        return json(res, { error: "This session uses an older build. Reload from the launcher before native verification." }, 409);
+    } else if (verifiedLocalBuild && p === "/") {
+      // The address itself pins the page, worker, runtime, indices, packs and sprite sheets together. A query
+      // parameter alone cannot do this: workers' later range requests do not inherit location.search.
+      return res.writeHead(307, { location: `/local-builds/${verifiedLocalBuild.buildId}/${url.search}`, "cache-control": "no-store" }).end();
+    }
     if ((p.startsWith("/api/") || p.startsWith("/companion/") || p.startsWith("/private/")) && !trustedLocalRequest(req, PORT)) return json(res, { error: "Untrusted local request" }, 403);
     if (p.startsWith("/api/maps/")) {
       if (!isLocal(req)) return res.writeHead(403).end("local only");
@@ -316,11 +336,12 @@ const server = http.createServer(async (req, res) => {
     }
     const rt = p.match(/^\/rt\/(?:(public(?:-classic)?)\/)?((?:interp|aot)(?:-[a-z]+)?)\/(.*)$/);
     if (rt) {
-      const f = safeJoin(runtimeDir(rt[1], rt[2]), rt[3]);
+      const root = build ? path.join(build.data, rt[1] ?? "", `wasm-${rt[2]}`, "wwwroot") : runtimeDir(rt[1], rt[2]);
+      const f = safeJoin(root, rt[3]);
       return f ? sendFile(req, res, f) : res.writeHead(400).end();
     }
     if (p.startsWith("/data/")) {
-      const f = safeJoin(data, p.slice(6));
+      const f = safeJoin(build?.data ?? data, p.slice(6));
       if (!f || !/\.(pack|json|gz|bin)$/.test(f) || /(measure|fidelity|verify|metrics)/.test(f)) return res.writeHead(404).end();
       // The audio pack is read by byte range (lazily, per sound), so it is served uncompressed; prebaked sprite
       // sheets (sprites/*.gz) are already compressed.
@@ -342,13 +363,14 @@ const server = http.createServer(async (req, res) => {
       return f && fs.existsSync(f) ? sendFile(req, res, f, { immutable: true }) : res.writeHead(404).end();
     }
     if (p.startsWith("/scenarios/")) {
-      const f = safeJoin(scenarios, p.slice(11));
+      const f = safeJoin(build?.scenarios ?? scenarios, p.slice(11));
       return f ? sendFile(req, res, f, { compress: false }) : res.writeHead(400).end();
     }
     const rel = p === "/" ? "index.html" : p.slice(1);
-    const f = safeJoin(dist, rel);
+    const pageRoot = build?.page ?? dist;
+    const f = safeJoin(pageRoot, rel);
     if (f && fs.existsSync(f) && fs.statSync(f).isFile()) return sendFile(req, res, f, { immutable: rel.startsWith("assets/") });
-    return sendFile(req, res, path.join(dist, "index.html"));
+    return sendFile(req, res, path.join(pageRoot, "index.html"));
   } catch (e) {
     res.writeHead(500, { "content-type": "text/plain" });
     res.end(String(e?.stack ?? e));

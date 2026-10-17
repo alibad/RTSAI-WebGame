@@ -33,7 +33,7 @@ function serverIdentity(config) {
 }
 
 export async function verifyAcceptedBuild(config) {
-  if (config.schema !== 1 || !Number.isInteger(config.port) || config.port < 1024 || config.port > 60531) throw new Error('Invalid local launcher registration or reserved companion ports');
+  if (config.schema !== 1 || !/^[a-zA-Z0-9_-]+$/.test(config.buildId) || !Number.isInteger(config.port) || config.port < 1024 || config.port > 60531) throw new Error('Invalid local launcher registration or reserved companion ports');
   const bytes = fs.readFileSync(config.receipt);
   if (sha(bytes) !== config.receiptSha256) throw new Error('Accepted-build receipt changed. Register a newly verified build explicitly.');
   const receipt = JSON.parse(bytes.toString('utf8').replace(/^\uFEFF/, ''));
@@ -42,6 +42,7 @@ export async function verifyAcceptedBuild(config) {
   const source = receipt.sources?.['RTSAI-WebGame']?.head;
   if (!source) throw new Error('Missing accepted source identity');
   git('merge-base', '--is-ancestor', source, 'main');
+  if (receipt.serverSource) git('merge-base', '--is-ancestor', receipt.serverSource, 'main');
   if (!config.scenarios || !config.scenarioFiles?.length) throw new Error('Accepted scenarios are not frozen; register this build again.');
   for (const entry of config.scenarioFiles) if (await hashFile(entry.path) !== entry.sha256) throw new Error(`Accepted scenario changed: ${entry.path}`);
   if (config.serverRoot && !config.serverFiles?.length) throw new Error('Accepted server sources are missing');
@@ -133,7 +134,7 @@ export async function startAcceptedBuild(config, { port = config.port } = {}) {
     const active = await verifyHttp(port, config, identity);
     atomicJson(path.join(state, `server-${port}.json`), active);
   }
-  return { buildId: config.buildId, url: `http://127.0.0.1:${port}/?profile=public&mode=skirmish`, source: identity.receipt.sources['RTSAI-WebGame'].head, currentMain: git('rev-parse', 'main') };
+  return { buildId: config.buildId, url: `http://127.0.0.1:${port}/?profile=public&mode=skirmish&build=${encodeURIComponent(config.buildId)}`, source: identity.receipt.sources['RTSAI-WebGame'].head, currentMain: git('rev-parse', 'main') };
 }
 
 async function main() {
@@ -152,11 +153,12 @@ async function main() {
       if (fs.statSync(absolute).isFile()) config.nativeFiles.push({ path: absolute, sha256: await hashFile(absolute) });
     }
     const source = read(receipt).sources['RTSAI-WebGame'].head;
+    const serverSource = read(receipt).serverSource ?? source;
     // Freeze the server too: a later edit in the canonical checkout must not change an accepted game's host.
     config.serverRoot = path.join(state, 'inputs', config.buildId, 'source');
     config.serverFiles = [];
-    for (const rel of git('ls-tree', '-r', '--name-only', source, '--', 'server', 'tools/adapt-topdown-map.py').split('\n').filter(Boolean)) {
-      const contents = execFileSync('git', ['-C', repo, 'show', `${source}:${rel}`], { windowsHide: true });
+    for (const rel of git('ls-tree', '-r', '--name-only', serverSource, '--', 'server', 'tools/adapt-topdown-map.py').split('\n').filter(Boolean)) {
+      const contents = execFileSync('git', ['-C', repo, 'show', `${serverSource}:${rel}`], { windowsHide: true });
       const file = path.join(config.serverRoot, rel);
       fs.mkdirSync(path.dirname(file), { recursive: true });
       if (fs.existsSync(file) && await hashFile(file) !== sha(contents)) throw new Error(`Frozen server source was modified: ${file}`);
@@ -174,6 +176,9 @@ async function main() {
       config.scenarioFiles.push({ path: file, sha256: sha(contents) });
     }
     await verifyAcceptedBuild(config);
+    const history = path.join(state, 'accepted', `${config.buildId}.json`);
+    if (fs.existsSync(history) && read(history).receiptSha256 !== config.receiptSha256) throw new Error('A different accepted build already uses this build ID. Choose a new ID.');
+    atomicJson(history, config);
     if (fs.existsSync(registry)) fs.copyFileSync(registry, path.join(state, `previous-${Date.now()}.json`));
     atomicJson(registry, config);
     console.log(`Registered accepted build ${config.buildId}. No server or browser was opened.`);
@@ -184,6 +189,16 @@ async function main() {
   if (command === 'serve') {
     if (!process.env.RTSAI_EXPECTED_REGISTRATION || sha(fs.readFileSync(registry)) !== process.env.RTSAI_EXPECTED_REGISTRATION) throw new Error('Registration changed while starting');
     const identity = await verifyAcceptedBuild(config);
+    const history = path.join(state, 'accepted');
+    const builds = [];
+    for (const file of fs.existsSync(history) ? fs.readdirSync(history).filter(name => name.endsWith('.json')) : []) {
+      const previous = read(path.join(history, file));
+      if (previous.buildId === config.buildId) continue;
+      try {
+        await verifyAcceptedBuild(previous);
+        builds.push({ buildId: previous.buildId, page: previous.page, data: previous.data, scenarios: previous.scenarios });
+      } catch (error) { console.warn(`Previous local build ${previous.buildId} unavailable: ${error.message}`); }
+    }
     const port = Number(option('--port', String(config.port)));
     // Older previews may still own the historical bridge port. Never attach this game's AI to that bridge.
     if (port + 5004 > 65535 || await portBusy(port + 5000)) throw new Error('The accepted game companion bridge port is unavailable; no fallback bridge was used.');
@@ -191,6 +206,7 @@ async function main() {
       RTSAI_WEBGAME_PORT: String(port), RTSAI_WEB_DIST: config.page, RTSAI_WEB_DATA: config.data, RTSAI_WEB_BUILD: config.native,
       RTSAI_WEB_SCRATCH: path.join(state, 'scratch', config.buildId), RTSAI_WEB_BR_CACHE: path.join(state, 'compression', config.buildId),
       RTSAI_WEB_SCENARIOS: config.scenarios,
+      RTSAI_LOCAL_BUILDS: JSON.stringify(builds),
       RTSAI_WEB_COMPANION_GRPC: String(port + 5000), RTSAI_WEB_COMPANION_PORT: String(port + 5001),
       RTSAI_WEB_MOCK_AI_PORT: String(port + 5003), RTSAI_WEB_LOCAL_AI_PORT: String(port + 5004),
       RTSAI_VERIFIED_LOCAL_BUILD: JSON.stringify({ buildId: config.buildId, receiptSha256: identity.receiptSha256, serverSha256: identity.serverSha256, page: config.page, data: config.data, native: config.native, scenarios: config.scenarios, grpcPort: port + 5000, pid: process.pid, launchId: process.env.RTSAI_LOCAL_LAUNCH_ID }),

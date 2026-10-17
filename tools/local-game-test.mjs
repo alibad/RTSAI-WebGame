@@ -18,6 +18,7 @@ const sha = bytes => crypto.createHash('sha256').update(bytes).digest('hex');
 let tests = 0;
 const pass = name => { tests++; console.log(`PASS ${name}`); };
 await verifyAcceptedBuild(config); pass('accepted full build');
+await assert.rejects(verifyAcceptedBuild({ ...config, buildId: '../other-build' }), /Invalid local launcher/); pass('unsafe build ID rejected');
 await assert.rejects(verifyAcceptedBuild({ ...config, data: path.dirname(config.data) }), /does not cover the selected payload/); pass('wrong data directory rejected');
 await assert.rejects(verifyAcceptedBuild({ ...config, receiptSha256: '0'.repeat(64) }), /receipt changed/); pass('changed receipt rejected');
 await assert.rejects(verifyAcceptedBuild({ ...config, nativeSha256: '0'.repeat(64) }), /Native replay host changed/); pass('changed native host rejected');

@@ -31,8 +31,17 @@ node tools/local-game.mjs start
 The receipt is a JSON document with `buildId`, `variant: original-countries`, source SHAs, a runtime identity,
 and SHA-256 `checksums` covering the selected page, both complete content profiles, runtime files and evidence.
 The native replay DLL is hashed separately during registration. Registrations retain a previous copy.
+For a host-only correction that reuses a matched page/runtime/data payload, the receipt may name `serverSource`
+separately. That commit must also belong to canonical main; the launcher freezes its server files while preserving
+the original page, simulation and scenario source identities.
 Registering does not restart a running different build; verify its identity and close the known managed server
 before promoting a replacement. Never treat `/api/health` alone as proof that the right game is running.
+
+The launcher redirects the stable entry URL to `/local-builds/<buildId>/`. Keep that path: each tab then fetches
+its page, worker, runtime, audio/art indices, packs, sprite sheets and scenarios from the same accepted build.
+Registrations are retained under `accepted/`; a replacement host verifies and serves previous registered payloads
+too. Unavailable builds return 410, never the new build's bytes. This prevents an older tab's audio byte offsets
+from addressing a new pack after an update. Tabs opened before this protection need one reload from the stable URL.
 
 The accepted 16 October build is `local-adviser-8151b3d`: one built-in web adviser, original isometric countries
 plus project Classic, with 333 original art files and 521 original voice/sound clips. Both data profiles and the
