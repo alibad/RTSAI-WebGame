@@ -56,10 +56,19 @@ def main():
                          "deployments": sorted(deployments), "passed": True,
                          "units": [{**u, "source": source["actors"][u["id"]].get("source")} for u in f["units"]]})
     assert len(names) == 392, f"Expected all 392 existing actor bindings, got {len(names)}"
+    build = json.loads(args.receipt.read_text()) if args.receipt else None
+    if build:
+        assert build.get("verified") and build["verification"]["passed"], "Candidate build has not passed acceptance"
+        browser = json.loads(Path(build["verification"]["browser"]).read_text())
+        assert browser["passed"] and browser["revision"] == build["revision"], "Browser build/revision mismatch"
+        assert {(f["mode"], f["faction"]) for f in browser["rosters"] if f["passed"]} == {(f["mode"], f["id"]) for f in rows}, "Missing WASM faction proof"
+        assert sum(len(t["units"]) for t in browser["targets"]) == len(names), "Missing WASM unit binding proof"
+        saved = json.loads((args.mod / "mods/rtsai/unit-overrides/manifest.json").read_text())
+        assert saved["revision"] == build["revision"], "Verified build is not current saved content"
     summary = {"generatedAt": datetime.datetime.now(datetime.timezone.utc).isoformat(), "passed": True,
                "scope": "world-war-iii profile; own-country infrastructure; unrestricted tech; no captured foreign tech or campaign map overrides",
                "uniqueActors": len(names), "preserved": preserved, "factions": rows,
-               "browserBuild": json.loads(args.receipt.read_text()) if args.receipt else None}
+               "browserBuild": build}
     (root / "summary.json").write_text(json.dumps(summary, indent=2) + "\n")
     e = lambda value: html.escape(str(value))
     cards = []
