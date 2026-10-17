@@ -55,8 +55,11 @@ static class FactionRosterAudit
 		var reports = new List<object>();
 		foreach (var faction in factions)
 		{
+			var enemyBase = rules.Actors[SystemActors.World].TraitInfos<StartingUnitsInfo>()
+				.First(s => s.BaseActor != null && (s.Factions.Count == 0 || s.Factions.Contains(faction.InternalName))).BaseActor;
 			SimHost.Start(new ScenarioSpec { Map = opts.GetValueOrDefault("map", "web-arena"), Seed = 20261018, Bare = true,
 				Players = [new PlayerSpec { Slot = "Multi0", Faction = faction.InternalName }, new PlayerSpec { Slot = "Multi1", Faction = faction.InternalName, Bot = "webidle" }],
+				Spawns = [new SpawnSpec { Type = enemyBase, Player = 1, X = 85, Y = 25 }],
 				Options = new() { ["techlevel"] = "unrestricted", ["startingcash"] = "50000", ["crates"] = "False", ["fog"] = "False", ["explored"] = "True" } });
 			var world = SimHost.World;
 			var owner = world.LocalPlayer;
