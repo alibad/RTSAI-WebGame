@@ -81,7 +81,7 @@ function compressed(file, stat) {
   if (fs.existsSync(disk)) buf = fs.readFileSync(disk);
   else {
     buf = zlib.brotliCompressSync(fs.readFileSync(file), {
-      params: { [zlib.constants.BROTLI_PARAM_QUALITY]: 9, [zlib.constants.BROTLI_PARAM_SIZE_HINT]: stat.size },
+      params: { [zlib.constants.BROTLI_PARAM_QUALITY]: verifiedLocalBuild ? 4 : 9, [zlib.constants.BROTLI_PARAM_SIZE_HINT]: stat.size },
     });
     fs.mkdirSync(brDir, { recursive: true });
     fs.writeFileSync(disk, buf);
@@ -396,5 +396,6 @@ server.on("upgrade", (req, socket) => {
 
 server.listen(PORT, HOST, () => {
   console.log(`RTS AI web game: http://${HOST}:${PORT}/  (private RA2 files: ${fs.existsSync(privateFiles) ? "available" : "missing"})`);
-  warmCompression();
+  // Studio previews serve local data. Compress on demand without blocking readiness on whole packs.
+  if (!verifiedLocalBuild) warmCompression();
 });
