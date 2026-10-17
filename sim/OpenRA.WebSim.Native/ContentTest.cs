@@ -80,7 +80,36 @@ static class ContentTest
 		}
 		if (faction == "america" || faction == "iraq")
 			world.CreateActor(true, signature, new TypeDictionary { new OwnerInit(own), new LocationInit(new MPos(40, 55).ToCPos(world.Map)), new FactionInit(faction), new DeployStateInit(DeployState.Deployed) });
-		for (var i = 0; i < 120; i++) { SimHost.Tick(); Snapshot.Build(); }
+		var foundations = world.Map.Sequences.Images.Contains("ea-napowr") && Originals.Contains(faction)
+			? world.Actors.Where(a => a.Owner == own && FoundationDimensions.ContainsKey(a.Info.Name))
+				.GroupBy(a => a.Info.Name).ToDictionary(g => g.Key, g => g.Last()) : new Dictionary<string, Actor>();
+		var makeFrames = foundations.ToDictionary(p => p.Key, _ => new HashSet<int>());
+		for (var i = 0; i < 120; i++)
+		{
+			foreach (var (name, actor) in foundations)
+			{
+				var animation = actor.Trait<WithSpriteBody>().DefaultAnimation;
+				if (animation.CurrentSequence.Name == "make") makeFrames[name].Add(animation.CurrentFrame);
+			}
+			SimHost.Tick(); Snapshot.Build();
+		}
+		foreach (var (name, actor) in foundations)
+		{
+			var info = actor.Info.TraitInfo<BuildingInfo>();
+			if (info.Dimensions != FoundationDimensions[name] || makeFrames[name].Count < 2)
+				throw new Exception(name + ": incorrect original foundation or construction animation; dimensions " + info.Dimensions + ", make frames " + makeFrames[name].Count);
+			var occupied = info.Footprint.Values.Count(v => v == FootprintCellType.Occupied);
+			if (occupied != (name == "nadept" ? 3 : info.Dimensions.X * info.Dimensions.Y))
+				throw new Exception(name + ": incorrect blocking footprint");
+			actor.InflictDamage(actor, new Damage(actor.Info.TraitInfo<HealthInfo>().HP * 2 / 3));
+		}
+		for (var i = 0; i < 5; i++) { SimHost.Tick(); Snapshot.Build(); }
+		foreach (var (name, actor) in foundations)
+		{
+			var sequence = actor.Trait<WithSpriteBody>().DefaultAnimation.CurrentSequence.Name;
+			if (!sequence.StartsWith("damaged-", StringComparison.Ordinal) && !sequence.StartsWith("critical-", StringComparison.Ordinal))
+				throw new Exception(name + ": original damage animation not selected: " + sequence);
+		}
 		if (Snapshot.UnsupportedRenderables > 0) throw new Exception(faction + ": unsupported renderables");
 		var art = RenderArt(world, own, faction);
 		var voices = Voices(world, own, faction);
@@ -121,9 +150,16 @@ static class ContentTest
 
 		Console.WriteLine(JsonSerializer.Serialize(new { faction, signature, production = true, units = units.Select(a => a.Name), unsupported = Snapshot.UnsupportedRenderables,
 			originalArtActors = art.OriginalActors, originalArtTypes = art.OriginalTypes, originalVoiceTypes = voices.OriginalTypes,
-			projectVoiceTypes = voices.ProjectTypes, originalClipsChecked = voices.Clips, cameoImages, baselineCompared = compared, passed = true }));
+			projectVoiceTypes = voices.ProjectTypes, originalClipsChecked = voices.Clips, cameoImages,
+			originalBuildingMakeFrames = makeFrames.ToDictionary(p => p.Key, p => p.Value.Count), baselineCompared = compared, passed = true }));
 		return 0;
 	}
+
+	static readonly Dictionary<string, CVec> FoundationDimensions = new()
+	{
+		["napowr"] = new(3, 2), ["nahand"] = new(2, 2), ["nadept"] = new(4, 3),
+		["natech"] = new(3, 3), ["nanrct"] = new(4, 4)
+	};
 
 	/// <summary>
 	/// Original voices and sounds (public isometric bundles with web/ea/audio; unpack with --audio so the clips are on
@@ -298,6 +334,9 @@ static class ContentTest
 			}
 			else if (palettes.Any(IsOriginal))
 				throw new Exception(faction + ": " + a.Info.Name + " (" + image + ") draws project art with original palettes " + string.Join(", ", palettes.Where(IsOriginal)));
+
+			if (original && bundleHasOriginalArt && a.Info.HasTraitInfo<BuildableInfo>() && !originalImage && !originalVoxel)
+				throw new Exception(faction + ": buildable actor still uses replacement art: " + a.Info.Name + " (" + image + "/" + voxel + ")");
 
 			var sequences = image != null && world.Map.Sequences.Images.Contains(image)
 				? world.Map.Sequences.Sequences(image).OrderBy(x => x, StringComparer.Ordinal).ToArray() : [];

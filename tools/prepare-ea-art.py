@@ -146,12 +146,13 @@ def plan(args):
     print(json.dumps({k: v for k, v in json.loads(out.read_text()).items() if k not in ('files', 'audio')}, indent=1))
 
 
-def shim_dir(base: Path, mod_root: Path, support: Path):
+def shim_dir(base: Path, mod_root: Path, support: Path, engine: Path):
     """A minimal engine directory for OpenRA.Utility: junctions to the mod engine's mods and the RA2 Support folder,
     and copies of the mix database and VERSION (RTSAI-Web lib/art-lab/originals.ts ensureShim). Nothing else."""
-    shim = base / 'ea-shim'
+    # Do not reuse a historical shim whose mods junction points at the SDK's old engine copy.
+    engine_id = hashlib.sha256(str(engine.resolve()).encode()).hexdigest()[:12]
+    shim = base / ('ea-shim-' + engine_id)
     shim.mkdir(parents=True, exist_ok=True)
-    engine = mod_root / 'engine'
     for name, target in (('mods', engine / 'mods'), ('Support', support)):
         link = shim / name
         if not link.exists():
@@ -172,8 +173,9 @@ class Utility:
         support = args.support.resolve()
         if not (support / 'Content/ra2/ra2.mix').is_file():
             raise ValueError(f'No RA2 content at {support / "Content/ra2"}')
-        shim = shim_dir(out.parent, mod_root, support)
-        exe = mod_root / 'engine/bin' / ('OpenRA.Utility.exe' if os.name == 'nt' else 'OpenRA.Utility.dll')
+        engine = args.engine.resolve()
+        shim = shim_dir(out.parent, mod_root, support, engine)
+        exe = engine / 'bin' / ('OpenRA.Utility.exe' if os.name == 'nt' else 'OpenRA.Utility.dll')
         self.cmd = [str(exe)] if os.name == 'nt' else ['dotnet', str(exe)]
         self.env = {**os.environ, 'ENGINE_DIR': str(shim), 'MOD_SEARCH_PATHS': str(mod_root / 'mods')}
 
@@ -394,6 +396,7 @@ def main():
     e = sub.add_parser('extract'); e.add_argument('--plan', type=Path, required=True); e.add_argument('--out', type=Path, required=True)
     e.add_argument('--cache', type=Path, default=GAMES / 'RTSAI-Web/.cache/ra2-originals')
     e.add_argument('--mod', type=Path, default=GAMES / 'RTSAI-Mod'); e.add_argument('--support', type=Path, default=GAMES / 'OpenRA/Support')
+    e.add_argument('--engine', type=Path, default=GAMES / 'OpenRA', help='canonical built OpenRA checkout (never a stale SDK engine copy)')
     m = sub.add_parser('manifest'); m.add_argument('--plan', type=Path, required=True); m.add_argument('--dir', type=Path, required=True)
     m.add_argument('--inputs', type=Path, required=True)
     v = sub.add_parser('verify'); v.add_argument('--dir', type=Path, required=True)

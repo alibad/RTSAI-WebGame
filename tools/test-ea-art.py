@@ -75,7 +75,7 @@ class Manifest(unittest.TestCase):
 
     def test_allowlist_is_art_only(self):
         self.assertEqual(set(E.ALLOWED_EXTENSIONS), {'.shp', '.vxl', '.hva', '.pal'})
-        self.assertEqual(set(E.FOOTPRINT_EXCLUDED), {'napowr', 'nahand', 'nadept', 'natech', 'nanrct'})
+        self.assertEqual(set(E.RESTORED_FOUNDATIONS), {'napowr', 'nahand', 'nadept', 'natech', 'nanrct'})
 
     def test_condition_combination(self):
         self.assertEqual(E.both('ea-art', 'false'), 'ea-art && (false)')
@@ -211,13 +211,29 @@ class Generated(unittest.TestCase):
             checked += 1
         self.assertGreater(checked, 40)
 
-    def test_footprint_exclusions(self):
-        # The five Soviet buildings keep their stand-ins: at most the sprite-group ownership hint, never original art.
-        for key, actor in self.rules.items():
-            if key.lower() in E.FOOTPRINT_EXCLUDED:
-                self.assertEqual([c.key for c in actor.children], ['SpriteGroupFactions@ea'], key)
-        for name in self.files['actors']:
-            self.assertNotIn(name, E.FOOTPRINT_EXCLUDED)
+    def test_original_foundations_and_production_are_restored(self):
+        expected = {'napowr': ('3,2', 'xxx xxx'), 'nahand': ('2,2', 'xx xx'),
+                    'nadept': ('4,3', 'x=== x=== x==='), 'natech': ('3,3', 'xxx xxx xxx'),
+                    'nanrct': ('4,4', 'xxxx xxxx xxxx xxxx')}
+        for name, (dimensions, footprint) in expected.items():
+            actor = self.rules[name]
+            self.assertEqual(actor.get('Building').val('Dimensions'), dimensions)
+            self.assertEqual(actor.get('Building').val('Footprint'), footprint)
+            self.assertIn(name, self.files['actors'])
+            image = 'ea-' + name
+            for sequence in ('idle', 'make', 'icon'):
+                self.assertIn(sequence, {s.key for s in self.seqs[image].children}, name)
+        self.assertEqual(self.files['excluded'], [])
+        for name in E.RESTORED_PRODUCTION:
+            self.assertIn(name, self.files['actors'])
+            self.assertIn('~' + E.ORIGINAL_PREREQUISITE, self.rules[name].get('Buildable').val('Prerequisites'))
+
+    def test_all_nine_reference_rosters_have_no_omissions_or_replacements(self):
+        audit = json.loads((self.content / 'original-country-audit.json').read_text())
+        self.assertEqual(set(audit['countries']), set(E.COUNTRIES))
+        for faction, report in audit['countries'].items():
+            for field in ('missing', 'replacements', 'extensions'):
+                self.assertEqual(report[field], [], faction + ': ' + field)
 
     def test_sprite_group_hints(self):
         for key, actor in self.rules.items():

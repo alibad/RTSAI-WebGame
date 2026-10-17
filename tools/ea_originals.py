@@ -25,8 +25,10 @@ from pathlib import Path
 
 COUNTRIES = ('america', 'germany', 'england', 'france', 'korea', 'cuba', 'libya', 'iraq', 'russia')
 MODERN = ('china', 'iran', 'turkey', 'saudi', 'israel', 'yemen', 'hezbollah')
-# Soviet buildings whose standalone kit footprint differs from RA2's: they keep their stand-in art (owner decision).
-FOOTPRINT_EXCLUDED = ('napowr', 'nahand', 'nadept', 'natech', 'nanrct')
+# Original isometric foundations replace the kit geometry when original-country content is enabled.
+RESTORED_FOUNDATIONS = ('napowr', 'nahand', 'nadept', 'natech', 'nanrct')
+RESTORED_PRODUCTION = ('gaorep', 'gagap', 'gaspysat', 'gaweat', 'napsis', 'naclon', 'namisl')
+ORIGINAL_PREREQUISITE = 'original-ra2-country'
 # Only art here (voice clips: tools/ea_voices.py). C&C music and video never enter the build.
 ALLOWED_EXTENSIONS = ('.shp', '.vxl', '.hva', '.pal')
 EA_PREFIX = 'ra2|web/ea/'
@@ -546,7 +548,29 @@ class Generator:
             if e.startswith('ra2|'):
                 self.packages.append(self.mod_root / 'mods/rtsai' / e[4:].split(':')[0].strip())
         self.packages.reverse()
+        self._restore_production()
         self.owners = self._owners()
+
+    def _restore_production(self):
+        """The kit hid seven stock structures. Restore their real prerequisites for original countries only."""
+        self.production = {}
+        for name in RESTORED_PRODUCTION:
+            buildable = self.ref[name].get('Buildable').clone()
+            prereq = buildable.get('Prerequisites')
+            prereq.value += ', ~' + ORIGINAL_PREREQUISITE
+            self.production[name] = buildable
+            actor = self.cur[name]
+            actor.children = [t for t in actor.children if t.key != 'Buildable'] + [buildable.clone()]
+        self.original_prerequisite = Node('ProvidesPrerequisite@original-ra2-country', None, [
+            Node('Prerequisite', ORIGINAL_PREREQUISITE), Node('Factions', ', '.join(COUNTRIES))])
+        self.cur['player'].children.append(self.original_prerequisite.clone())
+        # Originals build the original Ore Purifier, not the kit's refinery plug.
+        plug = self.cur.get('gapurifier')
+        self.plug_prerequisites = None
+        if plug is not None and plug.get('Buildable') is not None:
+            prereq = plug.get('Buildable').get('Prerequisites')
+            self.plug_prerequisites = prereq.value + ', ~!' + ORIGINAL_PREREQUISITE
+            prereq.value = self.plug_prerequisites
 
     # -- who owns what
 
@@ -673,7 +697,7 @@ class Generator:
         self.images = {}       # reference image -> names the EA twin must provide
         self.models = set()    # reference voxel images used
         for name in sorted(self.skirmish):
-            if not self.skirmish[name] & set(COUNTRIES) or name in FOOTPRINT_EXCLUDED or name not in self.cur or name not in self.ref:
+            if not self.skirmish[name] & set(COUNTRIES) or name not in self.cur or name not in self.ref:
                 continue
             # Every original country gets the original art of an actor any of them fields: a country that only rarely
             # owns it (a captured or spawned actor keeps its builder's faction) still sees original art, and no
@@ -782,20 +806,13 @@ class Generator:
         bad = [f for f in self.ea_files if Path(f).suffix.lower() not in ALLOWED_EXTENSIONS]
         if bad:
             raise GenerationError(f'not art files: {bad}')
-        self.rules_nodes = [self._palettes()] + [self._actor(name) for name in sorted(self.actors)] + self._kept()
+        availability = [Node('Player', None, [self.original_prerequisite.clone()])]
+        if self.plug_prerequisites is not None:
+            availability.append(Node('gapurifier', None, [Node('Buildable', None, [Node('Prerequisites', self.plug_prerequisites)])]))
+        self.rules_nodes = [self._palettes()] + availability + [self._actor(name) for name in sorted(self.actors)]
         if validate:
             self._validate()
         return self
-
-    def _kept(self):
-        """The footprint-excluded Soviet buildings keep their stand-ins; they get only the sprite-group ownership hint,
-        so the stand-in an Allied country would show there (it never fields them) is not grouped with that country."""
-        out = []
-        for name in FOOTPRINT_EXCLUDED:
-            if name in self.cur and self.cur[name].get('RenderSprites') is not None:
-                owners = [f for f in COUNTRIES + MODERN if f in self.owners.get(name, set())]
-                out.append(Node(self.cur[name].key, None, [Node('SpriteGroupFactions@ea', None, [Node('Factions', ', '.join(owners))])]))
-        return out
 
     def _palettes(self):
         return Node('^Palettes', None, [
@@ -863,6 +880,19 @@ class Generator:
             add(t, [Node('RequiresCondition', expression)])
             uses_condition = True
 
+        if name in self.production:
+            add('Buildable', [c.clone() for c in self.production[name].children])
+        if name in RESTORED_FOUNDATIONS:
+            # Foundations are actor rules, not sprites. Restore collision, placement, rally and exits together.
+            # These shared isometric actors keep one authoritative footprint for all owners.
+            geometry = {'Building', 'HitShape', 'IsometricSelectable', 'RallyPoint', 'Exit'}
+            for t in cur.children:
+                if trait_type(t.key) in geometry and ref.get(t.key) is None:
+                    out.children.append(Node('-' + t.key))
+            for t in ref.children:
+                if trait_type(t.key) in geometry:
+                    add(t.key, [c.clone() for c in t.children])
+
         if 'images' in facts:
             images = facts['images']
             add('RenderSprites', [Node('FactionImages', None, [Node(k, 'ea-' + images[k]) for k in countries])])
@@ -920,7 +950,8 @@ class Generator:
             bi = cur.get('Buildable')
             if bi is not None:
                 icon = bi.val('Icon', 'icon')
-                for f in sorted(self.owners[name] - set(countries)) + [None]:
+                other_owners = sorted(self.owners[name] - set(countries))
+                for f in other_owners + ([] if name in RESTORED_PRODUCTION else [None]):
                     img = render_image(cur, f)
                     fn, path = self._icon_file(img, icon)
                     if fn is None:
@@ -1054,6 +1085,29 @@ class Generator:
                     if v.startswith(EA_PREFIX) or v == BLANK or v.lower() in self.bits:
                         continue
                     raise GenerationError(f'{n.key}.{s.key}: project file {v} would be drawn with original palettes')
+        audit = self.audit()
+        failures = {f: a for f, a in audit['countries'].items() if a['missing'] or a['replacements'] or a['extensions']}
+        if failures:
+            raise GenerationError('Original-country roster is incomplete: ' + json.dumps(failures))
+
+    def audit(self):
+        """Compare complete reachable rosters, not a minimum number of original-looking actors."""
+        countries = {}
+        for faction in COUNTRIES:
+            expected = set(reachable(self.ref, faction))
+            actual = set(reachable(self.cur, faction))
+            original = sorted(n for n in actual if n in self.ref and self._original_art(n))
+            countries[faction] = {'actors': sorted(actual), 'originalArtActors': original,
+                                  'missing': sorted(expected - actual), 'extensions': sorted(actual - expected),
+                                  'replacements': sorted(set(original) - self.actors.keys())}
+        foundations = {}
+        for name in RESTORED_FOUNDATIONS:
+            building = self.ref[name].get('Building')
+            foundations[name] = {'dimensions': building.val('Dimensions'), 'footprint': building.val('Footprint'),
+                                 'exits': {k: v.val('ExitCell') for k, v in traits(self.ref[name], 'Exit')}}
+        return {'schema': 1, 'countries': countries, 'foundations': foundations,
+                'scope': 'Reachable original RA2 country rosters, original images/models, reference isometric foundations. '
+                         'Project art and original-country art share the same actor foundation in this isometric bundle.'}
 
     def write(self, out: Path):
         out.mkdir(parents=True, exist_ok=True)
@@ -1063,9 +1117,11 @@ class Generator:
         (out / 'ea-sequences.yaml').write_text(header + '\n'.join(dump([n]) for n in self.seq_nodes), encoding='utf-8', newline='\n')
         (out / 'ea-models.yaml').write_text(header + '\n'.join(dump([n]) for n in self.model_nodes), encoding='utf-8', newline='\n')
         (out / BLANK_FILE).write_bytes(blank_png())
-        summary = {'schema': 1, 'countries': list(COUNTRIES), 'excluded': list(FOOTPRINT_EXCLUDED), 'files': self.ea_files,
+        summary = {'schema': 2, 'countries': list(COUNTRIES), 'excluded': [], 'files': self.ea_files,
+                   'restoredFoundations': list(RESTORED_FOUNDATIONS), 'restoredProduction': list(RESTORED_PRODUCTION),
                    'actors': {k: {'countries': v['countries'], 'images': sorted({'ea-' + i for i in v.get('images', {}).values()}),
                                   'voxel': ('ea-' + v['voxel']) if v.get('voxel') else None} for k, v in sorted(self.actors.items())},
                    'aliases': {k: sorted(v) for k, v in sorted(self.aliases.items())}}
         (out / 'ea-files.json').write_text(json.dumps(summary, indent=1) + '\n', encoding='utf-8', newline='\n')
+        (out / 'original-country-audit.json').write_text(json.dumps(self.audit(), indent=1) + '\n', encoding='utf-8', newline='\n')
         return summary
