@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.Frozen;
 using OpenRA.GameRules;
 using OpenRA.Graphics;
 using OpenRA.Mods.Common;
@@ -11,6 +12,17 @@ using OpenRA.Traits;
 
 namespace OpenRA.WebSim
 {
+	// Original-country labels are restored by the content rules. Modern factions retain
+	// their standalone names for the same shared superweapon actors and powers.
+	public sealed class OriginalCountryLabelsInfo : TraitInfo
+	{
+		public readonly FrozenSet<string> Factions = FrozenSet<string>.Empty;
+		public readonly FrozenDictionary<string, string> ModernActors = FrozenDictionary<string, string>.Empty;
+		public readonly FrozenDictionary<string, string> ModernPowers = FrozenDictionary<string, string>.Empty;
+		public override object Create(ActorInitializer init) => new OriginalCountryLabels();
+	}
+	public sealed class OriginalCountryLabels { }
+
 	// RA2's missile-spawn weapons create real aircraft: AA can destroy them before impact.
 	// Never represent these as an instant damage warhead or an invulnerable decorative sprite.
 	public sealed class OriginalRa2RocketInfo : IProjectileInfo
@@ -128,22 +140,28 @@ namespace OpenRA.WebSim
 		public override object Create(ActorInitializer init) => new WithOriginalLauncherBody(init.Self, this);
 	}
 
-	public sealed class WithOriginalLauncherBody : ConditionalTrait<WithOriginalLauncherBodyInfo>, INotifyAttack, ITick
+	public sealed class WithOriginalLauncherBody : ConditionalTrait<WithOriginalLauncherBodyInfo>, INotifyAttack, ITick, IAutoMouseBounds
 	{
+		readonly ModelAnimation loadedModel;
+		readonly RenderVoxels voxels;
 		int remaining;
 		int token = Actor.InvalidConditionToken;
 		public bool Loaded => remaining == 0;
 		public WithOriginalLauncherBody(Actor self, WithOriginalLauncherBodyInfo info) : base(info)
 		{
 			var body = self.Trait<BodyOrientation>();
-			var voxels = self.Trait<RenderVoxels>();
+			voxels = self.Trait<RenderVoxels>();
 			foreach (var empty in new[] { false, true })
 			{
 				var model = voxels.Renderer.ModelCache.GetModelSequence(voxels.Image, empty ? info.EmptySequence : info.Sequence);
-				voxels.Add(new ModelAnimation(model, () => WVec.Zero, () => body.QuantizeOrientation(self.Orientation),
-					() => IsTraitDisabled || (empty ? Loaded : !Loaded), () => 0, info.ShowShadow));
+				var animation = new ModelAnimation(model, () => WVec.Zero, () => body.QuantizeOrientation(self.Orientation),
+					() => IsTraitDisabled || (empty ? Loaded : !Loaded), () => 0, info.ShowShadow);
+				if (!empty) loadedModel = animation;
+				voxels.Add(animation);
 			}
 		}
+		Rectangle IAutoMouseBounds.AutoMouseoverBounds(Actor self, WorldRenderer renderer) =>
+			loadedModel.ScreenBounds(self.CenterPosition, renderer, voxels.Info.Scale);
 		void INotifyAttack.Attacking(Actor self, in Target target, Armament armament, Barrel barrel)
 		{
 			if (IsTraitDisabled) return;

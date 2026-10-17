@@ -1444,7 +1444,8 @@ if __name__ == '__main__':
     sound_check(ea_clips)
     sources=[p for p in MISSIONS.rglob('*') if p.is_file() and p.suffix in {'.yaml','.bin','.md'}]
     sources += [CLASSIC/'mods/ra/tilesets/temperat.yaml',CLASSIC/'mods/ra/tilesets/desert.yaml',MOD/'standalone/maps/twin-fords/map.yaml',MOD/'standalone/maps/twin-fords/map.bin',MOD.parent/'rtsai-topdown/tileset.yaml']
-    if ea_manifest: sources.append(args.ea_art/'EA-INPUTS.json')
+    if ea_manifest:
+        sources += [args.ea_art/'EA-INPUTS.json', ROOT/'tools/ea_retail.py', ROOT/'tools/data/ra2-retail.json']
     ea_audio=ea_manifest is not None and not args.no_ea_audio
     receipt={'gameMode':args.game_mode,'modId':'rtsai-topdown' if CLASSIC_MODE else 'rtsai','gridType':'Rectangular' if CLASSIC_MODE else 'RectangularIsometric','compilerSha256':hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
              'eaArt':({'manifestSha256':ea_manifest['sha256'],'files':len(ea_manifest['files']),'notice':ea_manifest['notice'],'generatorSha256':hashlib.sha256((Path(__file__).parent/'ea_originals.py').read_bytes()).hexdigest()} if ea_manifest else None),'eaAudio':({'manifestSha256':ea_manifest['audio']['sha256'],'clips':len(ea_manifest['audio']['files']),'absent':len(ea_manifest['audio']['absent']),'generatorSha256':hashlib.sha256((Path(__file__).parent/'ea_voices.py').read_bytes()).hexdigest()} if ea_audio else None),'sources':[{'path':str(p),'sha256':hashlib.sha256(p.read_bytes()).hexdigest()} for p in sorted(set(sources))],'outputs':[{'path':str(p.relative_to(OUT)),'sha256':hashlib.sha256(p.read_bytes()).hexdigest()} for p in sorted(OUT.rglob('*')) if p.is_file()]}

@@ -18,8 +18,18 @@ static class OriginalRa2Test {
    var world=SimHost.World;var own=world.LocalPlayer;
    var kind=args.Length>1?args[1]:"v3"; var intercept=args.Length>2; var actor=world.CreateActor(true,kind,new TypeDictionary{new OwnerInit(own),new LocationInit(new MPos(15,40).ToCPos(world.Map)),new FactionInit(faction)});
    var enemy=world.Players.First(p=>p.InternalName=="Multi1");
-   var target=world.CreateActor(true,"gatech",new TypeDictionary{new OwnerInit(enemy),new LocationInit(actor.Location+new CVec(12,0)),new FactionInit("america")});
+   var target=world.CreateActor(true,"gatech",new TypeDictionary{new OwnerInit(enemy),new LocationInit(actor.Location+new CVec(kind is "terror" or "dtruck" ? 1 : 12,0)),new FactionInit("america")});
    for(int i=0;i<90;i++)SimHost.Tick();
+   if(kind is "terror" or "dtruck") {
+    var weapon=world.Map.Rules.Weapons[kind=="terror"?"ea-retail-terrorbomb":"ea-retail-demobomb"];
+    var damage=weapon.Warheads.OfType<OpenRA.Mods.Common.Warheads.DamageWarhead>().ToArray();
+    if(damage.Length!=1 || damage[0].Damage!=(kind=="terror"?225:300) || damage[0].Delay!=0)throw new Exception("Incorrect original suicide blast profile");
+    var before=target.Trait<Health>().HP;
+    SimHost.Select([actor.ActorID],false);Ui.Command("{\"cmd\":\"deploy\"}");
+    for(int i=0;i<90;i++){SimHost.Tick();if(i%5==0)Snapshot.Build();}
+    if(!actor.IsDead || (!target.IsDead && target.Trait<Health>().HP>=before))throw new Exception("Original suicide weapon did not detonate against target");
+    Console.WriteLine("SUICIDE PASS "+kind+" originalDamage="+damage[0].Damage+" singleBlast=true");return 0;
+   }
    if(actor.Trait<Health>().HP != (kind=="v3"?150:800))throw new Exception("Incorrect retail launcher health");
    world.IssueOrder(new Order("Attack",actor,Target.FromActor(target),false));
    var initial=target.Trait<Health>().HP;bool seen=false,empty=false,reloaded=false;int maxAltitude=0,maxCount=0;bool stopped=false;

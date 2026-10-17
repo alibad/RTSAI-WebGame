@@ -110,7 +110,7 @@ namespace OpenRA.WebSim
 			var powers = p.PlayerActor.TraitOrDefault<SupportPowerManager>()?.Powers.Values
 				.Where(power => !power.Disabled && power.Info != null).OrderBy(power => power.Key);
 			if (powers != null)
-				sb.Append(string.Join(",", powers.Select(power => "{\"key\":" + J(power.Key) + ",\"name\":" + J(power.Name)
+				sb.Append(string.Join(",", powers.Select(power => "{\"key\":" + J(power.Key) + ",\"name\":" + J(PowerLabel(power))
 					+ ",\"description\":" + J(power.Description) + ",\"ready\":" + (power.Ready ? "true" : "false")
 					+ ",\"active\":" + (power.Active ? "true" : "false") + ",\"remaining\":" + power.RemainingTicks
 					+ ",\"total\":" + power.TotalTicks + "}")));
@@ -309,8 +309,18 @@ namespace OpenRA.WebSim
 
 		static string ActorLabel(ActorInfo a)
 		{
+			var labels = Local?.PlayerActor.Info.TraitInfoOrDefault<OriginalCountryLabelsInfo>();
+			if (labels != null && !labels.Factions.Contains(Local.Faction.InternalName) && labels.ModernActors.TryGetValue(a.Name, out var name))
+				return name;
 			var tooltip = a.TraitInfos<TooltipInfo>().FirstOrDefault(t => t.EnabledByDefault);
 			return tooltip != null ? FluentProvider.GetMessage(tooltip.Name) : a.Name;
+		}
+
+		static string PowerLabel(SupportPowerInstance power)
+		{
+			var labels = Local?.PlayerActor.Info.TraitInfoOrDefault<OriginalCountryLabelsInfo>();
+			return labels != null && !labels.Factions.Contains(Local.Faction.InternalName) && labels.ModernPowers.TryGetValue(power.Info.Icon, out var name)
+				? name : power.Name;
 		}
 
 		static string ModeName(IOrderGenerator og) => og switch

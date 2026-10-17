@@ -75,6 +75,9 @@ def initialize(g, E):
         trait(E, actor, 'Mobile', Speed=int(values['Speed']) * 15, TurnSpeed=20 if name == 'v3' else 4)
         trait(E, actor, 'RevealsShroud', Range=cells(values['Sight']))
         trait(E, actor, 'Targetable', TargetTypes='Ground, Vehicle' if name == 'v3' else 'Ground, Water')
+        # Derive interaction/selection bounds from the original voxel hull, not the template tank/submarine.
+        selectable = actor.get('Selectable')
+        selectable.children = [n for n in selectable.children if n.key not in ('Bounds', 'DecorationBounds', 'Polygon')]
         trait(E, actor, 'Buildable', Queue='Vehicle' if name == 'v3' else 'Ship',
               BuildPaletteOrder=65, Prerequisites=('naradr, ~naweap' if name == 'v3' else 'natech, ~nayard') + ', ~original-ra2-country',
               Description='Long-range missile siege. Rockets can be intercepted by anti-aircraft weapons.')
@@ -152,9 +155,14 @@ class Retail:
         self.rules = []
         self.effects = set()
         self.weapon_names = {}
+        self.rules.append(E.Node('Player', None, [E.Node('OriginalCountryLabels', None, [
+            E.Node('Factions', ', '.join(E.COUNTRIES)),
+            E.Node('ModernActors', None, [E.Node('gacsph', 'Strategic Uplink'), E.Node('nairon', 'EW Array')]),
+            E.Node('ModernPowers', None, [E.Node('chrono', 'Rapid Redeployment'), E.Node('invuln', 'EW Shield')])])]))
         manifest = (g.mod_root / 'mods/rtsai/mod.yaml').read_text(encoding='utf-8')
         self.stock_weapons = g.files.load(E._section(manifest, 'Weapons'))
         by_lower = {k.lower(): v for k, v in self.stock_weapons.items()}
+        self.by_lower = by_lower
         self._new_weapons(E)
         for actor, facts in g.actors.items():
             patch = E.Node(g.cur[actor].key)
@@ -170,17 +178,9 @@ class Retail:
                 trait(E, patch, 'Armor', Type=armor)
             for key, arm in E.traits(g.cur[actor], 'Armament'):
                 weapon = arm.val('Weapon', '')
-                src = by_lower.get(weapon.lower())
-                if src is None or weapon.lower() not in self.baseline['weapons']:
+                name = self._original_weapon(weapon)
+                if name is None:
                     continue
-                name = 'ea-retail-' + weapon.lower()
-                if name not in self.weapon_names:
-                    self.weapon_names[name] = weapon
-                    twin = src.clone()
-                    twin.key = name
-                    self._weapon(twin, self.baseline['weapons'][weapon.lower()])
-                    self._effect_refs(twin, 'weapon')
-                    self.weapons.append(twin)
                 if facts['modern']:
                     # Preserve the modern armament and add a faction-conditioned original twin.
                     trait(E, patch, key, RequiresCondition=E.both('!ea-art', arm.val('RequiresCondition')))
@@ -196,6 +196,26 @@ class Retail:
                     trait(E, patch, 'GrantConditionOnFaction@ea-art', Condition='ea-art', Factions=', '.join(facts['countries']))
                 else:
                     trait(E, patch, key, Weapon=name)
+            # Suicide units detonate via death/deploy traits rather than their targeting
+            # armament. Restoring an unused TerrorBomb definition would leave gameplay wrong.
+            for original in g.cur[actor].children:
+                if E.trait_type(original.key) not in ('FireWarheadsOnDeath', 'PeriodicExplosion'):
+                    continue
+                replacements = {field: self._original_weapon(original.val(field, ''))
+                                for field in ('Weapon', 'EmptyWeapon')}
+                replacements = {field: value for field, value in replacements.items() if value}
+                if not replacements:
+                    continue
+                if facts['modern']:
+                    trait(E, patch, original.key, RequiresCondition=E.both('!ea-art', original.val('RequiresCondition')))
+                    twin = original.clone()
+                    twin.key += '-retail' if '@' in twin.key else '@retail'
+                    set_value(E, twin, 'RequiresCondition', E.both('ea-art', original.val('RequiresCondition')))
+                    for field, value in replacements.items():
+                        set_value(E, twin, field, value)
+                    patch.children.append(twin)
+                else:
+                    trait(E, patch, original.key, **replacements)
             # Render helpers use Single(armament.Name); a second armament must have a unique
             # name. Extend only the attack selectors that originally used that armament.
             for item in g.cur[actor].children:
@@ -228,6 +248,21 @@ class Retail:
                 self.rules.append(patch)
         for name in self.effects:
             g.images.setdefault(name, set())
+
+    def _original_weapon(self, weapon):
+        E = self.E
+        source = self.by_lower.get(weapon.lower())
+        if source is None or weapon.lower() not in self.baseline['weapons']:
+            return None
+        name = 'ea-retail-' + weapon.lower()
+        if name not in self.weapon_names:
+            self.weapon_names[name] = weapon
+            twin = source.clone()
+            twin.key = name
+            self._weapon(twin, self.baseline['weapons'][weapon.lower()])
+            self._effect_refs(twin, 'weapon')
+            self.weapons.append(twin)
+        return name
 
     def _effect_refs(self, node, where):
         E = self.E
@@ -268,7 +303,7 @@ class Retail:
             blast = E.Node('Warhead@retail', 'SpreadDamage', [E.Node('Damage', original['Damage']),
                 E.Node('Spread', cells(spread)), E.Node('Falloff', '100, ' + str(round(float(warhead.get('PercentAtMax', '.5')) * 100)) ),
                 E.Node('ValidTargets', 'Ground, Water, Air'), E.Node('AffectsParent', 'true'),
-                E.Node('DamageTypes', 'ExplosionDeath')])
+                E.Node('DamageTypes', 'FlameDeath' if warhead.get('InfDeath') == '4' else 'ExplosionDeath')])
             twin.children.append(blast)
             twin.children.append(E.Node('Warhead@retail-effect', 'CreateEffect', [
                 E.Node('Image', 'explosion'), E.Node('Explosions', 'demotruck_explosion' if 'demobomb' in twin.key else 'terrorist_explosion'),

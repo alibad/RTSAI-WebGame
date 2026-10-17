@@ -1869,6 +1869,19 @@
       "Speed": "100",
       "Warhead": "SSA",
       "Report": "GIAttackDeployed"
+    },
+    "raderuptionweapon": {
+      "Damage": "1",
+      "ROF": "60",
+      "Range": "4",
+      "Speed": "1",
+      "AreaFire": "yes",
+      "FireOnce": "no",
+      "Projectile": "InvisibleLow",
+      "Warhead": "RadEruptionWarhead",
+      "IsRadEruption": "no",
+      "RadLevel": "500",
+      "Report": "DesolatorDeploy"
     }
   },
   "warheads": {
@@ -2274,6 +2287,13 @@
       "Sparky": "no",
       "Bright": "yes",
       "ProneDamage": "70%"
+    },
+    "RadEruptionWarhead": {
+      "Verses": "100%,100%,100%,20%,10%,10%,0%,0%,0%,100%,100%",
+      "InfDeath": "7",
+      "Radiation": "yes",
+      "CellSpread": "10",
+      "CellInset": "3"
     }
   },
   "missiles": {

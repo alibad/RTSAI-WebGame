@@ -178,6 +178,15 @@ class Generated(unittest.TestCase):
         self.assertEqual(self.rules['amradr'].get('ParatroopersPower@paratroopers').val('ChargeInterval'), '6000')
         self.assertEqual(self.rules['nairon'].get('WithSupportPowerActivationAnimation').val('RequiresCondition'), 'true')
 
+    def test_suicide_damage_uses_restored_weapon_not_just_targeting_armament(self):
+        weapons = {n.key: n for n in E.parse((self.content / 'ea-retail-weapons.yaml').read_text(encoding='utf-8'))}
+        for actor, name, damage in [('terror', 'ea-retail-terrorbomb', '225'), ('dtruck', 'ea-retail-demobomb', '300')]:
+            active = [t.val('Weapon') for t in self.rules[actor].children if E.trait_type(t.key) == 'FireWarheadsOnDeath']
+            self.assertIn(name, active, actor)
+            blast = [w for w in weapons[name].children if w.value == 'SpreadDamage']
+            self.assertEqual(len(blast), 1, name)
+            self.assertEqual(blast[0].val('Damage'), damage)
+
     @classmethod
     def setUpClass(cls):
         if not ARGS.content:

@@ -338,7 +338,7 @@ static class ContentTest
 		var originalFiring = new HashSet<string>();
 		foreach (var a in world.Actors.Where(a => a.Owner == own && a.IsInWorld && !a.IsDead))
 			foreach (var armament in a.TraitsImplementing<Armament>())
-				if (WeaponSounds(armament.Weapon).Any(IsOriginalSound))
+				if (!armament.IsTraitDisabled && WeaponSounds(armament.Weapon).Any(IsOriginalSound))
 				{
 					if (!original && armament.Weapon != dogJaw)
 						throw new Exception(faction + ": " + a.Info.Name + " fires " + armament.Info.Weapon + " with original sounds");
