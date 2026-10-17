@@ -197,7 +197,7 @@ function Palette({ game, editor }: { game: Game; editor: EditorController }) {
           </button>
         ))}
       </div>
-      <p className="ed-tip">{actorCategory === "Bridge" && !query ? "Bridge pieces: match span direction and ramps at the banks. A destroyed span leaves a gap. " : ""}Click to place · right-click stops · Select tool moves and deletes</p>
+      <p className="ed-tip">{actorCategory === "Bridge" && !query ? /^actor:bridg/.test(st.brush) ? "Elevated pieces are scenery until the map defines an elevated crossing. Use ground-level spans for a playable river crossing. " : "Bridge pieces: match span direction and ramps at the banks. A destroyed span leaves a gap. " : ""}Click to place · right-click stops · Select tool moves and deletes</p>
     </div>
   );
   if (st.tool === "spawn") return (

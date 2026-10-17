@@ -1,10 +1,12 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using System.Text.Json;
 using OpenRA;
 using OpenRA.Mods.Common.Traits;
 using OpenRA.Mods.Common.Pathfinder;
+using OpenRA.Mods.Common.Terrain;
 using OpenRA.Traits;
 using OpenRA.WebSim;
 
@@ -36,9 +38,9 @@ static class EditorBridgesTest
 		EditorHost.Call("{\"op\":\"brush\",\"brush\":\"actor\",\"type\":\"lobrdg_a\",\"owner\":\"Neutral\"}");
 		foreach (var ev in new[] { "move", "down", "up" })
 			EditorHost.Call(JsonSerializer.Serialize(new { op = "pointer", @event = ev, x = point.X, y = point.Y, button = 1 }));
-		Check(layer.PreviewsInCellRegion(map.AllCells).Count(p => p.Type == "lobrdg_a") == 1, "Bridge click did not place native actor");
+		Check(map.AllCells.SelectMany(layer.PreviewsAtCell).Distinct().Count(p => p.Type == "lobrdg_a") == 1, "Bridge click did not place native actor");
 		EditorHost.Call("{\"op\":\"undo\"}");
-		Check(!layer.PreviewsInCellRegion(map.AllCells).Any(p => p.Type == "lobrdg_a"), "Undo did not remove bridge");
+		Check(!map.AllCells.SelectMany(layer.PreviewsAtCell).Any(p => p.Type == "lobrdg_a"), "Undo did not remove bridge");
 		EditorHost.Call("{\"op\":\"redo\"}");
 		using var saved = JsonDocument.Parse(EditorHost.Call("{\"op\":\"save\",\"title\":\"Bridge regression\"}"));
 		Check(saved.RootElement.GetProperty("files").GetProperty("map.yaml").GetString().Length > 0, "Bridge map failed to export");
@@ -63,7 +65,9 @@ static class EditorBridgesTest
 		bridge.Dispose();
 		Check(footprint.All(c => !Passable(c)), "Removed bridge must close the crossing");
 		var dead = world.CreateActor("lobrdg_a_d", [new LocationInit(cell), new OwnerInit(owner)]);
-		dead.Trait<IBridgeSegment>().Repair(dead);
+		var segment = dead.TraitsImplementing<object>().First(t => t.GetType().Name == "BridgePlaceholder");
+		var contract = segment.GetType().GetInterfaces().Single(t => t.Name == "IBridgeSegment");
+		contract.GetMethod("Repair").Invoke(segment, [dead]);
 		SimHost.Tick();
 		Check(world.Actors.Any(a => a.Info.Name == "lobrdg_a" && a.Location == cell), "Repair must recreate native span");
 		Check(footprint.All(Passable), "Repaired crossing must be passable again");
