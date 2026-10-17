@@ -50,6 +50,7 @@ static class Program
 				"musictest" => MusicPlayerTest.Run(opts),
 				"ailabtest" => AiLabTest.Run(opts),
 				"mapgentest" => MapGenTest.Run(opts),
+				"maplibrarytest" => MapLibraryTest.Run(opts),
 				"editorresourcetest" => EditorResourcesTest.Run(opts),
 				"editorbridgetest" => EditorBridgesTest.Run(opts),
 				"editortestterrain" => EditorTerrainTest.Run(opts),

@@ -5,7 +5,7 @@
 import { useCallback, useEffect, useMemo, useState, type CSSProperties, type ReactNode } from "react";
 import { Bot, Brain, Check, ChevronDown, Dices, Map as MapIcon, Plus, SlidersHorizontal, Swords, Users, X } from "lucide-react";
 import { MODERN_NATIONS as MODERN, PLAYER_COLORS as COLORS, SIDE_NAME, nationGroup } from "../sides";
-import { MapStrip, orderMaps } from "./MapStrip";
+import { MapStrip, orderMaps, mapCollection } from "./MapStrip";
 import type { Game } from "../game";
 import { useStore } from "../store";
 import { developerTools } from "../developer-tools";
@@ -58,6 +58,7 @@ const titleCase = (s: string) => s.toLowerCase().replace(/(^|\s)\S/g, (c) => c.t
 
 export function Setup({ game, utilities }: { game: Game; utilities: ReactNode }) {
   const setup = useStore((s) => s.setup)!;
+  const availableMaps = orderMaps(setup.maps);
   const previews = useStore((s) => s.previews);
   const prepared = useStore((s) => s.preparedMap);
   const profile = useStore((s) => s.profile);
@@ -72,8 +73,8 @@ export function Setup({ game, utilities }: { game: Game; utilities: ReactNode })
     const saved = load(settingsKey('faction'), load('rtsai.faction', 'saudi'));
     return factions.some(f => f.id === saved) ? saved : factions[0]?.id;
   });
-  const [mapId, setMapId] = useState<string>(() => new URLSearchParams(location.search).get("map") ?? load(settingsKey('map'), setup.maps.find((m) => m.id === "tournament-2A" || m.id === "twin-fords")?.id ?? setup.maps[0]?.id));
-  const map = setup.maps.find((m) => m.id === mapId) ?? setup.maps[0];
+  const [mapId, setMapId] = useState<string>(() => new URLSearchParams(location.search).get("map") ?? load(settingsKey('map'), availableMaps[0]?.id));
+  const map = availableMaps.find((m) => m.id === mapId) ?? availableMaps[0];
   const [color, setColor] = useState<string>(() => load(settingsKey('color'), load('rtsai.color', COLORS[0])));
   const [moreOptions, setMoreOptions] = useState(false);
   const [opponents, setOpponents] = useState<Opponent[]>(() => load<Opponent[]>(settingsKey('opponents'), load('rtsai.opponents', [{ faction: "iran", bot: setup.bots[0]?.type ?? "normal", color: COLORS[1] }])).map(o => ({ ...o,
@@ -117,10 +118,10 @@ export function Setup({ game, utilities }: { game: Game; utilities: ReactNode })
   })), [factions]); // eslint-disable-line react-hooks/exhaustive-deps
   const botOptions: Option[] = setup.bots.map((b) => ({ value: b.type, label: b.name }));
   // Maps made here by the generator first (newest first), then saved Earth maps (net/saved-maps.ts), as the player's own.
-  const orderedMaps = orderMaps(setup.maps);
+  const orderedMaps = availableMaps;
   const mapOptions: Option[] = orderedMaps.map((m) => ({ value: m.id, label: m.title,
     description: m.saved ? [m.place, `${m.players} players`].filter(Boolean).join(" · ") : `${m.players} players`,
-    group: m.generated ? "Random maps" : m.saved ? "Your maps" : `${m.players} players` }));
+    group: mapCollection(m) }));
   const mapError = useStore((s) => (map ? s.mapErrors[map.id] : undefined));
   const start = () => {
     if (!map) return;
@@ -226,7 +227,7 @@ export function Setup({ game, utilities }: { game: Game; utilities: ReactNode })
                   <span className="scr-chip"><Users size={12} aria-hidden="true" />{map.players} players</span>
                   {map.saved ? <>{map.place && <span className="scr-chip">{map.place}</span>}<span className="scr-chip">Your map</span></>
                     : map.generated ? <><span className="scr-chip">{map.landscape}</span><span className="scr-chip"><Dices size={12} aria-hidden="true" />Random</span></>
-                    : <span className="scr-chip">{titleCase(map.tileset)}</span>}
+                    : <><span className="scr-chip">{titleCase(map.tileset)}</span><span className="scr-chip">{mapCollection(map)}</span></>}
                 </div>
               </div>
               <span className="sk-map-status" data-ready={ready} data-error={!!mapError} role="status">
@@ -234,7 +235,8 @@ export function Setup({ game, utilities }: { game: Game; utilities: ReactNode })
               </span>
             </div>
             <MapStrip game={game} value={map.id} onChange={setMapId} players={opponents.length + 1} />
-            {setup.maps.length > 8 && <SearchSelect value={mapId} onValueChange={setMapId} options={mapOptions} aria-label="Map" placeholder="Find a map…" className="sk-map-search" />}
+            {map.author && <p className="sk-map-credit">Map by {map.author}{map.id === "ra2-tsunami" ? " · Island battlefield: use ships or amphibious transports to reach your opponents." : ""}</p>}
+            {availableMaps.length > 8 && <SearchSelect value={map.id} onValueChange={setMapId} options={mapOptions} aria-label="Map" placeholder="Find a map…" className="sk-map-search" />}
           </div>}
 
           <div className="scr-panel sk-opponents" role="group" aria-label="Opponents">

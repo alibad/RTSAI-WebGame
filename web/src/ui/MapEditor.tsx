@@ -74,7 +74,7 @@ function StartScreen({ game, editor, mission, play, earthFirst }: { game: Game; 
         </section>
         <section className="ed-open" aria-label="Open a map">
           <h2 className="scr-label"><MapIcon size={14} />Open a map, or make a random one</h2>
-          <MapStrip game={game} value={undefined} onChange={(id) => void editor.open({ map: id })} className="sim-maps-grid ed-maps" />
+          <MapStrip game={game} value={undefined} onChange={(id) => void editor.open({ map: id })} className="sim-maps-grid ed-maps" includeDrafts />
         </section>
         {st.opening && <div className="ed-opening" role="status"><span className="spinner" />{st.opening === "random" ? "Making a random map…" : "Opening the map…"}</div>}
       </main>

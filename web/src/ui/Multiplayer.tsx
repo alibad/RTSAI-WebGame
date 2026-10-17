@@ -7,6 +7,7 @@ import { MatchChat } from './MatchChat';
 import { Check, ChevronDown, Copy, Crown, Dices, LogIn, Map as MapIcon, MessageSquare, Plus, Radio, TriangleAlert, Users, Video, VideoOff, X } from 'lucide-react';
 import { MultiplayerSession, inviteLink, type RemoteMedia, type SessionView } from '../multiplayer';
 import { GameButton } from './kit/game';
+import { orderMaps, mapCollection } from './MapStrip';
 import { Brackets } from './screen-parts';
 
 // Multiplayer with friends, on the game kit: choose (host or join), connecting, the lobby, and the bar during a match.
@@ -103,9 +104,8 @@ export function Multiplayer({ game }: { game: Game }) {
   const teams: Option<number>[] = [0, 1, 2, 3, 4].map(t => ({ value: t, label: t ? `Team ${t}` : 'No team', leading: <Swatch color={TEAM_COLORS[t]} /> }));
   // Random maps made here first, then saved Earth maps, as the player's own. Guests make the host's random map in their
   // own browser and get a saved one from Firestore.
-  const ownGroups = setup.maps.some(x => x.saved || x.generated);
-  const maps: Option<string>[] = [...setup.maps.filter(m => m.generated), ...setup.maps.filter(m => m.saved), ...setup.maps.filter(m => !m.saved && !m.generated)].filter(m => m.slots.length >= 2)
-    .map(m => ({ value: m.id, label: m.title, description: `Up to ${m.slots.length} players`, group: ownGroups ? (m.generated ? 'Random maps' : m.saved ? 'Your maps' : 'Maps') : undefined }));
+  const maps: Option<string>[] = orderMaps(setup.maps).filter(m => m.slots.length >= 2)
+    .map(m => ({ value: m.id, label: m.title, description: `Up to ${m.slots.length} players`, group: mapCollection(m) }));
   const bots: Option<string>[] = setup.bots.map(b => ({ value: b.type, label: b.name }));
   const free = lobby && map ? map.slots.length - lobby.players.length - lobby.ai.length : 0;
   const everyoneReady = !!lobby && lobby.players.length >= 2 && lobby.players.every(p => p.ready);
