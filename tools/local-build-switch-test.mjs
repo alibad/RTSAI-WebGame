@@ -87,7 +87,7 @@ try {
     await page.evaluate(async i => {
       const g = window.game, dog = g.client.cur.actors.find(a => g.client.strings[a.type] === 'dog');
       await g.client.request({ type: 'select', ids: [dog.id], additive: false });
-      g.lookAt(dog.sx, dog.sy - dog.sz);
+      g.lookAt(dog.sx, dog.sy);
       g.client.send({ type: 'click', x: dog.sx + (i % 2 ? -100 : 100), y: dog.sy, button: 2, mods: 0, t: performance.now() });
     }, i);
     await wait(450);

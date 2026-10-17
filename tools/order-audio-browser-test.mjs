@@ -25,6 +25,7 @@ try {
     ], options: { explored: 'True', fog: 'False', crates: 'False', shortgame: 'False', startingunits: 'none' },
     spawns: [{ type: 'dog', player: 0, x: 24, y: 70 }, { type: 'e1', player: 0, x: 28, y: 70 },
       { type: 'gacnst', player: 0, x: 20, y: 60 }, { type: 'nacnst', player: 1, x: 70, y: 60 }] };
+    if (profile === 'public-classic') scenario.spawns.forEach(s => { s.y -= 30; if (s.player === 1) s.x = 60; });
     await page.evaluate(s => window.game.start(JSON.stringify(s)), scenario);
     await page.waitForFunction(() => ['playing', 'error'].includes(window.store.getState().phase), null, { timeout: 180000 });
     assert.equal(await page.evaluate(() => window.store.getState().phase), 'playing');
@@ -38,12 +39,15 @@ try {
     });
     await page.waitForFunction(() => window.game.client.cur?.actors.some(a => window.game.client.strings[a.type] === 'dog'));
     for (let i = 0; i < 12; i++) {
-      await page.evaluate(async i => {
+      const ordered = await page.evaluate(async i => {
         const g = window.game, dog = g.client.cur.actors.find(a => g.client.strings[a.type] === 'dog');
+        if (!dog) return { error: 'Dog missing from current view', actors: g.client.cur.actors.map(a => ({ ...a, name: g.client.strings[a.type] })), cam: g.cam };
         await g.client.request({ type: 'select', ids: [dog.id], additive: false });
-        g.lookAt(dog.sx, dog.sy - dog.sz);
+        g.lookAt(dog.sx, dog.sy);
         g.client.send({ type: 'click', x: dog.sx + (i % 2 ? -100 : 100), y: dog.sy, button: 2, mods: 0, t: performance.now() });
+        return null;
       }, i);
+      if (ordered) { await page.screenshot({ path: `${out}/${profile}-missing.png` }); throw Error(JSON.stringify(ordered)); }
       await page.waitForTimeout(450);
       if (await page.evaluate(() => window.store.getState().phase === 'error')) break;
     }
