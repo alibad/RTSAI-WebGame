@@ -10,7 +10,6 @@
 #endregion
 
 using System;
-using System.Collections.Frozen;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -911,120 +910,61 @@ namespace OpenRA.WebSim
 		/// </summary>
 		public static string Rosters(Ruleset rules)
 		{
-			// Product modes share Studio's reviewed actor/faction bindings. Those memberships are
-			// audited against live native TechTree/ProductionQueue worlds, not a second heuristic.
-			if (SimHost.ModId != "rtsai-topdown")
+			// Resolve the current rules, including saved Studio overlays. A baseline registry alone
+			// would go stale after an owner edits a prerequisite. Native live-world audits check
+			// this rule graph against the same Studio roster for every supported faction.
+			var world = rules.Actors[SystemActors.World];
+			var factions = world.TraitInfos<FactionInfo>().Where(f => f.Selectable && f.RandomFactionMembers.Count == 0).ToArray();
+			var countries = world.TraitInfos<FactionInfo>().Select(f => f.InternalName).ToHashSet();
+			var buildables = rules.Actors.Values.Where(a => !a.Name.StartsWith('^') && a.HasTraitInfo<BuildableInfo>()).ToArray();
+			var queues = new HashSet<string> { "Infantry", "Vehicle", "Aircraft", "Ship", "Building", "Defense", "Support" };
+			var rows = new List<string>();
+			foreach (var faction in factions)
 			{
-				using var source = Game.ModData.DefaultFileSystem.Open("ra2|unit-overrides/bindings.json");
-				using var registry = JsonDocument.Parse(source);
-				var target = SimHost.ModId == "rtsai-classic-core" ? "classic-web" : "ra2-web";
-				var world = rules.Actors[SystemActors.World];
-				var rows = new List<string>();
-				foreach (var faction in world.TraitInfos<FactionInfo>().Where(f => f.Selectable && f.RandomFactionMembers.Count == 0))
+				var owned = new HashSet<string>();
+				var bases = new HashSet<string>();
+				var available = new HashSet<string>();
+				var always = new HashSet<string>();
+				bool Has(string prerequisite)
 				{
-					var ids = new HashSet<string>();
-					foreach (var unit in registry.RootElement.GetProperty("units").EnumerateObject())
-						if (unit.Value.GetProperty("bindings").TryGetProperty(target, out var binding)
-							&& unit.Value.GetProperty("factions").EnumerateArray().Any(f => f.GetProperty("id").GetString() == faction.InternalName))
-						{
-							var id = binding.GetProperty("actor").GetString().ToLowerInvariant();
-							if (rules.Actors.TryGetValue(id, out var actor) && actor.HasTraitInfo<BuildableInfo>()) ids.Add(id);
-						}
-
-					// The battle simulator can place the deployed yard directly. This is a deployment
-					// form of a starting MCV, not an additional normally producible faction unit.
-					foreach (var start in world.TraitInfos<StartingUnitsInfo>().Where(s => s.BaseActor != null && (s.Factions.Count == 0 || s.Factions.Contains(faction.InternalName))))
-						if (rules.Actors.TryGetValue(start.BaseActor.ToLowerInvariant(), out var mcv))
-							foreach (var transform in mcv.TraitInfos<TransformsInfo>())
-								if (rules.Actors.TryGetValue(transform.IntoActor.ToLowerInvariant(), out var yard) && yard.HasTraitInfo<BuildingInfo>() && yard.HasTraitInfo<BuildableInfo>()) ids.Add(yard.Name);
-					rows.Add(J(faction.InternalName) + ":[" + string.Join(",", ids.OrderBy(id => rules.Actors[id].TraitInfo<BuildableInfo>().BuildPaletteOrder).ThenBy(id => id).Select(J)) + "]");
+					var p = prerequisite.Replace("~", "");
+					return p.StartsWith('!') ? !available.Contains(p[1..]) : available.Contains(p);
 				}
-				return "{\"rosters\":{" + string.Join(",", rows) + "}}";
-			}
-
-			return LegacyRosters(rules);
-		}
-
-		static string LegacyRosters(Ruleset rules)
-		{
-			var worldInfo = rules.Actors[SystemActors.World];
-			var queues = new HashSet<string> { "Infantry", "Vehicle", "Aircraft", "Ship", "Building", "Support" };
-			bool InQueue(ActorInfo a) => a.TraitInfoOrDefault<BuildableInfo>()?.Queue.Any(queues.Contains) == true;
-
-			// Who provides each prerequisite: actors nobody builds from a queue (the player, construction yards) always
-			// count; a buildable provider counts once that faction can build it.
-			var providers = new Dictionary<string, List<(ActorInfo Actor, FrozenSet<string> Factions)>>();
-			foreach (var a in rules.Actors.Values)
-				foreach (var p in a.TraitInfos<ProvidesPrerequisiteInfo>())
+				IEnumerable<string> Provided(ActorInfo actor)
 				{
-					var name = p.Prerequisite ?? a.Name;
-					if (!providers.TryGetValue(name, out var list))
-						providers[name] = list = [];
-					list.Add((a, p.Factions));
+					foreach (var p in actor.TraitInfos<ProvidesPrerequisiteInfo>())
+						if ((p.Factions.Count == 0 || p.Factions.Contains(faction.InternalName)) && p.RequiresPrerequisites.All(Has)) yield return p.Prerequisite ?? actor.Name;
+					foreach (var p in actor.TraitInfos<ProvidesTechPrerequisiteInfo>())
+						foreach (var prerequisite in p.Prerequisites) yield return prerequisite;
 				}
-
-			// A queue actor gated by a prerequisite nobody provides ("~disabled": the construction yards) is never built
-			// from a palette; a faction gets it from its starting units (its MCV deploys into it).
-			bool Unbuildable(ActorInfo a) => a.TraitInfo<BuildableInfo>().Prerequisites.Any(r => !r.Contains('!') && !providers.ContainsKey(r.Replace("~", "")));
-			var buildable = rules.Actors.Values.Where(a => !a.Name.StartsWith('^') && a.HasTraitInfo<RenderSpritesInfo>() && InQueue(a) && !Unbuildable(a)).ToList();
-			var startingUnits = worldInfo.TraitInfos<StartingUnitsInfo>().ToList();
-			HashSet<ActorInfo> BaseOf(string faction)
-			{
-				var result = new HashSet<ActorInfo>();
-				foreach (var su in startingUnits.Where(su => su.Factions.Count == 0 || su.Factions.Contains(faction)))
-					foreach (var name in su.SupportActors.Append(su.BaseActor).Where(n => n != null))
-						if (rules.Actors.TryGetValue(name.ToLowerInvariant(), out var actor))
-						{
-							result.Add(actor);
-							var into = actor.TraitInfoOrDefault<TransformsInfo>()?.IntoActor;
-							if (into != null && rules.Actors.TryGetValue(into, out var deployed))
-								result.Add(deployed);
-						}
-				return result;
-			}
-
-			var sb = new StringBuilder("{\"rosters\":{");
-			var first = true;
-			foreach (var faction in worldInfo.TraitInfos<FactionInfo>().Where(f => f.Selectable && f.RandomFactionMembers.Count == 0))
-			{
-				var f = faction.InternalName;
-				var available = new HashSet<ActorInfo>();
-				var baseActors = BaseOf(f);
-				bool Base(ActorInfo a) => baseActors.Contains(a) || !a.HasTraitInfo<BuildableInfo>();
-				bool Provided(string name) => providers.TryGetValue(name, out var list)
-					&& list.Any(x => (x.Factions.Count == 0 || x.Factions.Contains(f)) && (Base(x.Actor) || available.Contains(x.Actor)));
-
-				// Fixed point: a building unlocks what needs it, which may unlock more.
+				foreach (var system in new[] { SystemActors.World, SystemActors.Player })
+					if (rules.Actors.TryGetValue(system, out var actor)) foreach (var p in Provided(actor)) { available.Add(p); always.Add(p); }
+				foreach (var start in world.TraitInfos<StartingUnitsInfo>().Where(s => s.Factions.Count == 0 || s.Factions.Contains(faction.InternalName)))
+					foreach (var name in start.SupportActors.Append(start.BaseActor).Where(n => n != null)) owned.Add(name.ToLowerInvariant());
+				bool Blocked(string p) => always.Contains(p) || available.Contains(p) && countries.Contains(p.Split('.').Last());
+				bool Excluded(ActorInfo a) => a.TraitInfo<BuildableInfo>().Prerequisites.Any(p => p.Replace("~", "").StartsWith('!') && Blocked(p.Replace("~", "")[1..]));
 				for (var changed = true; changed;)
 				{
 					changed = false;
-					foreach (var a in buildable)
-					{
-						if (available.Contains(a))
-							continue;
-						var ok = a.TraitInfo<BuildableInfo>().Prerequisites.All(req =>
+					foreach (var name in owned.ToArray())
+						if (rules.Actors.TryGetValue(name, out var actor))
 						{
-							var name = req.Replace("~", "").Replace("!", "");
-							return Provided(name) != req.Contains('!');
-						});
-						if (ok)
-						{
-							available.Add(a);
-							changed = true;
+							foreach (var p in Provided(actor)) changed |= available.Add(p);
+							foreach (var transform in actor.TraitInfos<TransformsInfo>())
+							{
+								var into = transform.IntoActor.ToLowerInvariant();
+								changed |= owned.Add(into);
+								if (rules.Actors.TryGetValue(into, out var deployed) && deployed.HasTraitInfo<BuildingInfo>()) bases.Add(into);
+							}
 						}
-					}
+					foreach (var actor in buildables)
+						if (!owned.Contains(actor.Name) && !Excluded(actor) && actor.TraitInfo<BuildableInfo>().Prerequisites.All(p => p.Contains('!') || Has(p))) changed |= owned.Add(actor.Name);
 				}
-
-				if (!first)
-					sb.Append(',');
-				first = false;
-				// The faction's construction yard joins its roster: the simulator can drop a base without an MCV.
-				var roster = buildable.Where(available.Contains)
-					.Concat(baseActors.Where(b => !available.Contains(b) && b.HasTraitInfo<BuildableInfo>() && b.HasTraitInfo<RenderSpritesInfo>()));
-				sb.Append(J(f)).Append(":[").Append(string.Join(",", roster.Select(a => J(a.Name)))).Append(']');
+				var roster = buildables.Where(a => owned.Contains(a.Name) && !Excluded(a) && a.HasTraitInfo<RenderSpritesInfo>() && a.TraitInfo<BuildableInfo>().Queue.Any(queues.Contains)
+					&& (!a.TraitInfo<BuildableInfo>().Prerequisites.Any(p => p.Replace("~", "") == "disabled") || bases.Contains(a.Name)));
+				rows.Add(J(faction.InternalName) + ":[" + string.Join(",", roster.OrderBy(a => a.TraitInfo<BuildableInfo>().BuildPaletteOrder).ThenBy(a => a.Name).Select(a => J(a.Name))) + "]");
 			}
-
-			return sb.Append("}}").ToString();
+			return "{\"rosters\":{" + string.Join(",", rows) + "}}";
 		}
 
 		/// <summary>

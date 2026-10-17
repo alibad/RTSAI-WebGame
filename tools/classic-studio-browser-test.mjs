@@ -2,6 +2,7 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import crypto from 'node:crypto';
+import { execFileSync } from 'node:child_process';
 import path from 'node:path';
 import { chromium } from '../web/node_modules/playwright-core/index.mjs';
 import { browserExecutable, browserArgs } from './browser-launch.mjs';
@@ -26,6 +27,9 @@ const expected = (key, target) => {
   return { ...stats, ...manifest.units[key] };
 };
 fs.mkdirSync(out, { recursive: true });
+const studioFile = path.join(out, 'studio-rosters.json');
+execFileSync(process.execPath, ['--import', 'tsx', 'scripts/audit-faction-rosters.ts', studioFile], { cwd: path.resolve('../RTSAI-Web'), stdio: 'pipe' });
+const studio = JSON.parse(fs.readFileSync(studioFile)).modes;
 const receipt = { revision: manifest.revision, passed: false, targets: [], production: [] };
 function parseRules(text) {
   const root = [], stack = [{ depth: -1, rows: root }];
@@ -86,9 +90,18 @@ try {
       await page.waitForFunction(() => window.store.getState().ui?.tick >= 30, null, { timeout: 60000 });
       await page.waitForFunction(() => window.game.client.cur?.actors?.length > 0, null, { timeout: 60000 });
       if (type === tests[0][1]) {
+        const actualRosters = await page.evaluate(() => window.game.client.command({ cmd: 'rosters' }));
+        for (const faction of studio[mode].factions) {
+          const expectedRoster = [...new Set([...faction.units.map(u => u.id), ...studio[mode].deployments[faction.id]])].sort();
+          assert.deepEqual([...actualRosters.rosters[faction.id]].sort(), expectedRoster, `${mode}/${faction.id} must match the audited Studio roster and deployed yards`);
+          (receipt.rosters ??= []).push({ mode, faction: faction.id, units: faction.units.length, deploymentForms: studio[mode].deployments[faction.id], passed: true });
+        }
+        console.log(`PASS ${mode}: all ${studio[mode].factions.length} faction rosters match Studio, including saved rule overlays`);
+        const names = new Map(studio[mode].factions.flatMap(f => f.units.map(u => [u.id, u.name])));
         const rows = [];
         for (const [key, unit] of Object.entries(registry).filter(([, unit]) => unit.mode === mode)) {
           const actual = await page.evaluate(type => window.game.client.command({ cmd: 'unitinfo', type }), unit.actor);
+          if (names.has(unit.actor)) assert.equal(actual.label, names.get(unit.actor), `${key} engine-localized name`);
           const values = expected(key, `${mode}-web`);
           for (const [field, value] of Object.entries(values)) if (value !== null)
             assert.equal(actual[field === 'health' ? 'hp' : field], value, `${key} ${field}`);
