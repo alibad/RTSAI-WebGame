@@ -5,7 +5,7 @@ import { gpuInfo } from "../gpu";
 import { useStore } from '../store';
 import { ContentStatus } from './ContentStatus';
 
-// One entry to the game; Classic remains available through existing links and saved matches.
+// One entry to the game, with a choice between the content profiles built for this page.
 // Images live in public/menu, relative to the page.
 
 function MenuCard({ title, text, image, icon, wide, onClick, disabled }: { title: string; text: string; image?: string; icon: ReactNode; wide?: boolean; onClick: () => void; disabled?: boolean }) {
@@ -36,6 +36,15 @@ function GpuNotice() {
 
 export function MainMenu({ onSkirmish, onCampaign, onSimulator, onEditor }: { onSkirmish: () => void; onCampaign: () => void; onSimulator: () => void; onEditor: () => void }) {
   const classic = useStore(s => s.setup?.modId === 'rtsai-classic-core');
+  const offered = (import.meta.env.VITE_GAME_MODES ?? (classic ? 'public,public-classic' : 'public')).split(',');
+  function chooseMode(nextClassic: boolean) {
+    if (nextClassic === classic) return;
+    const url = new URL(location.href);
+    url.searchParams.set('profile', nextClassic ? 'public-classic' : 'public');
+    url.searchParams.set('game', nextClassic ? 'classic' : 'isometric');
+    for (const key of ['mode', 'map', 'scenario', 'load', 'replay']) url.searchParams.delete(key);
+    location.assign(url);
+  }
   return (
     <div className="menu-root" data-ui-sfx>
       <div className="menu-backdrop" style={{ backgroundImage: 'url("menu/backdrop.webp")' }} aria-hidden="true" />
@@ -46,6 +55,19 @@ export function MainMenu({ onSkirmish, onCampaign, onSimulator, onEditor }: { on
           <h1>RTS <b>AI</b></h1>
         </header>
         <GpuNotice />
+        {offered.includes('public') && offered.includes('public-classic') && <section className="menu-views" aria-label="Battlefield mode">
+          <span className="menu-eyebrow">Choose your battlefield mode</span>
+          <div className="menu-view-row">
+            {[{ id: 'isometric', title: 'Isometric', text: 'Red Alert 2 maps', selected: !classic },
+              { id: 'classic', title: 'Classic', text: 'Classic, Red Alert Plus & Combined Arms maps', selected: classic }].map(view => (
+              <button key={view.id} type="button" className="view-tile" data-selected={view.selected} aria-pressed={view.selected} onClick={() => chooseMode(view.id === 'classic')}>
+                <img src={`menu/${view.id}.webp`} alt="" />
+                <span className="view-tile-label"><b>{view.title}</b><small>{view.text}</small></span>
+                {view.selected && <span className="view-tile-badge">Selected</span>}
+              </button>
+            ))}
+          </div>
+        </section>}
         <section className="menu-cards" aria-label="Play">
           <MenuCard title="Skirmish" text="Pick a nation, build a base, defeat the AI." image="menu/skirmish.webp" icon={<Swords size={22} />} onClick={onSkirmish} />
           <MenuCard title="Campaign" text={classic ? 'Classic campaigns are available in the desktop game.' : 'Lines of Hope · Follow the story through missions and films.'} disabled={classic} image="menu/campaign.webp" icon={<BookOpen size={22} />} onClick={onCampaign} />
