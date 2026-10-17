@@ -170,6 +170,7 @@ namespace OpenRA.WebSim
 				switch (Str(r, "op"))
 				{
 					case "catalog": return Catalog(world);
+					case "actor-previews": return ActorPreviews(world, r);
 					case "brush": return SetBrush(world, r);
 					case "pointer": return Pointer(r);
 					case "undo": world.WorldActor.Trait<EditorActionManager>().Undo(); return History(world);
@@ -353,6 +354,45 @@ namespace OpenRA.WebSim
 			sb.Append(string.Join(",", players.Select(p => $"{{\"name\":{Snapshot.Json(p.Name)},\"color\":\"{p.Color.R:X2}{p.Color.G:X2}{p.Color.B:X2}\",\"playable\":{(p.Playable ? "true" : "false")}}}")));
 			sb.Append($"],\"zoom\":{SimHost.WorldRenderer.Viewport.Zoom.ToString(inv)},\"title\":{Snapshot.Json(map.Title)},\"author\":{Snapshot.Json(map.Author)},\"size\":[{map.Bounds.Width},{map.Bounds.Height}]}}");
 			return sb.ToString();
+		}
+
+		// Use the desktop editor's real preview, including its selected sequence, offsets and overlays.
+		// Cameos only exist for buildable actors, so they cannot represent scenery and bridge segments.
+		static string ActorPreviews(World world, JsonElement request)
+		{
+			var wr = SimHost.WorldRenderer;
+			var players = world.WorldActor.Trait<EditorActorLayer>().Players.Players;
+			var owner = players.TryGetValue(Str(request, "owner") ?? "Neutral", out var p) ? p : players.Values.First();
+			var result = new Dictionary<string, object>();
+			foreach (var name in request.GetProperty("names").EnumerateArray().Take(60).Select(v => v.GetString()).Distinct())
+			{
+				if (!world.Map.Rules.Actors.TryGetValue(name, out var info) || info.TraitInfoOrDefault<MapEditorDataInfo>() == null)
+					continue;
+				var bounds = world.Map.Bounds;
+				var cell = new MPos((bounds.Left + bounds.Right) / 2, (bounds.Top + bounds.Bottom) / 2).ToCPos(world.Map);
+				var reference = new ActorReference(name, new TypeDictionary { new LocationInit(cell) });
+				var preview = new EditorActorPreview(wr, "palette", reference, owner);
+				var origin = wr.ScreenPxPosition(preview.CenterPosition);
+				var parts = new List<object>();
+				foreach (var renderable in preview.Render())
+				{
+					if (renderable is not SpriteRenderable sr || sr.IsDecoration || sr.Sprite.Bounds.Width == 0)
+						continue;
+					var s = sr.Sprite;
+					var half = 0.5f * sr.Scale * s.Size;
+					var screen = wr.Screen3DPosition(sr.Origin);
+					var off = wr.ScreenPxOffset(sr.Offset);
+					var tex = Snapshot.TextureId(s.Sheet);
+					Snapshot.MarkTexture(tex);
+					parts.Add(new { x = screen.X + off.X - (int)half.X + sr.Scale * s.Offset.X - origin.X,
+						y = screen.Y + off.Y - (int)half.Y + sr.Scale * s.Offset.Y - origin.Y,
+						tex, channel = (int)s.Channel, uv = new[] { s.Left, s.Top, s.Right, s.Bottom },
+						w = s.Bounds.Width, h = s.Bounds.Height, pal = sr.Palette?.TextureIndex ?? 0,
+						scale = sr.Scale, alpha = sr.Alpha });
+				}
+				result[name] = parts;
+			}
+			return JsonSerializer.Serialize(result);
 		}
 
 		// ---------------------------------------------------------------- save

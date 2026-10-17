@@ -10,7 +10,7 @@ import { store } from "./store";
 import type { IconSprite } from "./render/icons";
 import { EditorPointerStream } from "./editor-pointer";
 
-export type TileSprite = IconSprite & { x: number; y: number };
+export type TileSprite = IconSprite & { x: number; y: number; scale?: number; alpha?: number };
 export interface EditorTemplate { id: number; size: [number, number]; categories: string[]; tiles: TileSprite[] }
 export interface EditorActor { name: string; label: string; categories: string[] }
 export interface EditorCatalog {
@@ -38,12 +38,13 @@ export interface EditorState {
   /** The last save: the map's id in the library (playable in skirmish and the simulator). */
   saved: string | null;
   thumbs: Record<number, string>;
+  actorThumbs: Record<string, string>;
   placement: { added: number; blocked?: string } | null;
 }
 
 const initial: EditorState = {
   map: null, opening: null, error: "", catalog: null, tool: "select", brush: "select", fieldRadius: 2, category: "", owner: "Neutral", title: "",
-  undo: false, redo: false, dirty: false, saving: false, saved: null, thumbs: {}, placement: null,
+  undo: false, redo: false, dirty: false, saving: false, saved: null, thumbs: {}, actorThumbs: {}, placement: null,
 };
 
 type History = { undo?: boolean; redo?: boolean; brush?: string; error?: string; placement?: EditorState["placement"] };
@@ -311,6 +312,33 @@ export class EditorController {
     }
     if (Object.keys(done).length) this.patch({ thumbs: { ...this.state.thumbs, ...done } });
     if (want.length > Object.keys(done).length) setTimeout(() => this.thumbnails(ids), 120);
+  }
+
+  /** The same sprite preview as the desktop editor, cached for this map and owner. */
+  async actorThumbnails(names: string[], cancelled: () => boolean = () => false) {
+    const map = this.state.map, owner = this.state.owner;
+    const wanted = names.filter(n => this.state.actorThumbs[`${owner}:${n}`] === undefined);
+    if (!wanted.length) return;
+    try {
+      const parts = await this.call<Record<string, TileSprite[]>>({ op: "actor-previews", names: wanted.slice(0, 60), owner });
+      // Older runtimes can still use their existing cameos.
+      if (!parts || "error" in parts) return;
+      const raster = () => {
+        if (cancelled() || this.state.map !== map || this.state.owner !== owner || !this.active) return;
+        const done: Record<string, string> = {};
+        let pending = false;
+        for (const [name, sprites] of Object.entries(parts)) {
+          const key = `${owner}:${name}`;
+          if (this.state.actorThumbs[key] !== undefined) continue;
+          const url = this.game.renderer.renderTiles(sprites);
+          if (url === null) pending = true;
+          else done[key] = url;
+        }
+        if (Object.keys(done).length) this.patch({ actorThumbs: { ...this.state.actorThumbs, ...done } });
+        if (pending) setTimeout(raster, 120);
+      };
+      raster();
+    } catch (error) { if (!cancelled()) this.fail(error instanceof Error ? error.message : String(error)); }
   }
 
   close() {

@@ -101,6 +101,15 @@ function Palette({ game, editor }: { game: Game; editor: EditorController }) {
   }, [editor, st.tool, st.category, categories, cat]);
   const actors = cat.actors.filter((a) => query ? a.label.toLowerCase().includes(query.toLowerCase()) || a.name.includes(query.toLowerCase()) : a.categories.includes(actorCategory));
   useEffect(() => { if (st.tool === "actor") game.requestIcons(actors.slice(0, 60).map((a) => a.name)); }, [game, st.tool, actorCategory, query]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (st.tool !== "actor") return;
+    let cancelled = false;
+    void (async () => {
+      for (let i = 0; i < actors.length && !cancelled; i += 60)
+        await editor.actorThumbnails(actors.slice(i, i + 60).map(a => a.name), () => cancelled);
+    })();
+    return () => { cancelled = true; };
+  }, [editor, st.tool, st.owner, actorCategory, query, cat]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (st.tool === "terrain") {
     const main = categories.filter((c) => FIRST.includes(c)), more = categories.filter((c) => !FIRST.includes(c));
@@ -181,12 +190,14 @@ function Palette({ game, editor }: { game: Game; editor: EditorController }) {
       </div>}
       <div className="ed-actors">
         {actors.map((a) => (
-          <button key={a.name} type="button" title={a.label} aria-pressed={st.brush === `actor:${a.name}`} onClick={() => editor.brushActor(a.name)} data-actor={a.name}>
-            {icons[a.name] ? <img src={icons[a.name]!} alt="" draggable={false} /> : <span className="ed-actor-name">{a.label}</span>}
+          <button key={a.name} type="button" title={`${a.label} (${a.name})`} aria-label={`${a.label} (${a.name})`} aria-pressed={st.brush === `actor:${a.name}`} onClick={() => editor.brushActor(a.name)} data-actor={a.name}>
+            <span className="ed-actor-picture">{st.actorThumbs[`${st.owner}:${a.name}`] || icons[a.name] ? <img src={(st.actorThumbs[`${st.owner}:${a.name}`] || icons[a.name])!} alt="" draggable={false} /> : <span aria-hidden="true">◇</span>}</span>
+            <span className="ed-actor-name">{a.label}</span>
+            {a.categories.includes("Bridge") && <small className="ed-actor-detail">{bridgePart(a.name)}</small>}
           </button>
         ))}
       </div>
-      <p className="ed-tip">Click to place · right-click stops · Select tool moves and deletes</p>
+      <p className="ed-tip">{actorCategory === "Bridge" && !query ? "Bridge pieces: match span direction and ramps at the banks. A destroyed span leaves a gap. " : ""}Click to place · right-click stops · Select tool moves and deletes</p>
     </div>
   );
   if (st.tool === "spawn") return (
@@ -195,6 +206,14 @@ function Palette({ game, editor }: { game: Game; editor: EditorController }) {
   return (
     <div className="ed-palette hud-panel is-compact"><p className="ed-tip">Click to select · drag to move a unit · drag empty ground to select an area · Delete removes it</p></div>
   );
+}
+
+function bridgePart(name: string) {
+  if (name === "cabhut") return "Repair hut";
+  if (/^bridg/.test(name)) return `Elevated · ${name.endsWith("1") ? "NW / SE" : "NE / SW"}`;
+  const ramp = /_r_(ne|nw|se|sw)$/.exec(name);
+  if (ramp) return `${name.startsWith("lobrdb") ? "Wood" : "Concrete"} · ${ramp[1].toUpperCase()} bank`;
+  return `${name.endsWith("_d") ? "Destroyed" : "Span"} · ${/_a(?:_d)?$/.test(name) ? "NE / SW" : "NW / SE"}`;
 }
 
 /** A light footprint guide follows the pointer without re-rendering the palette on every move. */

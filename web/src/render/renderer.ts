@@ -486,10 +486,10 @@ export class Renderer {
    * A terrain template as a PNG data URL: its tiles' sprites (from the engine's tile sheets) composed at their isometric
    * offsets, the map editor's tile palette. null until the sheets and the palette are on the GPU.
    */
-  renderTiles(tiles: (IconSprite & { x: number; y: number })[]): string | null {
+  renderTiles(tiles: (IconSprite & { x: number; y: number; scale?: number; alpha?: number })[]): string | null {
     if (!tiles.length) return "";
     if (this.lost) return null;
-    const pictures: { c: HTMLCanvasElement; x: number; y: number }[] = [];
+    const pictures: { c: HTMLCanvasElement; x: number; y: number; scale: number; alpha: number }[] = [];
     for (const t of tiles) {
       const tex = this.textures.get(t.tex);
       if (!tex) { this.onMissingTexture(t.tex); return null; }
@@ -497,15 +497,18 @@ export class Renderer {
       const s = k === 1 ? t : { ...t, uv: [t.uv[0], t.uv[1] * k, t.uv[2], t.uv[3] * k] as IconSprite["uv"] };
       const c = this.iconRaster.raster(s, tex.tex, this.palette?.tex, this.paletteRows);
       if (!c) return null;
-      pictures.push({ c, x: t.x, y: t.y });
+      pictures.push({ c, x: t.x, y: t.y, scale: t.scale ?? 1, alpha: t.alpha ?? 1 });
     }
     const l = Math.min(...pictures.map((p) => p.x)), t0 = Math.min(...pictures.map((p) => p.y));
-    const r = Math.max(...pictures.map((p) => p.x + p.c.width)), b = Math.max(...pictures.map((p) => p.y + p.c.height));
+    const r = Math.max(...pictures.map((p) => p.x + p.c.width * p.scale)), b = Math.max(...pictures.map((p) => p.y + p.c.height * p.scale));
     const out = document.createElement("canvas");
     out.width = Math.max(1, Math.ceil(r - l));
     out.height = Math.max(1, Math.ceil(b - t0));
     const g = out.getContext("2d")!;
-    for (const p of pictures) g.drawImage(p.c, Math.round(p.x - l), Math.round(p.y - t0));
+    for (const p of pictures) {
+      g.globalAlpha = p.alpha;
+      g.drawImage(p.c, Math.round(p.x - l), Math.round(p.y - t0), p.c.width * p.scale, p.c.height * p.scale);
+    }
     return out.toDataURL("image/png");
   }
 

@@ -802,6 +802,11 @@
 .ed-tiles button[aria-pressed="true"], .ed-actors button[aria-pressed="true"] { border-color: var(--hud-gold); box-shadow: inset 0 0 0 1px var(--hud-gold); }
 .ed-tiles img { max-width: 92%; max-height: 92%; image-rendering: pixelated; }
 .ed-actors img { width: 100%; height: 100%; object-fit: contain; }
+.ed-actors { grid-auto-rows: 112px; }
+.ed-actors button { grid-template-rows: minmax(0, 1fr) auto auto; padding: 5px 3px; gap: 3px; }
+.ed-actor-picture { width: 100%; height: 100%; min-height: 0; display: grid; place-items: center; color: #87927c; }
+.ed-actor-picture img { max-height: 64px; }
+.ed-actor-detail { font-size: 9px; line-height: 1.2; color: var(--hud-gold); text-align: center; }
 .ed-actor-name { padding: 2px; font-size: 10px; line-height: 1.15; text-align: center; color: #b9c0ad; }
 .ed-tip { margin: 0; font-size: 11px; line-height: 1.4; color: var(--muted-foreground); }
 .ed-res { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
