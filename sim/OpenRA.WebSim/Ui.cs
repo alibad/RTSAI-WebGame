@@ -938,8 +938,10 @@ namespace OpenRA.WebSim
 						foreach (var prerequisite in p.Prerequisites) yield return prerequisite;
 				}
 				foreach (var system in new[] { SystemActors.World, SystemActors.Player })
-					if (rules.Actors.TryGetValue(system, out var actor)) foreach (var p in Provided(actor)) { available.Add(p); always.Add(p); }
-				foreach (var start in world.TraitInfos<StartingUnitsInfo>().Where(s => s.Factions.Count == 0 || s.Factions.Contains(faction.InternalName)))
+					foreach (var p in Provided(rules.Actors[system])) { available.Add(p); always.Add(p); }
+				var starts = world.TraitInfos<StartingUnitsInfo>().Where(s => s.Factions.Count == 0 || s.Factions.Contains(faction.InternalName)).ToArray();
+				var baseSeeds = starts.Where(s => s.BaseActor != null).Select(s => s.BaseActor.ToLowerInvariant()).ToHashSet();
+				foreach (var start in starts)
 					foreach (var name in start.SupportActors.Append(start.BaseActor).Where(n => n != null)) owned.Add(name.ToLowerInvariant());
 				bool Blocked(string p) => always.Contains(p) || available.Contains(p) && countries.Contains(p.Split('.').Last());
 				bool Excluded(ActorInfo a) => a.TraitInfo<BuildableInfo>().Prerequisites.Any(p => p.Replace("~", "").StartsWith('!') && Blocked(p.Replace("~", "")[1..]));
@@ -954,7 +956,7 @@ namespace OpenRA.WebSim
 							{
 								var into = transform.IntoActor.ToLowerInvariant();
 								changed |= owned.Add(into);
-								if (rules.Actors.TryGetValue(into, out var deployed) && deployed.HasTraitInfo<BuildingInfo>()) bases.Add(into);
+								if (baseSeeds.Contains(name) && rules.Actors.TryGetValue(into, out var deployed) && deployed.HasTraitInfo<BuildingInfo>()) bases.Add(into);
 							}
 						}
 					foreach (var actor in buildables)
