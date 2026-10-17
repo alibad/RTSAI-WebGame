@@ -3,6 +3,7 @@ import { BookOpen, ChevronRight, Crosshair, Map as MapIcon, MonitorX, Swords, X 
 import { EA_NOTICE } from "../legal";
 import { gpuInfo } from "../gpu";
 import { useStore } from '../store';
+import { ContentStatus } from './ContentStatus';
 
 // One entry to the game; Classic remains available through existing links and saved matches.
 // Images live in public/menu, relative to the page.
@@ -55,6 +56,7 @@ export function MainMenu({ onSkirmish, onCampaign, onSimulator, onEditor }: { on
         </div>
         <p data-testid="ea-notice" className="menu-notice">{EA_NOTICE}</p>
         <p className="menu-notice"><a href="credits.html" target="_blank" rel="noopener">Credits &amp; licenses</a></p>
+        <ContentStatus />
       </main>
     </div>
   );

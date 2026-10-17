@@ -316,6 +316,13 @@ const server = http.createServer(async (req, res) => {
     if (p === "/api/local-build") {
       return verifiedLocalBuild ? json(res, verifiedLocalBuild) : json(res, { error: "This server was not started by the verified local launcher" }, 409);
     }
+    if (p === "/api/content-status" && process.env.RTSAI_CONTENT_RECEIPT) {
+      const content = JSON.parse(fs.readFileSync(process.env.RTSAI_CONTENT_RECEIPT, 'utf8'));
+      const saved = JSON.parse(fs.readFileSync(process.env.RTSAI_CONTENT_SOURCE, 'utf8'));
+      return json(res, { buildId: content.buildId, revision: content.revision, savedRevision: saved.revision,
+        verified: content.verified === true, builtAt: content.builtAt, verifiedAt: content.verifiedAt,
+        targets: content.verification?.targets ?? [], current: content.revision === saved.revision });
+    }
     if (p === "/api/health") {
       return json(res, {
         ok: true, private: fs.existsSync(privateFiles), runtimes: Object.keys(runtimes).filter((k) => fs.existsSync(runtimes[k])),

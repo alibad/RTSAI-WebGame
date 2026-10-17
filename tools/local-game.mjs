@@ -6,6 +6,7 @@ import crypto from 'node:crypto';
 import net from 'node:net';
 import { spawn, execFileSync } from 'node:child_process';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { startContentBuild } from './local-content.mjs';
 
 const repo = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const state = path.resolve(process.env.RTSAI_LOCAL_LAUNCHER_DIR ?? path.join(process.env.LOCALAPPDATA ?? os.homedir(), 'RTSAI-WebGame', 'launcher'));
@@ -140,6 +141,16 @@ export async function startAcceptedBuild(config, { port = config.port } = {}) {
 async function main() {
   const args = process.argv.slice(2);
   const command = args[0] ?? 'launch';
+  if (['start', 'launch'].includes(command) && !args.includes('--accepted')) {
+    const content = await startContentBuild();
+    if (content) {
+      console.log(JSON.stringify(content));
+      if (command === 'launch' && !args.includes('--no-open')) {
+        const child = spawn('rundll32.exe', ['url.dll,FileProtocolHandler', content.url], { detached: true, windowsHide: true, stdio: 'ignore' }); child.unref();
+      }
+      return;
+    }
+  }
   const option = (name, fallback) => args.includes(name) ? args[args.indexOf(name) + 1] : fallback;
   if (command === 'register') {
     if (!args.includes('--receipt') || !args.includes('--page') || !args.includes('--data') || !args.includes('--native')) throw new Error('Registration requires --receipt, --page, --data and --native');
