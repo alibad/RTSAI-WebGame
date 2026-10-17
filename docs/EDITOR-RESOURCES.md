@@ -10,6 +10,8 @@ Flatten ground gathers the dry cells of a field or corridor, then plans the comp
 
 No-op or blocked strokes never create an empty undo entry. One undo restores every changed terrain tile, elevation and resource, including the transition apron. The native Cairo regression uses the player's preserved map, reproduces the river-side and gem-field cases, and checks a continuous route with the engine's tracked-vehicle locomotor through an edited corridor.
 
+A one-cell level shoulder precedes the slope apron so lowering the isometric surface does not move the next same-size resource stamp onto an unprepared slope. Existing resource sprites are invalidated when their height or ramp changes, including undo/redo; they follow the terrain without changing the saved deposits.
+
 Pointer input captures buttons/modifiers at enqueue time. Moves can coalesce within a stroke; down/up remain ordered. Native resource strokes sample the segment between moves, including the release point, so fast dragging paints continuously. A stroke remains one undo action. Save, download, undo and brush changes wait for queued pointer input. Download saves dirty edits even when an older saved copy exists.
 
 Undo, redo and deletion also mark a saved map dirty, so downloading after undo exports the currently visible terrain rather than an earlier save.
