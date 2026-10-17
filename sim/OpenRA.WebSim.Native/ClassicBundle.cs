@@ -72,10 +72,12 @@ static class ClassicBundle
 			Tree(Path.Combine(mods, "rtsai"), "mods/rtsai/");
 			// mod.yaml is written once below, after applying host-only changes.
 			var classic = Path.Combine(mods, "rtsai-classic-core");
+			var reviewed = Path.Combine(opts["mod"], "resources", "classic-web-maps");
 			foreach (var file in Directory.EnumerateFiles(classic, "*", SearchOption.AllDirectories).Order(StringComparer.Ordinal))
 			{
 				var rel = Path.GetRelativePath(classic, file).Replace('\\', '/');
-				if (rel == "mod.yaml" || rel.Split('/').Any(p => p.StartsWith('.')) || rel.EndsWith(".pyc")) continue;
+				if (rel == "mod.yaml" || rel.Split('/').Any(p => p.StartsWith('.')) || rel.EndsWith(".pyc")
+					|| Directory.Exists(reviewed) && rel.StartsWith("maps/", StringComparison.Ordinal)) continue;
 				Asset("mods/rtsai-classic-core/" + rel, file);
 			}
 			var yaml = File.ReadAllText(Path.Combine(classic, "mod.yaml")).Replace("\r\n", "\n")
@@ -85,6 +87,11 @@ static class ClassicBundle
 			yaml = Bundle.AppendToSection(yaml, "MapFolders", "~ra2|web/content/maps: System");
 			Add("mods/rtsai-classic-core/mod.yaml", Encoding.UTF8.GetBytes(yaml));
 			Add("mods/rtsai-classic-core/web-host.yaml", Encoding.UTF8.GetBytes(Bundle.WebRules));
+			if (Directory.Exists(reviewed))
+			{
+				Tree(reviewed, "mods/rtsai-classic-core/maps/");
+				Add("ora/classic-map-library.json", File.ReadAllBytes(Path.Combine(opts["mod"], "resources", "classic-web-maps.json")));
+			}
 			// A real Classic map supplies terrain, resources and spawn locations. Its rules stay intact.
 			var arena = Path.Combine(classic, "maps/a-nuclear-winter");
 			Tree(arena, "mods/rtsai-classic-core/maps/web-arena/");

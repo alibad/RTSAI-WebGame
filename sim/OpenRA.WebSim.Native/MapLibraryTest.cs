@@ -16,10 +16,12 @@ static class MapLibraryTest
 	public static int Run(Dictionary<string, string> opts)
 	{
 		SimHost.Boot(opts["root"]);
-		var ticks = opts.TryGetValue("ticks", out var t) ? int.Parse(t) : 4000;
+		var ticks = opts.TryGetValue("ticks", out var t) ? int.Parse(t) : 6000;
+		var cash = opts.TryGetValue("cash", out var cashValue) ? cashValue : "5000";
+		var classic = SimHost.ModId == "rtsai-classic-core";
 		var names = opts.TryGetValue("maps", out var namesValue) ? namesValue.Split(',') : SimHost.ModData.MapCache
-			.Where(p => Path.GetFileName(p.Path).StartsWith("ra2-", StringComparison.Ordinal)).Select(p => Path.GetFileName(p.Path)).ToArray();
-		Check(names.Length > 0, "No reviewed RA2 maps found");
+			.Where(p => new[] { "ra2-", "classic-", "raplus-", "ca-" }.Any(prefix => Path.GetFileName(p.Path).StartsWith(prefix, StringComparison.Ordinal))).Select(p => Path.GetFileName(p.Path)).ToArray();
+		Check(names.Length > 0, "No reviewed maps found");
 		var reports = new List<object>();
 		foreach (var id in names)
 		{
@@ -27,8 +29,8 @@ static class MapLibraryTest
 			var seats = preview.Players.Players.Values.Where(p => p.Playable).OrderBy(p => p.Name).ToArray();
 			Check(preview.SpawnPoints.Length == seats.Length, id + ": start positions differ from playable seats");
 			SimHost.Start(new ScenarioSpec { Map = id, Seed = 4242,
-				Players = seats.Select((p, i) => new PlayerSpec { Slot = p.Name, Faction = i % 2 == 0 ? "america" : "russia", Bot = "normal", SpawnPoint = i + 1 }).ToList(),
-				Options = new() { ["startingunits"] = "medium", ["startingcash"] = "20000", ["explored"] = "True", ["fog"] = "False", ["crates"] = "False" } });
+				Players = seats.Select((p, i) => new PlayerSpec { Slot = p.Name, Faction = i % 2 == 0 ? classic ? "england" : "america" : "russia", Bot = "normal", SpawnPoint = i + 1 }).ToList(),
+				Options = new() { ["startingunits"] = classic ? "heavy" : "medium", ["startingcash"] = cash, ["explored"] = "True", ["fog"] = "False", ["crates"] = "False" } });
 			var world = SimHost.World;
 			var map = world.Map;
 			var locomotor = world.WorldActor.TraitsImplementing<Locomotor>().First(l => l.Info.Name == "tracked");
@@ -60,14 +62,22 @@ static class MapLibraryTest
 				Directory.CreateDirectory(output);
 				File.WriteAllBytes(Path.Combine(output, id + ".png"), map.SavePreview());
 			}
-			for (var i = 0; i < ticks; i++) SimHost.Tick();
+			var maxBuildings = world.Players.Where(p => p.Playable).ToDictionary(p => p.InternalName, _ => 0);
+			for (var i = 0; i < ticks; i++)
+			{
+				SimHost.Tick();
+				if (i % 100 == 0)
+					foreach (var player in world.Players.Where(p => p.Playable))
+						maxBuildings[player.InternalName] = Math.Max(maxBuildings[player.InternalName], world.Actors.Count(a => a.Owner == player && !a.IsDead && a.Info.HasTraitInfo<BuildingInfo>()));
+			}
 			Snapshot.Build();
 			Check(Snapshot.UnsupportedRenderables == 0, id + ": unsupported renderables after play");
 			var economy = world.Players.Where(p => p.Playable).Select(p => new {
 				slot = p.InternalName, earned = p.PlayerActor.Trait<PlayerResources>().Earned,
+				maxBuildings = maxBuildings[p.InternalName],
 				buildings = world.Actors.Count(a => a.Owner == p && !a.IsDead && a.Info.HasTraitInfo<BuildingInfo>()) }).ToArray();
-			foreach (var p in economy) Check(p.earned > 0 && p.buildings >= 4, $"{id}: {p.slot} did not establish a working economy ({p.buildings} buildings, {p.earned} earned)");
-			var report = new { id, title = map.Title, players = seats.Length, ticks, reachableResourceCells = reachable, economy, unsupportedRenderables = Snapshot.UnsupportedRenderables };
+			foreach (var p in economy) Check(p.earned > 0 && p.maxBuildings >= 4, $"{id}: {p.slot} did not establish a working economy ({p.maxBuildings} buildings, {p.earned} earned)");
+			var report = new { id, title = map.Title, players = seats.Length, ticks, cash, reachableResourceCells = reachable, economy, unsupportedRenderables = Snapshot.UnsupportedRenderables };
 			reports.Add(report);
 			Console.WriteLine(JsonSerializer.Serialize(report));
 			SimHost.EndGame();

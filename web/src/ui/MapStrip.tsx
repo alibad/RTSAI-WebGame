@@ -11,7 +11,9 @@ type MapEntry = SetupData["maps"][number];
 
 /** Internal arenas remain addressable by scenarios, but aren't finished battlefields. */
 export const isUtilityMap = (m: MapEntry) => !m.saved && !m.library && !m.generated && /^web-arena(?:-four)?$/.test(m.id);
-export const mapCollection = (m: MapEntry) => m.generated ? "Random maps" : m.saved || m.library ? "Your maps" : m.id.startsWith("ra2-") ? "Red Alert 2" : "RTS AI";
+export const mapCollection = (m: MapEntry) => m.generated ? "Random maps" : m.saved || m.library ? "Your maps"
+  : m.id.startsWith("ra2-") ? "Red Alert 2" : m.id.startsWith("classic-") ? "Classic"
+  : m.id.startsWith("raplus-") ? "Red Alert Plus" : m.id.startsWith("ca-") ? "Combined Arms" : "RTS AI";
 
 /** Drafts stay available to their author in the editor; matches require at least two seats. */
 export function orderMaps(maps: MapEntry[], includeDrafts = false) {
