@@ -114,6 +114,10 @@ try {
   assert.equal(redirect.status, 307);
   assert.equal(redirect.headers.get('location'), `/local-builds/${next.buildId}/?profile=public&mode=skirmish`);
   assert.equal(redirect.headers.get('cache-control'), 'no-store');
+  const refreshed = await fetch(`${base}/local-builds/${old.buildId}/?profile=public&mode=editor`,
+    { headers: { accept: 'text/html', 'sec-fetch-dest': 'document' }, redirect: 'manual' });
+  assert.equal(refreshed.status, 307);
+  assert.equal(refreshed.headers.get('location'), `/local-builds/${next.buildId}/?profile=public&mode=editor`);
   assert.equal((await fetch(`${base}/local-builds/unknown/data/public/web-audio.pack`)).status, 410);
   assert.equal((await fetch(`${base}/local-builds/${old.buildId}/api/verify`, { method: 'POST', body: '{}' })).status, 409);
   for (const b of [old, next]) for (const [url, file] of [

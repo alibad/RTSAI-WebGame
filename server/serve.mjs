@@ -296,6 +296,9 @@ const server = http.createServer(async (req, res) => {
       if (!scoped[2]) return res.writeHead(307, { location: `${p}/${url.search}`, "cache-control": "no-store" }).end();
       p = scoped[2];
       url.pathname = p;
+      if ((p === "/" || p === "/index.html") && build.buildId !== verifiedLocalBuild?.buildId
+        && (req.headers["sec-fetch-dest"] === "document" || /text\/html/.test(req.headers.accept ?? "")))
+        return res.writeHead(307, { location: `/local-builds/${verifiedLocalBuild.buildId}/${url.search}`, "cache-control": "no-store" }).end();
       if (p === "/api/verify" && build.buildId !== verifiedLocalBuild?.buildId)
         return json(res, { error: "This session uses an older build. Reload from the launcher before native verification." }, 409);
     } else if (verifiedLocalBuild && p === "/") {

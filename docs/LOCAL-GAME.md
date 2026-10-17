@@ -41,7 +41,8 @@ The launcher redirects the stable entry URL to `/local-builds/<buildId>/`. Keep 
 its page, worker, runtime, audio/art indices, packs, sprite sheets and scenarios from the same accepted build.
 Registrations are retained under `accepted/`; a replacement host verifies and serves previous registered payloads
 too. Unavailable builds return 410, never the new build's bytes. This prevents an older tab's audio byte offsets
-from addressing a new pack after an update. Tabs opened before this protection need one reload from the stable URL.
+from addressing a new pack after an update. Refreshing an older scoped page selects the current build while its
+already-running worker keeps reading its own files. Tabs opened before this protection need one reload from the stable URL.
 
 The accepted 16 October build is `local-adviser-8151b3d`: one built-in web adviser, original isometric countries
 plus project Classic, with 333 original art files and 521 original voice/sound clips. Both data profiles and the
