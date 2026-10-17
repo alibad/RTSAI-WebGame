@@ -10,14 +10,14 @@ import type { SetupData } from "../sim/protocol";
 type MapEntry = SetupData["maps"][number];
 
 /** Internal arenas remain addressable by scenarios, but aren't finished battlefields. */
-export const isUtilityMap = (m: MapEntry) => !m.saved && !m.generated && /^web-arena(?:-four)?$/.test(m.id);
-export const mapCollection = (m: MapEntry) => m.saved ? "Your maps" : m.generated ? "Random maps" : m.id.startsWith("ra2-") ? "Red Alert 2" : "RTS AI";
+export const isUtilityMap = (m: MapEntry) => !m.saved && !m.library && !m.generated && /^web-arena(?:-four)?$/.test(m.id);
+export const mapCollection = (m: MapEntry) => m.generated ? "Random maps" : m.saved || m.library ? "Your maps" : m.id.startsWith("ra2-") ? "Red Alert 2" : "RTS AI";
 
 /** Drafts stay available to their author in the editor; matches require at least two seats. */
 export function orderMaps(maps: MapEntry[], includeDrafts = false) {
   const available = maps.filter(m => !isUtilityMap(m) && (includeDrafts || m.players >= 2));
-  return [...available.filter(m => m.generated), ...available.filter(m => m.saved && !m.generated),
-    ...available.filter(m => !m.saved && !m.generated).sort((a, b) => Number(b.id.startsWith("ra2-")) - Number(a.id.startsWith("ra2-")) || a.players - b.players || a.title.localeCompare(b.title))];
+  return [...available.filter(m => m.generated), ...available.filter(m => (m.saved || m.library) && !m.generated),
+    ...available.filter(m => !m.saved && !m.library && !m.generated).sort((a, b) => Number(b.id.startsWith("ra2-")) - Number(a.id.startsWith("ra2-")) || a.players - b.players || a.title.localeCompare(b.title))];
 }
 
 function MapCard({ game, map, selected, onChange }: { game: Game; map: MapEntry; selected: boolean; onChange: (id: string) => void }) {
