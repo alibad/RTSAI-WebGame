@@ -213,6 +213,7 @@ export class EditorController {
     void this.pointers.settled().then(() => this.call(op)).then(h => {
       this.history(h);
       if (edited && !h.error) this.patch({ dirty: true, placement: null });
+      if (op.op === "brush" && !this.game.canvas.matches(":hover")) this.hideFieldPreview();
     }).catch(error => this.fail(error instanceof Error ? error.message : String(error)));
   }
 
