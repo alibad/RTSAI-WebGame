@@ -15,7 +15,7 @@ try {
     const errors = []; page.on('pageerror', e => errors.push(String(e)));
     await page.route('**/*', route => {
       const url = new URL(route.request().url());
-      if (url.pathname === '/api/overpass') return route.fulfill({ status: 200, contentType: 'application/json', body: '{"elements":[]}' });
+      if (url.pathname.endsWith('/api/overpass')) return route.fulfill({ status: 200, contentType: 'application/json', body: '{"elements":[]}' });
       if (['127.0.0.1', 'localhost', 'server.arcgisonline.com'].includes(url.hostname) || ['blob:', 'data:'].includes(url.protocol)) return route.continue();
       return route.abort();
     });
@@ -48,15 +48,12 @@ try {
       await page.getByTestId('es-build').click();
       await page.getByText(/too little usable land/).waitFor({ timeout: 90000 });
       await page.getByRole('radio', { name: '120 km', exact: true }).click();
+      await page.locator('.es-research > summary').filter({ hasText: 'Nearby places' }).click();
+      await page.getByRole('button', { name: /Khasab Airport/ }).waitFor();
+      await page.getByRole('button', { name: /Qeshm International Airport/ }).waitFor();
       await page.getByTestId('es-build').click();
-      await page.getByTestId('es-edit').waitFor({ timeout: 120000 });
-      assert.equal(await page.getByRole('button', { name: /Khasab Airport/ }).count(), 1);
-      assert.equal(await page.getByRole('button', { name: /Qeshm International Airport/ }).count(), 1);
-      assert.equal(await page.getByTestId('es-mission').count(), 0, 'coastal terrain does not offer an invalid land-attack mission');
-      assert.equal(await page.locator('.es-intel .ed-error').count(), 0);
-      await page.screenshot({ path: `${out}/regional-built.png` });
-      await page.getByTestId('es-edit').click();
       await page.waitForFunction(() => window.store.getState().phase === 'playing' && window.store.getState().editor?.map, null, { timeout: 120000 });
+      assert.equal(await page.getByRole('region', { name: 'Map editor · real-world area', exact: true }).count(), 0, 'generation opens the editor directly');
       await page.waitForTimeout(2000);
       await page.screenshot({ path: `${out}/native-hormuz-editor.png` });
       receipt.checks.push('Real Hormuz coastlines compile and open in the native WASM editor with zero live features; offshore small selection has actionable guidance');
