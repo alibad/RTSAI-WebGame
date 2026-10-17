@@ -140,16 +140,17 @@ RTSAI-Web `app/components/feedback/` (and `useFeedbackDictation.tsx`); change bo
 
 **What.** America, Germany, England, France, Korea, Cuba, Libya, Iraq and Russia draw the original Red Alert 2 art for
 everything they field: infantry, vehicles, ships, aircraft, defences, the shared base buildings, MCVs, harvesters,
-walls, husks and death animations, with the original cameos. 96 actor types, 90 sprite images and 32 voxel models, 378 files. The original-country bundle restores the Soviet power plant, barracks, service depot, battle lab and nuclear reactor with their reference foundations, hit shapes, rally points, exits and original construction/damage/idle sequences. These are shared isometric actor definitions, so modern owners of those five actors also use the authoritative original foundation while keeping project art.
+walls, husks and death animations, with the original cameos. 96 actor types, 91 sprite images and 32 voxel models, 384 files. The original-country bundle restores the Soviet power plant, barracks, service depot, battle lab and nuclear reactor with their reference foundations, hit shapes, rally points, exits and original construction/damage/idle sequences. These are shared isometric actor definitions, so modern owners of those five actors also use the authoritative original foundation while keeping project art.
 
 The seven structures hidden by the kit are buildable again for original countries only: Gap Generator, Ore Purifier, Spy Satellite, Weather Control Device, Psychic Sensor, Cloning Vats and Nuclear Missile Silo. Original Allied countries use the original Ore Purifier rather than the kit refinery upgrade plug.
 
 `original-country-audit.json` compares every reachable actor against the original reference for each of the nine countries and rejects missing actors, replacement art and kit-only roster extensions. Native content tests reject any buildable original-country actor drawing replacement art, and exercise the five restored foundations and their construction/damage animation transitions.
 
-Remaining animation/scope differences (not substitute units):
-- harvesters retain the original model but show no voxel unload animation (the existing adapter uses an ordinary voxel body instead of the native dock client);
-- support-power cameos outside actor build icons remain project art;
-- original-country and standalone gameplay balancing remains as defined by the mod; this is not a claim of byte-identical retail RA2 rules.
+Original miners switch between their travelling and unloading models at the refinery: `cmin/cmon` and `harv/horv`. `WithOriginalVoxelUnloadBody` retains the reference's immediate docking callbacks, while conditioning only model visibility so modern factions retain their project sprite body. These original HVA files have one pose each; the original animation is the dock/unload/undock model transition, not an invented multi-frame cycle. Native delivery tests verify the actual rendered model switch, income credited and return to the travelling body.
+
+All seven original support-power cameos (GPS, Iron Curtain, Chronoshift, Nuclear Missile, Paradrop, Airborne and Lightning Storm) are bundled from the reference `icon` sequences. `FactionSupportPowerIcons` maps the nine original countries' support-power buttons to `ea-icon` with `eacameo`; other factions and Classic retain their existing icons. Native checks render every icon at its original 60×48 size and inspect active power buttons and their palette.
+
+Original-country and standalone gameplay balancing remains as defined by the mod; this is not a claim of byte-identical retail RA2 rules.
 The seven modern factions, the Classic/top-down mode and every sound are unchanged. Mission enemies whose faction is
 Russia (Orion Group in Straits Shield, Obsidian Directorate in Haitan Network) also show the original art: the art
 follows the faction.

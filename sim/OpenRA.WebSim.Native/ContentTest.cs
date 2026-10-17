@@ -217,6 +217,17 @@ static class ContentTest
 		var miner = world.CreateActor(true, type, new TypeDictionary { new OwnerInit(own),
 			new LocationInit(refinery.Location + new CVec(3, 3)), new FactionInit(faction) });
 		var body = miner.Trait<WithOriginalVoxelUnloadBody>();
+		var voxels = miner.Trait<RenderVoxels>();
+		var idleModel = voxels.Renderer.ModelCache.GetModelSequence(voxels.Image, "idle");
+		var unloadModel = voxels.Renderer.ModelCache.GetModelSequence(voxels.Image, "unload");
+		void CheckRenderedPose(bool docked)
+		{
+			var visible = miner.Render(SimHost.WorldRenderer).OfType<OpenRA.Mods.Cnc.Graphics.ModelRenderable>()
+				.SelectMany(r => (IEnumerable<ModelAnimation>)ModelsField.GetValue(r)).Where(m => m.IsVisible).ToArray();
+			if (visible.Any(m => ReferenceEquals(m.Model, idleModel)) != (original && !docked)
+				|| visible.Any(m => ReferenceEquals(m.Model, unloadModel)) != (original && docked))
+				throw new Exception(faction + ": renderer did not switch the actual original miner models");
+		}
 		var store = miner.Trait<IStoresResources>();
 		var harvester = miner.Trait<Harvester>();
 		for (var i = 0; i < store.Capacity; i++) harvester.AddResource(miner, "Ore");
@@ -231,6 +242,7 @@ static class ContentTest
 			if (body.IsTraitDisabled == original) throw new Exception(faction + ": wrong original miner body condition");
 			if (body.Docked)
 			{
+				if (!sawUnload) CheckRenderedPose(true);
 				sawUnload = true;
 				if (body.VisibleSequence != (original ? "unload" : null))
 					throw new Exception(faction + ": wrong docked miner body");
@@ -245,8 +257,10 @@ static class ContentTest
 			throw new Exception(faction + ": real refinery delivery did not finish and credit income");
 		if (body.VisibleSequence != (original ? "idle" : null))
 			throw new Exception(faction + ": miner did not return to its travelling body");
+		CheckRenderedPose(false);
 		return new { miner = type, docked = sawUnload, undocked = complete,
-			originalUnloadVisible = original, income = money.GetCashAndResources() - before, powerIcons };
+			originalUnloadVisible = original, renderedModelSwitch = true,
+			income = money.GetCashAndResources() - before, powerIcons };
 	}
 
 	static readonly Dictionary<string, CVec> FoundationDimensions = new()
