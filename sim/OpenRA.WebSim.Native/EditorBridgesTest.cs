@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Reflection;
 using System.Text.Json;
 using OpenRA;
 using OpenRA.Mods.Common.Traits;
@@ -63,6 +62,7 @@ static class EditorBridgesTest
 		var bridge = world.CreateActor("lobrdg_a", [new LocationInit(cell), new OwnerInit(owner)]);
 		Check(footprint.All(Passable), "Native bridge must open the crossing over water");
 		bridge.Dispose();
+		SimHost.Tick(); // Dispose removes actors and their custom terrain at frame end.
 		Check(footprint.All(c => !Passable(c)), "Removed bridge must close the crossing");
 		var dead = world.CreateActor("lobrdg_a_d", [new LocationInit(cell), new OwnerInit(owner)]);
 		var segment = dead.TraitsImplementing<object>().First(t => t.GetType().Name == "BridgePlaceholder");
