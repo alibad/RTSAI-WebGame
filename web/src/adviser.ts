@@ -226,7 +226,9 @@ export function nextAdvice(snapshot: AdviserObservation, options: { buildFocus?:
     const proximity = (enemy: AdviserActor) => assets.length ? Math.min(...assets.map(asset => distanceSquared(enemy, asset))) : 0;
     const contact = [...snapshot.visibleEnemies].sort((a, b) => proximity(a) - proximity(b))[0];
     const defenders = units.filter(unit => unit.idle && unit.canAttack).sort((a, b) => distanceSquared(a, contact) - distanceSquared(b, contact)).slice(0, 6);
-    if (defenders.length) return advise(`Enemies are at your base; send your ${defenders.length} idle fighter${defenders.length === 1 ? "" : "s"} at them now.`,
+    // Revealed maps can expose a large army on a distant coast. Strategic threat
+    // alone must not interrupt the opening with an immediate base-defense order.
+    if (defenders.length && proximity(contact) <= 20 ** 2) return advise(`Enemies are at your base; send your ${defenders.length} idle fighter${defenders.length === 1 ? "" : "s"} at them now.`,
       `Attack-move ${defenders.length} idle unit${defenders.length === 1 ? "" : "s"} to the attackers`,
       defenders.map(unit => ({ action: "attack_move", actor_id: unit.actorId, target_x: contact.cellX, target_y: contact.cellY })), "defend");
   }

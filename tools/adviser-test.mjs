@@ -130,6 +130,21 @@ unknown.availableProduction = ['unknown'];
 unknown.actorNames.unknown = 'Uncatalogued structure';
 unknown.units = []; unknown.buildings = []; unknown.production = [];
 assert.equal(nextAdvice(unknown), null);
+// Hormuz with fog disabled: a large, visible army on the other coast must not
+// suppress construction advice. A real nearby attack still takes priority.
+const coast = observation(parity[0]);
+coast.buildings = [{ actorId:1, kind:'gapowr', cellX:10, cellY:10, idle:false, canAttack:false }];
+coast.units = [{ actorId:2, kind:'e1', cellX:12, cellY:10, idle:true, canAttack:true }];
+coast.production = [];
+coast.availableProduction = ['garefn'];
+coast.visibleEnemyBuildings = [];
+coast.actorNames = { gapowr:'Power Plant', garefn:'Ore Refinery', e1:'G.I.' };
+coast.techTree = {};
+coast.threatHeated = true;
+coast.visibleEnemies = Array.from({length:32}, (_,i) => ({ actorId:100+i, kind:'e1', cellX:100+i, cellY:10, idle:true, canAttack:true }));
+assert.equal(nextAdvice(coast)?.key, 'build:refinery', 'distant coastal army must not prevent base construction');
+coast.visibleEnemies[0] = { ...coast.visibleEnemies[0], cellX:18 };
+assert.equal(nextAdvice(coast)?.key, 'defend', 'nearby attacker must still trigger defense');
 // The shipped fallback tree (web/src/adviser-tree.json) names what the engine has not named yet: the opening factory
 // advice names a tank before any factory exists. Those names are the public game's own (RTSAI-Mod
 // mods/rtsai/standalone/names.ftl, b6794bd), never the stock RA2 names.
