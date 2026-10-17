@@ -486,7 +486,7 @@ export class Renderer {
    * A terrain template as a PNG data URL: its tiles' sprites (from the engine's tile sheets) composed at their isometric
    * offsets, the map editor's tile palette. null until the sheets and the palette are on the GPU.
    */
-  renderTiles(tiles: (IconSprite & { x: number; y: number; scale?: number; alpha?: number })[]): string | null {
+  renderTiles(tiles: (IconSprite & { x: number; y: number; scale?: number; alpha?: number })[], trim = false): string | null {
     if (!tiles.length) return "";
     if (this.lost) return null;
     const pictures: { c: HTMLCanvasElement; x: number; y: number; scale: number; alpha: number }[] = [];
@@ -508,6 +508,21 @@ export class Renderer {
     for (const p of pictures) {
       g.globalAlpha = p.alpha;
       g.drawImage(p.c, Math.round(p.x - l), Math.round(p.y - t0), p.c.width * p.scale, p.c.height * p.scale);
+    }
+    if (trim) {
+      // Editor sprites often include large transparent margins for their world pivot.
+      // Keep that pivot in the world, but fit the visible object in its palette card.
+      const data = g.getImageData(0, 0, out.width, out.height).data;
+      let x0 = out.width, y0 = out.height, x1 = -1, y1 = -1;
+      for (let y = 0; y < out.height; y++) for (let x = 0; x < out.width; x++) {
+        if (data[(y * out.width + x) * 4 + 3] < 8) continue;
+        x0 = Math.min(x0, x); y0 = Math.min(y0, y); x1 = Math.max(x1, x); y1 = Math.max(y1, y);
+      }
+      if (x1 < x0) return "";
+      const cropped = document.createElement("canvas");
+      cropped.width = x1 - x0 + 1; cropped.height = y1 - y0 + 1;
+      cropped.getContext("2d")!.drawImage(out, x0, y0, cropped.width, cropped.height, 0, 0, cropped.width, cropped.height);
+      return cropped.toDataURL("image/png");
     }
     return out.toDataURL("image/png");
   }

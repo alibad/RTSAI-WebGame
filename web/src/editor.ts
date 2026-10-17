@@ -330,7 +330,7 @@ export class EditorController {
         for (const [name, sprites] of Object.entries(parts)) {
           const key = `${owner}:${name}`;
           if (this.state.actorThumbs[key] !== undefined) continue;
-          const url = this.game.renderer.renderTiles(sprites);
+          const url = this.game.renderer.renderTiles(sprites, true);
           if (url === null) pending = true;
           else done[key] = url;
         }
