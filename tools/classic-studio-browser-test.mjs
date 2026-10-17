@@ -97,7 +97,7 @@ try {
         receipt.targets.push({ mode, units: rows, factions: [...requiredFactions], grid: await page.evaluate(() => window.store.getState().info.gridType) });
         console.log(`PASS ${mode}: ${rows.length} actual WASM unit bindings and ${requiredFactions.size} factions`);
         for (const [key, detail] of Object.entries(manifest.details ?? {}).filter(([key]) => key.startsWith(mode + ':'))) {
-          const actor = registry[key].bindings[`${mode}-web`].actor;
+          const actor = registry[key].bindings[`${mode}-web`].actor.toLowerCase();
           const actual = await page.evaluate(type => window.game.client.command({ cmd: 'unitrules', type }), actor);
           const live = await page.evaluate(type => window.game.client.command({ cmd: 'unitinfo', type }), actor);
           assert(!actual.error, actual.error);

@@ -569,7 +569,7 @@ namespace OpenRA.WebSim
 				case "unitrules":
 				{
 					// Studio acceptance reads the rules mounted by this actual simulation, including map overrides.
-					var type = Str("type");
+					var type = Str("type")?.ToLowerInvariant();
 					var mod = Game.ModData;
 					var actor = MiniYaml.Load(world.Map, mod.Rules, world.Map.RuleDefinitions)
 						.FirstOrDefault(n => n.Key.Equals(type, StringComparison.OrdinalIgnoreCase));
