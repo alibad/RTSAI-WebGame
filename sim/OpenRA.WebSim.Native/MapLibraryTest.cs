@@ -18,6 +18,8 @@ static class MapLibraryTest
 		SimHost.Boot(opts["root"]);
 		var ticks = opts.TryGetValue("ticks", out var t) ? int.Parse(t) : 6000;
 		var cash = opts.TryGetValue("cash", out var cashValue) ? cashValue : "5000";
+		var allied = opts.ContainsKey("allied");
+		var combatOnly = opts.ContainsKey("combat-only");
 		var classic = SimHost.ModId == "rtsai-classic-core";
 		var names = opts.TryGetValue("maps", out var namesValue) ? namesValue.Split(',') : SimHost.ModData.MapCache
 			.Where(p => new[] { "ra2-", "classic-", "raplus-", "ca-" }.Any(prefix => Path.GetFileName(p.Path).StartsWith(prefix, StringComparison.Ordinal))).Select(p => Path.GetFileName(p.Path)).ToArray();
@@ -29,7 +31,7 @@ static class MapLibraryTest
 			var seats = preview.Players.Players.Values.Where(p => p.Playable).OrderBy(p => p.Name).ToArray();
 			Check(preview.SpawnPoints.Length == seats.Length, id + ": start positions differ from playable seats");
 			SimHost.Start(new ScenarioSpec { Map = id, Seed = 4242,
-				Players = seats.Select((p, i) => new PlayerSpec { Slot = p.Name, Faction = i % 2 == 0 ? classic ? "england" : "america" : "russia", Bot = "normal", SpawnPoint = i + 1 }).ToList(),
+				Players = seats.Select((p, i) => new PlayerSpec { Slot = p.Name, Faction = i % 2 == 0 ? classic ? "england" : "america" : "russia", Bot = "normal", SpawnPoint = i + 1, Team = allied ? 1 : 0 }).ToList(),
 				Options = new() { ["startingunits"] = classic ? "heavy" : "medium", ["startingcash"] = cash, ["explored"] = "True", ["fog"] = "False", ["crates"] = "False" } });
 			var world = SimHost.World;
 			var map = world.Map;
@@ -76,14 +78,17 @@ static class MapLibraryTest
 				slot = p.InternalName, earned = p.PlayerActor.Trait<PlayerResources>().Earned,
 				maxBuildings = maxBuildings[p.InternalName],
 				buildings = world.Actors.Count(a => a.Owner == p && !a.IsDead && a.Info.HasTraitInfo<BuildingInfo>()) }).ToArray();
-			foreach (var p in economy) Check(p.earned > 0 && p.maxBuildings >= 4, $"{id}: {p.slot} did not establish a working economy ({p.maxBuildings} buildings, {p.earned} earned)");
-			var report = new { id, title = map.Title, players = seats.Length, ticks, cash, reachableResourceCells = reachable, economy, unsupportedRenderables = Snapshot.UnsupportedRenderables };
+			if (!combatOnly)
+				foreach (var p in economy) Check(p.earned > 0 && p.maxBuildings >= 4, $"{id}: {p.slot} did not establish a working economy ({p.maxBuildings} buildings, {p.earned} earned)");
+			else
+				Check(economy.Any(p => p.earned > 0 && p.maxBuildings >= 4), id + ": no AI established an economy during combat");
+			var report = new { id, title = map.Title, players = seats.Length, ticks, cash, allied, combatOnly, reachableResourceCells = reachable, economy, unsupportedRenderables = Snapshot.UnsupportedRenderables };
 			reports.Add(report);
 			Console.WriteLine(JsonSerializer.Serialize(report));
 			SimHost.EndGame();
 		}
 		if (opts.TryGetValue("out", out var dir)) File.WriteAllText(Path.Combine(dir, "verification.json"), JsonSerializer.Serialize(reports, new JsonSerializerOptions { WriteIndented = true }));
-		Console.WriteLine($"PASS: {names.Length} reviewed maps; every starting seat has reachable resources and a working AI economy.");
+		Console.WriteLine($"PASS: {names.Length} reviewed maps; every starting seat has reachable resources; {(combatOnly ? "combat simulation completed" : "every AI established an economy")}.");
 		return 0;
 	}
 }
