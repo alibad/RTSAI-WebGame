@@ -1,6 +1,7 @@
 // Real browser/WASM acceptance: all Studio bindings, stock/custom Classic production, RA2 regression.
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import crypto from 'node:crypto';
 import path from 'node:path';
 import { chromium } from '../web/node_modules/playwright-core/index.mjs';
 import { browserExecutable, browserArgs } from './browser-launch.mjs';
@@ -26,6 +27,29 @@ const expected = (key, target) => {
 };
 fs.mkdirSync(out, { recursive: true });
 const receipt = { revision: manifest.revision, passed: false, targets: [], production: [] };
+function parseRules(text) {
+  const root = [], stack = [{ depth: -1, rows: root }];
+  for (const raw of text.split(/\r?\n/)) {
+    const line = raw.replace(/(?<!\\)#.*$/, '');
+    if (!line.trim() || line.trimStart().startsWith('#')) continue;
+    const depth = line.length - line.trimStart().length;
+    const at = line.indexOf(':');
+    assert(at >= 0, 'A rule needs a colon');
+    const key = line.slice(0, at).trim(), value = line.slice(at + 1).trim().replaceAll('\\#', '#') || null;
+    while (stack.at(-1).depth >= depth) stack.pop();
+    const node = { key, value, children: [] }; stack.at(-1).rows.push(node); stack.push({ depth, rows: node.children });
+  }
+  return root;
+}
+function compareRules(expected, actual, path = '') {
+  for (const node of expected) {
+    if (node.key.startsWith('-')) { assert(!actual.some(n => n.key === node.key.slice(1)), `${path}/${node.key} must be removed`); continue; }
+    const match = actual.find(n => n.key === node.key);
+    assert(match, `Missing ${path}/${node.key}`);
+    if (node.value !== null) assert.equal(match.value, node.value, `${path}/${node.key}`);
+    compareRules(node.children, match.children, `${path}/${node.key}`);
+  }
+}
 const browser = await chromium.launch({ executablePath: browserExecutable(), headless: true, args: browserArgs() });
 try {
   for (const mode of ['classic', 'ra2']) {
@@ -72,6 +96,35 @@ try {
         }
         receipt.targets.push({ mode, units: rows, factions: [...requiredFactions], grid: await page.evaluate(() => window.store.getState().info.gridType) });
         console.log(`PASS ${mode}: ${rows.length} actual WASM unit bindings and ${requiredFactions.size} factions`);
+        for (const [key, detail] of Object.entries(manifest.details ?? {}).filter(([key]) => key.startsWith(mode + ':'))) {
+          const actor = registry[key].bindings[`${mode}-web`].actor;
+          const actual = await page.evaluate(type => window.game.client.command({ cmd: 'unitrules', type }), actor);
+          const live = await page.evaluate(type => window.game.client.command({ cmd: 'unitinfo', type }), actor);
+          assert(!actual.error, actual.error);
+          compareRules(parseRules(detail.actor), parseRules(actual.actor), key);
+          const actorRules = parseRules(detail.actor);
+          const armor = actorRules.find(n => n.key === 'Armor')?.children.find(n => n.key === 'Type')?.value;
+          if (armor) assert.equal(live.armor, armor, `${key} hydrated armor`);
+          for (const [arm, w] of Object.entries(detail.weapons)) {
+            const suffix = crypto.createHash('sha256').update(key + '/' + arm).digest('hex').slice(0, 10);
+            const alias = 'studio_' + (key + '_' + arm).toLowerCase().replaceAll(/[^a-z0-9_]/g, '_') + '_' + suffix;
+            compareRules([{ key: arm, value: null, children: [{ key: 'Weapon', value: alias, children: [] }] }], parseRules(actual.actor), key);
+            assert(actual.weapons[alias], `Private weapon missing: ${alias}`);
+            compareRules(parseRules(w.rules), parseRules(actual.weapons[alias]), alias);
+            const typed = live.weapons.find(w => w.name.toLowerCase() === alias);
+            assert(typed, `${key} hydrated private weapon`);
+            for (const node of parseRules(w.rules)) {
+              if (node.key === 'ReloadDelay') assert.equal(typed.reload, Number(node.value), `${key} hydrated reload`);
+              if (node.key === 'Range') {
+                const parts = /^(?:(-?\d+)c)?(-?\d+)$/.exec(node.value);
+                assert(parts, 'Expected OpenRA distance');
+                assert.equal(typed.range, Math.round((Number(parts[1] ?? 0) + Number(parts[2]) / 1024) * 100) / 100, `${key} hydrated range`);
+              }
+            }
+          }
+          (receipt.unitRules ??= []).push({ unit: key, target: `${mode}-web`, passed: true, engineValues: live });
+          console.log(`PASS full unit rules in actual WASM: ${key}`);
+        }
       }
       await page.evaluate(type => {
         const g = window.game, s = g.client.cur;

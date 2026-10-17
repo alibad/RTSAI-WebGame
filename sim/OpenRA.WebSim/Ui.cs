@@ -566,6 +566,20 @@ namespace OpenRA.WebSim
 				case "unitinfo":
 					return UnitInfo(world, Str("type"));
 
+				case "unitrules":
+				{
+					// Studio acceptance reads the rules mounted by this actual simulation, including map overrides.
+					var type = Str("type");
+					var mod = Game.ModData;
+					var actor = MiniYaml.Load(world.Map, mod.Rules, world.Map.RuleDefinitions)
+						.FirstOrDefault(n => n.Key.Equals(type, StringComparison.OrdinalIgnoreCase));
+					if (actor == null) return "{\"error\":\"unknown actor\"}";
+					var weapons = MiniYaml.Load(world.Map, mod.Weapons, world.Map.WeaponDefinitions);
+					var names = world.Map.Rules.Actors[type].TraitInfos<ArmamentInfo>().Select(a => a.Weapon).ToHashSet(StringComparer.OrdinalIgnoreCase);
+					return "{\"actor\":" + J(actor.Value.Nodes.WriteToString()) + ",\"weapons\":{" +
+						string.Join(",", weapons.Where(w => names.Contains(w.Key)).Select(w => J(w.Key.ToLowerInvariant()) + ":" + J(w.Value.Nodes.WriteToString()))) + "}}";
+				}
+
 				case "icon":
 					return Icon(Str("type"), Str("faction"));
 
