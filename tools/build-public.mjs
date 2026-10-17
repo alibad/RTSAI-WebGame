@@ -4,7 +4,9 @@
 // tools/ea-gate.mjs, with EA's notice in the page and in NOTICE) for a static host or CDN. No server APIs:
 // sign-in, events and feedback belong to the website (same origin at rtsai.net/play), and multiplayer matchmaking is
 // Firestore. No private content, no local companion, no native verify.
-//   node tools/build-public.mjs [--out build/public-web] [--quality 11]
+//   node tools/build-public.mjs [--out build/public-web] [--quality 11] [--data-only]
+// --data-only packages verified runtime/content roots for release-play.mjs --data without reading frontend sources.
+// It creates no runnable page; release-play still builds and checks the production page from clean main.
 // Inputs: data/public (tools/pin-standalone.ps1 or tools/public.ps1) and its AOT runtime (data/public/wasm-aot).
 // This only builds; deploying it needs the owner's approval (see docs/DEPLOY-PUBLIC.md).
 //
@@ -47,6 +49,7 @@ const argv = process.argv.slice(2);
 const opt = (k, d) => { const i = argv.indexOf(`--${k}`); return i >= 0 ? argv[i + 1] : d; };
 const out = path.resolve(repo, opt("out", "build/public-web"));
 const quality = Number(opt("quality", 11));
+const dataOnly = argv.includes("--data-only");
 const data = path.resolve(repo, opt("data", "data/public"));
 const inputsFile = path.resolve(repo, opt("inputs", path.join(data, "build-inputs.json")));
 if (!fs.existsSync(inputsFile)) throw new Error(`Missing verified input identities: ${inputsFile}`);
@@ -93,7 +96,7 @@ const webEnv = Object.fromEntries((fs.existsSync(envFile) ? fs.readFileSync(envF
   .map(l => l.match(/^\s*([A-Z0-9_]+)\s*=\s*"?([^"]*)"?\s*$/)).filter(Boolean).map(m => [m[1], m[2]]));
 for (const key of ["VITE_FIREBASE_API_KEY", "VITE_FIREBASE_AUTH_DOMAIN", "VITE_FIREBASE_PROJECT_ID", "VITE_FIREBASE_APP_ID"])
   if (!(process.env[key] || webEnv[key])) throw new Error(`Missing ${key}: copy rtsai.net's NEXT_PUBLIC_FIREBASE_* values into web/.env.production.local (see docs/DEPLOY-PUBLIC.md)`);
-execSync(`npx vite build --outDir "${out}" --emptyOutDir`, {
+if (!dataOnly) execSync(`npx vite build --outDir "${out}" --emptyOutDir`, {
   cwd: path.join(repo, "web"), stdio: "inherit",
   env: { ...process.env, VITE_DEFAULT_PROFILE: "public", VITE_GAME_MODES: profiles.map(p => p.id).join(","), RTSAI_PUBLIC_BUILD: "1", VITE_STATIC_BUILD: "1", VITE_RT_BASE: rtRoot, VITE_DATA_BASE: dataRoot, VITE_REQUIRE_SIGNIN: "1", VITE_SITE_ORIGIN: "https://rtsai.net", VITE_FIREBASE_EMULATORS: "" },
 });
@@ -212,7 +215,7 @@ const eaManifest = fs.existsSync(eaInputs) ? JSON.parse(fs.readFileSync(eaInputs
 const eaArt = eaSummary ? { files: eaSummary.files, bytes: eaSummary.bytes, notice: eaSummary.notice, profiles: profiles.filter((p) => p.ea).map((p) => p.id),
   manifestSha256: eaManifest?.sha256 ?? null,
   ...(eaSummary.audio.files ? { audio: { files: eaSummary.audio.files, bytes: eaSummary.audio.bytes, manifestSha256: eaManifest?.audio?.sha256 ?? null } } : {}) } : null;
-const build = { builtAt: new Date().toISOString(), standalone: inputs.inputs.mod, inputs, bundleId: profiles[0].bundle, modes: profiles.map(p => ({ profile: p.id, bundle: p.bundle })), rtRoot, dataRoot, brotliQuality: quality, eaArt, groups };
+const build = { builtAt: new Date().toISOString(), pageIncluded: !dataOnly, standalone: inputs.inputs.mod, inputs, bundleId: profiles[0].bundle, modes: profiles.map(p => ({ profile: p.id, bundle: p.bundle })), rtRoot, dataRoot, brotliQuality: quality, eaArt, groups };
 fs.writeFileSync(path.join(out, "BUILD.json"), JSON.stringify(build, null, 2) + "\n");
 console.log(`\n${out}  (${rtRoot}, ${dataRoot})`);
 for (const [k, g] of Object.entries(groups)) console.log(`  ${k.padEnd(16)} ${String(g.files).padStart(4)} files  ${mb(g.raw).padStart(7)} MB raw  ${mb(g.wire).padStart(7)} MB stored / over the wire`);
