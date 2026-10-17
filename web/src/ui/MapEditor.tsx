@@ -113,7 +113,7 @@ function Palette({ game, editor }: { game: Game; editor: EditorController }) {
     return () => { cancelled = true; };
   }, [editor, st.tool, st.owner, actorCategory, query, cat]); // eslint-disable-line react-hooks/exhaustive-deps
   const status = (name: string) => st.actorStatus[`${st.owner}:${name}`];
-  const marker = (a: typeof actors[number]) => a.categories.includes("System");
+  const marker = (a: typeof actors[number]) => a.categories.includes("System") && a.name !== "crate";
   const unfinished = (a: typeof actors[number]) => !marker(a) && (status(a.name) === "placeholder" || status(a.name) === "empty" && !icons[a.name]);
   const unavailable = actors.filter(unfinished);
 
@@ -194,8 +194,8 @@ function Palette({ game, editor }: { game: Game; editor: EditorController }) {
       {!query && <div className="ed-chips" role="tablist" aria-label="Actor categories">
         {actorCategories.filter(c => c !== "System").map((c) => <button key={c} type="button" role="tab" aria-selected={actorCategory === c} onClick={() => setActorCategory(c)}>{c}</button>)}
       </div>}
-      {!query && actorCategories.includes("System") && <details className="ed-logic"><summary>Advanced map logic</summary><div role="tablist" aria-label="Map logic"><button type="button" role="tab" aria-selected={actorCategory === "System"} onClick={() => setActorCategory("System")}>Lighting and script markers</button></div><p className="ed-tip">These are invisible helpers in a match. Spawn positions have their own flag tool.</p></details>}
-      {actorCategory === "System" && <p className="ed-tip">Editor markers, not scenery. Lights affect terrain lighting; cameras reveal an area to their owner.</p>}
+      {!query && actorCategories.includes("System") && <details className="ed-logic"><summary>Advanced map logic</summary><div role="tablist" aria-label="Map logic"><button type="button" role="tab" aria-selected={actorCategory === "System"} onClick={() => setActorCategory("System")}>Lighting and script markers</button></div><p className="ed-tip">Lighting and script helpers. Crates are visible pickups; spawn positions have their own flag tool.</p></details>}
+      {actorCategory === "System" && <p className="ed-tip">Lights affect terrain lighting; cameras reveal an area to their owner. Their editor markers stay hidden in a match.</p>}
       {actorCategory === "Bridge" && !query && <section className="ed-crossing" aria-label="River crossing">
         <b>Build a river crossing</b><p className="ed-tip">Choose a material, then drag from a dry bank to the opposite bank. The tool joins the span and both ramps in one step.</p>
         <div className="ed-actors">{(["wood", "concrete"] as const).map(material => <button type="button" key={material} aria-pressed={st.brush === `bridge:${material}`} onClick={() => editor.brushBridge(material)}>
