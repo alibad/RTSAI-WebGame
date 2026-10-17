@@ -94,7 +94,7 @@ if (fs.existsSync(out)) {
 const envFile = path.join(repo, "web", ".env.production.local");
 const webEnv = Object.fromEntries((fs.existsSync(envFile) ? fs.readFileSync(envFile, "utf8") : "").split(/\r?\n/)
   .map(l => l.match(/^\s*([A-Z0-9_]+)\s*=\s*"?([^"]*)"?\s*$/)).filter(Boolean).map(m => [m[1], m[2]]));
-for (const key of ["VITE_FIREBASE_API_KEY", "VITE_FIREBASE_AUTH_DOMAIN", "VITE_FIREBASE_PROJECT_ID", "VITE_FIREBASE_APP_ID"])
+for (const key of (dataOnly ? [] : ["VITE_FIREBASE_API_KEY", "VITE_FIREBASE_AUTH_DOMAIN", "VITE_FIREBASE_PROJECT_ID", "VITE_FIREBASE_APP_ID"]))
   if (!(process.env[key] || webEnv[key])) throw new Error(`Missing ${key}: copy rtsai.net's NEXT_PUBLIC_FIREBASE_* values into web/.env.production.local (see docs/DEPLOY-PUBLIC.md)`);
 if (!dataOnly) execSync(`npx vite build --outDir "${out}" --emptyOutDir`, {
   cwd: path.join(repo, "web"), stdio: "inherit",

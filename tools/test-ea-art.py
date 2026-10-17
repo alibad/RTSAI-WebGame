@@ -2,7 +2,7 @@
 """Original-art and original-voice (EA) regressions.
 
 Unit checks (always): the MiniYaml port's merge/inheritance/removal semantics, the web manifest order, the art
-allowlist and the footprint exclusions; the voice generator's file resolution (prefixes, variants), the clip allowlist
+allowlist and original foundation restoration; the voice generator's file resolution (prefixes, variants), the clip allowlist
 (no EVA, music or archives), the WAVE and audio.idx readers.
 Generated-content checks (with --content <generated content dir> [--ea-art <verified original-art dir>]):
   * every original file the overlays name is in EA-INPUTS.json (and the allowlist), no audio among the art files;
