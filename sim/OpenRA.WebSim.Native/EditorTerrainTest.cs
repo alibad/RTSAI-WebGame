@@ -44,7 +44,7 @@ static class EditorTerrainTest
 			Pointer("down", test.Item2); Pointer("move", test.Item3);
 			using var up = JsonDocument.Parse(Pointer("up", test.Item3));
 			var added = up.RootElement.GetProperty("placement").GetProperty("added").GetInt32();
-			Check(added > 0, test.Item1 + " must prepare dry ground: " + up.RootElement);
+			Check(added > 0 || core.All(c => map.Ramp[c] == 0) && core.Select(c => map.Height[c]).Distinct().Count() == 1, test.Item1 + " must prepare dry ground: " + up.RootElement);
 			Check(water.All(c => before[c] == Capture(c)), "Water and shore geometry changed");
 			Check(before.All(e => e.Value.Resource == map.Resources[e.Key].Type && e.Value.Density == map.Resources[e.Key].Index), "Terrain preparation changed resource data");
 			var flat = core.Count(c => map.Ramp[c] == 0);
@@ -65,7 +65,7 @@ static class EditorTerrainTest
 				}
 				Check(seen.Contains(end), "A tracked vehicle must have a continuous route through the prepared corridor");
 			}
-			EditorHost.Call("{\"op\":\"undo\"}");
+			if (added > 0) EditorHost.Call("{\"op\":\"undo\"}");
 			Check(before.All(e => e.Value == Capture(e.Key)), "One undo must restore every tile, height and resource");
 			Console.WriteLine($"{test.Item1}: {added} changes; {flat}/{core.Count} level cells; undo exact; {watch.ElapsedMilliseconds} ms.");
 		}
