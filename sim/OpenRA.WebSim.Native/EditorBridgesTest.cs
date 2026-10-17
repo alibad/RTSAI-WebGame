@@ -38,6 +38,9 @@ static class EditorBridgesTest
 		foreach (var ev in new[] { "move", "down", "up" })
 			EditorHost.Call(JsonSerializer.Serialize(new { op = "pointer", @event = ev, x = point.X, y = point.Y, button = 1 }));
 		Check(map.AllCells.SelectMany(layer.PreviewsAtCell).Distinct().Count(p => p.Type == "lobrdg_a") == 1, "Bridge click did not place native actor");
+		EditorHost.Call("{\"op\":\"pointer\",\"event\":\"move\",\"x\":-100000,\"y\":-100000,\"button\":0}");
+		Sync.RunUnsynced(SimHost.World, () => SimHost.World.TickRender(SimHost.WorldRenderer));
+		Check(map.AllCells.SelectMany(layer.PreviewsAtCell).Distinct().Count(p => p.Type == "lobrdg_a") == 1, "Leaving the canvas must only hide the cursor preview");
 		EditorHost.Call("{\"op\":\"undo\"}");
 		Check(!map.AllCells.SelectMany(layer.PreviewsAtCell).Any(p => p.Type == "lobrdg_a"), "Undo did not remove bridge");
 		EditorHost.Call("{\"op\":\"redo\"}");

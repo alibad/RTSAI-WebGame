@@ -252,7 +252,7 @@ export class EditorController {
 
   /** The native cursor layer must leave the map too when the pointer moves onto the palette. */
   hideFieldPreview() {
-    if (!this.active || this.down || !(this.state.brush.startsWith("resource:") || this.state.brush === "flatten")) return;
+    if (!this.active || this.down || !(this.state.brush.startsWith("resource:") || this.state.brush.startsWith("actor:") || this.state.brush === "flatten")) return;
     this.pointers.push({ event: "move", x: -100000, y: -100000, button: 0, mods: 0 });
   }
 
