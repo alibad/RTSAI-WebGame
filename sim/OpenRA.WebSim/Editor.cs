@@ -222,10 +222,15 @@ namespace OpenRA.WebSim
 						return "{\"error\":\"unknown actor\"}";
 					var players = world.WorldActor.Trait<EditorActorLayer>().Players.Players;
 					var owner = players.TryGetValue(Str(r, "owner") ?? "Neutral", out var o) ? o : players.Values.First();
-					controller.SetBrush(new EditorActorBrush(controller, info, owner, wr));
+					controller.SetBrush(new EditorCheckedActorBrush(controller, info, owner, wr));
 					brushName = $"actor:{type}";
 					break;
 				}
+
+				case "bridge":
+					controller.SetBrush(new EditorBridgeBrush(controller, wr, Str(r, "material"), r.TryGetProperty("ruined", out var ruined) && ruined.ValueKind == JsonValueKind.True));
+					brushName = "bridge:" + (Str(r, "material") ?? "wood");
+					break;
 
 				case "water":
 					if (!EditorWaterBrush.Supported(world.Map))
@@ -264,12 +269,18 @@ namespace OpenRA.WebSim
 			var button = (MouseButton)Int(r, "button", 0);
 			var mi = new MouseInput(ev, button, view, int2.Zero, (Modifiers)Int(r, "mods", 0), 1);
 			var field = controller.CurrentBrush as EditorFieldBrush;
+			var actor = controller.CurrentBrush as EditorCheckedActorBrush;
+			var bridge = controller.CurrentBrush as EditorBridgeBrush;
 			controller.HandleMouseInput(mi);
 			controller.Tick();
 			if (controller.CurrentBrush == controller.DefaultBrush) brushName = "select";
 			string placement = null;
 			if (field != null && button == MouseButton.Left && ev == MouseInputEvent.Up)
 				placement = $"{{\"added\":{field.Added},\"blocked\":{Snapshot.Json(field.Blocked)}}}";
+			if (actor != null && button == MouseButton.Left && ev == MouseInputEvent.Up)
+				placement = $"{{\"added\":{actor.Added},\"blocked\":{Snapshot.Json(actor.Blocked)}}}";
+			if (bridge != null && button == MouseButton.Left && ev == MouseInputEvent.Up)
+				placement = $"{{\"added\":{bridge.Added},\"blocked\":{Snapshot.Json(bridge.Blocked)}}}";
 			return History(SimHost.World, placement);
 		}
 
