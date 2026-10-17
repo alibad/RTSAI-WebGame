@@ -148,9 +148,16 @@ function Palette({ game, editor }: { game: Game; editor: EditorController }) {
           </button>
         ))}
       </div>
-      <p className="ed-tip">Click or drag on flat, open ground. Slopes and water cannot hold resources. Right-click stops.</p>
+      <div className="ed-field-width">
+        <span>Brush diameter · cells</span>
+        <div className="ed-sizes" role="radiogroup" aria-label="Resource brush diameter">
+          {[0, 1, 2, 4].map((r) => <button key={r} type="button" role="radio" aria-checked={st.fieldRadius === r} onClick={() => editor.fieldSize(r)}>{r * 2 + 1}</button>)}
+        </div>
+      </div>
+      <button type="button" className="ed-flatten" aria-pressed={st.brush === "flatten"} onClick={() => editor.brushFlatten()}><Mountain size={18} /><b>Flatten ground</b></button>
+      <p className="ed-tip">{st.brush === "flatten" ? "Drag to level dry ground to the height where you start. Then choose Ore or Gems to paint your field. Water stays intact." : "Click or drag to paint a field. On slopes, use Flatten ground first. Right-click stops."}</p>
       {st.placement && <p className={cn("ed-placement", !st.placement.added && "is-blocked")} role="status" data-testid="ed-placement">
-        {st.placement.added ? `Painted ${st.placement.added} ${st.brush === "resource:Gems" ? "gem" : st.brush.slice(9).toLowerCase()} ${st.placement.added === 1 ? "tile" : "tiles"}.` : st.placement.blocked || "No resource tiles changed."}
+        {st.placement.added ? st.brush === "flatten" ? `Flattened ${st.placement.added} ground ${st.placement.added === 1 ? "tile" : "tiles"}.` : `Painted ${st.placement.added} ${st.brush === "resource:Gems" ? "gem" : st.brush.slice(9).toLowerCase()} ${st.placement.added === 1 ? "tile" : "tiles"}.` : st.placement.blocked || "No resource tiles changed."}
       </p>}
     </div>
   );

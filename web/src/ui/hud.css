@@ -1033,3 +1033,12 @@
 .sim-op li svg { color: var(--hud-gold); flex: none; }
 .sim-op li[data-bonus] { color: #b9c0ad; }
 .sim-op li em { margin-left: auto; font-style: normal; font-size: 10px; color: var(--muted-foreground); text-transform: uppercase; letter-spacing: .06em; }
+
+/* Shared field width and ground preparation stay compact beside the map. */
+.ed-field-width { display:flex; align-items:center; gap:12px; margin:12px 0; }
+.ed-field-width > span { flex:1; color:var(--hud-muted); font-size:11px; line-height:1.4; }
+.ed-field-width .ed-sizes { display:flex; gap:3px; }
+.ed-field-width .ed-sizes button { min-width:34px; min-height:36px; padding:6px 8px; }
+.ed-flatten { display:flex; align-items:center; justify-content:center; gap:8px; width:100%; min-height:40px; border:1px solid #55573f; border-radius:7px; background:#171c15; color:#d2d4bc; }
+.ed-flatten[aria-pressed="true"] { color:#ffe3a2; border-color:#e6c56c; background:#3a3421; }
+.ed-flatten:focus-visible { outline:2px solid #f0d082; outline-offset:3px; }

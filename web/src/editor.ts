@@ -27,6 +27,7 @@ export interface EditorState {
   catalog: EditorCatalog | null;
   tool: EditorTool;
   brush: string;
+  fieldRadius: number;
   category: string;
   owner: string;
   title: string;
@@ -41,7 +42,7 @@ export interface EditorState {
 }
 
 const initial: EditorState = {
-  map: null, opening: null, error: "", catalog: null, tool: "select", brush: "select", category: "", owner: "Neutral", title: "",
+  map: null, opening: null, error: "", catalog: null, tool: "select", brush: "select", fieldRadius: 2, category: "", owner: "Neutral", title: "",
   undo: false, redo: false, dirty: false, saving: false, saved: null, thumbs: {}, placement: null,
 };
 
@@ -223,7 +224,13 @@ export class EditorController {
   fail(error: string) { this.patch({ error }); }
 
   brushTile(id: number) { this.afterPointers({ op: "brush", brush: "tile", id }); }
-  brushResource(type: string) { this.patch({ placement: null }); this.afterPointers({ op: "brush", brush: "resource", type }); }
+  brushResource(type: string) { this.patch({ placement: null }); this.afterPointers({ op: "brush", brush: "resource", type, radius: this.state.fieldRadius }); }
+  brushFlatten() { this.patch({ placement: null }); this.afterPointers({ op: "brush", brush: "flatten", radius: this.state.fieldRadius }); }
+  fieldSize(radius: number) {
+    this.patch({ fieldRadius: radius, placement: null });
+    if (this.state.brush === "flatten") this.brushFlatten();
+    else this.brushResource(this.state.brush.startsWith("resource:") ? this.state.brush.slice(9) : "Ore");
+  }
   /** Lakes and rivers with shores (sim EditorWaterBrush); `radius` is the stroke's half-width in cells. */
   brushWater(radius: number) { this.afterPointers({ op: "brush", brush: "water", radius }); }
   brushActor(type: string) { this.afterPointers({ op: "brush", brush: "actor", type, owner: this.state.owner }); }
