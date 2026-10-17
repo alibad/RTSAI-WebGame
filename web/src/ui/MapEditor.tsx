@@ -212,7 +212,7 @@ function bridgePart(name: string) {
   if (name === "cabhut") return "Repair hut";
   if (/^bridg/.test(name)) return `Elevated · ${name.endsWith("1") ? "NW / SE" : "NE / SW"}`;
   const ramp = /_r_(ne|nw|se|sw)$/.exec(name);
-  if (ramp) return `${name.startsWith("lobrdb") ? "Wood" : "Concrete"} · ${ramp[1].toUpperCase()} bank`;
+  if (ramp) return `${name.startsWith("lobrdg") ? "Wood" : "Concrete"} · ${ramp[1].toUpperCase()} bank`;
   return `${name.endsWith("_d") ? "Destroyed" : "Span"} · ${/_a(?:_d)?$/.test(name) ? "NE / SW" : "NW / SE"}`;
 }
 
