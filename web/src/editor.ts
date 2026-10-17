@@ -209,8 +209,11 @@ export class EditorController {
   private history(h: History) {
     this.patch({ undo: !!h.undo, redo: !!h.redo, brush: h.brush ?? this.state.brush, ...(h.error ? { error: h.error } : {}), ...(h.placement !== undefined ? { placement: h.placement } : {}) });
   }
-  private afterPointers(op: Record<string, unknown>) {
-    void this.pointers.settled().then(() => this.call(op)).then(h => this.history(h)).catch(error => this.fail(error instanceof Error ? error.message : String(error)));
+  private afterPointers(op: Record<string, unknown>, edited = false) {
+    void this.pointers.settled().then(() => this.call(op)).then(h => {
+      this.history(h);
+      if (edited && !h.error) this.patch({ dirty: true, placement: null });
+    }).catch(error => this.fail(error instanceof Error ? error.message : String(error)));
   }
 
   setTool(tool: EditorTool) {
@@ -245,9 +248,9 @@ export class EditorController {
     this.pointers.push({ event: kind, x: Math.round(wx), y: Math.round(wy), button: kind === "move" ? this.down ? 1 : 0 : button, mods });
   }
 
-  undo() { this.afterPointers({ op: "undo" }); }
-  redo() { this.afterPointers({ op: "redo" }); }
-  deleteSelection() { this.afterPointers({ op: "delete" }); }
+  undo() { this.afterPointers({ op: "undo" }, true); }
+  redo() { this.afterPointers({ op: "redo" }, true); }
+  deleteSelection() { this.afterPointers({ op: "delete" }, true); }
 
   /** Saves into this browser's library (and the map lists); returns the saved map's id. */
   async save(): Promise<string | null> {

@@ -149,9 +149,16 @@ function Palette({ game, editor }: { game: Game; editor: EditorController }) {
         ))}
       </div>
       <div className="ed-field-width">
-        <span>Brush diameter · cells</span>
+        <span>Brush diameter (cells)</span>
         <div className="ed-sizes" role="radiogroup" aria-label="Resource brush diameter">
-          {[0, 1, 2, 4].map((r) => <button key={r} type="button" role="radio" aria-checked={st.fieldRadius === r} onClick={() => editor.fieldSize(r)}>{r * 2 + 1}</button>)}
+          {[0, 1, 2, 4].map((r, i, sizes) => <button key={r} type="button" role="radio" aria-checked={st.fieldRadius === r} tabIndex={st.fieldRadius === r ? 0 : -1} onClick={() => editor.fieldSize(r)} onKeyDown={(e) => {
+            const direction = getComputedStyle(e.currentTarget).direction === "rtl" ? -1 : 1;
+            const step = e.key === "ArrowRight" ? direction : e.key === "ArrowLeft" ? -direction : 0;
+            const next = e.key === "Home" ? 0 : e.key === "End" ? sizes.length - 1 : step ? (i + step + sizes.length) % sizes.length : -1;
+            if (next < 0) return;
+            e.preventDefault(); editor.fieldSize(sizes[next]);
+            (e.currentTarget.parentElement?.children[next] as HTMLButtonElement)?.focus();
+          }}>{r * 2 + 1}</button>)}
         </div>
       </div>
       <button type="button" className="ed-flatten" aria-pressed={st.brush === "flatten"} onClick={() => editor.brushFlatten()}><Mountain size={18} /><b>Flatten ground</b></button>
@@ -189,6 +196,27 @@ function Palette({ game, editor }: { game: Game; editor: EditorController }) {
   );
 }
 
+/** A light footprint guide follows the pointer without re-rendering the palette on every move. */
+function FieldCursor({ game, brush, radius }: { game: Game; brush: string; radius: number }) {
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const move = (e: PointerEvent) => {
+      const el = ref.current, info = game.info;
+      if (!el || !info) return;
+      el.hidden = e.target !== game.canvas;
+      if (el.hidden) return;
+      const rect = el.parentElement!.getBoundingClientRect();
+      const scale = info.gridType === "Rectangular" ? 1 : Math.SQRT1_2;
+      el.style.width = `${Math.max(8, (radius * 2 + 1) * info.tileSize[0] * scale * game.cam.zoom)}px`;
+      el.style.height = `${Math.max(8, (radius * 2 + 1) * info.tileSize[1] * scale * game.cam.zoom)}px`;
+      el.style.left = `${e.clientX - rect.left}px`; el.style.top = `${e.clientY - rect.top}px`;
+    };
+    window.addEventListener("pointermove", move, { passive: true });
+    return () => window.removeEventListener("pointermove", move);
+  }, [game, radius]);
+  return <div ref={ref} hidden aria-hidden="true" className={cn("ed-field-cursor", brush === "flatten" && "is-flatten", brush === "resource:Gems" && "is-gem")} />;
+}
+
 function Editing({ game, editor, test }: { game: Game; editor: EditorController; test: (map: string) => void }) {
   const st = useStore((s) => s.editor)!;
   const back = () => { if (!st.dirty || confirm("Leave without saving?")) editor.close(); };
@@ -220,6 +248,7 @@ function Editing({ game, editor, test }: { game: Game; editor: EditorController;
         ))}
       </nav>
       {st.catalog && <Palette game={game} editor={editor} />}
+      {(st.brush === "flatten" || st.brush.startsWith("resource:")) && <FieldCursor game={game} brush={st.brush} radius={st.fieldRadius} />}
     </>
   );
 }

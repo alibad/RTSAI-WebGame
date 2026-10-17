@@ -1036,9 +1036,13 @@
 
 /* Shared field width and ground preparation stay compact beside the map. */
 .ed-field-width { display:flex; align-items:center; gap:12px; margin:12px 0; }
-.ed-field-width > span { flex:1; color:var(--hud-muted); font-size:11px; line-height:1.4; }
+.ed-field-width > span { flex:1; color:var(--muted-foreground); font-size:11px; line-height:1.4; }
 .ed-field-width .ed-sizes { display:flex; gap:3px; }
 .ed-field-width .ed-sizes button { min-width:34px; min-height:36px; padding:6px 8px; }
 .ed-flatten { display:flex; align-items:center; justify-content:center; gap:8px; width:100%; min-height:40px; border:1px solid #55573f; border-radius:7px; background:#171c15; color:#d2d4bc; }
 .ed-flatten[aria-pressed="true"] { color:#ffe3a2; border-color:#e6c56c; background:#3a3421; }
 .ed-flatten:focus-visible { outline:2px solid #f0d082; outline-offset:3px; }
+.ed-field-cursor { position:absolute; z-index:15; pointer-events:none; transform:translate(-50%, -50%); border-radius:50%; border:1px solid #f1d28b; background:#f1d28b14; box-shadow:0 0 0 1px #0008; }
+.ed-field-cursor[hidden] { display:none; }
+.ed-field-cursor.is-gem { border-color:#ff8fd8; background:#ff8fd814; }
+.ed-field-cursor.is-flatten { border-color:#a8ebc1; background:#a8ebc114; border-style:dashed; }
