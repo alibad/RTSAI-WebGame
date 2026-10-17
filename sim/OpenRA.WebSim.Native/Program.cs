@@ -51,6 +51,7 @@ static class Program
 				"ailabtest" => AiLabTest.Run(opts),
 				"mapgentest" => MapGenTest.Run(opts),
 				"editorresourcetest" => EditorResourcesTest.Run(opts),
+				"editortestterrain" => EditorTerrainTest.Run(opts),
 				_ => throw new ArgumentException("Unknown command " + args[0]),
 			};
 		}
