@@ -138,6 +138,7 @@ static class ContentTest
 			}
 			if (!repairedAtOriginalDepot) throw new Exception("Libya: depot did not repair a real tank with its original repair animation");
 		}
+		var originalExtras = OriginalExtras(world, own, faction, soviet);
 		if (Snapshot.UnsupportedRenderables > 0) throw new Exception(faction + ": unsupported renderables");
 		var art = RenderArt(world, own, faction);
 		var voices = Voices(world, own, faction);
@@ -180,8 +181,72 @@ static class ContentTest
 			originalArtActors = art.OriginalActors, originalArtTypes = art.OriginalTypes, originalVoiceTypes = voices.OriginalTypes,
 			projectVoiceTypes = voices.ProjectTypes, originalClipsChecked = voices.Clips, cameoImages,
 			originalBuildingMakeFrames = makeFrames.ToDictionary(p => p.Key, p => p.Value.Count),
-			infantryExitedOriginalBarracks, repairedAtOriginalDepot, baselineCompared = compared, passed = true }));
+			infantryExitedOriginalBarracks, repairedAtOriginalDepot, originalExtras, baselineCompared = compared, passed = true }));
 		return 0;
+	}
+
+	static object OriginalExtras(World world, Player own, string faction, bool soviet)
+	{
+		var icons = own.PlayerActor.Info.TraitInfoOrDefault<FactionSupportPowerIconsInfo>();
+		if (icons == null) return null; // Classic and project-only content.
+		var original = icons.Factions.Contains(faction);
+		var powerIcons = new SortedDictionary<string, string>();
+		foreach (var (key, power) in own.PlayerActor.Trait<SupportPowerManager>().Powers)
+		{
+			if (power.Info == null || power.Info.IconImage != icons.SourceImage) continue;
+			var json = Ui.Icon("$power:" + key);
+			if (string.IsNullOrEmpty(json)) throw new Exception(faction + ": missing support-power icon " + key);
+			using var data = JsonDocument.Parse(json);
+			var image = data.RootElement.GetProperty("image").GetString();
+			var expected = original ? icons.Image : power.Info.IconImage;
+			if (image != expected) throw new Exception(faction + ": wrong support-power image " + image + " for " + key);
+			if (original && data.RootElement.GetProperty("pal").GetInt32() != SimHost.WorldRenderer.Palette(icons.Palette).TextureIndex)
+				throw new Exception(faction + ": support-power icon uses the wrong palette: " + key);
+			powerIcons[key] = image;
+		}
+		if (powerIcons.Count == 0) throw new Exception(faction + ": no live support powers were checked");
+		foreach (var sequence in new[] { "gps", "invuln", "chrono", "abomb", "paradrop", "airborne", "lightningstorm" })
+		{
+			var sprite = world.Map.Sequences.GetSequence(icons.Image, sequence).GetSprite(0);
+			if (sprite.Bounds.Width != 60 || sprite.Bounds.Height != 48)
+				throw new Exception("Original RA2 support-power icon is not 60x48: " + sequence);
+		}
+
+		var refinery = world.Actors.First(a => a.Owner == own && a.Info.Name == (soviet ? "narefn" : "garefn"));
+		var type = soviet ? "harv" : "cmin";
+		var miner = world.CreateActor(true, type, new TypeDictionary { new OwnerInit(own),
+			new LocationInit(refinery.Location + new CVec(3, 3)), new FactionInit(faction) });
+		var body = miner.Trait<WithOriginalVoxelUnloadBody>();
+		var store = miner.Trait<IStoresResources>();
+		var harvester = miner.Trait<Harvester>();
+		for (var i = 0; i < store.Capacity; i++) harvester.AddResource(miner, "Ore");
+		var money = own.PlayerActor.Trait<PlayerResources>();
+		var before = money.GetCashAndResources();
+		world.IssueOrder(new Order("Dock", miner, Target.FromActor(refinery), false));
+		var sawUnload = false;
+		var complete = false;
+		for (var i = 0; i < 5000; i++)
+		{
+			SimHost.Tick();
+			if (body.IsTraitDisabled == original) throw new Exception(faction + ": wrong original miner body condition");
+			if (body.Docked)
+			{
+				sawUnload = true;
+				if (body.VisibleSequence != (original ? "unload" : null))
+					throw new Exception(faction + ": wrong docked miner body");
+			}
+			if (sawUnload && !body.Docked && store.ContentsSum == 0)
+			{
+				complete = true;
+				break;
+			}
+		}
+		if (!complete || money.GetCashAndResources() <= before)
+			throw new Exception(faction + ": real refinery delivery did not finish and credit income");
+		if (body.VisibleSequence != (original ? "idle" : null))
+			throw new Exception(faction + ": miner did not return to its travelling body");
+		return new { miner = type, docked = sawUnload, undocked = complete,
+			originalUnloadVisible = original, income = money.GetCashAndResources() - before, powerIcons };
 	}
 
 	static readonly Dictionary<string, CVec> FoundationDimensions = new()

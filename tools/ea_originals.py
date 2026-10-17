@@ -733,6 +733,8 @@ class Generator:
                 self.models.add(rv)
             if 'images' in facts or 'voxel' in facts:
                 self.actors[name] = facts
+        # Original support powers use the reference cameo set, independently of actor build icons.
+        self.images['icon'] = set()
         return self
 
     def _original_art(self, name):
@@ -807,7 +809,9 @@ class Generator:
         bad = [f for f in self.ea_files if Path(f).suffix.lower() not in ALLOWED_EXTENSIONS]
         if bad:
             raise GenerationError(f'not art files: {bad}')
-        availability = [Node('Player', None, [self.original_prerequisite.clone()])]
+        availability = [Node('Player', None, [self.original_prerequisite.clone(),
+            Node('FactionSupportPowerIcons', None, [Node('Factions', ', '.join(COUNTRIES)),
+                Node('SourceImage', 'icon'), Node('Image', 'ea-icon'), Node('Palette', 'eacameo')])])]
         if self.plug_prerequisites is not None:
             availability.append(Node('gapurifier', None, [Node('Buildable', None, [Node('Prerequisites', self.plug_prerequisites)])]))
         self.rules_nodes = [self._palettes()] + availability + [self._actor(name) for name in sorted(self.actors)]
@@ -1036,9 +1040,13 @@ class Generator:
                         raise GenerationError(f'{name}.{t.key}: removed from a voxel-only actor')
                     continue
                 if tt == 'WithVoxelUnloadBody':
-                    # The unload body is a dock client (it can affect the simulation): an ordinary body instead.
-                    add('WithVoxelBody@ea-unload', [Node('Sequence', t.val('IdleSequence', 'idle')),
-                                                     Node('RequiresCondition', both(CONDITION, t.val('RequiresCondition')))])
+                    unload = t.val('UnloadSequence', 'unload')
+                    if unload not in model:
+                        raise GenerationError(f'{name}: missing original unloading model sequence {unload}')
+                    # Same immediate dock callbacks as the reference; only the model visibility is conditional.
+                    add('WithOriginalVoxelUnloadBody@ea-unload',
+                        [x.clone() for x in t.children if x.key != 'RequiresCondition'] +
+                        [Node('RequiresCondition', both(CONDITION, t.val('RequiresCondition')))])
                     uses_condition = True
                 elif c is None:
                     add(t.key, [x.clone() for x in t.children if x.key != 'RequiresCondition'] +

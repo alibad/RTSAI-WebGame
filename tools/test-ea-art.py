@@ -8,7 +8,7 @@ Generated-content checks (with --content <generated content dir> [--ea-art <veri
   * every original file the overlays name is in EA-INPUTS.json (and the allowlist), no audio among the art files;
   * every actor's FactionImages keys equal its WithFactionPalettes/GrantConditionOnFaction factions, all original
     countries and nothing else, and every image it names is generated;
-  * the five footprint-mismatched Soviet buildings get no original art;
+  * original foundations, miner unloading models and support-power cameos are retained;
   * voices: the rules overlay touches voice traits and voice-only conditions only, granted to original countries only
     (the dog: its original voice for everyone, no condition); every original clip a voice set or the dog's bite names
     is listed in EA-INPUTS.json's audio, which lists exactly the clips the content plays.
@@ -234,6 +234,25 @@ class Generated(unittest.TestCase):
         for faction, report in audit['countries'].items():
             for field in ('missing', 'replacements', 'extensions'):
                 self.assertEqual(report[field], [], faction + ': ' + field)
+
+    def test_original_miner_docking_bodies(self):
+        for actor, unload in (('cmin', 'cmon'), ('harv', 'horv')):
+            body = self.rules[actor].get('WithOriginalVoxelUnloadBody@ea-unload')
+            self.assertIsNotNone(body, actor)
+            self.assertEqual(body.val('RequiresCondition'), E.CONDITION)
+            self.assertIsNone(self.rules[actor].get('WithVoxelBody@ea-unload'))
+            self.assertEqual(self.models['ea-' + actor].val('unload'), E.EA_PREFIX + unload)
+
+    def test_original_support_power_cameos(self):
+        icons = self.rules['Player'].get('FactionSupportPowerIcons')
+        self.assertEqual(set(E.split_list(icons.val('Factions'))), set(E.COUNTRIES))
+        self.assertEqual(icons.val('Palette'), 'eacameo')
+        sequences = self.seqs[icons.val('Image')]
+        expected = {'gps': 'asaticon', 'invuln': 'ircricon', 'chrono': 'chroicon',
+                    'abomb': 'nukeicon', 'paradrop': 'paraicon', 'airborne': 'aparicon',
+                    'lightningstorm': 'bolticon'}
+        for sequence, file in expected.items():
+            self.assertEqual(sequences.get(sequence).val('Filename'), E.EA_PREFIX + file + '.shp')
 
     def test_sprite_group_hints(self):
         for key, actor in self.rules.items():

@@ -1165,7 +1165,12 @@ namespace OpenRA.WebSim
 				var manager = Local?.PlayerActor.TraitOrDefault<SupportPowerManager>();
 				if (manager == null || !manager.Powers.TryGetValue(actorName[7..], out var power) || power.Info == null)
 					return "";
-				return SpriteIcon(power.Info.IconImage, power.Info.Icon, power.Info.IconPalette);
+				var icons = Local.PlayerActor.Info.TraitInfoOrDefault<FactionSupportPowerIconsInfo>();
+				var original = icons != null && icons.Factions.Contains(factionOverride ?? Local.Faction.InternalName)
+					&& power.Info.IconImage == icons.SourceImage
+					&& world.Map.Sequences.HasSequence(icons.Image, power.Info.Icon);
+				return SpriteIcon(original ? icons.Image : power.Info.IconImage, power.Info.Icon,
+					original ? icons.Palette : power.Info.IconPalette);
 			}
 			if (world == null || !world.Map.Rules.Actors.TryGetValue(actorName, out var info))
 				return "";
