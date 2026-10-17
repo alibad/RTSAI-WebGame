@@ -60,6 +60,9 @@ static class EditorBridgesTest
 		var before = corridor.Select(c => (map.Tiles[c], map.Height[c], map.Resources[c])).ToArray();
 		var plan = EditorBridgeBrush.Plan(SimHost.World, from, to, "wood");
 		Check(plan.Error == null && plan.Actors.Count == 9, "Complete crossing plan: " + plan.Error);
+		var approaches = EditorBridgeBrush.Plan(SimHost.World, from + new CVec(0,-2), to + new CVec(0,2), "wood");
+		Check(approaches.Error == null && approaches.Actors.Count == 9 && approaches.Actors[0].Get<LocationInit>().Value == plan.Actors[0].Get<LocationInit>().Value,
+			"Long dry approaches must snap to the same bank-to-bank crossing");
 		Check(plan.Actors.First().Type == "lobrdg_r_ne" && plan.Actors.Last().Type == "lobrdg_r_sw", "Both bank ramps are required");
 		map.Height[from] = 1;
 		Check(EditorBridgeBrush.Plan(SimHost.World, from, to, "wood").Error != null, "Uneven bank must be rejected");

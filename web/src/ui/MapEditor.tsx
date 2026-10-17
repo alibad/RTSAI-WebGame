@@ -201,7 +201,7 @@ function Palette({ game, editor }: { game: Game; editor: EditorController }) {
         <div className="ed-actors">{(["wood", "concrete"] as const).map(material => <button type="button" key={material} aria-pressed={st.brush === `bridge:${material}`} onClick={() => editor.brushBridge(material)}>
           <span className="ed-actor-picture">{st.actorThumbs[`${st.owner}:${material === "wood" ? "lobrdg_a" : "lobrdb_a"}`] && <img alt="" src={st.actorThumbs[`${st.owner}:${material === "wood" ? "lobrdg_a" : "lobrdb_a"}`]} />}</span><span className="ed-actor-name">{material === "wood" ? "Wood crossing" : "Concrete crossing"}</span>
         </button>)}</div>
-        <p className="ed-tip">Three cells wide. Banks must be flat at the water’s height. Red previews cannot be placed. Undo removes the whole crossing.</p>
+        <p className="ed-tip">Approaches snap to the water’s edge. Three cells wide; banks must be flat at the water’s height. Red previews cannot be placed. Undo removes the whole crossing.</p>
         <button type="button" className="ed-parts-toggle" aria-expanded={bridgeParts} onClick={() => setBridgeParts(!bridgeParts)}>Advanced bridge components</button>
       </section>}
       <div className="ed-actors">

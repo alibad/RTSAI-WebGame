@@ -131,6 +131,17 @@ namespace OpenRA.WebSim
 			var step = travelY ? new CVec(0, 1) : new CVec(1, 0);
 			var width = travelY ? new CVec(1, 0) : new CVec(0, 1);
 			var family = material is "concrete" or "lobrdb" ? "lobrdb" : "lobrdg";
+			// A mapper can start back from the shore: snap the approaches to the first
+			// dry three-cell row at each edge instead of asking for pixel-perfect banks.
+			var requested = Enumerable.Range(0, distance + 1).SelectMany(i => Enumerable.Range(-1, 3).Select(j => a + step * i + width * j)).ToArray();
+			if (requested.Any(c => !map.Contains(c))) return ([], "Keep the entire crossing inside the battlefield.");
+			var wetRows = Enumerable.Range(0, distance + 1).Where(i => Enumerable.Range(-1, 3).Any(j => Water(map, a + step * i + width * j))).ToArray();
+			if (wetRows.Length > 0)
+			{
+				if (wetRows[0] == 0 || wetRows[^1] == distance) return ([], "Start and finish on dry banks on opposite sides of the water.");
+				a += step * (wetRows[0] - 1);
+				distance = wetRows[^1] - wetRows[0] + 2;
+			}
 			var list = new List<ActorReference>();
 			for (var i = 0; i <= distance; i++)
 			{
