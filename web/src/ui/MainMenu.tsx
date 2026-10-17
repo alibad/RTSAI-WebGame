@@ -55,8 +55,7 @@ export function MainMenu({ onSkirmish, onCampaign, onSimulator, onEditor }: { on
           <MenuCard wide title="Map editor" text="Open, paint and build maps, make random ones, or turn any real place into a battlefield." icon={<MapIcon size={20} />} onClick={onEditor} />
         </div>
         <p data-testid="ea-notice" className="menu-notice">{EA_NOTICE}</p>
-        <p className="menu-notice"><a href="credits.html" target="_blank" rel="noopener">Credits &amp; licenses</a></p>
-        <ContentStatus />
+        <div className="menu-notice"><ContentStatus /><a href="credits.html" target="_blank" rel="noopener">Credits &amp; licenses</a></div>
       </main>
     </div>
   );
