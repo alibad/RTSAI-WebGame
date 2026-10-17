@@ -4,6 +4,7 @@ using System.Linq;
 using OpenRA;
 using OpenRA.Mods.Common;
 using OpenRA.Mods.Common.Traits;
+using OpenRA.Mods.Common.Traits.Render;
 using OpenRA.Mods.Common.Warheads;
 using OpenRA.Primitives;
 using OpenRA.Traits;
@@ -34,6 +35,34 @@ static class OriginalRa2Test
             new OwnerInit(owner), new LocationInit(cell), new FactionInit(owner.Faction.InternalName)
         });
         var origin = new MPos(15, 40).ToCPos(world.Map);
+        if (type == "iron")
+        {
+            Spawn("nacnst", own, origin + new CVec(-5, 5));
+            Spawn("nanrct", own, origin + new CVec(-5, -5));
+            Spawn("natech", own, origin + new CVec(-10, 0));
+            Spawn("gatech", enemy, origin + new CVec(12, 0));
+            var iron = Spawn("nairon", own, origin);
+            var unit = Spawn("htnk", own, origin + new CVec(5, 0));
+            var manager = own.PlayerActor.Trait<SupportPowerManager>();
+            for (var i = 0; i < 7700; i++) SimHost.Tick();
+            var power = manager.Powers.Values.Single(p => p.Info is GrantExternalConditionPowerInfo);
+            if (!power.Ready || power.TotalTicks != 7500 || power.Name != "Iron Curtain")
+                throw new Exception("Original Iron Curtain did not charge with the correct name/timing");
+            world.IssueOrder(new Order(power.Key, own.PlayerActor, Target.FromCell(world, unit.Location), false));
+            var frames = new HashSet<int>();
+            for (var i = 0; i < 80; i++)
+            {
+                SimHost.Tick();
+                Snapshot.Build();
+                var animation = iron.Trait<WithSpriteBody>().DefaultAnimation;
+                if (animation.CurrentSequence.Name == "active") frames.Add(animation.CurrentFrame);
+                if (Snapshot.UnsupportedRenderables != 0) throw new Exception("Unsupported power animation");
+            }
+            if (frames.Count < 2 || power.Ready)
+                throw new Exception("Iron Curtain activation did not animate and consume its charge");
+            Console.WriteLine($"POWER PASS IronCurtain faction={faction} originalActiveFrames={frames.Count} chargeConsumed=true");
+            return 0;
+        }
         var source = Spawn(type, own, origin);
         var suicide = type is "terror" or "dtruck";
         var target = Spawn("gatech", enemy, origin + new CVec(suicide ? 1 : 12, 0));
