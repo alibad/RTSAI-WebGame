@@ -19,6 +19,8 @@ export function readContentBuild() {
 export async function startContentBuild() {
   const build = readContentBuild();
   if (!build) return null;
+  const saved = JSON.parse(fs.readFileSync(path.resolve(repo, '../RTSAI-Mod/mods/rtsai/unit-overrides/manifest.json'), 'utf8'));
+  if (saved.revision !== build.revision) throw Error('New content is saved. Build and verify it in Studio before starting a new game.');
   for (const entry of build.checksums) {
     const digest = crypto.createHash('sha256');
     for await (const chunk of fs.createReadStream(entry.path)) digest.update(chunk);
