@@ -222,7 +222,7 @@ export function nextAdvice(snapshot: AdviserObservation, options: { buildFocus?:
   if (ready) return advise(`Place the finished ${name(ready.item)} first; the build queue waits until it's down.`,
     `Place the ${name(ready.item)}`, [{ action: "place_building", item_type: ready.item.toLowerCase() }], "place");
   if (!options.buildFocus && (snapshot.threatHeated ?? assessThreat(snapshot).heated) && snapshot.visibleEnemies.length) {
-    const assets = [...snapshot.buildings, ...units];
+    const assets = snapshot.buildings.length ? snapshot.buildings : units;
     const proximity = (enemy: AdviserActor) => assets.length ? Math.min(...assets.map(asset => distanceSquared(enemy, asset))) : 0;
     const contact = [...snapshot.visibleEnemies].sort((a, b) => proximity(a) - proximity(b))[0];
     const defenders = units.filter(unit => unit.idle && unit.canAttack).sort((a, b) => distanceSquared(a, contact) - distanceSquared(b, contact)).slice(0, 6);

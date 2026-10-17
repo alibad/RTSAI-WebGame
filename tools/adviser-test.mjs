@@ -143,6 +143,9 @@ coast.techTree = {};
 coast.threatHeated = true;
 coast.visibleEnemies = Array.from({length:32}, (_,i) => ({ actorId:100+i, kind:'e1', cellX:100+i, cellY:10, idle:true, canAttack:true }));
 assert.equal(nextAdvice(coast)?.key, 'build:refinery', 'distant coastal army must not prevent base construction');
+coast.units[0] = { ...coast.units[0], cellX:98 };
+assert.equal(nextAdvice(coast)?.key, 'build:refinery', 'a strike group at the enemy coast must not be mistaken for a base attack');
+coast.units[0] = { ...coast.units[0], cellX:12 };
 coast.visibleEnemies[0] = { ...coast.visibleEnemies[0], cellX:18 };
 assert.equal(nextAdvice(coast)?.key, 'defend', 'nearby attacker must still trigger defense');
 // The shipped fallback tree (web/src/adviser-tree.json) names what the engine has not named yet: the opening factory
