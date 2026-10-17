@@ -449,6 +449,7 @@ static class Bundle
 			yaml = AppendToSection(yaml, "Rules", "ra2|web/content/ea-art.yaml");
 			yaml = AppendToSection(yaml, "Sequences", "ra2|web/content/ea-sequences.yaml");
 			yaml = AppendToSection(yaml, "ModelSequences", "ra2|web/content/ea-models.yaml");
+			yaml = AppendToSection(yaml, "Weapons", "ra2|web/content/ea-retail-weapons.yaml");
 		}
 
 		// Original voices: the voice-only rules (after ea-art.yaml), the twin voice sets and the dog's bite Report.

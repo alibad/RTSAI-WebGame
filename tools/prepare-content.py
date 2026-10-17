@@ -1324,7 +1324,8 @@ def sound_check(ea_clips=()):
     weapons = {}
     for name in manifest['Weapons']['children']:
         if name.startswith('ra2|'): merge(weapons, parse((MOD/name.split('|')[1]).read_text(encoding='utf-8')))
-    if (OUT/'ea-weapons.yaml').exists(): merge(weapons, parse((OUT/'ea-weapons.yaml').read_text(encoding='utf-8')))
+    for file in ('ea-retail-weapons.yaml', 'ea-weapons.yaml'):
+        if (OUT/file).exists(): merge(weapons, parse((OUT/file).read_text(encoding='utf-8')))
     maps = [p for d in (OUT/'maps', MOD/'standalone/maps', MOD/'maps') if d.is_dir() for p in d.glob('*/map.yaml')]
     placed = set()
     for p in maps:

@@ -31,6 +31,7 @@ import re
 from pathlib import Path
 
 import ea_originals as E
+import ea_retail
 
 # The bundled copies: mods/rtsai/web/ea/audio/<clip>.wav (the extract directory's audio/ folder).
 AUDIO_FOLDER = 'audio'
@@ -146,10 +147,15 @@ class VoiceGenerator:
         # The web build adds no voice or weapon files: both views load the manifests' own lists.
         self.cur_voices = {k.lower(): v for k, v in art.files.load(E._section(rtsai, 'Voices')).items()}
         self.ref_voices = {k.lower(): v for k, v in art.files.load(E._section(classic, 'Voices')).items()}
+        ea_retail.normalize_voices(self.cur_voices, E)
+        ea_retail.normalize_voices(self.ref_voices, E)
         self.cur_weapon_sources = [E.parse(art.files.path(e).read_text(encoding='utf-8'), str(art.files.path(e)))
                                    for e in E._section(rtsai, 'Weapons')]
         self.cur_weapons = E.merge(self.cur_weapon_sources)
         self.ref_weapons = art.files.load(E._section(classic, 'Weapons'))
+        self.cur_weapon_sources.append(art.retail.weapons)
+        self.cur_weapons = E.merge(self.cur_weapon_sources)
+        self.ref_weapons.update({w.key: w.clone() for w in art.retail.weapons})
 
     # -- reading
 
@@ -237,6 +243,12 @@ class VoiceGenerator:
             if files:
                 clips |= files
                 self.weapons[weapon] = {'sounds': sounds, 'firedBy': sorted(users)}
+        for weapon in self.art.retail.weapons:
+            sounds = weapon_sounds(weapon)
+            files = {clip_file(x, strict=False) for value in sounds.values() for x in E.split_list(value)} - {None}
+            if files:
+                clips |= files
+                self.weapons[weapon.key] = {'sounds': sounds, 'firedBy': ['original countries']}
         self.clips = sorted(clips)
         return self
 
@@ -412,6 +424,9 @@ class VoiceGenerator:
         voices = E.Node('Voices')
         fell_back = False
         for phrase in sorted(set(r.phrases) | set(cur_phrases), key=lambda p: (list(r.phrases) + sorted(cur_phrases)).index(p)):
+            if phrase in r.phrases and not r.phrases[phrase]:
+                voices.children.append(E.Node(phrase))
+                continue
             names = []
             if phrase in r.phrases:
                 for f in r.files(phrase, faction):

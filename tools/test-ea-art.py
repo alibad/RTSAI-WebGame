@@ -148,6 +148,36 @@ class Voices(unittest.TestCase):
 
 
 class Generated(unittest.TestCase):
+    def test_confirmed_retail_stats_are_restored(self):
+        import ea_retail
+        fields = {'Cost': ('Valued', 'Cost'), 'Strength': ('Health', 'HP'),
+                  'Armor': ('Armor', 'Type'), 'Sight': ('RevealsShroud', 'Range'), 'Power': ('Power', 'Amount')}
+        for difference in ea_retail.load_baseline()['confirmedStats']:
+            kind, field = fields[difference['field']]
+            expected = ea_retail.cells(difference['retail']) if difference['field'] == 'Sight' else difference['retail']
+            self.assertEqual(self.rules[difference['actor']].get(kind).val(field).lower(), expected.lower(), difference)
+
+    def test_original_missile_units_and_models_are_complete(self):
+        for name, cost, hp, range_, weapon in [('v3', '800', '150', '18c0', 'RetailV3Launch'),
+                                               ('dred', '2000', '800', '25c0', 'RetailDredLaunch')]:
+            actor = self.rules[name]
+            self.assertEqual(actor.get('Valued').val('Cost'), cost)
+            self.assertEqual(actor.get('Health').val('HP'), hp)
+            self.assertIn('~original-ra2-country', actor.get('Buildable').val('Prerequisites'))
+            self.assertIn(name + 'wo', self.models['ea-' + name].get('empty').value)
+            self.assertEqual(actor.get('Armament').val('Weapon'), weapon)
+        for name in ('v3rocket', 'dmisl'):
+            self.assertEqual(self.rules[name].get('Health').val('HP'), '50')
+            self.assertEqual(self.rules[name].get('Armor').val('Type'), 'Rocket')
+            self.assertIsNotNone(self.rules[name].get('OriginalRa2RocketFlight'))
+
+    def test_original_power_names_charge_and_activation(self):
+        chrono = self.rules['gacsph'].get('ChronoshiftPower@chronoshift')
+        self.assertEqual(chrono.val('Name'), 'Chronoshift')
+        self.assertEqual(chrono.val('ChargeInterval'), '10500')
+        self.assertEqual(self.rules['amradr'].get('ParatroopersPower@paratroopers').val('ChargeInterval'), '6000')
+        self.assertEqual(self.rules['nairon'].get('WithSupportPowerActivationAnimation').val('RequiresCondition'), 'true')
+
     @classmethod
     def setUpClass(cls):
         if not ARGS.content:
