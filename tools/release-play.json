@@ -2,7 +2,10 @@
   "$comment": "Settings for tools/release-play.mjs. Page settings live here (not in a session's shell) so every release carries them. Change them by a commit on main.",
   "work": "D:/rtsai-play-release",
   "dotnet": "C:/Users/Admin/.dotnet/dotnet.exe",
-  "firebaseEnv": ["D:/rtsai-play-release/firebase.env", "web/.env.production.local"],
+  "firebaseEnv": [
+    "D:/rtsai-play-release/firebase.env",
+    "web/.env.production.local"
+  ],
   "page": {
     "VITE_SITE_ORIGIN": "https://rtsai.net",
     "VITE_CAMPAIGN_BASE": "https://rtsai-play-cdn.pages.dev/campaign-v2/"
@@ -11,11 +14,19 @@
     "host": "https://rtsai-play-cdn.pages.dev/",
     "project": "rtsai-play-cdn",
     "dir": "D:/rtsai-ea-build/play-cdn",
-    "keep": ["campaign-v2/index.json"],
-    "mutable": ["campaign-v2/"],
-    "$retired": "Roots moved out of the deployment to stay under Cloudflare's 20,000 files (15 Oct: the data roots of the 14 Oct map-generator and voices pages, superseded since the campaign release).",
+    "keep": [
+      "campaign-v2/index.json"
+    ],
+    "mutable": [
+      "campaign-v2/"
+    ],
+    "$retired": "Historical data roots archived outside the deployment to stay below Cloudflare's 20,000-file limit. 17 October: retire superseded Act III data-b9e5e3bcdeec for original-country restoration; preserve current live roots.",
     "retiredDir": "D:/rtsai-ea-build/play-cdn-retired",
-    "retired": ["data-169d5132ea83/", "data-d455a47b2a2d/"]
+    "retired": [
+      "data-169d5132ea83/",
+      "data-d455a47b2a2d/",
+      "data-b9e5e3bcdeec/"
+    ]
   },
   "vercel": {
     "team": "alibads-projects",
@@ -31,8 +42,12 @@
     "site": "C:/Users/Admin/Code/hq/games/RTSAI-Web",
     "engineBranch": "fork/main"
   },
-  "inputsSearch": ["D:/rtsai-play-release/inputs"],
-  "inputsRoots": ["D:/"],
+  "inputsSearch": [
+    "D:/rtsai-play-release/inputs"
+  ],
+  "inputsRoots": [
+    "D:/"
+  ],
   "knownRuntimes": {
     "rt-a628db97b644/": {
       "$comment": "Built on 14 Oct 2026 before runtime provenance existed (RELEASE-20261014.md sixth update).",

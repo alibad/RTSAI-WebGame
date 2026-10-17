@@ -11,9 +11,10 @@ The generator reads two views of the frozen RTSAI-Mod snapshot:
   * the CURRENT view: what the public isometric web game loads today (mods/rtsai with its standalone stand-ins and the
     web content overlays, in the web manifest's order).
 For every actor an original country can own it clones the reference image as ea-<image> (filenames rewritten to the
-bundled ra2|web/ea/<file>), and writes render-only rules that give those countries the EA image and the EA palettes.
-Modern factions and the Classic (top-down) mode are untouched. Nothing here changes the simulation's rules except
-render traits, conditions consumed only by render traits, and the World's palettes.
+bundled ra2|web/ea/<file>), and gives those countries the original images and palettes. The original-country bundle
+also restores the five shared Soviet isometric foundations and seven original-country production entries hidden by
+the standalone kit. Modern factions retain their art and production menus; shared foundations are authoritative for
+all owners. The separate Classic (top-down) bundle is untouched.
 """
 from __future__ import annotations
 
@@ -1100,10 +1101,21 @@ class Generator:
             countries[faction] = {'actors': sorted(actual), 'originalArtActors': original,
                                   'missing': sorted(expected - actual), 'extensions': sorted(actual - expected),
                                   'replacements': sorted(set(original) - self.actors.keys())}
+        effective = {k.lower(): v for k, v in merge([list(self.cur.values()), self.rules_nodes]).items()}
         foundations = {}
         for name in RESTORED_FOUNDATIONS:
             building = self.ref[name].get('Building')
+            actual = effective[name].get('Building')
+            for field in ('Dimensions', 'Footprint'):
+                if actual.val(field) != building.val(field):
+                    raise GenerationError(f'{name}: generated {field} does not match the original foundation')
+            for kind in ('HitShape', 'Exit', 'RallyPoint'):
+                expected_traits = {k: dump([v]) for k, v in traits(self.ref[name], kind)}
+                actual_traits = {k: dump([v]) for k, v in traits(effective[name], kind)}
+                if expected_traits != actual_traits:
+                    raise GenerationError(f'{name}: generated {kind} does not match the original foundation')
             foundations[name] = {'dimensions': building.val('Dimensions'), 'footprint': building.val('Footprint'),
+                                 'generatedDimensions': actual.val('Dimensions'), 'generatedFootprint': actual.val('Footprint'),
                                  'exits': {k: v.val('ExitCell') for k, v in traits(self.ref[name], 'Exit')}}
         return {'schema': 1, 'countries': countries, 'foundations': foundations,
                 'scope': 'Reachable original RA2 country rosters, original images/models, reference isometric foundations. '

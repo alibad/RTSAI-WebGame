@@ -110,6 +110,34 @@ static class ContentTest
 			if (!sequence.StartsWith("damaged-", StringComparison.Ordinal) && !sequence.StartsWith("critical-", StringComparison.Ordinal))
 				throw new Exception(name + ": original damage animation not selected: " + sequence);
 		}
+		var repairedAtOriginalDepot = false;
+		var infantryExitedOriginalBarracks = false;
+		if (faction == "libya" && foundations.TryGetValue("nadept", out var depot))
+		{
+			var infantryBefore = world.Actors.Count(a => a.Owner == own && a.Info.Name == "e2");
+			Ui.Command("{\"cmd\":\"produce\",\"queue\":\"Infantry\",\"item\":\"e2\"}");
+			for (var i = 0; i < 1000 && !infantryExitedOriginalBarracks; i++)
+			{
+				SimHost.Tick();
+				infantryExitedOriginalBarracks = world.Actors.Count(a => a.Owner == own && a.Info.Name == "e2") > infantryBefore;
+			}
+			if (!infantryExitedOriginalBarracks) throw new Exception("Libya: infantry could not leave the restored barracks");
+			var tank = world.CreateActor(true, "htnk", new TypeDictionary { new OwnerInit(own),
+				new LocationInit(depot.Location + new CVec(1, 1)), new FactionInit(faction) });
+			var health = tank.Trait<Health>();
+			tank.InflictDamage(tank, new Damage(health.HP / 2));
+			var before = health.HP;
+			world.IssueOrder(new Order("Repair", tank, Target.FromActor(depot), false));
+			var repairFrames = new HashSet<int>();
+			for (var i = 0; i < 1200; i++)
+			{
+				SimHost.Tick();
+				var animation = depot.Trait<WithSpriteBody>().DefaultAnimation;
+				if (animation.CurrentSequence.Name.Contains("repair", StringComparison.Ordinal)) repairFrames.Add(animation.CurrentFrame);
+				if (health.HP > before && repairFrames.Count > 1) { repairedAtOriginalDepot = true; break; }
+			}
+			if (!repairedAtOriginalDepot) throw new Exception("Libya: depot did not repair a real tank with its original repair animation");
+		}
 		if (Snapshot.UnsupportedRenderables > 0) throw new Exception(faction + ": unsupported renderables");
 		var art = RenderArt(world, own, faction);
 		var voices = Voices(world, own, faction);
@@ -151,7 +179,8 @@ static class ContentTest
 		Console.WriteLine(JsonSerializer.Serialize(new { faction, signature, production = true, units = units.Select(a => a.Name), unsupported = Snapshot.UnsupportedRenderables,
 			originalArtActors = art.OriginalActors, originalArtTypes = art.OriginalTypes, originalVoiceTypes = voices.OriginalTypes,
 			projectVoiceTypes = voices.ProjectTypes, originalClipsChecked = voices.Clips, cameoImages,
-			originalBuildingMakeFrames = makeFrames.ToDictionary(p => p.Key, p => p.Value.Count), baselineCompared = compared, passed = true }));
+			originalBuildingMakeFrames = makeFrames.ToDictionary(p => p.Key, p => p.Value.Count),
+			infantryExitedOriginalBarracks, repairedAtOriginalDepot, baselineCompared = compared, passed = true }));
 		return 0;
 	}
 
