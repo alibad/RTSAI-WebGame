@@ -220,6 +220,12 @@ class Retail:
                     extra = [new for old in selected for new in renamed_armaments.get(old, [])]
                     if extra:
                         trait(E, patch, item.key, Armaments=', '.join(selected + extra))
+            # Attack-triggered conditions (notably suicide detonators) also select by name.
+            for key, trigger in E.traits(g.cur[actor], 'GrantConditionOnAttack'):
+                selected = E.split_list(trigger.val('ArmamentNames', 'primary'))
+                extra = [new for old in selected for new in renamed_armaments.get(old, [])]
+                if extra:
+                    trait(E, patch, key, ArmamentNames=', '.join(selected + extra))
             # Infantry animation dictionaries select by armament name, too.
             for key, body in E.traits(g.cur[actor], 'WithInfantryBody'):
                 sequences = body.get('AttackSequences')
@@ -272,7 +278,7 @@ class Retail:
                 self.rules.append(patch)
         # Sparse explicit values protect modern descendants from changes to shared RA2 parents.
         # This separate overlay follows ea-art without imposing original palettes on modern art.
-        for actor, owners in g.owners.items():
+        for actor, owners in sorted(g.owners.items()):
             if actor in g.actors or not (owners & set(E.MODERN)) or actor not in g.cur:
                 continue
             patch = E.Node(g.cur[actor].key)
