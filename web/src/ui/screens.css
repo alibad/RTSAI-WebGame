@@ -198,7 +198,7 @@
 .sk-map-thumb-art { display: block; aspect-ratio: 16 / 10; overflow: hidden; border-radius: 4px; background: repeating-linear-gradient(45deg, #0c0f0c 0 8px, #101410 8px 16px); }
 .sk-map-thumb-art img { display: block; width: 100%; height: 100%; object-fit: contain; image-rendering: pixelated; filter: saturate(.85) brightness(.9); transition: filter .2s; }
 .sk-map-credit { margin: 0; padding: 0 14px 12px; color: #a3ad96; font-size: 11px; line-height: 1.5; }
-.sk-map-thumb-name { overflow: hidden; font-size: 12px; font-weight: 700; color: #e3e7d8; white-space: nowrap; text-overflow: ellipsis; }
+.sk-map-thumb-name { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; min-height: 2.4em; overflow: hidden; font-size: 12px; line-height: 1.2; font-weight: 700; color: #e3e7d8; }
 .sk-map-thumb small { font-size: 10.5px; color: #8a9381; }
 .sk-map-thumb:hover { transform: translateY(-2px); border-color: #7d8a66; }
 .sk-map-thumb:hover img, .sk-map-thumb[aria-pressed="true"] img { filter: none; }

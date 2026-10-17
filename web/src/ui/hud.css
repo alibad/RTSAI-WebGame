@@ -775,6 +775,12 @@
 .ed-sizes button[aria-checked="true"] { color: var(--hud-gold); border-color: var(--hud-gold-dim, #8a7444); background: rgba(241, 210, 139, .1); }
 .ed-open { display: flex; flex-direction: column; gap: 10px; }
 .ed-maps { max-height: none; overflow: visible; }
+@media (max-width: 600px) {
+  .ed-new { grid-template-columns: minmax(0, 1fr); }
+  .ed-new-card { min-height: 116px; padding-inline-start: 66px; justify-content: center; }
+  .ed-new-card > svg { position: absolute; inset-inline-start: 18px; top: 20px; }
+  .ed-sizes { flex-wrap: wrap; }
+}
 .ed-opening { position: fixed; left: 50%; bottom: 40px; transform: translateX(-50%); display: flex; align-items: center; gap: 10px; padding: 10px 16px; border-radius: 999px; color: #eef0e6; background: rgba(10, 13, 9, .92); border: 1px solid var(--hud-edge-hi, #3a4031); }
 .ed-error { margin: 0; padding: 8px 12px; border-radius: 8px; font-size: 13px; color: #ffd2cc; background: rgba(160, 40, 30, .35); border: 1px solid rgba(255, 90, 78, .45); }
 .ed-error-float { position: absolute; top: 64px; left: 50%; transform: translateX(-50%); z-index: 20; }
