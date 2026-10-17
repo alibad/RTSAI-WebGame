@@ -1214,7 +1214,13 @@ export class Game {
       c.focus();
       store.set({ menuOpen: false });
       const [wx, wy] = this.toWorld(e.clientX, e.clientY);
-      // The map editor: the engine's editor brushes take the mouse; the middle button still pans.
+      // Pan is explicit, and Space temporarily pans without changing the current brush.
+      if (this.editor?.active && (e.button === 1 || e.button === 0 && (this.editor.state.tool === "pan" || this.keys.has(" ")))) {
+        this.drag = { x0: wx, y0: wy, active: true, pan: true, cx: e.clientX, cy: e.clientY };
+        this.editor.hideFieldPreview();
+        e.preventDefault(); return;
+      }
+      // The map editor: the engine's editor brushes take the remaining mouse input.
       if (this.editor?.active && e.button !== 1) {
         this.editor.pointer("down", wx, wy, e.button === 2 ? BTN_RIGHT : BTN_LEFT, this.mods(e));
         this.editorDown = true;
@@ -1283,6 +1289,12 @@ export class Game {
 
     // The map editor's keys: Delete removes the selection, Ctrl+Z / Ctrl+Y undo and redo, Esc drops the brush.
     if (this.editor?.active) {
+      if (e.code === "Space") return done();
+      if (e.key.startsWith("Arrow")) {
+        const step = 80 / this.cam.zoom;
+        this.lookAt(this.cam.x + (e.key === "ArrowRight" ? step : e.key === "ArrowLeft" ? -step : 0), this.cam.y + (e.key === "ArrowDown" ? step : e.key === "ArrowUp" ? -step : 0));
+        return done();
+      }
       if (e.key === "Delete" || e.key === "Backspace") { this.editor.deleteSelection(); return done(); }
       if (ctrl && k === "z" && !shift) { this.editor.undo(); return done(); }
       if (ctrl && (k === "y" || (k === "z" && shift))) { this.editor.redo(); return done(); }

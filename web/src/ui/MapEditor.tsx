@@ -5,7 +5,7 @@
 // simulator), Download gives the .oramap the desktop editor opens.
 
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
-import { ArrowLeft, Download, Flag as FlagIcon, Gem, Globe2, Map as MapIcon, Mountain, MousePointer2, Plus, Redo2, Save, Search, Swords, Trash2, Undo2, Upload, Users, Waves } from "lucide-react";
+import { ArrowLeft, Download, Flag as FlagIcon, Gem, Globe2, Hand, ImageOff, Lightbulb, Map as MapIcon, Maximize, Minus, Mountain, MousePointer2, Plus, Redo2, Save, Search, Swords, Trash2, Undo2, Upload, Users, Waves } from "lucide-react";
 import type { Game } from "../game";
 import { EditorController, type EditorTool } from "../editor";
 import { useStore } from "../store";
@@ -31,6 +31,7 @@ const NAMES: Record<string, string> = {
 const nameOf = (c: string) => NAMES[c] ?? c;
 const TOOLS: { id: EditorTool; label: string; icon: React.ReactNode; key: string }[] = [
   { id: "select", label: "Select and move", icon: <MousePointer2 size={18} />, key: "S" },
+  { id: "pan", label: "Pan map", icon: <Hand size={18} />, key: "H" },
   { id: "terrain", label: "Terrain", icon: <Mountain size={18} />, key: "T" },
   { id: "resource", label: "Ore and gems", icon: <Gem size={18} />, key: "O" },
   { id: "actor", label: "Units, buildings, trees", icon: <Users size={18} />, key: "A" },
@@ -100,7 +101,7 @@ function Palette({ game, editor }: { game: Game; editor: EditorController }) {
     editor.thumbnails([...cat.templates.filter((t) => t.categories.includes(st.category)).map((t) => t.id), ...covers]);
   }, [editor, st.tool, st.category, categories, cat]);
   const actors = cat.actors.filter((a) => query ? a.label.toLowerCase().includes(query.toLowerCase()) || a.name.includes(query.toLowerCase()) : a.categories.includes(actorCategory));
-  useEffect(() => { if (st.tool === "actor") game.requestIcons(actors.slice(0, 60).map((a) => a.name)); }, [game, st.tool, actorCategory, query]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (st.tool === "actor") game.requestIcons(actors.map((a) => a.name)); }, [game, st.tool, actorCategory, query]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (st.tool !== "actor") return;
     let cancelled = false;
@@ -110,6 +111,10 @@ function Palette({ game, editor }: { game: Game; editor: EditorController }) {
     })();
     return () => { cancelled = true; };
   }, [editor, st.tool, st.owner, actorCategory, query, cat]); // eslint-disable-line react-hooks/exhaustive-deps
+  const status = (name: string) => st.actorStatus[`${st.owner}:${name}`];
+  const marker = (a: typeof actors[number]) => a.categories.includes("System");
+  const unfinished = (a: typeof actors[number]) => !marker(a) && (status(a.name) === "placeholder" || status(a.name) === "empty" && !icons[a.name]);
+  const unavailable = actors.filter(unfinished);
 
   if (st.tool === "terrain") {
     const main = categories.filter((c) => FIRST.includes(c)), more = categories.filter((c) => !FIRST.includes(c));
@@ -186,17 +191,20 @@ function Palette({ game, editor }: { game: Game; editor: EditorController }) {
       </label>
       <div className="ed-search"><Search size={14} /><input aria-label="Find a unit, building or tree" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Find a unit, building, tree…" /></div>
       {!query && <div className="ed-chips" role="tablist" aria-label="Actor categories">
-        {actorCategories.map((c) => <button key={c} type="button" role="tab" aria-selected={actorCategory === c} onClick={() => setActorCategory(c)}>{c}</button>)}
+        {actorCategories.filter(c => c !== "System").map((c) => <button key={c} type="button" role="tab" aria-selected={actorCategory === c} onClick={() => setActorCategory(c)}>{c}</button>)}
       </div>}
+      {!query && actorCategories.includes("System") && <details className="ed-logic"><summary>Advanced map logic</summary><button type="button" role="tab" aria-selected={actorCategory === "System"} onClick={() => setActorCategory("System")}>Lighting and script markers</button><p className="ed-tip">These are invisible helpers in a match. Spawn positions have their own flag tool.</p></details>}
+      {actorCategory === "System" && <p className="ed-tip">Editor markers, not scenery. Lights affect terrain lighting; cameras reveal an area to their owner.</p>}
       <div className="ed-actors">
-        {actors.map((a) => (
-          <button key={a.name} type="button" title={`${a.label} (${a.name})`} aria-label={`${a.label} (${a.name})`} aria-pressed={st.brush === `actor:${a.name}`} onClick={() => editor.brushActor(a.name)} data-actor={a.name}>
-            <span className="ed-actor-picture">{st.actorThumbs[`${st.owner}:${a.name}`] || icons[a.name] ? <img src={(st.actorThumbs[`${st.owner}:${a.name}`] || icons[a.name])!} alt="" draggable={false} /> : <span aria-hidden="true">◇</span>}</span>
+        {actors.filter(a => !unfinished(a)).map((a) => (
+          <button key={a.name} type="button" title={`${a.label} (${a.name})`} aria-label={`${a.label} (${a.name})`} disabled={!marker(a) && status(a.name) === undefined && !icons[a.name]} aria-pressed={st.brush === `actor:${a.name}`} onClick={() => editor.brushActor(a.name)} data-actor={a.name}>
+            <span className="ed-actor-picture">{marker(a) && /lamp|lmp|galite/i.test(a.name) ? <Lightbulb size={28} /> : st.actorThumbs[`${st.owner}:${a.name}`] || icons[a.name] ? <img src={(st.actorThumbs[`${st.owner}:${a.name}`] || icons[a.name])!} alt="" draggable={false} /> : <span className="spinner" aria-label="Loading preview" />}</span>
             <span className="ed-actor-name">{a.label}</span>
             {a.categories.includes("Bridge") && <small className="ed-actor-detail">{bridgePart(a.name)}</small>}
           </button>
         ))}
       </div>
+      {unavailable.length > 0 && <details className="ed-unavailable"><summary>{unavailable.length} unavailable {unavailable.length === 1 ? "object" : "objects"}</summary><p>These entries have unfinished artwork or no usable preview. Placement is disabled; existing maps are preserved.</p><div>{unavailable.map(a => <span key={a.name}><ImageOff size={14} /><span>{a.label}<small>{a.name}</small></span></span>)}</div></details>}
       <p className="ed-tip">{actorCategory === "Bridge" && !query ? /^actor:bridg/.test(st.brush) ? "Elevated pieces are scenery until the map defines an elevated crossing. Use ground-level spans for a playable river crossing. " : "Bridge pieces: match span direction and ramps at the banks. A destroyed span leaves a gap. " : ""}Click to place · right-click stops · Select tool moves and deletes</p>
     </div>
   );
@@ -204,7 +212,7 @@ function Palette({ game, editor }: { game: Game; editor: EditorController }) {
     <div className="ed-palette hud-panel is-compact"><p className="ed-tip">Click to add a start position. Every start position is a player slot: two for a duel, up to eight.</p></div>
   );
   return (
-    <div className="ed-palette hud-panel is-compact"><p className="ed-tip">Click to select · drag to move a unit · drag empty ground to select an area · Delete removes it</p></div>
+    <div className="ed-palette hud-panel is-compact"><p className="ed-tip">{st.tool === "pan" ? "Drag the battlefield to pan. Hold Space and drag from any tool. Arrow keys also pan; wheel or the zoom buttons change scale." : "Click to select · drag to move a unit · drag empty ground to select an area · Delete removes it. Hold Space and drag to pan."}</p></div>
   );
 }
 
@@ -239,6 +247,7 @@ function FieldCursor({ game, brush, radius }: { game: Game; brush: string; radiu
 
 function Editing({ game, editor, test }: { game: Game; editor: EditorController; test: (map: string) => void }) {
   const st = useStore((s) => s.editor)!;
+  useEffect(() => { game.canvas.style.cursor = st.tool === "pan" ? "grab" : ""; return () => { game.canvas.style.cursor = ""; }; }, [game, st.tool]);
   const back = () => { if (!st.dirty || confirm("Leave without saving?")) editor.close(); };
   // A battle needs a start position for each side.
   const testSaved = (id: string) => {
@@ -268,6 +277,7 @@ function Editing({ game, editor, test }: { game: Game; editor: EditorController;
         ))}
       </nav>
       {st.catalog && <Palette game={game} editor={editor} />}
+      <nav className="ed-navigation hud-panel" aria-label="Map navigation"><button type="button" aria-label="Zoom out" onClick={() => editor.zoom(1 / 1.25)}><Minus size={18} /></button><button type="button" aria-label="Fit whole map" onClick={() => editor.fitMap()}><Maximize size={18} /></button><button type="button" aria-label="Zoom in" onClick={() => editor.zoom(1.25)}><Plus size={18} /></button><span>Space + drag to pan</span></nav>
       {(st.brush === "flatten" || st.brush.startsWith("resource:")) && <FieldCursor game={game} brush={st.brush} radius={st.fieldRadius} />}
     </>
   );

@@ -807,6 +807,27 @@
 .ed-actor-picture { width: 100%; height: 100%; min-height: 0; display: grid; place-items: center; color: #87927c; }
 .ed-actor-picture img { max-height: 64px; }
 .ed-actor-detail { font-size: 9px; line-height: 1.2; color: var(--hud-gold); text-align: center; }
+.ed-actors button:disabled { opacity: .5; cursor: wait; }
+.ed-logic, .ed-unavailable { font-size: 11px; color: var(--muted-foreground); }
+.ed-logic summary, .ed-unavailable summary { cursor: pointer; color: var(--hud-gold); padding: 5px 0; }
+.ed-logic button { padding: 6px 8px; border: 1px solid var(--hud-edge-hi); border-radius: 6px; }
+.ed-logic button[aria-selected="true"] { color: var(--hud-gold); }
+.ed-unavailable > div { max-height: 140px; overflow: auto; display: grid; gap: 6px; }
+.ed-unavailable > div > span { display: flex; gap: 6px; align-items: center; padding: 4px; background: #0b0e09; }
+.ed-unavailable small { display: block; opacity: .7; font-size: 9px; }
+.ed-navigation { position: absolute; right: 12px; bottom: 12px; display: flex; align-items: center; gap: 4px; padding: 5px; border-radius: 10px; }
+.ed-navigation button { display: grid; place-items: center; width: 38px; height: 38px; border-radius: 6px; }
+.ed-navigation button:hover { background: #ffffff16; color: var(--hud-gold); }
+.ed-navigation span { padding: 0 8px; font-size: 11px; color: var(--muted-foreground); }
+@media (max-width: 900px) {
+  .ed-top { left: 8px; right: 8px; transform: none; flex-wrap: wrap; }
+  .ed-title { flex: 1 1 90px; width: 90px; min-width: 60px; }
+  .ed-top .ed-size, .ed-top .ed-sep { display: none; }
+  .ed-top .gbtn { flex: 1; white-space: nowrap; }
+  .ed-palette { top: 106px; max-height: calc(100% - 166px); width: min(var(--ed-palette-w), calc(100vw - 78px)); }
+  .ed-palette.is-compact { max-height: calc(100% - 166px); }
+  .ed-navigation span { display: none; }
+}
 .ed-actor-name { padding: 2px; font-size: 10px; line-height: 1.15; text-align: center; color: #b9c0ad; }
 .ed-tip { margin: 0; font-size: 11px; line-height: 1.4; color: var(--muted-foreground); }
 .ed-res { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }

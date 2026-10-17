@@ -17,7 +17,7 @@ export interface EditorCatalog {
   categories: string[]; templates: EditorTemplate[]; actors: EditorActor[]; resources: string[];
   owners: { name: string; color: string; playable: boolean }[]; title: string; author: string; size: [number, number];
 }
-export type EditorTool = "select" | "terrain" | "resource" | "actor" | "spawn";
+export type EditorTool = "select" | "pan" | "terrain" | "resource" | "actor" | "spawn";
 
 export interface EditorState {
   /** The map open in the editor (its engine id), null on the start screen. */
@@ -39,12 +39,13 @@ export interface EditorState {
   saved: string | null;
   thumbs: Record<number, string>;
   actorThumbs: Record<string, string>;
+  actorStatus: Record<string, "ready" | "placeholder" | "empty">;
   placement: { added: number; blocked?: string } | null;
 }
 
 const initial: EditorState = {
   map: null, opening: null, error: "", catalog: null, tool: "select", brush: "select", fieldRadius: 2, category: "", owner: "Neutral", title: "",
-  undo: false, redo: false, dirty: false, saving: false, saved: null, thumbs: {}, actorThumbs: {}, placement: null,
+  undo: false, redo: false, dirty: false, saving: false, saved: null, thumbs: {}, actorThumbs: {}, actorStatus: {}, placement: null,
 };
 
 type History = { undo?: boolean; redo?: boolean; brush?: string; error?: string; placement?: EditorState["placement"] };
@@ -220,7 +221,8 @@ export class EditorController {
 
   setTool(tool: EditorTool) {
     this.patch({ tool, placement: null });
-    if (tool === "select") this.afterPointers({ op: "brush", brush: "select" });
+    if (tool !== "spawn") this.afterPointers({ op: "brush", brush: "select" });
+    if (tool === "resource") this.brushResource("Ore");
     if (tool === "spawn") this.afterPointers({ op: "brush", brush: "actor", type: "mpspawn", owner: "Neutral" });
   }
   setCategory(category: string) { this.patch({ category }); }
@@ -239,6 +241,19 @@ export class EditorController {
   /** Lakes and rivers with shores (sim EditorWaterBrush); `radius` is the stroke's half-width in cells. */
   brushWater(radius: number) { this.afterPointers({ op: "brush", brush: "water", radius }); }
   brushActor(type: string) { this.afterPointers({ op: "brush", brush: "actor", type, owner: this.state.owner }); }
+  brushBridge(material: "wood" | "concrete", ruined = false) { this.patch({ placement: null }); this.afterPointers({ op: "brush", brush: "bridge", material, ruined }); }
+
+  zoom(factor: number) {
+    this.game.cam.zoom = Math.max(.15, Math.min(3, this.game.cam.zoom * factor));
+    this.game.lookAt(this.game.cam.x, this.game.cam.y);
+  }
+  fitMap() {
+    const bounds = this.game.info?.bounds;
+    if (!bounds) return;
+    const r = this.game.canvas.getBoundingClientRect();
+    this.game.cam.zoom = Math.max(.15, Math.min(1, (r.width - 100) / (bounds[2] - bounds[0]), (r.height - 140) / (bounds[3] - bounds[1])));
+    this.game.lookAt((bounds[0] + bounds[2]) / 2, (bounds[1] + bounds[3]) / 2);
+  }
 
   /** Mouse input in world px. Coalesce moves without losing their buttons or moving them after release. */
   pointer(kind: "down" | "up" | "move", wx: number, wy: number, button: number, mods: number) {
@@ -252,7 +267,7 @@ export class EditorController {
 
   /** The native cursor layer must leave the map too when the pointer moves onto the palette. */
   hideFieldPreview() {
-    if (!this.active || this.down || !(this.state.brush.startsWith("resource:") || this.state.brush.startsWith("actor:") || this.state.brush === "flatten")) return;
+    if (!this.active || this.down || !(this.state.brush.startsWith("resource:") || this.state.brush.startsWith("actor:") || this.state.brush.startsWith("bridge:") || this.state.brush === "flatten")) return;
     this.pointers.push({ event: "move", x: -100000, y: -100000, button: 0, mods: 0 });
   }
 
@@ -326,15 +341,22 @@ export class EditorController {
       const raster = () => {
         if (cancelled() || this.state.map !== map || this.state.owner !== owner || !this.active) return;
         const done: Record<string, string> = {};
+        const status: EditorState["actorStatus"] = {};
         let pending = false;
         for (const [name, sprites] of Object.entries(parts)) {
           const key = `${owner}:${name}`;
           if (this.state.actorThumbs[key] !== undefined) continue;
-          const url = this.game.renderer.renderTiles(sprites, true);
+          let colors = 0;
+          const url = this.game.renderer.renderTiles(sprites, true, pixels => {
+            const seen = new Set<number>();
+            for (let i = 0; i < pixels.length && seen.size < 32; i += 4) if (pixels[i + 3] >= 32)
+              seen.add((pixels[i] << 16) | (pixels[i + 1] << 8) | pixels[i + 2]);
+            colors = seen.size;
+          });
           if (url === null) pending = true;
-          else done[key] = url;
+          else { done[key] = url; status[key] = !url ? "empty" : colors <= 8 ? "placeholder" : "ready"; }
         }
-        if (Object.keys(done).length) this.patch({ actorThumbs: { ...this.state.actorThumbs, ...done } });
+        if (Object.keys(done).length) this.patch({ actorThumbs: { ...this.state.actorThumbs, ...done }, actorStatus: { ...this.state.actorStatus, ...status } });
         if (pending) setTimeout(raster, 120);
       };
       raster();

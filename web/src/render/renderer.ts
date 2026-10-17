@@ -486,7 +486,7 @@ export class Renderer {
    * A terrain template as a PNG data URL: its tiles' sprites (from the engine's tile sheets) composed at their isometric
    * offsets, the map editor's tile palette. null until the sheets and the palette are on the GPU.
    */
-  renderTiles(tiles: (IconSprite & { x: number; y: number; scale?: number; alpha?: number })[], trim = false): string | null {
+  renderTiles(tiles: (IconSprite & { x: number; y: number; scale?: number; alpha?: number })[], trim = false, inspect?: (pixels: Uint8ClampedArray) => void): string | null {
     if (!tiles.length) return "";
     if (this.lost) return null;
     const pictures: { c: HTMLCanvasElement; x: number; y: number; scale: number; alpha: number }[] = [];
@@ -513,6 +513,7 @@ export class Renderer {
       // Editor sprites often include large transparent margins for their world pivot.
       // Keep that pivot in the world, but fit the visible object in its palette card.
       const data = g.getImageData(0, 0, out.width, out.height).data;
+      inspect?.(data);
       let x0 = out.width, y0 = out.height, x1 = -1, y1 = -1;
       for (let y = 0; y < out.height; y++) for (let x = 0; x < out.width; x++) {
         if (data[(y * out.width + x) * 4 + 3] < 8) continue;
