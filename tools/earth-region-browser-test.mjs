@@ -31,7 +31,8 @@ try {
     await page.screenshot({ path: `${out}/${viewport.width}${viewport.rtl ? '-rtl' : ''}-area.png` });
     const initial = await page.locator('.es-coords').innerText();
     const canvas = page.locator('.es-map canvas');
-    await canvas.click({ position: viewport.width > 700 ? { x: 350, y: 330 } : { x: 125, y: 210 } });
+    const canvasBounds = await canvas.boundingBox(); assert.ok(canvasBounds);
+    await canvas.click({ position: { x: canvasBounds.width * .32, y: canvasBounds.height * .32 } });
     assert.notEqual(await page.locator('.es-coords').innerText(), initial, 'map click relocates the selection');
     const clicked = await page.locator('.es-coords').innerText();
     const pin = page.locator('.es-center-pin'), bounds = await pin.boundingBox();
