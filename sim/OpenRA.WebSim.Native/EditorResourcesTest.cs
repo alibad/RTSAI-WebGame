@@ -6,6 +6,7 @@ using OpenRA;
 using OpenRA.WebSim;
 using OpenRA.Mods.Common.MapGenerator;
 using OpenRA.Mods.Common.Terrain;
+using OpenRA.Mods.Common.Traits;
 
 static class EditorResourcesTest
 {
@@ -31,6 +32,15 @@ static class EditorResourcesTest
 			return EditorHost.Call($"{{\"op\":\"pointer\",\"event\":\"{ev}\",\"x\":{p.X},\"y\":{p.Y},\"button\":{button}}}");
 		}
 		void Check(bool condition, string message) { if (!condition) throw new InvalidOperationException(message); }
+		void RenderMatchesResources()
+		{
+			var world = SimHost.World;
+			Sync.RunUnsynced(world, () => world.TickRender(SimHost.WorldRenderer));
+			var layer = world.WorldActor.Trait<IResourceLayer>();
+			foreach (var renderer in world.WorldActor.TraitsImplementing<IResourceRenderer>())
+				foreach (var c in map.AllCells.Where(map.Contains))
+					Check(renderer.GetRenderedResourceType(c) == layer.GetResource(c).Type, "Rendered resource disagrees with layer at " + c);
+		}
 		Brush("Gems"); Pointer("down", start);
 		using (var up = JsonDocument.Parse(Pointer("up", start)))
 			Check(up.RootElement.GetProperty("placement").GetProperty("added").GetInt32() == 1, "Gem click must report a changed tile");
@@ -50,10 +60,12 @@ static class EditorResourcesTest
 		var middleHit = Pick(middle);
 		EditorHost.Call("{\"op\":\"brush\",\"brush\":\"resource\",\"type\":\"Gems\",\"radius\":4}");
 		Pointer("down", middle); Pointer("up", middle);
+		RenderMatchesResources();
 		Check(EditorFieldBrush.Footprint(middleHit, 4).All(c => map.Resources[c].Type == 2), "A nine-cell brush must fill its entire round footprint");
 		Check(map.AllCells.Count(c => map.Resources[c].Type == 2) == 69, "A nine-cell click must paint exactly 69 cells");
 		EditorHost.Call("{\"op\":\"undo\"}");
 		Check(map.AllCells.All(c => map.Resources[c].Type == 0), "One undo removes the whole wide field");
+		RenderMatchesResources();
 		// Real native slope tiles and elevations, rather than only a synthetic ramp flag.
 		var templates = ((ITemplatedTerrainInfo)map.Rules.TerrainInfo).Templates;
 		var ramps = templates.Values.Where(t => t.Size == new int2(1, 1) && t.Categories.Contains("Ramps") && t[0] is TerrainTileInfo ti && ti.Height == 0 && ti.RampType is > 0 and <= 18)
@@ -90,8 +102,10 @@ static class EditorResourcesTest
 		var fieldPoint = map.AllCells.First(c => Pick(c) == fieldCell);
 		EditorHost.Call("{\"op\":\"brush\",\"brush\":\"resource\",\"type\":\"Gems\",\"radius\":2}");
 		Pointer("down", fieldPoint); Pointer("up", fieldPoint);
+		RenderMatchesResources();
 		Check(EditorFieldBrush.Footprint(fieldCell, 2).All(c => map.Resources[c].Type == 2), "Prepared ground must accept a dense gem field");
 		EditorHost.Call("{\"op\":\"undo\"}");
+		RenderMatchesResources();
 		foreach (var c in map.AllCells) map.Ramp[c] = 1;
 		var slope = row[10];
 		Brush("Gems"); Pointer("down", slope);
