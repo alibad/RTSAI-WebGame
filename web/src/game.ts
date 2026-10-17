@@ -1158,6 +1158,7 @@ export class Game {
       this.editorDown = false;
       const [wx, wy] = this.toWorld(e.clientX, e.clientY);
       this.editor?.pointer("up", wx, wy, e.button === 2 ? BTN_RIGHT : BTN_LEFT, this.mods(e));
+      if (!this.mouse.inside) this.editor?.hideFieldPreview();
       return;
     }
     const d = this.drag;
@@ -1206,7 +1207,7 @@ export class Game {
     });
     c.addEventListener("contextmenu", (e) => e.preventDefault());
     c.addEventListener("mouseenter", () => (this.mouse.inside = true));
-    c.addEventListener("mouseleave", () => (this.mouse.inside = false));
+    c.addEventListener("mouseleave", () => { this.mouse.inside = false; this.editor?.hideFieldPreview(); });
     c.addEventListener("mousedown", (e) => {
       if (this.coach.review) return;
       this.lock.maybeLock(e);

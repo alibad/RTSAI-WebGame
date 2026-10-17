@@ -248,6 +248,12 @@ export class EditorController {
     this.pointers.push({ event: kind, x: Math.round(wx), y: Math.round(wy), button: kind === "move" ? this.down ? 1 : 0 : button, mods });
   }
 
+  /** The native cursor layer must leave the map too when the pointer moves onto the palette. */
+  hideFieldPreview() {
+    if (!this.active || this.down || !(this.state.brush.startsWith("resource:") || this.state.brush === "flatten")) return;
+    this.pointers.push({ event: "move", x: -100000, y: -100000, button: 0, mods: 0 });
+  }
+
   undo() { this.afterPointers({ op: "undo" }, true); }
   redo() { this.afterPointers({ op: "redo" }, true); }
   deleteSelection() { this.afterPointers({ op: "delete" }, true); }
