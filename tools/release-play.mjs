@@ -273,7 +273,7 @@ function webDependencies() {
 }
 
 /** Build from the clean canonical website checkout at origin/main. Worktrees require an explicit owner request. */
-function siteCheckout() {
+function siteCheckout(webgame) {
   const site = config.repos.site;
   gitIn(site, "fetch", "--quiet", "origin");
   const commit = gitIn(site, "rev-parse", "origin/main");
@@ -296,11 +296,22 @@ function siteCheckout() {
   // would mix local editing candidates into a production page whose runtime and data use frozen published inputs.
   run(process.execPath, [path.join(repo, "tools", "sync-viewer.mjs"), "--from", dir, "--published"], { stdio: ["ignore", "ignore", "inherit"] });
   run(process.execPath, [path.join(repo, "tools", "sync-catalog.mjs"), "--from", dir], { stdio: ["ignore", "ignore", "inherit"] });
-  return { dir, commit };
+  return { dir, commit, webgame };
+}
+
+// A build may spend minutes compiling its already-captured runtime. Recheck page inputs around both Vite builds
+// so a concurrent editor cannot silently change the page while BUILD.json still names the initial commit.
+function assertPageSources(site) {
+  const changed = git("diff", "--name-only", site.webgame, "--", "web");
+  const untracked = git("ls-files", "--others", "--exclude-standard", "--", "web");
+  if (changed || untracked) refuse(`web/ changed after release source capture ${site.webgame.slice(0, 7)}: coordinate a clean page window before retrying`);
+  if (gitIn(site.dir, "rev-parse", "HEAD") !== site.commit || gitIn(site.dir, "status", "--porcelain", "--untracked-files=no"))
+    refuse(`website source changed after capture ${site.commit.slice(0, 7)}: preserve the pending work and retry in a clean page window`);
 }
 
 /** The page against the CDN roots: the real one (sign-in required) or the smoke-test twin (no sign-in gate). */
 function buildPage(out, { rtBase, dataBase, profiles, gate, site }) {
+  assertPageSources(site);
   const env = Object.fromEntries(Object.entries(process.env).filter(([k]) => !k.startsWith("VITE_")));
   Object.assign(env, config.page, {
     VITE_DEFAULT_PROFILE: "public", VITE_GAME_MODES: profiles.join(","), RTSAI_PUBLIC_BUILD: "1", VITE_STATIC_BUILD: "1",
@@ -310,6 +321,8 @@ function buildPage(out, { rtBase, dataBase, profiles, gate, site }) {
   fs.rmSync(out, { recursive: true, force: true });
   execSync(`npx vite build --outDir "${out}" --emptyOutDir${gate ? "" : " --mode nogate"} --logLevel warn`, { cwd: path.join(repo, "web"), stdio: "inherit", env });
   for (const [rel, f] of walk(out)) if (rel.endsWith(".map")) fs.rmSync(f);
+  assertPageSources(site);
+  say(`  ${gate ? "production" : "smoke"} page inputs captured: game ${site.webgame.slice(0, 7)}, website ${site.commit.slice(0, 7)}`);
 }
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -623,7 +636,7 @@ async function prepare() {
 
     step("page");
     webDependencies();
-    const site = siteCheckout();
+    const site = siteCheckout(p.src.head);
     say(`  website source: RTSAI-Web origin/main ${site.commit.slice(0, 7)}`);
     const pageDir = path.join(rel, "page");
     buildPage(pageDir, { rtBase: host + roots.rtRoot, dataBase: host + roots.dataRoot, profiles, gate: true, site });
