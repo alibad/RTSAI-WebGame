@@ -51,6 +51,7 @@ static class Program
 				"ailabtest" => AiLabTest.Run(opts),
 				"mapgentest" => MapGenTest.Run(opts),
 				"maplibrarytest" => MapLibraryTest.Run(opts),
+				"rosteraudit" => FactionRosterAudit.Run(opts),
 				"editorresourcetest" => EditorResourcesTest.Run(opts),
 				"editorbridgetest" => EditorBridgesTest.Run(opts),
 				"editortestterrain" => EditorTerrainTest.Run(opts),
