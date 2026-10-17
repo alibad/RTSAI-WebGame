@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Audit the exact selected runtime without rebuilding or modifying its engine/mod assemblies. -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <AssemblyName>roster-audit</AssemblyName>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="Program.cs" />
+    <Compile Include="../../sim/OpenRA.WebSim.Native/FactionRosterAudit.cs" />
+    <Reference Include="$(AuditRuntime)/OpenRA*.dll" />
+    <Content Include="$(AuditRuntime)/*.dll" CopyToOutputDirectory="PreserveNewest" Link="%(Filename)%(Extension)" />
+    <Content Include="$(AuditRuntime)/runtimes/**/*" CopyToOutputDirectory="PreserveNewest" Link="runtimes/%(RecursiveDir)%(Filename)%(Extension)" />
+  </ItemGroup>
+  <Target Name="RequireAuditRuntime" BeforeTargets="Build">
+    <Error Condition="!Exists('$(AuditRuntime)/OpenRA.WebSim.dll')" Text="AuditRuntime must point to a verified local native host's DLL folder." />
+  </Target>
+</Project>

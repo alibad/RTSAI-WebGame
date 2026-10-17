@@ -911,6 +911,42 @@ namespace OpenRA.WebSim
 		/// </summary>
 		public static string Rosters(Ruleset rules)
 		{
+			// Product modes share Studio's reviewed actor/faction bindings. Those memberships are
+			// audited against live native TechTree/ProductionQueue worlds, not a second heuristic.
+			if (SimHost.ModId != "rtsai-topdown")
+			{
+				using var source = Game.ModData.DefaultFileSystem.Open("ra2|unit-overrides/bindings.json");
+				using var registry = JsonDocument.Parse(source);
+				var target = SimHost.ModId == "rtsai-classic-core" ? "classic-web" : "ra2-web";
+				var world = rules.Actors[SystemActors.World];
+				var rows = new List<string>();
+				foreach (var faction in world.TraitInfos<FactionInfo>().Where(f => f.Selectable && f.RandomFactionMembers.Count == 0))
+				{
+					var ids = new HashSet<string>();
+					foreach (var unit in registry.RootElement.GetProperty("units").EnumerateObject())
+						if (unit.Value.GetProperty("bindings").TryGetProperty(target, out var binding)
+							&& unit.Value.GetProperty("factions").EnumerateArray().Any(f => f.GetProperty("id").GetString() == faction.InternalName))
+						{
+							var id = binding.GetProperty("actor").GetString().ToLowerInvariant();
+							if (rules.Actors.TryGetValue(id, out var actor) && actor.HasTraitInfo<BuildableInfo>()) ids.Add(id);
+						}
+
+					// The battle simulator can place the deployed yard directly. This is a deployment
+					// form of a starting MCV, not an additional normally producible faction unit.
+					foreach (var start in world.TraitInfos<StartingUnitsInfo>().Where(s => s.BaseActor != null && (s.Factions.Count == 0 || s.Factions.Contains(faction.InternalName))))
+						if (rules.Actors.TryGetValue(start.BaseActor.ToLowerInvariant(), out var mcv))
+							foreach (var transform in mcv.TraitInfos<TransformsInfo>())
+								if (rules.Actors.TryGetValue(transform.IntoActor.ToLowerInvariant(), out var yard) && yard.HasTraitInfo<BuildingInfo>() && yard.HasTraitInfo<BuildableInfo>()) ids.Add(yard.Name);
+					rows.Add(J(faction.InternalName) + ":[" + string.Join(",", ids.OrderBy(id => rules.Actors[id].TraitInfo<BuildableInfo>().BuildPaletteOrder).ThenBy(id => id).Select(J)) + "]");
+				}
+				return "{\"rosters\":{" + string.Join(",", rows) + "}}";
+			}
+
+			return LegacyRosters(rules);
+		}
+
+		static string LegacyRosters(Ruleset rules)
+		{
 			var worldInfo = rules.Actors[SystemActors.World];
 			var queues = new HashSet<string> { "Infantry", "Vehicle", "Aircraft", "Ship", "Building", "Support" };
 			bool InQueue(ActorInfo a) => a.TraitInfoOrDefault<BuildableInfo>()?.Queue.Any(queues.Contains) == true;

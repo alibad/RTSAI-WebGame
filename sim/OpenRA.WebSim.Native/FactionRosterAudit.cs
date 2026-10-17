@@ -4,7 +4,10 @@ using System.IO;
 using System.Linq;
 using System.Text.Json;
 using OpenRA;
+using OpenRA.Mods.Common;
 using OpenRA.Mods.Common.Traits;
+using OpenRA.Mods.Common.Traits.Render;
+using OpenRA.Primitives;
 using OpenRA.Traits;
 using OpenRA.WebSim;
 
@@ -23,6 +26,8 @@ static class FactionRosterAudit
 				building = a.HasTraitInfo<BuildingInfo>(), drawable = a.HasTraitInfo<RenderSpritesInfo>(),
 				providers = a.TraitInfos<ProvidesPrerequisiteInfo>().Select(p => new { name = p.Prerequisite ?? a.Name,
 					factions = p.Factions.Order().ToArray(), requires = p.RequiresPrerequisites.ToArray(), condition = p.RequiresCondition?.ToString() }).ToArray(),
+				techProviders = a.TraitInfos<ProvidesTechPrerequisiteInfo>().Select(p => new { id = p.Id, prerequisites = p.Prerequisites.ToArray() }).ToArray(),
+				starting = a.TraitInfos<StartingUnitsInfo>().Select(s => new { factions = s.Factions.Order().ToArray(), baseActor = s.BaseActor, support = s.SupportActors.ToArray() }).ToArray(),
 				transforms = a.TraitInfos<TransformsInfo>().Select(t => t.IntoActor).ToArray() };
 		}).ToArray();
 	}
