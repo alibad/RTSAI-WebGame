@@ -113,6 +113,7 @@ export class EditorController {
     if (!this.active || this.state.map !== map) return;
     if (input.event !== "move" || h.error) this.history(h);
     if (input.event === "up") this.patch({ dirty: h.placement ? h.placement.added > 0 || this.state.dirty : true });
+    if (input.event === "up" && h.brush === "actor:mpspawn" && h.placement?.added) await this.refreshOwners();
     if (h.brush === "select" && this.state.tool !== "select" && input.button === 2) this.patch({ tool: "select" });
   }, error => this.fail(error instanceof Error ? error.message : String(error)));
 
@@ -211,10 +212,18 @@ export class EditorController {
   private history(h: History) {
     this.patch({ undo: !!h.undo, redo: !!h.redo, brush: h.brush ?? this.state.brush, ...(h.error ? { error: h.error } : {}), ...(h.placement !== undefined ? { placement: h.placement } : {}) });
   }
+  private async refreshOwners() {
+    const map = this.state.map;
+    const catalog = await this.call<EditorCatalog>({ op: "catalog" });
+    if (!this.active || this.state.map !== map || !this.state.catalog || !catalog.owners) return;
+    const owner = catalog.owners.some(o => o.name === this.state.owner) ? this.state.owner : "Neutral";
+    this.patch({ catalog: { ...this.state.catalog, owners: catalog.owners }, owner });
+  }
   private afterPointers(op: Record<string, unknown>, edited = false) {
-    void this.pointers.settled().then(() => this.call(op)).then(h => {
+    void this.pointers.settled().then(() => this.call(op)).then(async h => {
       this.history(h);
       if (edited && !h.error) this.patch({ dirty: true, placement: null });
+      if (edited && !h.error) await this.refreshOwners();
       if (op.op === "brush" && !this.game.canvas.matches(":hover")) this.hideFieldPreview();
     }).catch(error => this.fail(error instanceof Error ? error.message : String(error)));
   }

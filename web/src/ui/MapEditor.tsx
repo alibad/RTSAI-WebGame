@@ -219,7 +219,7 @@ function Palette({ game, editor }: { game: Game; editor: EditorController }) {
     </div>
   );
   if (st.tool === "spawn") return (
-    <div className="ed-palette hud-panel is-compact"><p className="ed-tip">Click to add a start position. Every start position is a player slot: two for a duel, up to eight.</p></div>
+    <div className="ed-palette hud-panel is-compact"><p className="ed-tip">Click to add a start position. Every start position is a player slot: two for a duel, up to eight.</p>{st.placement && <p className={cn("ed-placement", !st.placement.added && "is-blocked")} role="status">{st.placement.added ? "Start position added. Its player is available in the owner picker." : st.placement.blocked || "No start position added."}</p>}</div>
   );
   return (
     <div className="ed-palette hud-panel is-compact"><p className="ed-tip">{st.tool === "pan" ? "Drag the battlefield to pan. Hold Space and drag from any tool. Arrow keys also pan; wheel or the zoom buttons change scale." : "Click to select · drag to move a unit · drag empty ground to select an area · Delete removes it. Hold Space and drag to pan."}</p></div>
