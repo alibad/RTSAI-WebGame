@@ -159,6 +159,10 @@ namespace OpenRA.WebSim
 			{
 				foreach (var (cell, state) in states)
 				{
+					// ResourceRenderer listens to resource changes, not height changes. Force a real resource
+					// notification when the surface moves so existing deposits follow the new ground on undo too.
+					if (state.Resource.Type != 0 && (map.Height[cell] != state.Height || map.Ramp[cell] != map.Rules.TerrainInfo.GetTerrainInfo(state.Tile).RampType))
+						resources.ClearResources(cell);
 					map.Tiles[cell] = state.Tile;
 					map.Height[cell] = state.Height;
 					map.Resources[cell] = state.Resource;
