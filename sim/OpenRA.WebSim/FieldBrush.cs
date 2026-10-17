@@ -102,10 +102,19 @@ namespace OpenRA.WebSim
 			readonly Dictionary<CPos, State> before = [];
 			readonly Dictionary<CPos, State> after = [];
 			readonly HashSet<CPos> visited = [];
+			readonly HashSet<CPos> ground = [];
 			public int Count => before.Count;
 			public string Blocked { get; private set; }
 			public string Text => type == null ? $"Flattened {Count} ground tiles" : $"Painted {Count} {type} tiles";
 			State Capture(CPos c) => new(map.Tiles[c], map.Height[c], map.Resources[c]);
+			bool Water(CPos c)
+			{
+				var terrain = map.Rules.TerrainInfo;
+				var name = terrain.TerrainTypes[terrain.GetTerrainInfo(map.Tiles[c]).TerrainType].Type;
+				return name is "Water" or "Beach" || name.Contains("Water") ||
+					terrain is ITemplatedTerrainInfo t && t.Templates.TryGetValue(map.Tiles[c].Type, out var template) &&
+					template.Categories.Any(category => category.Contains("Shore") || category.Contains("Water") || category.Contains("beach"));
+			}
 
 			public void Paint(CPos c)
 			{
@@ -115,12 +124,15 @@ namespace OpenRA.WebSim
 				if (type == null)
 				{
 					var terrain = map.Rules.TerrainInfo;
-					var name = terrain.TerrainTypes[terrain.GetTerrainInfo(state.Tile).TerrainType].Type;
-					if (name is "Water" or "Beach" || name.Contains("Water"))
+					if (Water(c))
 					{ Blocked = "Water and shores are preserved. Start on dry land."; return; }
+					if (actors.PreviewsAtCell(c).Any())
+					{ Blocked = "Units, buildings and scenery are preserved. Flatten open ground."; return; }
 					// The tileset's default tile is flat, buildable clear ground in both game modes.
-					map.Tiles[c] = terrain.DefaultTerrainTile;
-					map.Height[c] = level;
+					ground.Add(c);
+					var target = new State(terrain.DefaultTerrainTile, level, state.Resource);
+					if (target != state) { before.Add(c, state); after.Add(c, target); }
+					return;
 				}
 				else
 				{
@@ -137,9 +149,10 @@ namespace OpenRA.WebSim
 			}
 			public void Execute()
 			{
+				if (type == null) Apply(after);
 				if (type == null && map.Grid.MaximumTerrainHeight > 0 && !JoinEdges())
 				{
-					Undo(); before.Clear();
+					Undo(); before.Clear(); after.Clear();
 					Blocked = "There isn't room to join this level to the surrounding ground. Try a wider area away from water or buildings.";
 				}
 				foreach (var c in before.Keys) after[c] = Capture(c);
@@ -153,10 +166,10 @@ namespace OpenRA.WebSim
 				var ramps = templates.Values.Where(t => t.Size == new int2(1, 1) && t.Categories.Contains("Ramps") && t[0] is TerrainTileInfo ti && ti.Height == 0 && ti.RampType is > 0 and <= 18)
 					.GroupBy(t => t[0].RampType).ToDictionary(g => g.Key, g => g.First().Id);
 				if (ramps.Count == 0) return false;
-				var core = before.Keys.ToHashSet();
+				var core = ground;
 				var apron = new HashSet<CPos>(core);
 				foreach (var cell in core)
-					foreach (var c in Footprint(cell, Math.Abs(before[cell].Height - level) + 3)) apron.Add(c);
+					foreach (var c in Footprint(cell, Math.Abs(before.GetValueOrDefault(cell, Capture(cell)).Height - level) + 3)) apron.Add(c);
 				var hm = new RampTiler.HeightMap(map);
 				var corners = new[] { int2.Zero, new int2(1, 0), new int2(1, 1), new int2(0, 1) };
 				var sums = new Matrix<int>(hm.Target.Size);
@@ -164,8 +177,7 @@ namespace OpenRA.WebSim
 				foreach (var c in map.AllCells)
 				{
 					var ti = map.Rules.TerrainInfo.GetTerrainInfo(map.Tiles[c]);
-					var terrain = map.Rules.TerrainInfo.TerrainTypes[ti.TerrainType].Type;
-					if (!map.Contains(c) || !apron.Contains(c) || (!core.Contains(c) && (map.Resources[c].Type != 0 || actors.PreviewsAtCell(c).Any() || terrain is "Water" or "Beach" || terrain.Contains("Water")))) hm.MarkUntileable(c);
+					if (!map.Contains(c) || !apron.Contains(c) || (!core.Contains(c) && (map.Resources[c].Type != 0 || actors.PreviewsAtCell(c).Any() || Water(c)))) hm.MarkUntileable(c);
 					var xy = hm.CPosToXy(c);
 					var shape = map.Grid.Ramps[map.Ramp[c]];
 					for (var i = 0; i < 4; i++)
