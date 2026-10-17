@@ -69,6 +69,12 @@ require an owned RA2 installation. Publishing the Classic profile, its content
 notices and asset delivery remains a separate release task; this work grants no
 deployment authorization. Map browsing adds no Firestore reads.
 
+The main menu offers Isometric and Classic tiles when `VITE_GAME_MODES` includes
+both `public` and `public-classic`. Switching clears map/scenario launch parameters
+and opens the chosen profile's home screen. Builds containing only one profile
+keep one entry. Existing themed view tiles and map pickers are reused; the mode
+choice and expanded map picker were inspected on desktop and a 390px phone.
+
 ## Verification
 
 Native command, with a matching public VFS and native build:
