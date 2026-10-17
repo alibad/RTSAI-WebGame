@@ -220,12 +220,6 @@ class Retail:
                     extra = [new for old in selected for new in renamed_armaments.get(old, [])]
                     if extra:
                         trait(E, patch, item.key, Armaments=', '.join(selected + extra))
-            # Attack-triggered conditions (notably suicide detonators) also select by name.
-            for key, trigger in E.traits(g.cur[actor], 'GrantConditionOnAttack'):
-                selected = E.split_list(trigger.val('ArmamentNames', 'primary'))
-                extra = [new for old in selected for new in renamed_armaments.get(old, [])]
-                if extra:
-                    trait(E, patch, key, ArmamentNames=', '.join(selected + extra))
             # Infantry animation dictionaries select by armament name, too.
             for key, body in E.traits(g.cur[actor], 'WithInfantryBody'):
                 sequences = body.get('AttackSequences')
