@@ -37,6 +37,8 @@ function websiteSource(): Plugin {
 // Built to web/dist and served by server/serve.mjs on 127.0.0.1:3490 (which adds COOP/COEP and the runtime/data
 // routes). `base` is relative so the same build also works behind the local app's /play proxy.
 export default defineConfig({
+  // Keep HTML inputs and root on the same resolved path in Windows packaged-app build snapshots.
+  root: __dirname,
   base: "./",
   plugins: [websiteSource(), react(), tailwindcss()],
   // One React for the game and the website's components.
