@@ -59,7 +59,7 @@ function StartScreen({ game, editor, mission, play, earthFirst }: { game: Game; 
         {st.error && <p className="ed-error" role="alert">{st.error}</p>}
         <section className="ed-new" aria-label="New map">
           <button type="button" className="ed-new-card is-earth" onClick={() => setEarth(true)} data-testid="ed-earth">
-            <Globe2 size={30} strokeWidth={1.4} /><b>From a real place</b><small>Search anywhere on Earth; its roads, water and land become the map</small>
+            <Globe2 size={30} strokeWidth={1.4} /><b>From a real place</b><small>Explore the 3D globe, choose an area, then edit its terrain and forces</small>
           </button>
           <div className="ed-new-card">
             <Plus size={30} strokeWidth={1.4} /><b>Blank map</b>

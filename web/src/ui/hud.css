@@ -956,6 +956,67 @@
   .es-area p { font-size: 12px; }
 }
 
+/* Real-world generation is a map-editor workspace: the inspector never covers the globe. */
+.es-root { --es-inspector: 380px; position: absolute; background: #05090e; }
+.es-editorbar { position: absolute; inset: 0 0 auto; height: 64px; z-index: 5; display: flex; align-items: center; gap: 12px; padding: 8px 18px; border-radius: 0; border-width: 0 0 1px; }
+.es-editorbar > div { display: flex; flex-direction: column; gap: 2px; }
+.es-editorbar b { color: var(--hud-gold); font-size: 16px; }
+.es-editorbar span { font-size: 12px; color: #b9c0ad; }
+.es-editorbar ol { display: flex; gap: 24px; margin-inline-start: auto; padding: 0; list-style: none; font-size: 13px; color: #949d90; }
+.es-editorbar li[aria-current] { color: var(--hud-gold); }
+.es-root > .es-map { inset-block: 64px 0; inset-inline: var(--es-inspector) 0; width: auto; height: auto; }
+.es-world { inset-block: 84px 16px; inset-inline: 16px auto; width: calc(var(--es-inspector) - 32px); max-height: none; padding: 22px; transform: none; text-align: start; overflow-y: auto; border-radius: 12px; animation: none; }
+.es-world h1 { margin: 8px 0 12px; font-size: 26px; line-height: 1.15; text-shadow: none; }
+.es-intro { margin-bottom: 20px; color: #bfc9b8; font-size: 14px; line-height: 1.6; }
+.es-world .es-search { padding: 6px 8px; gap: 6px; flex-wrap: wrap; border-radius: 8px; background: #090f12; }
+.es-search > svg { width: 16px; }
+.es-world .es-search input { width: calc(100% - 26px); font-size: 14px; padding: 8px 0; }
+.es-world .es-search button { width: 100%; min-height: 40px; }
+.es-suggestions-title { margin: 24px 0 10px; font-size: 12px; text-transform: uppercase; letter-spacing: .1em; color: #bfc9b8; }
+.es-chips { flex-direction: column; gap: 7px; margin-top: 0; }
+.es-chips button { justify-content: flex-start; border-radius: 8px; min-height: 44px; padding: 10px; text-align: start; }
+.es-map-hint { font-size: 12px; line-height: 1.6; color: #a9b5aa; text-shadow: none; margin: 14px 0 10px; }
+.es-world .es-center-choice { width: 100%; font-size: 13px; }
+.es-map-controls { position: absolute; z-index: 3; top: 78px; inset-inline-end: 18px; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+.es-root .es-basemap, .es-view { position: static; display: flex; padding: 3px; border: 1px solid var(--hud-edge-hi); border-radius: 9px; background: #0d151fee; }
+.es-basemap button, .es-view button { min-height: 40px; padding: 8px 12px; border-radius: 6px; font-size: 13px; }
+.es-view button[aria-pressed="true"] { color: #171b10; background: var(--hud-gold); }
+.es-view button:focus-visible { outline: 2px solid var(--hud-gold); outline-offset: 2px; }
+.es-place { inset-block-start: 84px; inset-inline: 16px auto; transform: none; width: calc(var(--es-inspector) - 32px); max-width: none; padding: 8px; min-height: 72px; border-radius: 10px; gap: 6px; }
+.es-place b { flex: 1; }
+.es-place .es-coords { width: 100%; padding-inline-start: 40px; font-size: 11px; }
+.es-intel { inset-block: 168px 16px; inset-inline: 16px auto; width: calc(var(--es-inspector) - 32px); border-radius: 12px; animation: none; }
+.es-area { margin: 16px; }
+.es-area small { font-size: 11px; }
+.es-area .es-fp { grid-template-columns: repeat(3,minmax(0,1fr)); }
+.es-intel footer { max-height: 48%; }
+.es-research { margin: 0 16px; border-top: 1px solid var(--hud-edge); }
+.es-research > summary { cursor: pointer; padding: 14px 0; min-height: 44px; color: #c9d0c2; font-size: 13px; font-weight: 700; }
+.es-research .es-context, .es-research .es-site-storage { margin: 0 0 12px; }
+.es-research .es-sites { padding: 0 0 14px; }
+.es-research .es-site { flex-wrap: wrap; }
+.es-map-state { position: absolute; z-index: 4; top: 150px; inset-inline-end: 20px; max-width: min(360px,calc(100% - 40px)); display: flex; align-items: center; flex-wrap: wrap; gap: 10px; padding: 16px; border-radius: 10px; }
+.es-map-state b, .es-map-state p { width: 100%; }
+.es-map-state p { font-size: 13px; line-height: 1.5; color: #c2caba; }
+.es-map-state > div { display: flex; flex-wrap: wrap; gap: 8px; }
+@media (max-width: 700px) {
+  .es-editorbar { padding: 8px 12px; }
+  .es-editorbar ol { display: none; }
+  .es-root > .es-map { inset-block: 64px 48%; inset-inline: 0; }
+  .es-map-controls { top: 74px; inset-inline-end: 8px; gap: 4px; }
+  .es-basemap button, .es-view button { padding: 7px 9px; font-size: 12px; }
+  .es-world { inset-block: 52% 8px; inset-inline: 8px; width: auto; max-height: none; padding: 16px; }
+  .es-world h1 { margin-top: 6px; font-size: 22px; }
+  .es-intro { font-size: 13px; margin-bottom: 12px; }
+  .es-suggestions-title { margin-top: 18px; }
+  .es-place { inset-block-start: 52%; inset-inline: 8px; width: auto; max-width: none; min-height: 64px; }
+  .es-place .es-coords { padding-inline-start: 40px; }
+  .es-intel, .es-root[data-stage="built"] .es-intel { inset-block: calc(52% + 72px) 8px; inset-inline: 8px; width: auto; height: auto; }
+  .es-root .maplibregl-ctrl-bottom-left, .es-root:not([data-stage="world"]) .maplibregl-ctrl-bottom-left, .es-root[data-stage="built"] .maplibregl-ctrl-bottom-left { bottom: 8px; }
+  .es-intel footer { padding: 10px 12px; max-height: 50%; }
+  .es-map-state { top: 134px; inset-inline: 12px; max-width: none; }
+}
+
 /* The WebGL context is lost (GraphicsState.tsx): the battlefield waits behind this until it is rebuilt. */
 .gx-restoring { position: fixed; inset: 0; z-index: 95; display: grid; place-items: center; padding: 20px; background: rgba(7, 9, 7, .74); }
 .gx-restoring > div { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 22px 28px; border: 1px solid var(--hud-edge-hi); border-radius: 12px; background: linear-gradient(180deg, rgba(29, 35, 25, .97), rgba(12, 15, 11, .98)); color: #dfe3d4; text-align: center; box-shadow: 0 20px 50px rgba(0, 0, 0, .55); }
