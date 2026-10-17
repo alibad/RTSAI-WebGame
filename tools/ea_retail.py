@@ -153,6 +153,7 @@ class Retail:
         self.baseline = g.retail_baseline
         self.weapons = []
         self.rules = []
+        self.modern_rules = []
         self.effects = set()
         self.weapon_names = {}
         self.rules.append(E.Node('Player', None, [E.Node('OriginalCountryLabels', None, [
@@ -181,21 +182,18 @@ class Retail:
                 name = self._original_weapon(weapon)
                 if name is None:
                     continue
-                if facts['modern']:
-                    # Preserve the modern armament and add a faction-conditioned original twin.
-                    trait(E, patch, key, RequiresCondition=E.both('!ea-art', arm.val('RequiresCondition')))
-                    twin_arm = arm.clone()
-                    twin_arm.key = key.split('@')[0] + '@retail-' + (key.split('@', 1)[1] if '@' in key else 'primary')
-                    old_name = arm.val('Name', 'primary')
-                    new_name = 'retail-' + key.replace('@', '-').lower()
-                    renamed_armaments.setdefault(old_name, []).append(new_name)
-                    set_value(E, twin_arm, 'Name', new_name)
-                    set_value(E, twin_arm, 'Weapon', name)
-                    set_value(E, twin_arm, 'RequiresCondition', E.both('ea-art', arm.val('RequiresCondition')))
-                    patch.children.append(twin_arm)
-                    trait(E, patch, 'GrantConditionOnFaction@ea-art', Condition='ea-art', Factions=', '.join(facts['countries']))
-                else:
-                    trait(E, patch, key, Weapon=name)
+                # Preserve the modern armament and add a faction-conditioned original twin.
+                trait(E, patch, key, RequiresCondition=E.both('!ea-art', arm.val('RequiresCondition')))
+                twin_arm = arm.clone()
+                twin_arm.key = key.split('@')[0] + '@retail-' + (key.split('@', 1)[1] if '@' in key else 'primary')
+                old_name = arm.val('Name', 'primary')
+                new_name = 'retail-' + key.replace('@', '-').lower()
+                renamed_armaments.setdefault(old_name, []).append(new_name)
+                set_value(E, twin_arm, 'Name', new_name)
+                set_value(E, twin_arm, 'Weapon', name)
+                set_value(E, twin_arm, 'RequiresCondition', E.both('ea-art', arm.val('RequiresCondition')))
+                patch.children.append(twin_arm)
+                trait(E, patch, 'GrantConditionOnFaction@ea-art', Condition='ea-art', Factions=', '.join(E.COUNTRIES))
             # Suicide units detonate via death/deploy traits rather than their targeting
             # armament. Restoring an unused TerrorBomb definition would leave gameplay wrong.
             for original in g.cur[actor].children:
@@ -206,16 +204,14 @@ class Retail:
                 replacements = {field: value for field, value in replacements.items() if value}
                 if not replacements:
                     continue
-                if facts['modern']:
-                    trait(E, patch, original.key, RequiresCondition=E.both('!ea-art', original.val('RequiresCondition')))
-                    twin = original.clone()
-                    twin.key += '-retail' if '@' in twin.key else '@retail'
-                    set_value(E, twin, 'RequiresCondition', E.both('ea-art', original.val('RequiresCondition')))
-                    for field, value in replacements.items():
-                        set_value(E, twin, field, value)
-                    patch.children.append(twin)
-                else:
-                    trait(E, patch, original.key, **replacements)
+                trait(E, patch, original.key, RequiresCondition=E.both('!ea-art', original.val('RequiresCondition')))
+                twin = original.clone()
+                twin.key += '-retail' if '@' in twin.key else '@retail'
+                set_value(E, twin, 'RequiresCondition', E.both('ea-art', original.val('RequiresCondition')))
+                for field, value in replacements.items():
+                    set_value(E, twin, field, value)
+                patch.children.append(twin)
+                trait(E, patch, 'GrantConditionOnFaction@ea-art', Condition='ea-art', Factions=', '.join(E.COUNTRIES))
             # Render helpers use Single(armament.Name); a second armament must have a unique
             # name. Extend only the attack selectors that originally used that armament.
             for item in g.cur[actor].children:
@@ -224,6 +220,34 @@ class Retail:
                     extra = [new for old in selected for new in renamed_armaments.get(old, [])]
                     if extra:
                         trait(E, patch, item.key, Armaments=', '.join(selected + extra))
+            # Infantry animation dictionaries select by armament name, too.
+            for key, body in E.traits(g.cur[actor], 'WithInfantryBody'):
+                sequences = body.get('AttackSequences')
+                if sequences is not None:
+                    for old, names in renamed_armaments.items():
+                        sequence = sequences.get(old)
+                        if sequence is not None:
+                            target = trait(E, patch, key)
+                            mapping = target.get('AttackSequences')
+                            if mapping is None:
+                                mapping = E.Node('AttackSequences')
+                                target.children.append(mapping)
+                            for name in names:
+                                set_value(E, mapping, name, sequence.value)
+            for item in g.ref[actor].children:
+                if E.trait_type(item.key) not in ('WithAttackAnimation', 'WithTurretAttackAnimation'):
+                    continue
+                names = renamed_armaments.get(item.val('Armament', 'primary'), [])
+                if not names or g.cur[actor].get(item.key) is None:
+                    continue
+                current = g.cur[actor].get(item.key)
+                trait(E, patch, item.key, RequiresCondition=E.both('!ea-art', current.val('RequiresCondition')))
+                for name in names:
+                    helper = item.clone()
+                    helper.key += '-'+name if '@' in helper.key else '@'+name
+                    set_value(E, helper, 'Armament', name)
+                    set_value(E, helper, 'RequiresCondition', E.both('ea-art', item.val('RequiresCondition')))
+                    patch.children.append(helper)
             if actor == 'tnkd':
                 trait(E, patch, 'Buildable', Prerequisites='radar, ~vehicles.germany')
             if actor in ('gacsph', 'nairon'):
@@ -246,6 +270,19 @@ class Retail:
                         patch.children.append(twin)
             if patch.children:
                 self.rules.append(patch)
+        # Sparse explicit values protect modern descendants from changes to shared RA2 parents.
+        # This separate overlay follows ea-art without imposing original palettes on modern art.
+        for actor, owners in g.owners.items():
+            if actor in g.actors or not (owners & set(E.MODERN)) or actor not in g.cur:
+                continue
+            patch = E.Node(g.cur[actor].key)
+            for item in g.cur[actor].children:
+                if E.trait_type(item.key) in ('Valued', 'Health', 'Armor', 'RevealsShroud', 'Power') or (
+                        E.trait_type(item.key) not in ('RenderSprites', 'RenderVoxels') and
+                        any(item.val(field) for field in ('Image', 'TrailImage', 'MissileImage'))):
+                    patch.children.append(item.clone())
+            if patch.children:
+                self.modern_rules.append(patch)
         for name in self.effects:
             g.images.setdefault(name, set())
 
@@ -366,6 +403,7 @@ class Retail:
 
     def write(self, out):
         E = self.E
+        (out / 'ea-modern-preserve.yaml').write_text('# Preserve modern descendant rules.\n' + E.dump(self.modern_rules), encoding='utf-8')
         (out / 'ea-retail-weapons.yaml').write_text('# Retail country rules; original files remain external.\n' + E.dump(self.weapons), encoding='utf-8')
         (out / 'retail-ra2-restoration.json').write_text(json.dumps({'schema': 1, 'sourceSha256':self.baseline['sourceSha256'],
             'actors':list(NEW_ACTORS), 'countryRules': [n.key for n in self.rules], 'weapons':[n.key for n in self.weapons],

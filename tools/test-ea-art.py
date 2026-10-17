@@ -157,6 +157,18 @@ class Generated(unittest.TestCase):
             expected = ea_retail.cells(difference['retail']) if difference['field'] == 'Sight' else difference['retail']
             self.assertEqual(self.rules[difference['actor']].get(kind).val(field).lower(), expected.lower(), difference)
 
+    def test_original_weapons_do_not_leak_through_modern_inheritance(self):
+        retail = [(actor, arm) for actor, node in self.rules.items()
+                  for _, arm in E.traits(node, 'Armament')
+                  if arm.val('Weapon', '').startswith('ea-retail-')]
+        self.assertTrue(retail)
+        for actor, arm in retail:
+            self.assertIn('ea-art', arm.val('RequiresCondition', ''), actor)
+            self.assertIsNotNone(self.rules[actor].get('GrantConditionOnFaction@ea-art'), actor)
+        modern = {n.key: n for n in E.parse((self.content / 'ea-modern-preserve.yaml').read_text(encoding='utf-8'))}
+        self.assertIn('r2crane', modern)
+        self.assertIsNotNone(modern['r2crane'].get('Health'))
+
     def test_original_missile_units_and_models_are_complete(self):
         for name, cost, hp, range_, weapon in [('v3', '800', '150', '18c0', 'RetailV3Launch'),
                                                ('dred', '2000', '800', '25c0', 'RetailDredLaunch')]:

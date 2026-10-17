@@ -447,6 +447,7 @@ static class Bundle
 		if (originals)
 		{
 			yaml = AppendToSection(yaml, "Rules", "ra2|web/content/ea-art.yaml");
+			yaml = AppendToSection(yaml, "Rules", "ra2|web/content/ea-modern-preserve.yaml");
 			yaml = AppendToSection(yaml, "Sequences", "ra2|web/content/ea-sequences.yaml");
 			yaml = AppendToSection(yaml, "ModelSequences", "ra2|web/content/ea-models.yaml");
 			yaml = AppendToSection(yaml, "Weapons", "ra2|web/content/ea-retail-weapons.yaml");

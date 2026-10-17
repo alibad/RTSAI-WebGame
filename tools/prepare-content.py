@@ -1318,7 +1318,7 @@ def sound_check(ea_clips=()):
     # The rules as the public game loads them: the mod's, Classic's own file, the web content overlays, and map rules.
     allrules = copy.deepcopy(rules)
     overlays = [MOD.parent/'rtsai-topdown/rules.yaml'] if CLASSIC_MODE else []
-    overlays += [OUT/f for f in ('countries.yaml', 'ea-art.yaml', 'ea-audio.yaml')]
+    overlays += [OUT/f for f in ('countries.yaml', 'ea-art.yaml', 'ea-modern-preserve.yaml', 'ea-audio.yaml')]
     for p in overlays:
         if p.exists(): merge(allrules, parse(p.read_text(encoding='utf-8')))
     weapons = {}
