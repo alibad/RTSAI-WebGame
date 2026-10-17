@@ -20,6 +20,9 @@ export interface TouchTarget {
   clear(): void;
   pan(dx: number, dy: number): void;
   zoomAt(x: number, y: number, factor: number): void;
+  /** Editor gestures use native brushes; defer the stroke until a drag or tap is confirmed. */
+  editor?(): "pan" | "edit" | null;
+  editorPointer?(event: "down" | "move" | "up", wx: number, wy: number): void;
 }
 
 const LONG_PRESS_MS = 450;
@@ -32,6 +35,7 @@ export class TouchControls {
   private longPress: ReturnType<typeof setTimeout> | null = null;
   private handled = false; // the current one-finger gesture already did something (long-press)
   private boxing = false;
+  private editing = false;
   private multi: { dist: number; mx: number; my: number; t0: number; moved: boolean } | null = null;
 
   constructor(private el: HTMLElement, private t: TouchTarget) {
@@ -51,6 +55,7 @@ export class TouchControls {
       this.handled = false;
       this.boxing = false;
       this.clearLongPress();
+      if (this.t.editor?.()) return;
       this.longPress = setTimeout(() => {
         const f = this.fingers.get(e.pointerId);
         if (!f || this.fingers.size !== 1 || this.boxing) return;
@@ -62,6 +67,7 @@ export class TouchControls {
         }
       }, LONG_PRESS_MS);
     } else if (this.fingers.size === 2) {
+      this.finishEdit();
       this.clearLongPress();
       if (this.boxing) { this.boxing = false; this.t.setBox(null); }
       this.handled = true;
@@ -73,9 +79,22 @@ export class TouchControls {
   private move(e: PointerEvent) {
     const f = this.fingers.get(e.pointerId);
     if (!f) return;
+    const dx = e.clientX - f.x, dy = e.clientY - f.y;
     f.x = e.clientX;
     f.y = e.clientY;
     if (this.fingers.size === 1 && !this.handled) {
+      const editor = this.t.editor?.();
+      if (editor) {
+        if (editor === "pan") this.t.pan(dx, dy);
+        else {
+          if (!this.editing && Math.hypot(f.x-f.x0, f.y-f.y0) > MOVE_SLOP) {
+            this.editing = true;
+            this.t.editorPointer?.("down", ...this.t.toWorld(f.x0, f.y0));
+          }
+          if (this.editing) this.t.editorPointer?.("move", ...this.t.toWorld(f.x, f.y));
+        }
+        return;
+      }
       if (!this.boxing && Math.hypot(f.x - f.x0, f.y - f.y0) > MOVE_SLOP) {
         this.boxing = true;
         this.clearLongPress();
@@ -101,11 +120,23 @@ export class TouchControls {
   private up(e: PointerEvent) {
     const f = this.fingers.get(e.pointerId);
     if (!f) return;
+    f.x = e.clientX; f.y = e.clientY;
+    const editor = this.t.editor?.();
+    if (!this.multi && editor && !this.handled) {
+      if (editor === "edit") {
+        if (!this.editing) this.t.editorPointer?.("down", ...this.t.toWorld(f.x, f.y));
+        this.t.editorPointer?.("up", ...this.t.toWorld(f.x, f.y));
+      }
+      this.editing = false;
+      this.fingers.delete(e.pointerId);
+      this.clearLongPress();
+      return;
+    }
     this.fingers.delete(e.pointerId);
     if (this.multi) {
       if (this.fingers.size === 0) {
         // A quick two-finger tap: clear the mode or the selection.
-        if (!this.multi.moved && performance.now() - this.multi.t0 < 300) this.t.clear();
+        if (!editor && !this.multi.moved && performance.now() - this.multi.t0 < 300) this.t.clear();
         this.multi = null;
       }
       return;
@@ -127,10 +158,17 @@ export class TouchControls {
   }
 
   private cancel(e: PointerEvent) {
+    this.finishEdit();
     this.fingers.delete(e.pointerId);
     this.clearLongPress();
     if (this.boxing) { this.boxing = false; this.t.setBox(null); }
     if (this.fingers.size === 0) this.multi = null;
+  }
+
+  private finishEdit() {
+    const f = this.fingers.values().next().value;
+    if (this.editing && f) this.t.editorPointer?.("up", ...this.t.toWorld(f.x, f.y));
+    this.editing = false;
   }
 
   private clearLongPress() {

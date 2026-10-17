@@ -94,6 +94,7 @@ function Palette({ game, editor }: { game: Game; editor: EditorController }) {
   }, [cat]);
   const actorCategories = useMemo(() => [...new Set(cat.actors.flatMap((a) => a.categories))].sort(), [cat]);
   const [actorCategory, setActorCategory] = useState(() => actorCategories.find((c) => /tree/i.test(c)) ?? actorCategories[0] ?? "");
+  const [bridgeParts, setBridgeParts] = useState(false);
   useEffect(() => {
     if (st.tool !== "terrain") return;
     // The chosen category's templates, and one picture for each main category.
@@ -193,10 +194,18 @@ function Palette({ game, editor }: { game: Game; editor: EditorController }) {
       {!query && <div className="ed-chips" role="tablist" aria-label="Actor categories">
         {actorCategories.filter(c => c !== "System").map((c) => <button key={c} type="button" role="tab" aria-selected={actorCategory === c} onClick={() => setActorCategory(c)}>{c}</button>)}
       </div>}
-      {!query && actorCategories.includes("System") && <details className="ed-logic"><summary>Advanced map logic</summary><button type="button" role="tab" aria-selected={actorCategory === "System"} onClick={() => setActorCategory("System")}>Lighting and script markers</button><p className="ed-tip">These are invisible helpers in a match. Spawn positions have their own flag tool.</p></details>}
+      {!query && actorCategories.includes("System") && <details className="ed-logic"><summary>Advanced map logic</summary><div role="tablist" aria-label="Map logic"><button type="button" role="tab" aria-selected={actorCategory === "System"} onClick={() => setActorCategory("System")}>Lighting and script markers</button></div><p className="ed-tip">These are invisible helpers in a match. Spawn positions have their own flag tool.</p></details>}
       {actorCategory === "System" && <p className="ed-tip">Editor markers, not scenery. Lights affect terrain lighting; cameras reveal an area to their owner.</p>}
+      {actorCategory === "Bridge" && !query && <section className="ed-crossing" aria-label="River crossing">
+        <b>Build a river crossing</b><p className="ed-tip">Choose a material, then drag from a dry bank to the opposite bank. The tool joins the span and both ramps in one step.</p>
+        <div className="ed-actors">{(["wood", "concrete"] as const).map(material => <button type="button" key={material} aria-pressed={st.brush === `bridge:${material}`} onClick={() => editor.brushBridge(material)}>
+          <span className="ed-actor-picture">{st.actorThumbs[`${st.owner}:${material === "wood" ? "lobrdg_a" : "lobrdb_a"}`] && <img alt="" src={st.actorThumbs[`${st.owner}:${material === "wood" ? "lobrdg_a" : "lobrdb_a"}`]} />}</span><span className="ed-actor-name">{material === "wood" ? "Wood crossing" : "Concrete crossing"}</span>
+        </button>)}</div>
+        <p className="ed-tip">Three cells wide. Banks must be flat at the water’s height. Red previews cannot be placed. Undo removes the whole crossing.</p>
+        <button type="button" className="ed-parts-toggle" aria-expanded={bridgeParts} onClick={() => setBridgeParts(!bridgeParts)}>Advanced bridge components</button>
+      </section>}
       <div className="ed-actors">
-        {actors.filter(a => !unfinished(a)).map((a) => (
+        {actors.filter(a => !unfinished(a) && (actorCategory !== "Bridge" || !!query || bridgeParts || a.name === "cabhut")).map((a) => (
           <button key={a.name} type="button" title={`${a.label} (${a.name})`} aria-label={`${a.label} (${a.name})`} disabled={!marker(a) && status(a.name) === undefined && !icons[a.name]} aria-pressed={st.brush === `actor:${a.name}`} onClick={() => editor.brushActor(a.name)} data-actor={a.name}>
             <span className="ed-actor-picture">{marker(a) && /lamp|lmp|galite/i.test(a.name) ? <Lightbulb size={28} /> : st.actorThumbs[`${st.owner}:${a.name}`] || icons[a.name] ? <img src={(st.actorThumbs[`${st.owner}:${a.name}`] || icons[a.name])!} alt="" draggable={false} /> : <span className="spinner" aria-label="Loading preview" />}</span>
             <span className="ed-actor-name">{a.label}</span>
@@ -204,8 +213,9 @@ function Palette({ game, editor }: { game: Game; editor: EditorController }) {
           </button>
         ))}
       </div>
+      {st.placement && <p className={cn("ed-placement", !st.placement.added && "is-blocked")} role="status" data-testid="ed-placement">{st.placement.added ? st.brush.startsWith("bridge:") ? `Built crossing (${st.placement.added} pieces).` : "Placed object." : st.placement.blocked || "No object placed."}</p>}
       {unavailable.length > 0 && <details className="ed-unavailable"><summary>{unavailable.length} unavailable {unavailable.length === 1 ? "object" : "objects"}</summary><p>These entries have unfinished artwork or no usable preview. Placement is disabled; existing maps are preserved.</p><div>{unavailable.map(a => <span key={a.name}><ImageOff size={14} /><span>{a.label}<small>{a.name}</small></span></span>)}</div></details>}
-      <p className="ed-tip">{actorCategory === "Bridge" && !query ? /^actor:bridg/.test(st.brush) ? "Elevated pieces are scenery until the map defines an elevated crossing. Use ground-level spans for a playable river crossing. " : "Bridge pieces: match span direction and ramps at the banks. A destroyed span leaves a gap. " : ""}Click to place · right-click stops · Select tool moves and deletes</p>
+      <p className="ed-tip">{st.brush.startsWith("bridge:") ? "Drag bank to bank · right-click stops" : `${actorCategory === "Bridge" && bridgeParts ? "Elevated components are scenery unless the map defines an elevated crossing. " : ""}Click to place · right-click stops · Select tool moves and deletes`}</p>
     </div>
   );
   if (st.tool === "spawn") return (

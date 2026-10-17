@@ -1178,6 +1178,8 @@ export class Game {
     window.addEventListener("pointerdown", (e) => { this.touching = e.pointerType === "touch"; }, { passive: true, capture: true });
     // Touch (phones, tablets): tap, long-press, one-finger box, two-finger pan and pinch (touch.ts).
     new TouchControls(c, {
+      editor: () => this.editor?.active ? this.editor.state.tool === "pan" ? "pan" : "edit" : null,
+      editorPointer: (event, wx, wy) => this.editor?.pointer(event, wx, wy, BTN_LEFT, 0),
       toWorld: (x, y) => this.toWorld(x, y),
       ownAt: (wx, wy) => { const s = this.client.cur; const a = s && this.actorAt(wx, wy, s); return !!(s && a && this.ownSelectable(s, a)); },
       hasSelection: () => this.overlay.selected.size > 0,
@@ -1197,7 +1199,7 @@ export class Game {
       },
       zoomAt: (x, y, factor) => {
         const [wx, wy] = this.toWorld(x, y);
-        const z = Math.min(3, Math.max(0.35, this.cam.zoom * factor));
+        const z = Math.min(3, Math.max(this.editor?.active ? .15 : .35, this.cam.zoom * factor));
         this.cam.x = wx - (wx - this.cam.x) * (this.cam.zoom / z);
         this.cam.y = wy - (wy - this.cam.y) * (this.cam.zoom / z);
         this.cam.zoom = z;
@@ -1248,7 +1250,7 @@ export class Game {
     c.addEventListener("wheel", (e) => {
       e.preventDefault();
       const [wx, wy] = this.toWorld(e.clientX, e.clientY);
-      const z = Math.min(3, Math.max(0.35, this.cam.zoom * (e.deltaY < 0 ? 1.15 : 1 / 1.15)));
+      const z = Math.min(3, Math.max(this.editor?.active ? .15 : .35, this.cam.zoom * (e.deltaY < 0 ? 1.15 : 1 / 1.15)));
       this.cam.x = wx - (wx - this.cam.x) * (this.cam.zoom / z);
       this.cam.y = wy - (wy - this.cam.y) * (this.cam.zoom / z);
       this.cam.zoom = z;
@@ -1290,11 +1292,7 @@ export class Game {
     // The map editor's keys: Delete removes the selection, Ctrl+Z / Ctrl+Y undo and redo, Esc drops the brush.
     if (this.editor?.active) {
       if (e.code === "Space") return done();
-      if (e.key.startsWith("Arrow")) {
-        const step = 80 / this.cam.zoom;
-        this.lookAt(this.cam.x + (e.key === "ArrowRight" ? step : e.key === "ArrowLeft" ? -step : 0), this.cam.y + (e.key === "ArrowDown" ? step : e.key === "ArrowUp" ? -step : 0));
-        return done();
-      }
+      if (e.key.startsWith("Arrow")) return done(); // The frame scroll loop handles held arrow keys.
       if (e.key === "Delete" || e.key === "Backspace") { this.editor.deleteSelection(); return done(); }
       if (ctrl && k === "z" && !shift) { this.editor.undo(); return done(); }
       if (ctrl && (k === "y" || (k === "z" && shift))) { this.editor.redo(); return done(); }

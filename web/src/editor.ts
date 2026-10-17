@@ -240,7 +240,7 @@ export class EditorController {
   }
   /** Lakes and rivers with shores (sim EditorWaterBrush); `radius` is the stroke's half-width in cells. */
   brushWater(radius: number) { this.afterPointers({ op: "brush", brush: "water", radius }); }
-  brushActor(type: string) { this.afterPointers({ op: "brush", brush: "actor", type, owner: this.state.owner }); }
+  brushActor(type: string) { this.patch({ placement: null }); this.afterPointers({ op: "brush", brush: "actor", type, owner: this.state.owner }); }
   brushBridge(material: "wood" | "concrete", ruined = false) { this.patch({ placement: null }); this.afterPointers({ op: "brush", brush: "bridge", material, ruined }); }
 
   zoom(factor: number) {

@@ -815,6 +815,10 @@
 .ed-unavailable > div { max-height: 140px; overflow: auto; display: grid; gap: 6px; }
 .ed-unavailable > div > span { display: flex; gap: 6px; align-items: center; padding: 4px; background: #0b0e09; }
 .ed-unavailable small { display: block; opacity: .7; font-size: 9px; }
+.ed-crossing { display: grid; gap: 8px; }
+.ed-crossing > b { color: var(--hud-gold); font-size: 13px; }
+.ed-crossing .ed-actors { flex: none; grid-template-columns: repeat(2, 1fr); grid-auto-rows: 106px; }
+.ed-parts-toggle { text-align: start; padding: 9px 0; color: var(--hud-gold); font-size: 11px; }
 .ed-navigation { position: absolute; right: 12px; bottom: 12px; display: flex; align-items: center; gap: 4px; padding: 5px; border-radius: 10px; }
 .ed-navigation button { display: grid; place-items: center; width: 38px; height: 38px; border-radius: 6px; }
 .ed-navigation button:hover { background: #ffffff16; color: var(--hud-gold); }
