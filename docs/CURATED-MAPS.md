@@ -63,11 +63,11 @@ authors remain intact. It rejects external rule dependencies and scripted maps.
 against the preserved sources. Every map has provenance, also indexed in
 `resources/classic-web-maps.json`. The two internal test aliases remain hidden.
 
-ClassicBundle uses locally installed free Classic content and keeps it separate
-from the standalone isometric profile. This verified local Classic pack does not
-require an owned RA2 installation. Publishing the Classic profile, its content
-notices and asset delivery remains a separate release task; this work grants no
-deployment authorization. Map browsing adds no Firestore reads.
+The published Classic profile uses individually audited art, palettes, tiles and
+unit/weapon sounds exported from the available Classic packages. Every original
+file has its source package and SHA-256 recorded. Archives, original music and EVA
+speech are excluded. The browser mounts ordinary loose packages and requires no
+installed or owned game. Map browsing adds no Firestore reads.
 
 The main menu offers Isometric and Classic tiles when `VITE_GAME_MODES` includes
 both `public` and `public-classic`. Switching clears map/scenario launch parameters
@@ -116,5 +116,17 @@ picker evidence remains under `D:/rtsai-release/map-library-20261018`.
 - Broader Classic and upstream collections remain preserved. The 14 reviewed
   imports use Classic gameplay rules; they do not port all of each mod's factions,
   missions or mechanics.
-- Desktop main source and local browser artifacts are separate from production.
-  Publishing still requires owner authorization and `tools/release-play.mjs`.
+- These 20 maps and the repaired cliff art were published with owner authorization
+  on 18 October 2026 through `tools/release-play.mjs`. See
+  `RELEASE-20261018-MAPS.md` for exact production identities and verification limits.
+
+## Production packaging
+
+`tools/prepare-map-release.py` overlays the reviewed maps and cliff/scenery assets
+on the current live isometric restoration, preserving its unrelated files exactly.
+Classic freezes its resolved default experience into a compatible web manifest;
+the desktop experience picker remains separate. All map files and originally
+resident startup art remain in the core bundle. Cursor art and map previews cannot
+move into the lazy art archive: they are read outside the prebaked world sprites.
+`tools/test-map-release.py` covers this requirement. The browser also rejects short
+asset reads instead of endlessly retrying an empty response (`tools/lazyfs.test.mjs`).
