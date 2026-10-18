@@ -40,7 +40,7 @@ def emit(folder,core,art,audio,receipt):
         if ext in ['.wav','.aud','.ogg','.mp3'] or re.fullmatch(r'\.[vr]0[0-3]',ext): audio[name]=core.pop(name)
         elif ext in ['.png','.shp','.tem','.sno','.des','.int'] and len(core[name])>=32768: art[name]=core.pop(name)
     allfiles={**core,**art,**audio}; allfiles.pop('ora/BUNDLE_ID',None)
-    identity=sha(b''.join(name.encode()+b'\0'+bytes.fromhex(sha(b)) for name,b in sorted(allfiles.items())))
+    identity=sha(b''.join(name.encode()+b'\0'+bytes.fromhex(sha(b)) for name,b in sorted(allfiles.items())))[:20]
     core['ora/BUNDLE_ID']=identity.encode()
     receipt['bundle']=identity
     core['ora/map-release.json']=(json.dumps(receipt,indent=2)+'\n').encode()
