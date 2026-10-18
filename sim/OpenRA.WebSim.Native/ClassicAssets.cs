@@ -15,7 +15,8 @@ static class ClassicAssets
 		if (Directory.Exists(output)) throw new IOException("Choose a new Classic asset output directory");
 		SimHost.Boot(opts["root"]);
 		Directory.CreateDirectory(output);
-		var art = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { ".shp", ".pal", ".tem", ".sno", ".des", ".int" };
+		var art = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { ".shp", ".pal", ".tem", ".sno", ".des", ".int", ".icn" };
+		var sound = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { ".aud", ".v00", ".v01", ".v02", ".v03", ".r00", ".r01", ".r02", ".r03" };
 		var allowed = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "allies.mix", "conquer.mix", "interior.mix", "lores.mix", "hires.mix", "local.mix", "russian.mix", "snow.mix", "sounds.mix", "temperat.mix", "expand2.mix", "lores1.mix", "hires1.mix", "desert.mix" };
 		var soundPackages = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "allies.mix", "russian.mix", "sounds.mix", "expand2.mix", "expand" };
 		allowed.Add("expand");
@@ -31,12 +32,12 @@ static class ClassicAssets
 			{
 				if (Path.GetFileName(name) != name) throw new InvalidDataException("Unexpected nested Classic asset: " + name);
 				var ext = Path.GetExtension(name).ToLowerInvariant();
-				if (!art.Contains(ext) && ext != ".aud") continue;
-				if (ext == ".aud" && !soundPackages.Contains(source)) continue;
+				if (!art.Contains(ext) && !sound.Contains(ext)) continue;
+				if (sound.Contains(ext) && !soundPackages.Contains(source)) continue;
 				using var stream = package.GetStream(name);
 				using var memory = new MemoryStream(); stream.CopyTo(memory);
 				var bytes = memory.ToArray();
-				if (ext == ".aud" && bytes.Length > 512 * 1024) throw new InvalidDataException("Classic sound is too large: " + name);
+				if (sound.Contains(ext) && bytes.Length > 512 * 1024) throw new InvalidDataException("Classic sound is too large: " + name);
 				var rel = folder + "/" + name.ToLowerInvariant();
 				var path = Path.Combine(output, rel); Directory.CreateDirectory(Path.GetDirectoryName(path)); File.WriteAllBytes(path, bytes);
 				files.Add(new { name = rel, sha256 = Convert.ToHexString(SHA256.HashData(bytes)).ToLowerInvariant(), source, bytes = bytes.Length });
