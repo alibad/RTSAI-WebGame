@@ -1,8 +1,13 @@
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
+import fs from 'node:fs';
+import { stripTypeScriptTypes } from 'node:module';
 import { createSaveVersionCatalog, validateArchive } from './save-version-catalog.mjs';
 import { validSaveVersion, parseIdentity, savedBattleUrl, gameAssets, findSaveVersion, currentGameUrl } from '../web/src/sim/save-versions.ts';
 import { retainBattle } from '../web/src/sim/save-records.ts';
+const recoverySource = stripTypeScriptTypes(fs.readFileSync(new URL('../web/src/sim/save-maps.ts', import.meta.url), 'utf8'))
+  .replace("'./save-versions'", JSON.stringify(new URL('../web/src/sim/save-versions.ts', import.meta.url).href));
+const { recoverBattlefield } = await import('data:text/javascript;base64,' + Buffer.from(recoverySource).toString('base64'));
 
 const host = 'https://12345678.rtsai-play-cdn.pages.dev/';
 const bytes = new Map();
@@ -66,4 +71,16 @@ assert.deepEqual(saved[0].mapFiles, record.mapFiles, 'only the preview may be om
 assert.equal(record.thumb, 'preview', 'fallback must not mutate the original export');
 assert.throws(() => retainBattle(record, earlier, () => { throw Error('quota'); }), /earlier battles have been kept/);
 assert.equal(JSON.stringify(earlier), untouched);
+const map = 'map-1234567890abcdef';
+const recovery = {schema: 1, identity: old.identity, map, notice: 'Earlier exported geography; recorded frames verified.', files: {'map.yaml': 'eA==', 'map.bin': 'eA=='}};
+let requested;
+globalThis.location.href = 'https://rtsai.net/play/saved-clients/abcdef012345/';
+globalThis.fetch = async url => { requested = String(url); return {ok: true, status: 200, json: async () => recovery}; };
+assert.deepEqual(await recoverBattlefield(old.identity, map), recovery);
+assert.ok(requested.startsWith('https://rtsai.net/play/saved-maps/map-1234567890abcdef.'), 'recovery stays at the trusted game origin');
+assert.equal(await recoverBattlefield(old.identity, '../other'), undefined);
+globalThis.fetch = async () => ({ok: true, status: 200, json: async () => ({...recovery, identity: classic.identity})});
+await assert.rejects(recoverBattlefield(old.identity, map), /do not match/);
+globalThis.fetch = async () => ({ok: false, status: 404});
+assert.equal(await recoverBattlefield(old.identity, map), undefined);
 console.log(JSON.stringify({passed: true, archiveVersionsRetained: 3, oldSavesRetained: 15, coverage: ['original version routing','Classic routing','untrusted executable URLs rejected','missing archive fails safely','custom map preserved on quota fallback','no save eviction']}));

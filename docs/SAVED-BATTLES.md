@@ -23,6 +23,13 @@ recorded orders, target tick, frame hashes, selection, groups or camera. A genui
 missing legacy map must be recovered from its original files, not regenerated as an
 approximation. Quitting an archived battle returns to the current game for new matches.
 
+Reviewed legacy recovery exports may be shipped under `web/public/saved-maps/`, keyed
+by the exact map ID and original simulator/content hashes. Recovery never relaxes the
+native replay checks. The original Hormuz export reproduces all 13,010 recorded
+simulation frames; its later cosmetic sand stroke could not be recovered. That limit
+is recorded in the asset provenance and the save's `mapRecovery` notice. Keep the
+original save payload and backup unchanged; add only the recovered map metadata.
+
 Saves are retained until the player explicitly deletes them. Storage pressure may
 omit the new thumbnail, but must never evict an earlier battle or discard map bytes.
 If the remaining save will not fit, report the failure and leave earlier saves intact.

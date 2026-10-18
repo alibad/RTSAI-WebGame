@@ -8,6 +8,7 @@ import { buildIdentity } from "../sim/build-identity";
 import { findSaveVersion, savedBattleUrl, type SaveVersion } from "../sim/save-versions";
 import { EditorController, savedMapArchive } from "../editor";
 import { retainBattle } from "../sim/save-records";
+import { recoverBattlefield } from "../sim/save-maps";
 import type { Game } from "../game";
 import { useStore } from "../store";
 import { Button } from "../components/ui/button";
@@ -26,6 +27,7 @@ export interface MatchRecord {
   /** Original rules and custom-map files are preserved in exported and resumed saves. */
   version?: SaveVersion;
   mapFiles?: Record<string, string>;
+  mapRecovery?: string;
 }
 
 const KEY = "rtsai.local-matches.v1";
@@ -97,10 +99,18 @@ export async function startRecord(game: Game, record: MatchRecord, readonly: boo
     if (record.identity !== await buildIdentity(profile, runtime())) {
       const version = await findSaveVersion(record.identity);
       if (!version) return "The original game files for this save are not in the archive yet. Your saved battle has been kept.";
-      const mapFiles = record.mapFiles ?? await savedMapArchive(String(record.scenario.map ?? ''));
+      const map = String(record.scenario.map ?? '');
+      const localFiles = record.mapFiles ?? await savedMapArchive(map);
+      const recovery = localFiles ? undefined : await recoverBattlefield(record.identity, map);
+      const mapFiles = localFiles ?? recovery?.files;
+      if (!mapFiles && /^map-[a-f0-9]{16}$/.test(map))
+        return 'The original battlefield file is missing from this device. Your saved orders and progress are intact; keep your exported save while the original map is recovered.';
       // Add only recovery metadata: the original tick, orders, frame hashes and view are unchanged.
-      try { keepRecord({ ...record, version, ...(mapFiles ? { mapFiles } : {}) }); }
-      catch { /* Optional metadata must not prevent opening a battle when storage is full; the original is intact. */ }
+      try { keepRecord({ ...record, version, ...(mapFiles ? { mapFiles } : {}), ...(recovery ? { mapRecovery: recovery.notice } : {}) }); }
+      catch (error) {
+        if (mapFiles && !record.mapFiles) throw error; // The original client needs these files after the reload.
+        // Optional version metadata must not prevent opening an otherwise self-contained battle.
+      }
       location.assign(savedBattleUrl(location.href, version, record.id, readonly));
       return '';
     }
@@ -189,6 +199,7 @@ function SaveCard({ game, record, fresh, onStart }: { game: Game; record: MatchR
       </button>
       <div className="lib-body">
         <div className="lib-title"><b>{title}</b><small>{when(record.date)}</small></div>
+        {record.mapRecovery && <p className="settings-hint">{record.mapRecovery}</p>}
         <div className="lib-sides">
           {sides.map((s, i) => <span key={i} className="lib-side">{i > 0 && <span className="lib-vs">VS</span>}<Flag id={s.faction} /><span>{s.you ? <em>You</em> : s.nation}</span></span>)}
           {view && profile !== record.profile && <span className="lib-tag">{view}</span>}
