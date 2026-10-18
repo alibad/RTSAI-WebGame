@@ -6,6 +6,7 @@ with its retail input SHA. This module is used only when the original-country co
 from pathlib import Path
 import json
 import math
+import re
 
 
 NEW_ACTORS = ('v3', 'dred', 'v3rocket', 'dmisl')
@@ -148,6 +149,33 @@ def initialize(g, E):
         g.curmodels[name] = model.clone()
 
 
+def fluent_texts(g, E, manifest):
+    """Read static English reference messages in manifest order, before standalone renames."""
+    messages = {}
+    for entry in E._section(manifest, 'FluentMessages'):
+        if entry.partition('|')[0] not in ('ra2', 'classic', 'topdown'):
+            continue
+        path = g.files.path(entry)
+        if not path.exists():
+            continue
+        key = None
+        for line in path.read_text(encoding='utf-8-sig').splitlines():
+            match = re.match(r'^([A-Za-z][A-Za-z0-9_-]*)\s*=\s*(.*)$', line)
+            if match:
+                key = match[1]
+                messages[key] = match[2].strip()
+            elif key and line[:1].isspace():
+                messages[key] += ' ' + line.strip()
+            elif line.strip():
+                key = None
+    def expand(value, depth=0):
+        if depth > 8:
+            raise ValueError('Recursive original message: ' + value)
+        return re.sub(r'\{\s*([A-Za-z][A-Za-z0-9_-]*)\s*\}',
+                      lambda m: expand(messages.get(m[1], m[0]), depth + 1), value).strip()
+    return {key: expand(value) for key, value in messages.items()}
+
+
 class Retail:
     def __init__(self, g, E):
         self.g, self.E = g, E
@@ -157,11 +185,33 @@ class Retail:
         self.modern_rules = []
         self.effects = set()
         self.weapon_names = {}
+        manifest = (g.mod_root / 'mods/rtsai/mod.yaml').read_text(encoding='utf-8')
+        classic = (g.mod_root / 'mods/rtsai-classic/mod.yaml').read_text(encoding='utf-8')
+        original_text = fluent_texts(g, E, classic)
+        modern_text = fluent_texts(g, E, manifest)
+        modern_names = {}
+        for actor, facts in g.actors.items():
+            tip = g.cur[actor].get('Tooltip')
+            if facts['modern'] and tip is not None:
+                old = tip.val('Name', actor)
+                modern_names[actor] = modern_text.get(old, old)
         self.rules.append(E.Node('Player', None, [E.Node('OriginalCountryLabels', None, [
             E.Node('Factions', ', '.join(E.COUNTRIES)),
-            E.Node('ModernActors', None, [E.Node('gacsph', 'Strategic Uplink'), E.Node('nairon', 'EW Array')]),
+            E.Node('ModernActors', None, [E.Node(key, value) for key, value in sorted(modern_names.items())]),
             E.Node('ModernPowers', None, [E.Node('chrono', 'Rapid Redeployment'), E.Node('invuln', 'EW Shield')])])]))
-        manifest = (g.mod_root / 'mods/rtsai/mod.yaml').read_text(encoding='utf-8')
+        world = E.Node('World')
+        originals = {item.val('InternalName'): item for _, item in E.traits(g.ref['world'], 'Faction')}
+        for key, item in E.traits(g.cur['world'], 'Faction'):
+            country = item.val('InternalName')
+            reference = originals.get(country)
+            if country not in E.COUNTRIES or reference is None:
+                continue
+            for field in ('Name', 'Description'):
+                value = reference.val(field)
+                if value:
+                    trait(E, world, key, **{field: original_text.get(value, value)})
+        if world.children:
+            self.rules.append(world)
         self.stock_weapons = g.files.load(E._section(manifest, 'Weapons'))
         by_lower = {k.lower(): v for k, v in self.stock_weapons.items()}
         self.by_lower = by_lower
@@ -170,6 +220,18 @@ class Retail:
             patch = E.Node(g.cur[actor].key)
             renamed_armaments = {}
             values = self.baseline['actors'].get(actor, {})
+            # Keep the original roster's public names; standalone/names.ftl deliberately renames them.
+            reference_tip = g.ref[actor].get('Tooltip')
+            if reference_tip is not None:
+                for field in ('Name', 'GenericName'):
+                    value = reference_tip.val(field)
+                    if value:
+                        trait(E, patch, 'Tooltip', **{field: original_text.get(value, value)})
+            reference_build = g.ref[actor].get('Buildable')
+            if reference_build is not None and reference_build.val('Description'):
+                value = reference_build.val('Description')
+                trait(E, patch, 'Buildable', Description=original_text.get(value, value))
+
             # These physical actor values are shared by any owner of the actor, like foundations.
             for key, kind, field in [('Cost', 'Valued', 'Cost'), ('Strength', 'Health', 'HP'),
                                      ('Sight', 'RevealsShroud', 'Range'), ('Power', 'Power', 'Amount')]:
@@ -252,7 +314,7 @@ class Retail:
             if actor == 'tnkd':
                 trait(E, patch, 'Buildable', Prerequisites='radar, ~vehicles.germany')
             if actor in ('gacsph', 'nairon'):
-                trait(E, patch, 'Tooltip', Name='actor-gacsph-name' if actor == 'gacsph' else 'actor-nairon-name')
+                # Tooltip already uses the original reference text above.
                 kind = 'ChronoshiftPower@chronoshift' if actor == 'gacsph' else 'GrantExternalConditionPower@IRONCURTAIN'
                 trait(E, patch, kind, Name='Chronoshift' if actor == 'gacsph' else 'Iron Curtain',
                       ChargeInterval=10500 if actor == 'gacsph' else 7500,
@@ -278,7 +340,7 @@ class Retail:
                 continue
             patch = E.Node(g.cur[actor].key)
             for item in g.cur[actor].children:
-                if E.trait_type(item.key) in ('Valued', 'Health', 'Armor', 'RevealsShroud', 'Power') or (
+                if E.trait_type(item.key) in ('Valued', 'Health', 'Armor', 'RevealsShroud', 'Power', 'Tooltip', 'Buildable') or (
                         E.trait_type(item.key) not in ('RenderSprites', 'RenderVoxels') and
                         any(item.val(field) for field in ('Image', 'TrailImage', 'MissileImage'))):
                     patch.children.append(item.clone())

@@ -169,6 +169,14 @@ class Generated(unittest.TestCase):
         self.assertIn('r2crane', modern)
         self.assertIsNotNone(modern['r2crane'].get('Health'))
 
+    def test_original_roster_names_are_not_standalone_replacements(self):
+        for actor, expected in [('beag', 'Black Eagle'), ('deso', 'Desolator'), ('ttnk', 'Tesla Tank'),
+                                ('tany', 'Tanya'), ('cleg', 'Chrono Legionnaire')]:
+            self.assertEqual(self.rules[actor].get('Tooltip').val('Name'), expected, actor)
+        labels = self.rules['Player'].get('OriginalCountryLabels').get('ModernActors')
+        self.assertEqual(labels.val('gacsph'), 'Strategic Uplink')
+        self.assertEqual(labels.val('nairon'), 'EW Array')
+
     def test_original_missile_units_and_models_are_complete(self):
         for name, cost, hp, range_, weapon in [('v3', '800', '150', '18c0', 'RetailV3Launch'),
                                                ('dred', '2000', '800', '25c0', 'RetailDredLaunch')]:
