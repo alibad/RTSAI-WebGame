@@ -3,6 +3,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
+import crypto from "node:crypto";
 import { checkOutput, checkProfile, CLIP_MAX_BYTES, EA_NOTICE, listPackEntries, noticeText } from "./ea-gate.mjs";
 
 function pack(entries) {
@@ -19,6 +20,27 @@ function lazyPack(entries) {
   return { bytes, index: { files: listPackEntries(bytes).map((e) => ({ path: e.name, offset: e.offset, size: e.length })) } };
 }
 const wave = (n = 64) => { const b = Buffer.alloc(n); b.write("RIFF"); b.writeUInt32LE(n - 8, 4); b.write("WAVE", 8); return b; };
+
+test('native Classic accepts hashed terrain and unit clips, without archives', () => {
+  const prefix = 'mods/rtsai-classic-core/web/ea/';
+  const tile = Buffer.from('terrain'), clip = Buffer.from('unit sound');
+  const files = [['temperat/s01.tem',tile,'temperat.mix'],['sounds/cannon.aud',clip,'sounds.mix']];
+  const manifest = JSON.stringify({notice:EA_NOTICE,files:files.map(([name,data,source])=>({name,source,sha256:crypto.createHash('sha256').update(data).digest('hex')}))});
+  const p = fixture('public-classic', [[prefix+'ea-content.json',manifest],[prefix+'temperat/s01.tem',tile]], [], [[prefix+'sounds/cannon.aud',clip]]);
+  try { const result=checkProfile(p); assert.equal(result.files,1); assert.equal(result.audio.files,1); }
+  finally { fs.rmSync(p.dir,{recursive:true,force:true}); }
+});
+
+test('native Classic rejects an altered asset and music from a non-unit package', () => {
+  const prefix='mods/rtsai-classic-core/web/ea/';
+  for(const [name,source,payload,hash,why] of [
+    ['temperat/s01.tem','temperat.mix','changed','0'.repeat(64),/hash mismatch/],
+    ['local/intro.aud','local.mix','music',crypto.createHash('sha256').update('music').digest('hex'),/unit\/weapon allowlist/]]) {
+    const manifest=JSON.stringify({notice:EA_NOTICE,files:[{name,source,sha256:hash}]});
+    const p=fixture('public-classic',[[prefix+'ea-content.json',manifest]],[],[[prefix+name,payload]]);
+    try { assert.throws(()=>checkProfile(p),why); } finally {fs.rmSync(p.dir,{recursive:true,force:true});}
+  }
+});
 const content = (names, notice = EA_NOTICE, audio = undefined) =>
   JSON.stringify({ notice, files: names.map((name) => ({ name, sha256: "0".repeat(64), source: "fixture" })),
     ...(audio ? { audio: audio.map((name) => ({ name, sha256: "0".repeat(64), source: "fixture" })) } : {}) });
