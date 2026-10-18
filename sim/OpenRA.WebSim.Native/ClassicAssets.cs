@@ -17,6 +17,8 @@ static class ClassicAssets
 		Directory.CreateDirectory(output);
 		var art = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { ".shp", ".pal", ".tem", ".sno", ".des", ".int" };
 		var allowed = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "allies.mix", "conquer.mix", "interior.mix", "lores.mix", "hires.mix", "local.mix", "russian.mix", "snow.mix", "sounds.mix", "temperat.mix", "expand2.mix", "lores1.mix", "hires1.mix", "desert.mix" };
+		var soundPackages = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "allies.mix", "russian.mix", "sounds.mix", "expand2.mix", "expand" };
+		allowed.Add("expand");
 		var files = new List<object>();
 		var mounts = new List<object>();
 		foreach (var package in ((OpenRA.FileSystem.FileSystem)SimHost.ModData.DefaultFileSystem).MountedPackages)
@@ -30,6 +32,7 @@ static class ClassicAssets
 				if (Path.GetFileName(name) != name) throw new InvalidDataException("Unexpected nested Classic asset: " + name);
 				var ext = Path.GetExtension(name).ToLowerInvariant();
 				if (!art.Contains(ext) && ext != ".aud") continue;
+				if (ext == ".aud" && !soundPackages.Contains(source)) continue;
 				using var stream = package.GetStream(name);
 				using var memory = new MemoryStream(); stream.CopyTo(memory);
 				var bytes = memory.ToArray();
