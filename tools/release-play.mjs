@@ -437,7 +437,11 @@ async function cdnPublish(rel, roots, liveBuild) {
   if (Object.keys(files).length >= 20000) refuse(`${dir} has ${Object.keys(files).length} files; Cloudflare Pages takes under 20,000`);
   if (big.length) refuse(`files over 25 MiB: ${big.join(", ")}`);
   if (rtRules.length) refuse(`runtime roots without their Content-Encoding rule: ${rtRules.join(", ")}`);
-  if (!added.length && liveManifest) { say("  Cloudflare already serves these roots"); return { deployed: false, added, rules, files: Object.keys(files).length }; }
+  // A failed prepare can leave new roots staged on disk. Their presence is not proof they were deployed.
+  // Retiring an alias copy also needs publication, even when this run adds no local files.
+  const alreadyPublished = liveManifest && Object.keys(files).length === Object.keys(liveManifest.files).length
+    && Object.entries(files).every(([name, size]) => liveManifest.files[name] === size);
+  if (!added.length && alreadyPublished) { say("  Cloudflare already serves these roots"); return { deployed: false, added, rules, files: Object.keys(files).length }; }
 
   // 4. Deploy, with the manifest the next release checks against.
   fs.writeFileSync(path.join(dir, "MANIFEST.json"), JSON.stringify({ writtenAt: new Date().toISOString(), files }) + "\n");
