@@ -72,7 +72,7 @@ export function checkProfile(profile) {
     if (content.notice !== EA_NOTICE) fail("Classic content lacks EA's notice");
     const listed = new Map(content.files.map(e => [e.name, e]));
     if (listed.size !== content.files.length) fail("duplicate Classic asset record");
-    const artPack = fs.readFileSync(path.join(profile.dir, "web-art.pack"));
+    const artPack = art.some(e => isOriginal(e.name)) ? fs.readFileSync(path.join(profile.dir, "web-art.pack")) : Buffer.alloc(0);
     const audioPack = fs.readFileSync(path.join(profile.dir, "web-audio.pack"));
     const audioNames = []; let bytes = 0, audioBytes = 0, files = 0;
     const seen = new Set();
