@@ -74,6 +74,12 @@
       "rtRoot": "rt-c64a7e3e6f04/",
       "dataRoot": "data-44c6802d8a16/",
       "profiles": ["public", "public-classic"]
+    },
+    {
+      "assetHost": "https://6788c0a4.rtsai-play-cdn.pages.dev/",
+      "rtRoot": "rt-c64a7e3e6f04/",
+      "dataRoot": "data-dbb802878e04/",
+      "profiles": ["public", "public-classic"]
     }
   ],
   "$saveArchives": "Never delete immutable asset deployments referenced by save-versions.json. Every release carries the complete existing catalog forward; retiring an alias root does not retire a saved battle's deployment.",
