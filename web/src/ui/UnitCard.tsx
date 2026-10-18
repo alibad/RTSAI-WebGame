@@ -21,12 +21,17 @@ export interface UnitInfo {
 
 type Story = { faction: string; name: string; role: string; story: string; strengths: string; counterplay: string };
 const stories = (catalog as { units?: Record<string, Story> }).units ?? {};
-const infos = new Map<string, Promise<UnitInfo>>();
+const infos = new WeakMap<Game, { world: Game["info"]; values: Map<string, Promise<UnitInfo>> }>();
 
 /** The engine's numbers for an actor, asked once per page. */
 export function unitInfo(game: Game, name: string) {
-  let p = infos.get(name);
-  if (!p) { p = game.command<UnitInfo>({ cmd: "unitinfo", type: name }); infos.set(name, p); }
+  // Actor labels depend on the current country and rules, so never reuse them across worlds.
+  let cache = infos.get(game);
+  if (!cache || cache.world !== game.info) {
+    cache = { world: game.info, values: new Map() }; infos.set(game, cache);
+  }
+  let p = cache.values.get(name);
+  if (!p) { p = game.command<UnitInfo>({ cmd: "unitinfo", type: name }); cache.values.set(name, p); }
   return p;
 }
 
