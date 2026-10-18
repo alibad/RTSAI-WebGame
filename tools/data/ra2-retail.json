@@ -23,7 +23,10 @@
       "Sight": "8",
       "Speed": "4",
       "Cost": "1200",
-      "ElitePrimary": "MedusaE"
+      "ElitePrimary": "MedusaE",
+      "VeteranAbilities": "STRONGER,FIREPOWER,ROF,SIGHT,FASTER",
+      "EliteAbilities": "SELF_HEAL,STRONGER,FIREPOWER,ROF",
+      "Locomotor": "{2BEA74E1-7CCA-11d3-BE14-00104B62A16C}"
     },
     "amcv": {
       "Name": "Allied Construction Vehicle",
@@ -32,7 +35,9 @@
       "Armor": "heavy",
       "Sight": "6",
       "Speed": "4",
-      "Cost": "3000"
+      "Cost": "3000",
+      "Trainable": "no",
+      "Locomotor": "{4A582741-9839-11d1-B709-00A024DDAFD1}"
     },
     "amradr": {
       "Name": "American Airforce Command Headquarters",
@@ -53,7 +58,11 @@
       "Sight": "6",
       "Speed": "4",
       "Cost": "1750",
-      "ElitePrimary": "120mmxE"
+      "ElitePrimary": "120mmxE",
+      "SelfHealing": "yes",
+      "VeteranAbilities": "STRONGER,FIREPOWER,ROF,SIGHT,FASTER",
+      "EliteAbilities": "SELF_HEAL,STRONGER,FIREPOWER,ROF",
+      "Locomotor": "{4A582741-9839-11d1-B709-00A024DDAFD1}"
     },
     "asw": {
       "Name": "Osprey",
@@ -63,7 +72,9 @@
       "Armor": "light",
       "Sight": "2",
       "Speed": "12",
-      "Cost": "50"
+      "Cost": "50",
+      "ImmuneToPsionics": "yes",
+      "Locomotor": "{4A582746-9839-11d1-B709-00A024DDAFD1}"
     },
     "atesla": {
       "Name": "Prism Cannon",
@@ -85,7 +96,11 @@
       "Sight": "8",
       "Speed": "14",
       "Cost": "1200",
-      "ElitePrimary": "Maverick2E"
+      "ElitePrimary": "Maverick2E",
+      "VeteranAbilities": "STRONGER,FIREPOWER,SIGHT,FASTER",
+      "EliteAbilities": "STRONGER,FIREPOWER,ROF",
+      "ImmuneToPsionics": "yes",
+      "Locomotor": "{4A582746-9839-11d1-B709-00A024DDAFD1}"
     },
     "carrier": {
       "Name": "Aircraft Carrier",
@@ -99,7 +114,10 @@
       "Armor": "heavy",
       "Sight": "7",
       "Speed": "4",
-      "Cost": "2000"
+      "Cost": "2000",
+      "VeteranAbilities": "STRONGER,FIREPOWER,ROF,SIGHT,FASTER",
+      "EliteAbilities": "SELF_HEAL,STRONGER,FIREPOWER,ROF",
+      "Locomotor": "{2BEA74E1-7CCA-11d3-BE14-00104B62A16C}"
     },
     "ccomand": {
       "Name": "Chrono Commando",
@@ -111,7 +129,10 @@
       "Sight": "8",
       "Speed": "5",
       "Cost": "2000",
-      "ElitePrimary": "ChronoMP5E"
+      "ElitePrimary": "ChronoMP5E",
+      "VeteranAbilities": "STRONGER,FIREPOWER,ROF,SIGHT,FASTER",
+      "EliteAbilities": "SELF_HEAL,STRONGER,FIREPOWER,ROF",
+      "Locomotor": "{4A582747-9839-11d1-B709-00A024DDAFD1}"
     },
     "civan": {
       "Name": "Chrono Ivan",
@@ -121,7 +142,11 @@
       "Armor": "none",
       "Sight": "8",
       "Speed": "6",
-      "Cost": "1000"
+      "Cost": "1000",
+      "Trainable": "no",
+      "VeteranAbilities": "STRONGER,FIREPOWER,ROF,SIGHT,FASTER",
+      "EliteAbilities": "SELF_HEAL,STRONGER,FIREPOWER,ROF",
+      "Locomotor": "{4A582747-9839-11d1-B709-00A024DDAFD1}"
     },
     "cleg": {
       "Name": "Chrono Legionnaire",
@@ -132,7 +157,12 @@
       "Sight": "8",
       "Speed": "5",
       "Cost": "1500",
-      "ElitePrimary": "NeutronRifleE"
+      "ElitePrimary": "NeutronRifleE",
+      "VeteranAbilities": "STRONGER,FIREPOWER,ROF,SIGHT,FASTER",
+      "EliteAbilities": "SELF_HEAL,STRONGER,FIREPOWER,ROF",
+      "ImmuneToPsionics": "no",
+      "ImmuneToRadiation": "no",
+      "Locomotor": "{4A582747-9839-11d1-B709-00A024DDAFD1}"
     },
     "cmin": {
       "Name": "Chrono Miner",
@@ -142,7 +172,12 @@
       "Primary": "none",
       "Sight": "4",
       "Speed": "4",
-      "Cost": "1400"
+      "Cost": "1400",
+      "Trainable": "no",
+      "SelfHealing": "yes",
+      "ImmuneToPsionics": "yes",
+      "ImmuneToRadiation": "yes",
+      "Locomotor": "{4A582747-9839-11d1-B709-00A024DDAFD1}"
     },
     "deso": {
       "Name": "Desolater",
@@ -154,7 +189,13 @@
       "Sight": "6",
       "Speed": "4",
       "Cost": "600",
-      "ElitePrimary": "RadBeamWeaponE"
+      "ElitePrimary": "RadBeamWeaponE",
+      "SelfHealing": "yes",
+      "VeteranAbilities": "STRONGER,FIREPOWER,ROF,SIGHT,FASTER",
+      "EliteAbilities": "SELF_HEAL,STRONGER,FIREPOWER,ROF",
+      "ImmuneToPsionics": "no",
+      "ImmuneToRadiation": "yes",
+      "Locomotor": "{4A582744-9839-11d1-B709-00A024DDAFD1}"
     },
     "dest": {
       "Name": "Destroyer",
@@ -170,7 +211,10 @@
       "Sight": "7",
       "Speed": "6",
       "Cost": "1000",
-      "ElitePrimary": "155mmE"
+      "ElitePrimary": "155mmE",
+      "VeteranAbilities": "STRONGER,FIREPOWER,ROF,SIGHT,FASTER",
+      "EliteAbilities": "SELF_HEAL,STRONGER,FIREPOWER,ROF",
+      "Locomotor": "{2BEA74E1-7CCA-11d3-BE14-00104B62A16C}"
     },
     "dlph": {
       "Name": "Dolphin",
@@ -181,7 +225,11 @@
       "Sight": "4",
       "Speed": "8",
       "Cost": "500",
-      "ElitePrimary": "SonicZapE"
+      "ElitePrimary": "SonicZapE",
+      "Organic": "yes",
+      "VeteranAbilities": "STRONGER,FIREPOWER,ROF,SIGHT,FASTER",
+      "EliteAbilities": "SELF_HEAL,STRONGER,FIREPOWER,ROF",
+      "Locomotor": "{2BEA74E1-7CCA-11d3-BE14-00104B62A16C}"
     },
     "dmisl": {
       "Name": "Dread Missile",
@@ -189,7 +237,10 @@
       "Armor": "special_2",
       "Sight": "0",
       "Speed": "20",
-      "Cost": "50"
+      "Cost": "50",
+      "Trainable": "no",
+      "ImmuneToPsionics": "yes",
+      "Locomotor": "{B7B49766-E576-11d3-9BD9-00104B972FE8}"
     },
     "dog": {
       "Name": "Attack Dog",
@@ -200,7 +251,13 @@
       "Armor": "none",
       "Sight": "9",
       "Speed": "8",
-      "Cost": "200"
+      "Cost": "200",
+      "Trainable": "no",
+      "VeteranAbilities": "STRONGER,FIREPOWER,ROF,SIGHT,FASTER,SCATTER",
+      "EliteAbilities": "SELF_HEAL,STRONGER,FIREPOWER,ROF",
+      "ImmuneToPsionics": "yes",
+      "ImmuneToRadiation": "no",
+      "Locomotor": "{4A582744-9839-11d1-B709-00A024DDAFD1}"
     },
     "dred": {
       "Name": "Dreadnought",
@@ -214,7 +271,10 @@
       "Armor": "heavy",
       "Sight": "7",
       "Speed": "4",
-      "Cost": "2000"
+      "Cost": "2000",
+      "VeteranAbilities": "STRONGER,FIREPOWER,ROF,SIGHT,FASTER",
+      "EliteAbilities": "SELF_HEAL,STRONGER,FIREPOWER,ROF",
+      "Locomotor": "{2BEA74E1-7CCA-11d3-BE14-00104B62A16C}"
     },
     "dron": {
       "Name": "Terror Drone",
@@ -225,7 +285,11 @@
       "Armor": "special_1",
       "Sight": "4",
       "Speed": "10",
-      "Cost": "500"
+      "Cost": "500",
+      "Trainable": "no",
+      "ImmuneToPsionics": "yes",
+      "ImmuneToRadiation": "yes",
+      "Locomotor": "{4A582741-9839-11d1-B709-00A024DDAFD1}"
     },
     "dtruck": {
       "Name": "Demolitions Truck",
@@ -236,7 +300,10 @@
       "Armor": "light",
       "Sight": "5",
       "Speed": "5",
-      "Cost": "1500"
+      "Cost": "1500",
+      "Trainable": "no",
+      "SelfHealing": "no",
+      "Locomotor": "{4A582741-9839-11d1-B709-00A024DDAFD1}"
     },
     "e1": {
       "Name": "GI",
@@ -249,7 +316,11 @@
       "Speed": "4",
       "Cost": "200",
       "ElitePrimary": "M60E",
-      "EliteSecondary": "ParaE"
+      "EliteSecondary": "ParaE",
+      "VeteranAbilities": "STRONGER,FIREPOWER,ROF,SIGHT,FASTER",
+      "EliteAbilities": "SELF_HEAL,STRONGER,FIREPOWER,ROF",
+      "ImmuneToPsionics": "no",
+      "Locomotor": "{4A582744-9839-11d1-B709-00A024DDAFD1}"
     },
     "e2": {
       "Name": "Conscript",
@@ -260,7 +331,10 @@
       "Sight": "5",
       "Speed": "4",
       "Cost": "100",
-      "ElitePrimary": "M1CarbineE"
+      "ElitePrimary": "M1CarbineE",
+      "VeteranAbilities": "STRONGER,FIREPOWER,ROF,SIGHT,FASTER",
+      "EliteAbilities": "SELF_HEAL,STRONGER,FIREPOWER,ROF",
+      "Locomotor": "{4A582744-9839-11d1-B709-00A024DDAFD1}"
     },
     "engineer": {
       "Name": "Engineer",
@@ -271,7 +345,9 @@
       "Armor": "none",
       "Sight": "4",
       "Speed": "4",
-      "Cost": "500"
+      "Cost": "500",
+      "Trainable": "no",
+      "Locomotor": "{4A582744-9839-11d1-B709-00A024DDAFD1}"
     },
     "flakt": {
       "Name": "Flak Trooper",
@@ -284,7 +360,10 @@
       "Speed": "4",
       "Cost": "300",
       "ElitePrimary": "FlakGuyGunE",
-      "EliteSecondary": "FlakGuyAAGunE"
+      "EliteSecondary": "FlakGuyAAGunE",
+      "VeteranAbilities": "STRONGER,FIREPOWER,ROF,SIGHT,FASTER",
+      "EliteAbilities": "SELF_HEAL,STRONGER,FIREPOWER,ROF",
+      "Locomotor": "{4A582744-9839-11d1-B709-00A024DDAFD1}"
     },
     "fv": {
       "Name": "IFV",
@@ -295,7 +374,12 @@
       "Sight": "8",
       "Speed": "10",
       "Cost": "600",
-      "ElitePrimary": "HoverMissileE"
+      "ElitePrimary": "HoverMissileE",
+      "VeteranAbilities": "STRONGER,FIREPOWER,SIGHT,FASTER",
+      "EliteAbilities": "SELF_HEAL,STRONGER,FIREPOWER,ROF",
+      "ImmuneToPsionics": "no",
+      "ImmuneToRadiation": "no",
+      "Locomotor": "{4A582741-9839-11d1-B709-00A024DDAFD1}"
     },
     "gaairc": {
       "Name": "Airforce Command Headquarters",
@@ -459,7 +543,13 @@
       "Sight": "4",
       "Speed": "4",
       "Cost": "1400",
-      "ElitePrimary": "20mmRapidE"
+      "ElitePrimary": "20mmRapidE",
+      "SelfHealing": "yes",
+      "VeteranAbilities": "STRONGER,FIREPOWER,SIGHT,FASTER",
+      "EliteAbilities": "SELF_HEAL,STRONGER,FIREPOWER,ROF",
+      "ImmuneToPsionics": "yes",
+      "ImmuneToRadiation": "yes",
+      "Locomotor": "{4A582741-9839-11d1-B709-00A024DDAFD1}"
     },
     "hornet": {
       "Name": "Hornet",
@@ -470,7 +560,11 @@
       "Sight": "2",
       "Speed": "12",
       "Cost": "50",
-      "ElitePrimary": "HornetBombE"
+      "ElitePrimary": "HornetBombE",
+      "VeteranAbilities": "STRONGER,FIREPOWER",
+      "EliteAbilities": "STRONGER,FIREPOWER",
+      "ImmuneToPsionics": "yes",
+      "Locomotor": "{4A582746-9839-11d1-B709-00A024DDAFD1}"
     },
     "htk": {
       "Name": "Flak Track",
@@ -483,7 +577,12 @@
       "Speed": "8",
       "Cost": "500",
       "ElitePrimary": "FlakTrackGunE",
-      "EliteSecondary": "FlakTrackAAGunE"
+      "EliteSecondary": "FlakTrackAAGunE",
+      "VeteranAbilities": "STRONGER,FIREPOWER,SIGHT,FASTER",
+      "EliteAbilities": "SELF_HEAL,STRONGER,FIREPOWER,ROF",
+      "ImmuneToPsionics": "no",
+      "ImmuneToRadiation": "no",
+      "Locomotor": "{4A582741-9839-11d1-B709-00A024DDAFD1}"
     },
     "htnk": {
       "Name": "Rhino Heavy Tank",
@@ -494,7 +593,10 @@
       "Sight": "8",
       "Speed": "6",
       "Cost": "900",
-      "ElitePrimary": "120mmE"
+      "ElitePrimary": "120mmE",
+      "VeteranAbilities": "STRONGER,FIREPOWER,SIGHT,FASTER",
+      "EliteAbilities": "SELF_HEAL,STRONGER,FIREPOWER,ROF",
+      "Locomotor": "{4A582741-9839-11d1-B709-00A024DDAFD1}"
     },
     "hyd": {
       "Name": "Sea Scorpion",
@@ -507,7 +609,10 @@
       "Speed": "8",
       "Cost": "600",
       "ElitePrimary": "FlakTrackGunE",
-      "EliteSecondary": "FlakWeaponE"
+      "EliteSecondary": "FlakWeaponE",
+      "VeteranAbilities": "STRONGER,FIREPOWER,ROF,SIGHT,FASTER",
+      "EliteAbilities": "SELF_HEAL,STRONGER,FIREPOWER,ROF",
+      "Locomotor": "{2BEA74E1-7CCA-11d3-BE14-00104B62A16C}"
     },
     "ivan": {
       "Name": "Crazy Ivan",
@@ -518,7 +623,11 @@
       "Sight": "6",
       "Speed": "4",
       "Cost": "600",
-      "ElitePrimary": "IvanBomberE"
+      "ElitePrimary": "IvanBomberE",
+      "Trainable": "no",
+      "VeteranAbilities": "STRONGER,FIREPOWER,ROF,SIGHT,FASTER",
+      "EliteAbilities": "SELF_HEAL,STRONGER,FIREPOWER,ROF",
+      "Locomotor": "{4A582744-9839-11d1-B709-00A024DDAFD1}"
     },
     "jumpjet": {
       "Name": "Rocketeer",
@@ -529,7 +638,10 @@
       "Sight": "8",
       "Speed": "9",
       "Cost": "600",
-      "ElitePrimary": "20mmE"
+      "ElitePrimary": "20mmE",
+      "VeteranAbilities": "STRONGER,FIREPOWER,ROF,SIGHT,FASTER",
+      "EliteAbilities": "SELF_HEAL,STRONGER,FIREPOWER,ROF",
+      "Locomotor": "{92612C46-F71F-11d1-AC9F-006008055BB5}"
     },
     "lcrf": {
       "Name": "Landing Craft",
@@ -538,7 +650,11 @@
       "Armor": "light",
       "Sight": "6",
       "Speed": "6",
-      "Cost": "900"
+      "Cost": "900",
+      "Trainable": "no",
+      "VeteranAbilities": "STRONGER,FIREPOWER,SIGHT,FASTER",
+      "EliteAbilities": "SELF_HEAL,STRONGER,FIREPOWER,ROF",
+      "Locomotor": "{4A582742-9839-11d1-B709-00A024DDAFD1}"
     },
     "mgtk": {
       "Name": "Mirage Tank",
@@ -549,7 +665,10 @@
       "Sight": "9",
       "Speed": "7",
       "Cost": "1000",
-      "EliteSecondary": "MirageGunE"
+      "EliteSecondary": "MirageGunE",
+      "VeteranAbilities": "STRONGER,FIREPOWER,SIGHT,FASTER",
+      "EliteAbilities": "SELF_HEAL,STRONGER,FIREPOWER,ROF",
+      "Locomotor": "{4A582741-9839-11d1-B709-00A024DDAFD1}"
     },
     "mtnk": {
       "Name": "Grizzly Battle Tank",
@@ -560,7 +679,10 @@
       "Sight": "8",
       "Speed": "7",
       "Cost": "700",
-      "ElitePrimary": "105mmE"
+      "ElitePrimary": "105mmE",
+      "VeteranAbilities": "STRONGER,FIREPOWER,SIGHT,FASTER",
+      "EliteAbilities": "SELF_HEAL,STRONGER,FIREPOWER,ROF",
+      "Locomotor": "{4A582741-9839-11d1-B709-00A024DDAFD1}"
     },
     "naclon": {
       "Name": "Cloning Vats",
@@ -734,7 +856,11 @@
       "Sight": "8",
       "Speed": "14",
       "Cost": "1200",
-      "ElitePrimary": "MaverickE"
+      "ElitePrimary": "MaverickE",
+      "VeteranAbilities": "STRONGER,FIREPOWER,SIGHT,FASTER",
+      "EliteAbilities": "STRONGER,FIREPOWER,ROF",
+      "ImmuneToPsionics": "yes",
+      "Locomotor": "{4A582746-9839-11d1-B709-00A024DDAFD1}"
     },
     "pdplane": {
       "Name": "Cargo Plane",
@@ -742,7 +868,9 @@
       "Armor": "light",
       "Primary": "ParaDropWeapon",
       "Sight": "0",
-      "Speed": "15"
+      "Speed": "15",
+      "ImmuneToPsionics": "yes",
+      "Locomotor": "{4A582746-9839-11d1-B709-00A024DDAFD1}"
     },
     "ptroop": {
       "Name": "Psi-Corp Trooper",
@@ -753,7 +881,11 @@
       "Sight": "8",
       "Speed": "5",
       "Cost": "1000",
-      "ElitePrimary": "MindControlE"
+      "ElitePrimary": "MindControlE",
+      "VeteranAbilities": "STRONGER,FIREPOWER,ROF,SIGHT,FASTER",
+      "EliteAbilities": "SELF_HEAL,STRONGER,FIREPOWER,ROF",
+      "ImmuneToPsionics": "yes",
+      "Locomotor": "{4A582744-9839-11d1-B709-00A024DDAFD1}"
     },
     "sapc": {
       "Name": "Armored Transport",
@@ -762,7 +894,9 @@
       "Armor": "heavy",
       "Sight": "6",
       "Speed": "6",
-      "Cost": "900"
+      "Cost": "900",
+      "Trainable": "no",
+      "Locomotor": "{4A582742-9839-11d1-B709-00A024DDAFD1}"
     },
     "shad": {
       "Name": "BlackHawk Transport",
@@ -773,7 +907,11 @@
       "Sight": "7",
       "Speed": "14",
       "Cost": "1000",
-      "ElitePrimary": "BlackHawkCannonE"
+      "ElitePrimary": "BlackHawkCannonE",
+      "Trainable": "yes",
+      "VeteranAbilities": "STRONGER,FIREPOWER,SIGHT,FASTER",
+      "EliteAbilities": "SELF_HEAL,STRONGER,FIREPOWER,ROF",
+      "Locomotor": "{92612C46-F71F-11d1-AC9F-006008055BB5}"
     },
     "shk": {
       "Name": "Shock Trooper",
@@ -785,7 +923,10 @@
       "Sight": "6",
       "Speed": "4",
       "Cost": "500",
-      "ElitePrimary": "ElectricBoltE"
+      "ElitePrimary": "ElectricBoltE",
+      "VeteranAbilities": "STRONGER,FIREPOWER,ROF,SIGHT,FASTER",
+      "EliteAbilities": "SELF_HEAL,STRONGER,FIREPOWER,ROF",
+      "Locomotor": "{4A582744-9839-11d1-B709-00A024DDAFD1}"
     },
     "smcv": {
       "Name": "Soviet Construction Vehicle",
@@ -794,7 +935,9 @@
       "Armor": "heavy",
       "Sight": "6",
       "Speed": "4",
-      "Cost": "3000"
+      "Cost": "3000",
+      "Trainable": "no",
+      "Locomotor": "{4A582741-9839-11d1-B709-00A024DDAFD1}"
     },
     "snipe": {
       "Name": "Sniper",
@@ -805,7 +948,11 @@
       "Sight": "8",
       "Speed": "4",
       "Cost": "600",
-      "ElitePrimary": "AWPE"
+      "ElitePrimary": "AWPE",
+      "VeteranAbilities": "STRONGER,FIREPOWER,SIGHT,FASTER",
+      "EliteAbilities": "SELF_HEAL,STRONGER,FIREPOWER,ROF",
+      "ImmuneToPsionics": "no",
+      "Locomotor": "{4A582744-9839-11d1-B709-00A024DDAFD1}"
     },
     "spy": {
       "Name": "Spy",
@@ -815,7 +962,9 @@
       "Armor": "flak",
       "Sight": "9",
       "Speed": "4",
-      "Cost": "1000"
+      "Cost": "1000",
+      "Trainable": "no",
+      "Locomotor": "{4A582744-9839-11d1-B709-00A024DDAFD1}"
     },
     "sqd": {
       "Name": "Giant Squid",
@@ -828,7 +977,14 @@
       "Speed": "8",
       "Cost": "1000",
       "ElitePrimary": "SquidGrabE",
-      "EliteSecondary": "SquidPunchE"
+      "EliteSecondary": "SquidPunchE",
+      "Trainable": "yes",
+      "Organic": "yes",
+      "SelfHealing": "yes",
+      "VeteranAbilities": "STRONGER,FIREPOWER,ROF,SIGHT,FASTER",
+      "EliteAbilities": "STRONGER,FIREPOWER,ROF",
+      "ImmuneToPsionics": "yes",
+      "Locomotor": "{2BEA74E1-7CCA-11d3-BE14-00104B62A16C}"
     },
     "sref": {
       "Name": "Prism Tank",
@@ -837,7 +993,10 @@
       "Armor": "light",
       "Sight": "8",
       "Speed": "4",
-      "Cost": "1200"
+      "Cost": "1200",
+      "VeteranAbilities": "STRONGER,FIREPOWER,SIGHT,FASTER",
+      "EliteAbilities": "SELF_HEAL,STRONGER,FIREPOWER,ROF",
+      "Locomotor": "{4A582741-9839-11d1-B709-00A024DDAFD1}"
     },
     "sub": {
       "Name": "Typhoon Attack Sub",
@@ -848,7 +1007,10 @@
       "Sight": "4",
       "Speed": "4",
       "Cost": "1000",
-      "ElitePrimary": "SubTorpedoE"
+      "ElitePrimary": "SubTorpedoE",
+      "VeteranAbilities": "STRONGER,FIREPOWER,ROF,SIGHT,FASTER",
+      "EliteAbilities": "SELF_HEAL,STRONGER,FIREPOWER,ROF",
+      "Locomotor": "{2BEA74E1-7CCA-11d3-BE14-00104B62A16C}"
     },
     "tany": {
       "Name": "Tanya",
@@ -860,7 +1022,10 @@
       "Sight": "8",
       "Speed": "5",
       "Cost": "1000",
-      "ElitePrimary": "DoublePistolsE"
+      "ElitePrimary": "DoublePistolsE",
+      "VeteranAbilities": "STRONGER,FIREPOWER,ROF,SIGHT,SCATTER",
+      "EliteAbilities": "SELF_HEAL,STRONGER,FIREPOWER,ROF",
+      "Locomotor": "{4A582744-9839-11d1-B709-00A024DDAFD1}"
     },
     "terror": {
       "Name": "Terrorist",
@@ -870,7 +1035,9 @@
       "Armor": "flak",
       "Sight": "9",
       "Speed": "6",
-      "Cost": "200"
+      "Cost": "200",
+      "Trainable": "no",
+      "Locomotor": "{4A582744-9839-11d1-B709-00A024DDAFD1}"
     },
     "tesla": {
       "Name": "Tesla Coil",
@@ -892,7 +1059,10 @@
       "Sight": "8",
       "Speed": "5",
       "Cost": "900",
-      "ElitePrimary": "SABOTE"
+      "ElitePrimary": "SABOTE",
+      "VeteranAbilities": "STRONGER,FIREPOWER,SIGHT,FASTER",
+      "EliteAbilities": "SELF_HEAL,STRONGER,FIREPOWER,ROF",
+      "Locomotor": "{4A582741-9839-11d1-B709-00A024DDAFD1}"
     },
     "ttnk": {
       "Name": "Tesla Tank",
@@ -903,7 +1073,10 @@
       "Sight": "8",
       "Speed": "6",
       "Cost": "1200",
-      "ElitePrimary": "TankBoltE"
+      "ElitePrimary": "TankBoltE",
+      "VeteranAbilities": "STRONGER,FIREPOWER,SIGHT,FASTER",
+      "EliteAbilities": "SELF_HEAL,STRONGER,FIREPOWER,ROF",
+      "Locomotor": "{4A582741-9839-11d1-B709-00A024DDAFD1}"
     },
     "v3": {
       "Name": "V3 Launcher",
@@ -917,7 +1090,10 @@
       "Armor": "light",
       "Sight": "7",
       "Speed": "4",
-      "Cost": "800"
+      "Cost": "800",
+      "VeteranAbilities": "STRONGER,FIREPOWER,ROF,SIGHT,FASTER",
+      "EliteAbilities": "SELF_HEAL,STRONGER,FIREPOWER,ROF",
+      "Locomotor": "{4A582741-9839-11d1-B709-00A024DDAFD1}"
     },
     "v3rocket": {
       "Name": "V3 Rocket",
@@ -925,7 +1101,10 @@
       "Armor": "special_2",
       "Sight": "1",
       "Speed": "15",
-      "Cost": "50"
+      "Cost": "50",
+      "Trainable": "no",
+      "ImmuneToPsionics": "yes",
+      "Locomotor": "{B7B49766-E576-11d3-9BD9-00104B972FE8}"
     },
     "yuri": {
       "Name": "Yuri",
@@ -936,7 +1115,11 @@
       "Armor": "none",
       "Sight": "12",
       "Speed": "4",
-      "Cost": "1200"
+      "Cost": "1200",
+      "VeteranAbilities": "STRONGER,FIREPOWER,ROF,SIGHT,FASTER",
+      "EliteAbilities": "SELF_HEAL,STRONGER,FIREPOWER,ROF",
+      "ImmuneToPsionics": "yes",
+      "Locomotor": "{4A582744-9839-11d1-B709-00A024DDAFD1}"
     },
     "yuripr": {
       "Name": "Yuri Prime",
@@ -947,7 +1130,11 @@
       "Armor": "flak",
       "Sight": "8",
       "Speed": "6",
-      "Cost": "2000"
+      "Cost": "2000",
+      "VeteranAbilities": "STRONGER,FIREPOWER,ROF,SIGHT,FASTER",
+      "EliteAbilities": "SELF_HEAL,STRONGER,FIREPOWER,ROF",
+      "ImmuneToPsionics": "yes",
+      "Locomotor": "{4A582744-9839-11d1-B709-00A024DDAFD1}"
     },
     "zep": {
       "Name": "Kirov Airship",
@@ -958,7 +1145,11 @@
       "Sight": "8",
       "Speed": "5",
       "Cost": "2000",
-      "ElitePrimary": "BlimpBombE"
+      "ElitePrimary": "BlimpBombE",
+      "SelfHealing": "Yes",
+      "VeteranAbilities": "STRONGER,FIREPOWER,SIGHT,FASTER",
+      "EliteAbilities": "SELF_HEAL,STRONGER,FIREPOWER,ROF",
+      "Locomotor": "{92612C46-F71F-11d1-AC9F-006008055BB5}"
     }
   },
   "weapons": {
@@ -1882,6 +2073,310 @@
       "IsRadEruption": "no",
       "RadLevel": "500",
       "Report": "DesolatorDeploy"
+    },
+    "cometfragment": {
+      "Damage": "30",
+      "ROF": "120",
+      "Range": "3",
+      "Projectile": "SmallCometP",
+      "Speed": "10",
+      "Warhead": "CometWH",
+      "Bright": "yes",
+      "IsHouseColor": "true",
+      "LaserOuterSpread": "0,0,0",
+      "LaserDuration": "15",
+      "IsLaser": "true"
+    },
+    "supercometfragment": {
+      "Damage": "50",
+      "ROF": "100",
+      "Range": "5",
+      "Projectile": "SuperSmallCometP",
+      "Speed": "10",
+      "Report": "",
+      "Warhead": "CometWH",
+      "Bright": "yes",
+      "IsHouseColor": "true",
+      "LaserOuterSpread": "0,0,0",
+      "LaserDuration": "15",
+      "IsLaser": "true"
+    },
+    "squidgrab": {
+      "Damage": "15",
+      "ROF": "99",
+      "Range": "1.5",
+      "CellRangefinding": "yes",
+      "Projectile": "SQDJUMP",
+      "Speed": "30",
+      "DecloakToFire": "no",
+      "Warhead": "ParasitePlus",
+      "LimboLaunch": "yes",
+      "Report": "SquidAttack",
+      "Anim": "SQDG_N,SQDG_NE,SQDG_E,SQDG_SE,SQDG_S,SQDG_SW,SQDG_W,SQDG_NW"
+    },
+    "squidgrabe": {
+      "Damage": "40",
+      "ROF": "99",
+      "Range": "1.5",
+      "CellRangefinding": "yes",
+      "Projectile": "SQDJUMP",
+      "Speed": "30",
+      "DecloakToFire": "no",
+      "Warhead": "ParasitePlus",
+      "LimboLaunch": "yes",
+      "Report": "SquidAttack",
+      "Anim": "SQDG_N,SQDG_NE,SQDG_E,SQDG_SE,SQDG_S,SQDG_SW,SQDG_W,SQDG_NW"
+    },
+    "prismsupport": {
+      "Damage": "200",
+      "ROF": "60",
+      "Range": "8",
+      "Speed": "100",
+      "Projectile": "InvisibleHigh",
+      "Warhead": "DummyWarhead",
+      "LaserOuterSpread": "0,0,0",
+      "LaserDuration": "15",
+      "IsLaser": "true",
+      "IsHouseColor": "true"
+    },
+    "medusae": {
+      "Damage": "100",
+      "ROF": "5",
+      "Range": "14",
+      "Speed": "150",
+      "Projectile": "MedusaProjectile",
+      "Warhead": "SAMWH",
+      "Report": "AegisAttack",
+      "TurboBoost": "yes",
+      "OmniFire": "yes",
+      "Burst": "2"
+    },
+    "aswcollision": {
+      "Damage": "100",
+      "ROF": "20",
+      "Range": "3",
+      "Projectile": "AAHeatSeeker2",
+      "Speed": "30",
+      "Warhead": "AP",
+      "Report": "OspreyCollision",
+      "Bright": "yes"
+    },
+    "maverick2e": {
+      "Damage": "400",
+      "ROF": "10",
+      "Range": "9",
+      "Projectile": "AirToGroundMissile",
+      "Speed": "70",
+      "Warhead": "ORCAAP",
+      "Report": "BlackEagleAttack",
+      "Burst": "2"
+    },
+    "chronomp5": {
+      "Damage": "125",
+      "ROF": "10",
+      "Range": "6",
+      "Projectile": "InvisibleLow",
+      "Speed": "100",
+      "Warhead": "HollowPointNoBuilding",
+      "Report": "SealAttack"
+    },
+    "fakec4": {
+      "Damage": "5000",
+      "ROF": "10",
+      "Range": "1.5",
+      "CellRangefinding": "yes",
+      "Projectile": "InvisibleLow",
+      "Speed": "100",
+      "Warhead": "FakeC4WH",
+      "Report": "SealPlaceBomb",
+      "SabotageCursor": "yes"
+    },
+    "chronomp5e": {
+      "Damage": "125",
+      "ROF": "10",
+      "Range": "6",
+      "Projectile": "InvisibleLow",
+      "Speed": "100",
+      "Warhead": "HollowPointNoBuilding",
+      "Report": "SealAttack"
+    },
+    "neutronriflee": {
+      "Damage": "16",
+      "ROF": "120",
+      "Range": "5",
+      "Speed": "100",
+      "Projectile": "InvisibleLow",
+      "Warhead": "ChronoBeam",
+      "Report": "ChronoLegionAttack",
+      "IsRadBeam": "yes"
+    },
+    "soniczape": {
+      "Damage": "8",
+      "AmbientDamage": "15",
+      "ROF": "80",
+      "Range": "6",
+      "Projectile": "Sonic",
+      "Speed": "100",
+      "Warhead": "SonicWarhead",
+      "Report": "DolphinAttack",
+      "IsSonic": "Yes",
+      "Burst": "2",
+      "DecloakToFire": "no"
+    },
+    "badteeth": {
+      "Damage": "30",
+      "ROF": "30",
+      "Range": "1.5",
+      "CellRangefinding": "yes",
+      "Projectile": "DOGJUMP",
+      "Speed": "30",
+      "Warhead": "ParasiteDog",
+      "LimboLaunch": "yes",
+      "Report": "DogAttack"
+    },
+    "virtualscanner": {
+      "Damage": "1",
+      "Range": "5",
+      "NeverUse": "yes",
+      "Projectile": "InvisibleAll",
+      "Warhead": "SA",
+      "Speed": "100"
+    },
+    "defusekit": {
+      "Damage": "1",
+      "ROF": "20",
+      "Range": "1.5",
+      "CellRangefinding": "yes",
+      "Projectile": "InvisibleAll",
+      "Speed": "100",
+      "Report": "DefuseKit",
+      "Warhead": "BombDisarm",
+      "FireOnce": "yes"
+    },
+    "hornetcollision": {
+      "Damage": "100",
+      "ROF": "20",
+      "Range": "3",
+      "Projectile": "AAHeatSeeker2",
+      "Speed": "30",
+      "Warhead": "AP",
+      "Report": "HornetCollision",
+      "Bright": "yes"
+    },
+    "flaktrackgune": {
+      "Damage": "25",
+      "ROF": "40",
+      "Range": "5",
+      "Projectile": "FlakTProj",
+      "Speed": "50",
+      "Report": "FlakTrackAttackGround",
+      "Warhead": "FlakTWH",
+      "Anim": "GUNFIRE",
+      "Burst": "2"
+    },
+    "flaktrackaagune": {
+      "Damage": "20",
+      "ROF": "25",
+      "Range": "8",
+      "Projectile": "FlakProj",
+      "Speed": "100",
+      "Report": "FlakTrackAttackAir",
+      "Warhead": "FlakWH",
+      "Anim": "GUNFIRE",
+      "Burst": "2"
+    },
+    "flakweapone": {
+      "Damage": "35",
+      "ROF": "20",
+      "Range": "10",
+      "Projectile": "FlakProj",
+      "Speed": "100",
+      "Report": "FlakCannonAttack",
+      "Warhead": "FlakWH",
+      "Anim": "GUNFIRE",
+      "Burst": "2"
+    },
+    "mavericke": {
+      "Damage": "300",
+      "ROF": "10",
+      "Range": "9",
+      "Projectile": "AirToGroundMissile",
+      "Speed": "70",
+      "Warhead": "ORCAAP",
+      "Report": "IntruderAttack",
+      "Burst": "4"
+    },
+    "paradropweapon": {
+      "Damage": "60",
+      "ROF": "130",
+      "Range": "4",
+      "Projectile": "AAHeatSeeker2",
+      "Speed": "30",
+      "Warhead": "MaverickHE",
+      "Burst": "1"
+    },
+    "mindcontrole": {
+      "Damage": "10",
+      "ROF": "200",
+      "Range": "14",
+      "Projectile": "PsychicControl",
+      "Speed": "100",
+      "Warhead": "Controller",
+      "Anim": "YURICNTL",
+      "FireOnce": "yes"
+    },
+    "blackhawkcannone": {
+      "Damage": "40",
+      "ROF": "40",
+      "Range": "6",
+      "Projectile": "QuadShell",
+      "Speed": "100",
+      "Warhead": "SSA",
+      "Report": "BlackOpsAttack",
+      "Anim": "MGUN-N,MGUN-NE,MGUN-E,MGUN-SE,MGUN-S,MGUN-SW,MGUN-W,MGUN-NW",
+      "OmniFire": "yes"
+    },
+    "makeupkit": {
+      "Damage": "1",
+      "ROF": "100",
+      "Range": "-2",
+      "Projectile": "InvisibleAll",
+      "Speed": "100",
+      "FireOnce": "yes",
+      "Warhead": "Snapshot",
+      "RevealOnFire": "no",
+      "Report": "SpyAttack"
+    },
+    "squidpunche": {
+      "Damage": "200",
+      "ROF": "32",
+      "Range": "1.83",
+      "Projectile": "InvisibleAll",
+      "Speed": "30",
+      "Warhead": "HE",
+      "Report": "SquidAttackNonShip"
+    },
+    "sapper": {
+      "Damage": "2500",
+      "ROF": "100",
+      "Range": "1.5",
+      "CellRangefinding": "yes",
+      "Projectile": "Invisible5",
+      "Warhead": "Super",
+      "Report": "SealPlaceBomb",
+      "SabotageCursor": "yes"
+    },
+    "psiwave": {
+      "Damage": "250",
+      "Range": "1",
+      "ROF": "50",
+      "Projectile": "Psychic",
+      "Speed": "1",
+      "Warhead": "PsiPulse",
+      "AreaFire": "yes",
+      "FireOnce": "yes",
+      "Report": "YuriDeploy",
+      "Anim": "RING1"
     }
   },
   "warheads": {
@@ -2294,6 +2789,78 @@
       "Radiation": "yes",
       "CellSpread": "10",
       "CellInset": "3"
+    },
+    "ParasitePlus": {
+      "Verses": "100%,100%,100%,100%,100%,100%,100%,100%,100%,100%,100%",
+      "Parasite": "yes",
+      "Culling": "yes",
+      "Paralyzes": "32767",
+      "InfDeath": "1",
+      "Rocker": "yes"
+    },
+    "DummyWarhead": {
+      "Verses": "0%,0%,0%,0%,0%,0%,0%,0%,0%,0%,0%"
+    },
+    "IvanWH": {
+      "Verses": "100%,100%,100%,100%,100%,100%,100%,250%,20%,100%,100%",
+      "InfDeath": "6",
+      "CellSpread": "1.5",
+      "PercentAtMax": ".25",
+      "AnimList": "CRIVEXP"
+    },
+    "HollowPointNoBuilding": {
+      "Verses": "200%,100%,75%,1%,1%,1%,0%,0%,0%,75%,100%",
+      "InfDeath": "1",
+      "AnimList": "PIFF",
+      "ProneDamage": "100%",
+      "Bullets": "yes"
+    },
+    "FakeC4WH": {
+      "CellSpread": "0",
+      "Verses": "0%,0%,0%,0%,0%,0%,100%,100%,100%,0%,100%"
+    },
+    "ParasiteDog": {
+      "Verses": "100%,100%,100%,0%,0%,0%,0%,0%,0%,0%,0%",
+      "Parasite": "yes",
+      "InfDeath": "1",
+      "Rocker": "yes"
+    },
+    "BombDisarm": {
+      "BombDisarm": "yes"
+    },
+    "MaverickHE": {
+      "CellSpread": "1",
+      "PercentAtMax": ".5",
+      "Wall": "yes",
+      "Wood": "yes",
+      "Verses": "25%,25%,25%,100%,50%,50%,100%,75%,50%,25%,100%",
+      "Conventional": "yes",
+      "Rocker": "yes",
+      "InfDeath": "2",
+      "AnimList": "S_CLSN16,S_CLSN22,S_CLSN30,S_CLSN42,S_CLSN58",
+      "Tiberium": "yes",
+      "Sparky": "no",
+      "Bright": "yes",
+      "ProneDamage": "70%"
+    },
+    "Snapshot": {
+      "Verses": "100%,100%,100%,0%,0%,0%,0%,0%,0%,100%,100%",
+      "MakesDisguise": "yes"
+    },
+    "Super": {
+      "Verses": "100%,100%,100%,100%,100%,100%,100%,100%,100%,100%,100%",
+      "Tiberium": "yes",
+      "ProneDamage": "100%",
+      "Sparky": "no",
+      "InfDeath": "2",
+      "AnimList": "XGRYSML1,XGRYSML2,EXPLOSML,XGRYMED1,XGRYMED2,EXPLOMED,EXPLOLRG,TWLT070"
+    },
+    "PsiPulse": {
+      "CellSpread": "3",
+      "PercentAtMax": ".85",
+      "Verses": "100%,100%,100%,0%,0%,0%,0%,0%,0%,0%,0%",
+      "InfDeath": "6",
+      "PsychicDamage": "yes"
     }
   },
   "missiles": {
@@ -2692,5 +3259,63 @@
         "cuba"
       ]
     }
-  ]
+  ],
+  "gameplay": {
+    "VeteranRatio": "3.0",
+    "VeteranCombat": "1.1",
+    "VeteranSpeed": "1.2",
+    "VeteranArmor": "1.5",
+    "VeteranROF": "0.6",
+    "RepairPercent": "15%",
+    "RepairRate": ".016",
+    "RepairStep": "8",
+    "LightningDamage": "250",
+    "PrismSupportModifier": "150%",
+    "PrismSupportMax": "8",
+    "PrismSupportDelay": "60",
+    "PrismSupportDuration": "15",
+    "ChronoDelay": "60",
+    "ChronoDistanceFactor": "48",
+    "ChronoMinimumDelay": "16",
+    "IvanWarhead": "IvanWH",
+    "IvanDamage": "400",
+    "IvanTimedDelay": "450",
+    "IronCurtainDuration": "750"
+  },
+  "projectiles": {
+    "LargeCometP": {
+      "ShrapnelWeapon": "CometFragment",
+      "ShrapnelCount": "5",
+      "Inviso": "yes",
+      "Image": "none",
+      "SubjectToCliffs": "yes",
+      "SubjectToElevation": "no",
+      "SubjectToWalls": "no"
+    },
+    "SuperCometP": {
+      "ShrapnelWeapon": "SuperCometFragment",
+      "ShrapnelCount": "5",
+      "Inviso": "yes",
+      "Image": "none",
+      "SubjectToCliffs": "yes",
+      "SubjectToElevation": "no",
+      "SubjectToWalls": "no"
+    },
+    "SmallCometP": {
+      "Inviso": "yes",
+      "Image": "none",
+      "SubjectToCliffs": "yes",
+      "SubjectToElevation": "yes",
+      "SubjectToWalls": "yes"
+    },
+    "SuperSmallCometP": {
+      "ShrapnelWeapon": "CometFragment",
+      "ShrapnelCount": "3",
+      "Inviso": "yes",
+      "Image": "none",
+      "SubjectToCliffs": "yes",
+      "SubjectToElevation": "no",
+      "SubjectToWalls": "no"
+    }
+  }
 }

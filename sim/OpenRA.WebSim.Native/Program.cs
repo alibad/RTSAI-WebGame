@@ -54,6 +54,7 @@ static class Program
 				"maplibrarytest" => MapLibraryTest.Run(opts),
 				"rosteraudit" => FactionRosterAudit.Run(opts),
 				"originalra2test" => OriginalRa2Test.Run(opts),
+				"originalgameplaytest" => OriginalRa2GameplayTest.Run(opts),
 				"editorresourcetest" => EditorResourcesTest.Run(opts),
 				"editorbridgetest" => EditorBridgesTest.Run(opts),
 				"editortestterrain" => EditorTerrainTest.Run(opts),

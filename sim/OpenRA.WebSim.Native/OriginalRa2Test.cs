@@ -45,7 +45,7 @@ static class OriginalRa2Test
             var unit = Spawn("htnk", own, origin + new CVec(5, 0));
             var manager = own.PlayerActor.Trait<SupportPowerManager>();
             for (var i = 0; i < 7700; i++) SimHost.Tick();
-            var power = manager.Powers.Values.Single(p => p.Info is GrantExternalConditionPowerInfo);
+            var power = manager.Powers.Values.Single(p => p.Info is OriginalRa2IronCurtainPowerInfo);
             if (!power.Ready || power.TotalTicks != 7500 || power.Name != "Iron Curtain")
                 throw new Exception("Original Iron Curtain did not charge with the correct name/timing");
             world.IssueOrder(new Order(power.Key, own.PlayerActor, Target.FromCell(world, unit.Location), false));

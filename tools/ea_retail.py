@@ -7,6 +7,7 @@ from pathlib import Path
 import json
 import math
 import re
+import ea_gameplay
 
 
 NEW_ACTORS = ('v3', 'dred', 'v3rocket', 'dmisl')
@@ -333,6 +334,7 @@ class Retail:
                         patch.children.append(twin)
             if patch.children:
                 self.rules.append(patch)
+        ea_gameplay.restore(self)
         # Sparse explicit values protect modern descendants from changes to shared RA2 parents.
         # This separate overlay follows ea-art without imposing original palettes on modern art.
         for actor, owners in sorted(g.owners.items()):

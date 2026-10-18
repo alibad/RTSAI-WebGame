@@ -125,6 +125,17 @@ static class Bundle
 					continue;
 
 				var bytes = File.ReadAllBytes(f);
+				// The published Mod snapshot has adjacent partial MapEditorData traits on
+				// civilian buildings. Adding a temporal/bomb target trait makes MiniYaml
+				// merge these actors for the first time. Fold the two metadata blocks
+				// without losing either Categories or ExcludeTilesets; inputs stay frozen.
+				if (originals != null && rel == "rules/civilian-structures.yaml")
+				{
+					var text = Encoding.UTF8.GetString(bytes);
+					text = System.Text.RegularExpressions.Regex.Replace(text,
+						@"(\tMapEditorData:\r?\n(?:\t\t[^\r\n]*\r?\n)+)\tMapEditorData:\r?\n", "$1");
+					bytes = Encoding.UTF8.GetBytes(text);
+				}
 				if (lazyArt && !rel.Contains("maps/", StringComparison.Ordinal) && ArtExtensions.Contains(Path.GetExtension(f)) && bytes.Length >= LazyArtMinBytes
 					&& !keepInCore.Contains(rel))
 				{

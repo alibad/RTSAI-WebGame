@@ -140,6 +140,9 @@ namespace OpenRA.WebSim
 				// Consolidated engines also contain Classic's desktop bridge under this short name. The
 				// embedded host must use the SDK mod's bridge (and its web RPC shim), never the desktop thread.
 				Game.ModData.ObjectCreator.SetTypeOverride("CompanionBridgeInfo", typeof(OpenRA.Mods.RTSAI.Traits.CompanionBridgeInfo));
+				Game.ModData.ObjectCreator.SetTypeOverride("GainsExperienceInfo", typeof(OriginalRa2ExperienceInfo));
+				Game.ModData.ObjectCreator.SetTypeOverride("RepairableBuildingInfo", typeof(OriginalRa2BuildingRepairInfo));
+				Game.ModData.ObjectCreator.SetTypeOverride("RepairsUnitsInfo", typeof(OriginalRa2UnitRepairInfo));
 			});
 			Time("boot.loaders", () =>
 			{
