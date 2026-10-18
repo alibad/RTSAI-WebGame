@@ -82,7 +82,8 @@ def initialize(g, E):
               BuildPaletteOrder=65, Prerequisites=('naradr, ~naweap' if name == 'v3' else 'natech, ~nayard') + ', ~original-ra2-country',
               Description='Long-range missile siege. Rockets can be intercepted by anti-aircraft weapons.')
         trait(E, actor, 'RenderSprites', Image=name)
-        trait(E, actor, 'RenderVoxels', Image=name)
+        # Both original launchers use RA2 (type 4) voxel normals; the Rhino template uses TS normals.
+        trait(E, actor, 'RenderVoxels', Image=name, NormalsPalette='normals')
         trait(E, actor, 'WithOriginalLauncherBody', RegenerationTicks=values['SpawnRegenRate'],
               ReloadingCondition='rocket-reloading' if name == 'v3' else '')
         trait(E, actor, 'AttackFrontal', FacingTolerance=512 if name == 'dred' else 0, Voice='Attack')

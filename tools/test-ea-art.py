@@ -175,6 +175,7 @@ class Generated(unittest.TestCase):
             actor = self.rules[name]
             self.assertEqual(actor.get('Valued').val('Cost'), cost)
             self.assertEqual(actor.get('Health').val('HP'), hp)
+            self.assertEqual(actor.get('RenderVoxels').val('NormalsPalette'), 'normals', name)
             self.assertIn('~original-ra2-country', actor.get('Buildable').val('Prerequisites'))
             self.assertIn(name + 'wo', self.models['ea-' + name].get('empty').value)
             self.assertEqual(actor.get('Armament').val('Weapon'), weapon)

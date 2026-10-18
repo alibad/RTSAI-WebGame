@@ -20,7 +20,7 @@
     "mutable": [
       "campaign-v2/"
     ],
-    "$retired": "Historical data roots preserved in retiredDir to stay below Cloudflare's 20,000-file limit. 18 October original RA2 restoration retains current data-5371825e5fda and previous data-a3b0d296fd95 for rollback; older 2b1/d1e roots are archived, never deleted.",
+    "$retired": "Historical data roots preserved in retiredDir to stay below Cloudflare's 20,000-file limit. 18 October original RA2 restoration retains current data-5371825e5fda and previous data-a3b0d296fd95 for rollback; older 2b1/d1e roots are archived, never deleted. The unpromoted restoration candidate75b3 is archived after visual QA found incorrect V3 normals.",
     "retiredDir": "D:/rtsai-ea-build/play-cdn-retired",
     "retired": [
       "data-169d5132ea83/",
@@ -28,7 +28,8 @@
       "data-b9e5e3bcdeec/",
       "data-790a042d842e/",
       "data-2b1d64f423e6/",
-      "data-d1ecc8196c0a/"
+      "data-d1ecc8196c0a/",
+      "data-75b3cb1e760c/"
     ]
   },
   "vercel": {
