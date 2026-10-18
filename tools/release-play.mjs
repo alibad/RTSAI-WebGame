@@ -640,6 +640,10 @@ async function prepare() {
     say(`  website source: RTSAI-Web origin/main ${site.commit.slice(0, 7)}`);
     const pageDir = path.join(rel, "page");
     buildPage(pageDir, { rtBase: host + roots.rtRoot, dataBase: host + roots.dataRoot, profiles, gate: true, site });
+    // A new content package owns its asset notices as well as its data roots.
+    // Carry the audited Classic/isometric notice into the promoted page.
+    if (p.dataDir && fs.existsSync(path.join(p.dataDir, "NOTICE")))
+      fs.copyFileSync(path.join(p.dataDir, "NOTICE"), path.join(pageDir, "NOTICE"));
     const { frontendSourceCommit, frontendBuiltAt, frontendUpdate, assetHost, runtimeSource: _r, pageSettings: _s, release: _l, ...data } = p.data;
     const pageBytes = walk(pageDir).reduce((n, [, f]) => n + fs.statSync(f).size, 0);
     const build = { ...data, rtRoot: roots.rtRoot, dataRoot: roots.dataRoot,
