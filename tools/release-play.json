@@ -20,7 +20,7 @@
     "mutable": [
       "campaign-v2/"
     ],
-    "$retired": "Historical data roots preserved in retiredDir to stay below Cloudflare's 20,000-file limit. 18 October original RA2 restoration retains current data-5371825e5fda and previous data-a3b0d296fd95 for rollback; older 2b1/d1e roots are archived, never deleted. The unpromoted restoration candidate75b3 is archived after visual QA found incorrect V3 normals. Unpromoted candidate0fd is also preserved after the final original-name audit. Unpromoted map candidate87a is preserved after browser QA caught lazy map previews blocking startup. Candidateef6 is archived after QA caught startup cursor art moved into the omitted lazy archive.",
+    "$retired": "Historical data roots preserved in retiredDir to stay below Cloudflare's 20,000-file limit. 18 October original RA2 restoration retains current data-5371825e5fda and previous data-a3b0d296fd95 for rollback; older 2b1/d1e roots are archived, never deleted. The unpromoted restoration candidate75b3 is archived after visual QA found incorrect V3 normals. Unpromoted candidate0fd is also preserved after the final original-name audit. Unpromoted map candidate87a is preserved after browser QA caught lazy map previews blocking startup. Candidateef6 is archived after QA caught startup cursor art moved into the omitted lazy archive. Save compatibility release: data44 alias copy retired locally after immutable acecb80b deployment and exact save catalog were verified; original Hormuz data537 and current data-dbb remain served. Never delete immutable save deployments.",
     "retiredDir": "D:/rtsai-ea-build/play-cdn-retired",
     "retired": [
       "data-169d5132ea83/",
@@ -32,7 +32,8 @@
       "data-75b3cb1e760c/",
       "data-0fd77a1d735e/",
       "data-87a043f7d75f/",
-      "data-ef675cb9a75c/"
+      "data-ef675cb9a75c/",
+      "data-44c6802d8a16/"
     ]
   },
   "vercel": {
@@ -61,25 +62,37 @@
       "assetHost": "https://7a7ac7e2.rtsai-play-cdn.pages.dev/",
       "rtRoot": "rt-6f954db93fe3/",
       "dataRoot": "data-5371825e5fda/",
-      "profiles": ["public", "public-classic"]
+      "profiles": [
+        "public",
+        "public-classic"
+      ]
     },
     {
       "assetHost": "https://7a7ac7e2.rtsai-play-cdn.pages.dev/",
       "rtRoot": "rt-147d9898eeb3/",
       "dataRoot": "data-5371825e5fda/",
-      "profiles": ["public", "public-classic"]
+      "profiles": [
+        "public",
+        "public-classic"
+      ]
     },
     {
       "assetHost": "https://acecb80b.rtsai-play-cdn.pages.dev/",
       "rtRoot": "rt-c64a7e3e6f04/",
       "dataRoot": "data-44c6802d8a16/",
-      "profiles": ["public", "public-classic"]
+      "profiles": [
+        "public",
+        "public-classic"
+      ]
     },
     {
       "assetHost": "https://6788c0a4.rtsai-play-cdn.pages.dev/",
       "rtRoot": "rt-c64a7e3e6f04/",
       "dataRoot": "data-dbb802878e04/",
-      "profiles": ["public", "public-classic"]
+      "profiles": [
+        "public",
+        "public-classic"
+      ]
     }
   ],
   "$saveArchives": "Never delete immutable asset deployments referenced by save-versions.json. Every release carries the complete existing catalog forward; retiring an alias root does not retire a saved battle's deployment.",
