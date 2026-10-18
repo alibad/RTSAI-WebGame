@@ -11,7 +11,8 @@ spec.loader.exec_module(release)
 class MapPackagingTest(unittest.TestCase):
     def test_large_previews_are_resident_even_when_input_was_lazy(self):
         preview = b'preview' * 10000
-        core = {'mods/example/maps/new/map.png': preview, 'mods/example/maps/new/map.yaml': b'Title: New'}
+        core = {'mods/example/maps/new/map.png': preview, 'mods/example/maps/new/map.yaml': b'Title: New',
+                'mods/example/art/cursors.png': preview}
         art = {'mods/example/maps/old/map.png': preview, 'mods/example/unit.png': preview}
         before = {**core, **art}
         with tempfile.TemporaryDirectory() as tmp:
@@ -21,6 +22,7 @@ class MapPackagingTest(unittest.TestCase):
             lazy = release.read_pack(root / 'web-art.pack')
             self.assertEqual(resident['mods/example/maps/new/map.png'], preview)
             self.assertEqual(resident['mods/example/maps/old/map.png'], preview)
+            self.assertEqual(resident['mods/example/art/cursors.png'], preview)
             self.assertFalse(any('/maps/' in name for name in lazy))
             for name, data in before.items():
                 self.assertEqual({**resident, **lazy}[name], data)

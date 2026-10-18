@@ -39,6 +39,7 @@ export class LazyMount {
     let end = Math.min(size, (last + 1) * CHUNK);
     for (let i = index + 1; i <= last; i++) if (this.cache.has(`${key}#${i}`)) { end = i * CHUNK; break; }
     const all = read(start, end);
+    if (all.length !== end - start) throw new Error(`Short asset read: expected ${end - start} bytes, received ${all.length}`);
     this.stats.fetches++;
     this.stats.fetchedBytes += all.length;
     if (this.trace) this.trace.push(id);
@@ -125,6 +126,7 @@ export class LazyMount {
         let c: Uint8Array;
         try {
           c = cached ? this.chunk(path, index, size, read) : read(index * CHUNK, Math.min(size, (index + 1) * CHUNK));
+          if (c.length <= pos - index * CHUNK) throw new Error("Asset read made no progress");
         } catch (err) {
           // A failed download (HTTP error, network) is an I/O error the runtime can handle (an IOException in .NET).
           // Any other exception would unwind through the WebAssembly frames of the read and leave the runtime

@@ -22,6 +22,7 @@ const url = argv[0];
 if (!url || url.startsWith("--")) throw new Error("usage: node tools/release-smoke.mjs <url> [--runs profile:scenario,...] [--seconds 8] [--shots <dir>]");
 const runs = opt("runs", "public:skirmish-public,public:battle-originals,public:skirmish-public,public:skirmish-public,public-classic:skirmish-classic").split(",").map((r) => r.split(":"));
 const seconds = Number(opt("seconds", 8));
+const timeout = Number(opt("timeout-ms", 300000));
 const shots = opt("shots");
 const assetOrigins = new Set(argv.flatMap((a, i) => a === "--asset-origin" ? [new URL(argv[i + 1]).origin] : []));
 if (shots) fs.mkdirSync(shots, { recursive: true });
@@ -39,6 +40,11 @@ if (["127.0.0.1", "localhost"].includes(new URL(url).hostname)) {
   });
 }
 const pageErrors = [], consoleErrors = [], failures = [], matches = [];
+const requests = [], recentLogs = [];
+let waitingFor = "boot";
+page.on("request", r => { requests.push({ url: r.url(), range: r.headers().range }); if (requests.length > 30) requests.shift(); });
+page.on("response", r => { const entry = requests.findLast(x => x.url === r.url()); if (entry) { entry.status = r.status(); entry.type = r.headers()["content-type"]; } });
+page.on("console", m => { recentLogs.push(m.text().slice(0, 1000)); if (recentLogs.length > 12) recentLogs.shift(); });
 page.on("pageerror", (e) => pageErrors.push(String(e).slice(0, 300)));
 page.on("console", (m) => { if (m.type() === "error") consoleErrors.push(m.text().slice(0, 300)); });
 const state = () => page.evaluate(() => ({ phase: window.store.getState().phase, error: window.store.getState().error?.slice(0, 300) }));
@@ -50,7 +56,8 @@ try {
       profile = runProfile;
       played = 0;
       await page.goto(`${url}${url.includes("?") ? "&" : "?"}profile=${profile}&runtime=aot&private=0`);
-      await page.waitForFunction(() => ["setup", "error"].includes(window.store?.getState().phase), null, { timeout: 300000, polling: 250 });
+      waitingFor = `${profile} boot`;
+      await page.waitForFunction(() => ["setup", "error"].includes(window.store?.getState().phase), null, { timeout, polling: 250 });
       const s = await state();
       if (s.phase === "error") throw new Error(`${profile}: the page failed to boot: ${s.error}`);
       if (!(await page.evaluate(() => crossOriginIsolated))) failures.push(`${profile}: the page is not cross-origin isolated`);
@@ -59,10 +66,12 @@ try {
 
     const scenario = JSON.parse(fs.readFileSync(path.join(repo, "scenarios", `${name}.json`), "utf8"));
     const t0 = Date.now();
+    waitingFor = `${runProfile} prepare ${scenario.map}`;
     await page.evaluate((map) => window.game.prepare(map), scenario.map);
-    await page.waitForFunction((map) => window.store.getState().preparedMap === map || window.store.getState().phase === "error", scenario.map, { timeout: 300000, polling: 100 });
+    await page.waitForFunction((map) => window.store.getState().preparedMap === map || window.store.getState().phase === "error", scenario.map, { timeout, polling: 100 });
+    waitingFor = `${runProfile} start ${scenario.map}`;
     await page.evaluate((json) => window.game.start(json), JSON.stringify(scenario));
-    await page.waitForFunction(() => window.store.getState().phase === "error" || (window.store.getState().phase === "playing" && !!window.game.client.cur), null, { timeout: 300000, polling: 100 });
+    await page.waitForFunction(() => window.store.getState().phase === "error" || (window.store.getState().phase === "playing" && !!window.game.client.cur), null, { timeout, polling: 100 });
     const startMs = Date.now() - t0;
     // Look at the player's own units, as a player would (a scripted battle starts with the camera elsewhere).
     await page.evaluate(() => {
@@ -99,11 +108,11 @@ try {
     }
   }
 } catch (e) {
-  failures.push(String(e).slice(0, 400));
+  failures.push(`${waitingFor}: ${String(e).slice(0, 400)}`);
 } finally {
   await browser.close();
 }
 if (pageErrors.length) failures.push(`uncaught page errors: ${pageErrors.slice(0, 3).join(" | ")}`);
-const result = { url, passed: failures.length === 0, failures, matches, consoleErrors: consoleErrors.slice(0, 10) };
+const result = { url, passed: failures.length === 0, failures, matches, consoleErrors: consoleErrors.slice(0, 10), ...(failures.length ? { requests, recentLogs } : {}) };
 console.log(`RESULT ${JSON.stringify(result)}`);
 process.exitCode = result.passed ? 0 : 1;

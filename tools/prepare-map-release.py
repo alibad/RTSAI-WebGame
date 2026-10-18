@@ -43,7 +43,9 @@ def emit(folder,core,art,audio,receipt):
     for name in list(core):
         ext=Path(name).suffix.lower()
         if ext in ['.wav','.aud','.ogg','.mp3'] or re.fullmatch(r'\.[vr]0[0-3]',ext): audio[name]=core.pop(name)
-        elif '/maps/' not in name and ext in ['.png','.shp','.tem','.sno','.des','.int'] and len(core[name])>=32768: art[name]=core.pop(name)
+        # Preserve the input's resident art partition. Cursors, UI art and map
+        # previews are read outside the world's prebaked sprite path, so moving
+        # them into a lazy archive would break static releases that omit it.
     allfiles={**core,**art,**audio}; allfiles.pop('ora/BUNDLE_ID',None)
     identity=sha(b''.join(name.encode()+b'\0'+bytes.fromhex(sha(b)) for name,b in sorted(allfiles.items())))[:20]
     core['ora/BUNDLE_ID']=identity.encode()
