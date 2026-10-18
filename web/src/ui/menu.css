@@ -133,6 +133,15 @@ html, body { cursor: var(--cursor-default, default); }
 .keycap:focus { outline: none; border-color: var(--hud-gold); box-shadow: 0 0 0 3px rgba(241, 210, 139, .2); animation: keycap-wait 1s ease-in-out infinite; }
 @keyframes keycap-wait { 50% { box-shadow: 0 0 0 5px rgba(241, 210, 139, .08); } }
 .settings-hint { margin-top: 8px; font-size: 11px; color: #8f9886; }
+/* Settings tabs (GameSettings.tsx): Sound, Controls, Adviser. The panel keeps one height so switching never jumps. */
+.settings-tabs { display: flex; gap: 2px; margin: 0 -24px 14px; padding: 0 20px; border-bottom: 1px solid var(--hud-edge); }
+.settings-tabs button { display: inline-flex; align-items: center; gap: 7px; height: 40px; padding: 0 14px; margin-bottom: -1px; border-bottom: 2px solid transparent; color: #a3ab98; font-size: 12px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; transition: color .15s, border-color .15s; }
+.settings-tabs button:hover { color: #efe9d6; }
+.settings-tabs button[aria-selected="true"] { color: var(--hud-gold); border-bottom-color: var(--hud-gold); }
+.settings-tabs button:focus-visible { outline: 2px solid var(--hud-gold); outline-offset: -2px; }
+.settings-tabpanel { min-height: 480px; }
+.settings-tabpanel .scr-switch { margin-top: 4px; }
+.settings-toggle-hint { display: block; margin-top: 2px; font-size: 11px; font-weight: 400; color: #8f9886; }
 .settings-error { margin-top: 10px; padding: 9px 12px; border-radius: 7px; border: 1px solid #7a3a2e; background: #2a1712; color: #ffcdbf; font-size: 12px; }
 .settings-footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--hud-edge); }
 .settings-reset { font-size: 12px; color: #a3ab98; text-decoration: underline; text-underline-offset: 3px; }
