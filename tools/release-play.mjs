@@ -21,7 +21,7 @@ import os from "node:os";
 import path from "node:path";
 import zlib from "node:zlib";
 import { fileURLToPath } from "node:url";
-import { createSaveVersionCatalog } from './save-version-catalog.mjs';
+import { createSaveVersionCatalog, refreshSaveClients } from './save-version-catalog.mjs';
 
 const repo = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const config = JSON.parse(fs.readFileSync(path.join(repo, "tools", "release-play.json"), "utf8"));
@@ -703,7 +703,7 @@ async function prepare() {
     const clientRoot = `saved-clients/${p.src.head.slice(0, 12)}/`;
     const archives = [...(config.saveArchiveSeeds ?? []), ...(dry && Object.keys(local).length ? [] : [{ ...roots, assetHost: archiveHost, profiles }])]
       .map(archive => ({ ...archive, clientRoot }));
-    const saveCatalog = await createSaveVersionCatalog(previousCatalog, archives);
+    const saveCatalog = refreshSaveClients(await createSaveVersionCatalog(previousCatalog, archives), config.saveClientRefresh ?? [], clientRoot);
     fs.writeFileSync(path.join(pageDir, 'save-versions.json'), JSON.stringify(saveCatalog, null, 2) + '\n');
     build.saveArchive = { catalog: 'save-versions.json', versions: saveCatalog.versions.length, assetHost: archiveHost };
     fs.writeFileSync(path.join(pageDir, 'BUILD.json'), JSON.stringify(build, null, 2) + '\n');

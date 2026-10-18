@@ -129,7 +129,8 @@ export async function startRecord(game: Game, record: MatchRecord, readonly: boo
     }
     setReplaySpeed(game, 1);
     const position = readonly ? 0 : record.tick;
-    game.start(JSON.stringify({ ...record.scenario, webReplay: { log: record.log, tick: position, readonly, end: record.tick, groups: record.groups, selection: record.selection, view: record.view } }), readonly);
+    // Rendering and asset uploads can outlast reconstruction. Keep the exact checkpoint until the player resumes.
+    game.start(JSON.stringify({ ...record.scenario, webReplay: { log: record.log, tick: position, readonly, end: record.tick, groups: record.groups, selection: record.selection, view: record.view } }), true);
     return "";
   } catch (error) {
     return `${error instanceof Error ? error.message : 'The saved battle could not be opened.'} Your save has been kept.`;

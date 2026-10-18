@@ -30,6 +30,11 @@ simulation frames; its later cosmetic sand stroke could not be recovered. That l
 is recorded in the asset provenance and the save's `mapRecovery` notice. Keep the
 original save payload and backup unchanged; add only the recovered map metadata.
 
+Restored battles start paused at the saved tick, so graphics loading cannot consume
+battle time before the player has control. `saveClientRefresh` is a one-time explicit
+UI repair for the first archived client: its worker protocol and native identities
+stay unchanged, and the previous files remain available as a recovery backup.
+
 Saves are retained until the player explicitly deletes them. Storage pressure may
 omit the new thumbnail, but must never evict an earlier battle or discard map bytes.
 If the remaining save will not fit, report the failure and leave earlier saves intact.

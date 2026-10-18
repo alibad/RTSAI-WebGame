@@ -11,6 +11,15 @@ export function validateArchive(version) {
   return version;
 }
 
+/** Explicit UI-only repair: keep native identities and assets, retain the prior frozen client as a backup. */
+export function refreshSaveClients(catalog, previousRoots, clientRoot) {
+  if (!/^saved-clients\/[a-f0-9]{7,40}\/$/.test(clientRoot)
+    || previousRoots.some(root => !/^saved-clients\/[a-f0-9]{7,40}\/$/.test(root)))
+    throw Error('Invalid saved-game client repair');
+  return { ...catalog, versions: catalog.versions.map(version => previousRoots.includes(version.clientRoot)
+    ? { ...version, clientRoot } : version) };
+}
+
 /** The manifest only names verified published bytes, and retains every earlier saved-game version. */
 export async function createSaveVersionCatalog(previous, builds, fetcher = fetch) {
   if (previous && (previous.schema !== 1 || !Array.isArray(previous.versions))) throw Error('Invalid existing saved-game catalog');

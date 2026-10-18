@@ -96,6 +96,8 @@
     }
   ],
   "$saveArchives": "Never delete immutable asset deployments referenced by save-versions.json. Every release carries the complete existing catalog forward; retiring an alias root does not retire a saved battle's deployment.",
+  "$saveClientRefresh": "One-time UI-only repair: 50d68da clients resumed while graphics were loading. Replace their UI with the compatible paused-resume client; native identities, original assets and the old frozen files stay intact. The worker wire format is unchanged.",
+  "saveClientRefresh": ["saved-clients/50d68da85d0c/"],
   "knownRuntimes": {
     "rt-a628db97b644/": {
       "$comment": "Built on 14 Oct 2026 before runtime provenance existed (RELEASE-20261014.md sixth update).",
