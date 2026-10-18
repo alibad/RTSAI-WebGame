@@ -1,10 +1,13 @@
-// Saves & replays: local matches saved on this device (up to ten), each a card with its battlefield, sides, date and
+// Saves & replays: local matches saved on this device, each a card with its battlefield, sides, date and
 // length, to resume or watch back; export, import and delete. A save is the match's scenario plus the engine's
 // recorded order packets (MatchRestore.cs rebuilds the world from them), the selection, groups and the view.
 
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { AlertTriangle, Check, Clock, Download, Film, Map as MapIcon, Play, Save, Swords, Trash2, Upload } from "lucide-react";
 import { buildIdentity } from "../sim/build-identity";
+import { findSaveVersion, savedBattleUrl, type SaveVersion } from "../sim/save-versions";
+import { EditorController, savedMapArchive } from "../editor";
+import { retainBattle } from "../sim/save-records";
 import type { Game } from "../game";
 import { useStore } from "../store";
 import { Button } from "../components/ui/button";
@@ -20,10 +23,12 @@ export interface MatchRecord {
   thumb?: string;
   /** The battlefield's name when it was saved: a random map is not in a later session's map list. */
   title?: string;
+  /** Original rules and custom-map files are preserved in exported and resumed saves. */
+  version?: SaveVersion;
+  mapFiles?: Record<string, string>;
 }
 
 const KEY = "rtsai.local-matches.v1";
-const LIMIT = 10;
 
 // ---------------------------------------------------------------- the saved list, shared by every view of it
 
@@ -68,35 +73,57 @@ export async function captureThumb(game: Game) {
 
 /** The running match as a save (its scenario, the recorded orders, the selection, groups and view). */
 export async function recordMatch(game: Game): Promise<MatchRecord> {
-  const recording = await game.client.request<{ log: unknown; tick: number; selection: number[]; groups: number[][] }>({ type: "record" });
   const scenario = JSON.parse(game.scenarioJson); delete scenario.webReplay;
+  const recording = await game.client.request<{ log: unknown; tick: number; selection: number[]; groups: number[][]; mapFiles?: Record<string, string> }>({ type: "record", map: String(scenario.map ?? '') });
   const { profile, setup } = useStore.getState();
   const thumb = await captureThumb(game);
-  return { id: crypto.randomUUID(), date: new Date().toISOString(), scenario, ...recording, profile, identity: await buildIdentity(profile, runtime()), view: game.captureUi(),
+  const identity = await buildIdentity(profile, runtime());
+  const version = await findSaveVersion(identity).catch(() => null);
+  return { id: crypto.randomUUID(), date: new Date().toISOString(), scenario, ...recording, profile, identity, ...(version ? { version } : {}), view: game.captureUi(),
     title: matchTitle(scenario, setup), ...(thumb ? { thumb } : {}) };
 }
 
-/** Keeps a save on this device (the newest ten). Without room for its picture, it is kept without one. */
+/** Never evict another battle to make room. Without room for its picture, try this save without one. */
 export function keepRecord(record: MatchRecord) {
-  const list = load();
-  try { store([record, ...list].slice(0, LIMIT)); }
-  catch {
-    const plain = { ...record };
-    delete plain.thumb;
-    try { store([plain, ...list].slice(0, LIMIT)); }
-    catch { throw new Error("This device is out of space for saves. Delete an old save and try again."); }
-  }
+  retainBattle(record, load(), store);
 }
 
 /** Starts a save: resumed where it was saved, or (readonly) its replay from the start. Returns why it cannot. */
 export async function startRecord(game: Game, record: MatchRecord, readonly: boolean): Promise<string> {
-  const profile = useStore.getState().profile;
-  if (record.profile !== profile) return `This match was saved in the ${record.profile === "public-classic" ? "Classic / top-down" : "Isometric"} view. Switch views to open it.`;
-  if (!record.identity || record.identity !== await buildIdentity(profile, runtime())) return "This save comes from a different game version and cannot be opened here. Your saved file has been kept.";
-  setReplaySpeed(game, 1);
-  const position = readonly ? 0 : record.tick;
-  game.start(JSON.stringify({ ...record.scenario, webReplay: { log: record.log, tick: position, readonly, end: record.tick, groups: record.groups, selection: record.selection, view: record.view } }), readonly);
-  return "";
+  try {
+    const profile = useStore.getState().profile;
+    if (record.profile !== profile) return `This match was saved in the ${record.profile === "public-classic" ? "Classic / top-down" : "Isometric"} view. Switch views to open it.`;
+    if (!record.identity) return "This save does not identify its original game files. Your saved battle has been kept.";
+    if (record.identity !== await buildIdentity(profile, runtime())) {
+      const version = await findSaveVersion(record.identity);
+      if (!version) return "The original game files for this save are not in the archive yet. Your saved battle has been kept.";
+      const mapFiles = record.mapFiles ?? await savedMapArchive(String(record.scenario.map ?? ''));
+      // Add only recovery metadata: the original tick, orders, frame hashes and view are unchanged.
+      try { keepRecord({ ...record, version, ...(mapFiles ? { mapFiles } : {}) }); }
+      catch { /* Optional metadata must not prevent opening a battle when storage is full; the original is intact. */ }
+      location.assign(savedBattleUrl(location.href, version, record.id, readonly));
+      return '';
+    }
+    game.editor ??= new EditorController(game);
+    await game.editor.loadLibrary();
+    if (record.mapFiles) {
+      const map = String(record.scenario.map ?? '');
+      if (!/^[a-z0-9-]+$/.test(map) || !record.mapFiles['map.yaml'] || !record.mapFiles['map.bin'])
+        return 'This save has invalid map files. Your saved battle has been kept.';
+      const files: Record<string, Uint8Array> = {};
+      for (const [name, encoded] of Object.entries(record.mapFiles)) {
+        if (!/^[a-zA-Z0-9_.-]+$/.test(name) || typeof encoded !== 'string') return 'This save has invalid map files. Your saved battle has been kept.';
+        files[name] = Uint8Array.from(atob(encoded), c => c.charCodeAt(0));
+      }
+      await game.editor.addFiles(map, record.title ?? 'Saved battlefield', (record.scenario.players as unknown[] | undefined)?.length ?? 2, files);
+    }
+    setReplaySpeed(game, 1);
+    const position = readonly ? 0 : record.tick;
+    game.start(JSON.stringify({ ...record.scenario, webReplay: { log: record.log, tick: position, readonly, end: record.tick, groups: record.groups, selection: record.selection, view: record.view } }), readonly);
+    return "";
+  } catch (error) {
+    return `${error instanceof Error ? error.message : 'The saved battle could not be opened.'} Your save has been kept.`;
+  }
 }
 
 function exportRecord(record: MatchRecord) {
@@ -107,6 +134,7 @@ function exportRecord(record: MatchRecord) {
 /** The other battlefield view is another game profile: the page reloads into it (as the main menu's view tiles do). */
 function switchView(profile: string) {
   const url = new URL(location.href);
+  url.searchParams.delete('saveVersion'); url.searchParams.delete('openMatch'); url.searchParams.delete('watch');
   url.searchParams.set("game", profile === "public-classic" ? "classic" : "isometric");
   url.searchParams.set("profile", profile);
   location.assign(url);
@@ -243,13 +271,13 @@ export function MatchLibrary({ game, variant = "menu" }: { game: Game; variant?:
   return <>
     {trigger}
     {open && <GameDialog eyebrow="This device" title="Saves & replays" size="lg" onClose={close} footer={<>
-      <span className="lib-foot-note">{list.length} of {LIMIT} saves</span>
+      <span className="lib-foot-note">{list.length} saved {list.length === 1 ? 'battle' : 'battles'}</span>
       <div className="lib-import">
         {importError && <p role="alert" className="lib-error"><AlertTriangle size={14} />{importError}</p>}
         <FilePickButton accept="application/json,.json" variant="ghost" size="sm" icon={<Upload size={14} />} onFile={(f) => void importFile(f)}>Import</FilePickButton>
       </div>
     </>}>
-      <p className="settings-hint">Saves stay in this browser on this device. Export a save to keep a separate copy or move it to another device.</p>
+      <p className="settings-hint">Saves stay in this browser until you delete them, and resume with their original game rules. Export a save to keep a separate copy or move it to another device.</p>
       {canSave && <section className="lib-current" aria-label="Current match">
         <div className="lib-current-thumb">
           {live ? <img src={live} alt="" /> : <Swords size={26} />}

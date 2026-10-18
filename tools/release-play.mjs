@@ -21,6 +21,7 @@ import os from "node:os";
 import path from "node:path";
 import zlib from "node:zlib";
 import { fileURLToPath } from "node:url";
+import { createSaveVersionCatalog } from './save-version-catalog.mjs';
 
 const repo = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const config = JSON.parse(fs.readFileSync(path.join(repo, "tools", "release-play.json"), "utf8"));
@@ -337,6 +338,13 @@ async function smoke(rel, roots, profiles, local, site) {
   const dir = path.join(rel, "smoke-page");
   const base = (root) => (local[root] ? root : host + root);
   buildPage(dir, { rtBase: base(roots.rtRoot), dataBase: base(roots.dataRoot), profiles, gate: false, site });
+  fs.copyFileSync(path.join(rel, 'page', 'save-versions.json'), path.join(dir, 'save-versions.json'));
+  const savedClients = path.join(rel, 'page', 'saved-clients');
+  if (fs.existsSync(savedClients)) for (const [name, file] of walk(savedClients)) {
+    const target = path.join(dir, 'saved-clients', name);
+    fs.mkdirSync(path.dirname(target), { recursive: true });
+    fs.copyFileSync(file, target);
+  }
   let headers = "/*\n  Cross-Origin-Opener-Policy: same-origin\n  Cross-Origin-Embedder-Policy: require-corp\n  Cross-Origin-Resource-Policy: same-origin\n";
   for (const [root, { from, rules }] of Object.entries(local)) {
     for (const [r, f] of walk(from)) {
@@ -433,8 +441,20 @@ async function cdnPublish(rel, roots, liveBuild) {
 
   // 4. Deploy, with the manifest the next release checks against.
   fs.writeFileSync(path.join(dir, "MANIFEST.json"), JSON.stringify({ writtenAt: new Date().toISOString(), files }) + "\n");
-  execSync(`npx wrangler pages deploy "${dir}" --project-name ${config.cdn.project} --branch main --commit-dirty=true`, { cwd: work, stdio: "inherit" });
-  return { deployed: true, added, rules, files: Object.keys(files).length };
+  const output = execSync(`npx wrangler pages deploy "${dir}" --project-name ${config.cdn.project} --branch main --commit-dirty=true`, { cwd: work, encoding: 'utf8', stdio: ['ignore', 'pipe', 'inherit'] });
+  say(output);
+  const deployment = output.match(/https:\/\/[a-f0-9]{8}\.rtsai-play-cdn\.pages\.dev/)?.[0];
+  if (!deployment) refuse('Cloudflare did not return an immutable deployment URL for saved battles');
+  return { deployed: true, added, rules, files: Object.keys(files).length, deployment };
+}
+
+/** Page-only releases still pin the existing data/runtime to a deployment that future CDN updates cannot change. */
+function savedGameArchiveHost(cdn) {
+  if (cdn.deployment) return cdn.deployment.replace(/\/*$/, '/');
+  const list = JSON.parse(run(process.platform === 'win32' ? 'npx.cmd' : 'npx', ['wrangler', 'pages', 'deployment', 'list', '--project-name', config.cdn.project, '--json'], { cwd: work, shell: process.platform === 'win32' }));
+  const deployment = list.find(d => d.Environment === 'Production' && d.Branch === 'main')?.Deployment;
+  if (!deployment || !/^https:\/\/[a-f0-9]{8}\.rtsai-play-cdn\.pages\.dev$/.test(deployment)) refuse('No immutable production asset deployment is available for saved battles');
+  return deployment + '/';
 }
 
 /** Cloudflare must serve the roots byte for byte (decoded), with the encoding the browser needs. */
@@ -668,6 +688,28 @@ async function prepare() {
     say(`  ${host} serves ${[roots.rtRoot, roots.dataRoot].filter((r) => !local[r]).join(" and ")} correctly`);
     Object.assign(state, { cdn });
     save();
+
+    step('saved-game compatibility archive');
+    const previousResponse = await fetch(`${config.vercel.public}save-versions.json`, { cache: 'no-store' });
+    if (!previousResponse.ok && previousResponse.status !== 404) refuse(`the existing saved-game catalog could not be read (${previousResponse.status})`);
+    const previousCatalog = previousResponse.ok ? await previousResponse.json() : null;
+    const archiveHost = savedGameArchiveHost(cdn);
+    const clientRoot = `saved-clients/${p.src.head.slice(0, 12)}/`;
+    const archives = [...(config.saveArchiveSeeds ?? []), ...(dry && Object.keys(local).length ? [] : [{ ...roots, assetHost: archiveHost, profiles }])]
+      .map(archive => ({ ...archive, clientRoot }));
+    const saveCatalog = await createSaveVersionCatalog(previousCatalog, archives);
+    fs.writeFileSync(path.join(pageDir, 'save-versions.json'), JSON.stringify(saveCatalog, null, 2) + '\n');
+    build.saveArchive = { catalog: 'save-versions.json', versions: saveCatalog.versions.length, assetHost: archiveHost };
+    fs.writeFileSync(path.join(pageDir, 'BUILD.json'), JSON.stringify(build, null, 2) + '\n');
+    // Keep this compatible UI/worker too. Future wire-protocol changes must not strand an older simulation.
+    // The ordinary release merger preserves these files on the same origin across all later deployments.
+    const clientFiles = walk(pageDir);
+    for (const [name, file] of clientFiles) {
+      const target = path.join(pageDir, clientRoot, name);
+      fs.mkdirSync(path.dirname(target), { recursive: true });
+      fs.copyFileSync(file, target);
+    }
+    say(`  ${saveCatalog.versions.length} original engine/content pairs retained on immutable asset deployments`);
 
     step(`smoke test (the page without the sign-in gate, on the ${dry && Object.keys(local).length ? "new roots served locally and the" : ""} Cloudflare roots)`);
     state.smoke = flag("no-smoke") ? { skipped: true } : await smoke(rel, roots, profiles, local, site);

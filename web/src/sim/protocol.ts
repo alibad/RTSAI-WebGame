@@ -355,7 +355,7 @@ export type ToWorker = (
   | { type: "cursorset" }
   | { type: "bench"; ticks: number }
   | { type: "log" }
-  | { type: "record"; req: number }
+  | { type: "record"; req: number; map?: string }
   | { type: "voiceLanguage"; value?: string; req: number }
   | { type: "voicePreview"; req: number }
   /** A mission's map.yaml from the game files (the co-commander reads its named places): replies { text }. */

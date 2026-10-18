@@ -215,6 +215,7 @@ function PauseMenu({ game }: { game: Game }) {
             {game.multiplayer && <span>· the match goes on</span>}
           </p>
         </header>
+        {new URLSearchParams(location.search).has('saveVersion') && <p className="settings-hint">This battle keeps its original game rules. New battles use the latest version.</p>}
         <div className="pm-list">
           <button ref={resume} type="button" className="pm-item is-primary" data-sfx-hover onClick={() => {
             close();

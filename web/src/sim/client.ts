@@ -11,6 +11,7 @@ import { decodeAdviserObservation, decodeAdviserReceipt, decodeAdviserStatus, en
 import { readVoiceLanguage, saveVoiceLanguage } from "../voice-language";
 import type { Renderer } from "../render/renderer";
 import { groupMembers, gunzipSheet, gzipSheet } from "./spritecache";
+import { gameAssets } from "./save-versions";
 
 type Handler<T extends FromWorker["type"]> = (m: Extract<FromWorker, { type: T }>) => void;
 
@@ -99,7 +100,7 @@ export class SimClient {
   }
 
   /** A command that answers with JSON (selection, control groups, production...). */
-  request<T = Record<string, unknown>>(m: { type: "command"; json: string } | { type: "editorOpen"; json: string } | { type: "catalog" } | { type: "relief"; json: string } | { type: "editor"; json: string } | { type: "mountFiles"; dir: string; files: Record<string, ArrayBuffer> } | { type: "record" } | { type: "select"; ids: number[]; additive: boolean } | { type: "voiceLanguage"; value?: string } | { type: "voicePreview" } | { type: "missionMap"; mission: string }): Promise<T> {
+  request<T = Record<string, unknown>>(m: { type: "command"; json: string } | { type: "editorOpen"; json: string } | { type: "catalog" } | { type: "relief"; json: string } | { type: "editor"; json: string } | { type: "mountFiles"; dir: string; files: Record<string, ArrayBuffer> } | { type: "record"; map?: string } | { type: "select"; ids: number[]; additive: boolean } | { type: "voiceLanguage"; value?: string } | { type: "voicePreview" } | { type: "missionMap"; mission: string }): Promise<T> {
     const req = this.nextReq++;
     return new Promise((resolve) => {
       this.replies.set(req, (json) => resolve(JSON.parse(json) as T));
@@ -191,8 +192,9 @@ export class SimClient {
   }
 
   init(runtime: string, base: string, privateContent: boolean, gcParams?: string, profile?: string) {
-    this.send({ type: "init", runtime, base, sab: this.sab, privateContent, voiceLanguage: readVoiceLanguage(), gcParams, profile,
-      rtBase: import.meta.env.VITE_RT_BASE || undefined, dataBase: import.meta.env.VITE_DATA_BASE || undefined });
+    void gameAssets(profile ?? '', runtime).then(assets => {
+      if (!this.disposed) this.send({ type: "init", runtime, base, sab: this.sab, privateContent, voiceLanguage: readVoiceLanguage(), gcParams, profile, ...assets });
+    }).catch(error => this.emit({ type: "error", message: String(error instanceof Error ? error.message : error) }));
   }
 
   start(scenario: string, paused = false, companion: boolean | "browser" = false) {

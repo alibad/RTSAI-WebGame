@@ -7,6 +7,7 @@ import { iconKey } from "./icon-key";
 import { CoCommander } from "./cocommander";
 import { Renderer, type Camera, type Overlay } from "./render/renderer";
 import { SimClient } from "./sim/client";
+import { currentGameUrl } from "./sim/save-versions";
 import { savedMapFiles, type SavedMap } from "./net/saved-maps";
 import type { Actor, SetupData, Snapshot, StartInfo, UiState } from "./sim/protocol";
 import type { IconSprite } from "./render/icons";
@@ -502,6 +503,14 @@ export class Game {
   }
 
   quit() {
+    const url = new URL(location.href);
+    if (url.searchParams.has('saveVersion')) {
+      const latest = currentGameUrl(location.href);
+      latest.searchParams.set('profile', store.get().profile);
+      latest.searchParams.set('mode', 'skirmish');
+      location.assign(latest);
+      return;
+    }
     this.cancelPendingStart();
     this.client.send({ type: "end" });
     this.audio.stop(-1);

@@ -283,13 +283,19 @@ export default function App() {
     }).catch((e) => console.warn("saved map:", e));
   }, [game, phase]);
 
-  // The graphics were reset mid-match and the match saved (GraphicsState): after the reload, carry on from that save.
+  // A saved battle may reload into its original engine/content pair. Graphics recovery uses the same restore path.
   useEffect(() => {
     if (!game || phase !== "setup") return;
-    let id: string | null = null;
-    try { id = sessionStorage.getItem(RESUME_AFTER_RELOAD); sessionStorage.removeItem(RESUME_AFTER_RELOAD); } catch { /* storage unavailable */ }
+    const url = new URL(location.href);
+    let id: string | null = url.searchParams.get('openMatch');
+    const readonly = url.searchParams.get('watch') === '1';
+    if (id) {
+      url.searchParams.delete('openMatch'); url.searchParams.delete('watch');
+      history.replaceState(null, '', url);
+    } else try { id = sessionStorage.getItem(RESUME_AFTER_RELOAD); sessionStorage.removeItem(RESUME_AFTER_RELOAD); } catch { /* storage unavailable */ }
     const record = id ? savedRecord(id) : null;
-    if (record) void startRecord(game, record, false).then((why) => { if (why) console.warn("resume after reload:", why); });
+    if (record) void startRecord(game, record, readonly).then(why => { if (why) useStore.getState().set({ phase: 'error', error: why }); });
+    else if (id) useStore.getState().set({ phase: 'error', error: 'This saved battle is not on this browser. Import its exported save file from Saves & replays.' });
   }, [game, phase]);
 
   // The menus use the mod's cursors too: ask for them as soon as the mod is loaded.

@@ -56,6 +56,27 @@
   "inputsRoots": [
     "D:/"
   ],
+  "saveArchiveSeeds": [
+    {
+      "assetHost": "https://7a7ac7e2.rtsai-play-cdn.pages.dev/",
+      "rtRoot": "rt-6f954db93fe3/",
+      "dataRoot": "data-5371825e5fda/",
+      "profiles": ["public", "public-classic"]
+    },
+    {
+      "assetHost": "https://7a7ac7e2.rtsai-play-cdn.pages.dev/",
+      "rtRoot": "rt-147d9898eeb3/",
+      "dataRoot": "data-5371825e5fda/",
+      "profiles": ["public", "public-classic"]
+    },
+    {
+      "assetHost": "https://acecb80b.rtsai-play-cdn.pages.dev/",
+      "rtRoot": "rt-c64a7e3e6f04/",
+      "dataRoot": "data-44c6802d8a16/",
+      "profiles": ["public", "public-classic"]
+    }
+  ],
+  "$saveArchives": "Never delete immutable asset deployments referenced by save-versions.json. Every release carries the complete existing catalog forward; retiring an alias root does not retire a saved battle's deployment.",
   "knownRuntimes": {
     "rt-a628db97b644/": {
       "$comment": "Built on 14 Oct 2026 before runtime provenance existed (RELEASE-20261014.md sixth update).",

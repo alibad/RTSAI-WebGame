@@ -102,6 +102,12 @@ async function libraryMap(id: string | null): Promise<LibraryMap | null> {
   } catch { return null; }
 }
 
+/** Find a legacy battle's map by its exact id, even when the current mode's menu filters that map out. */
+export async function savedMapArchive(id: string): Promise<Record<string, string> | undefined> {
+  const map = await libraryMap(id);
+  return map ? Object.fromEntries(Object.entries(map.files).map(([name, bytes]) => [name, toBase64(bytes)])) : undefined;
+}
+
 const b64 = (s: string) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
 
 export class EditorController {

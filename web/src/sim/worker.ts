@@ -13,6 +13,7 @@ import { CompanionRelay } from "./companion";
 import { encodeAdviserStatus } from "./adviser-rpc";
 import { fetchShippedSprites, SpriteBake, hashString } from "./spritecache";
 import { fluentActorNames, fluentFiles } from "./fluent-names";
+import { toBase64 } from "../elevation";
 
 declare const self: DedicatedWorkerGlobalScope;
 
@@ -31,6 +32,7 @@ let runtimeApi: any = null;
 let base = "/";
 let lazy: LazyMount | null = null;
 const mountedMaps = new Set<string>();
+const matchMaps = new Map<string, Record<string, Uint8Array>>();
 let ringHeader: Int32Array | null = null;
 let ringBytes: Uint8Array | null = null;
 let seq = 0;
@@ -474,7 +476,9 @@ self.onmessage = async (e: MessageEvent<ToWorker>) => {
         if (!/^earth-[a-f0-9]{16}$/.test(m.map) || !lazy) { post({ type: "mapMounted", map: m.map, error: "Invalid map" }); break; }
         if (!mountedMaps.has(m.map)) {
           const dir = `/vfs/mods/rtsai/web/content/maps/${m.map}`;
-          for (const [name, bytes] of [["map.yaml", new TextEncoder().encode(m.yaml)], ["map.bin", new Uint8Array(m.bin)], ["map.png", new Uint8Array(m.png)]] as const)
+          const files = { 'map.yaml': new TextEncoder().encode(m.yaml), 'map.bin': new Uint8Array(m.bin), 'map.png': new Uint8Array(m.png) };
+          matchMaps.set(m.map, files);
+          for (const [name, bytes] of Object.entries(files))
             lazy.add(`${dir}/${name}`, bytes.length, (s, e) => bytes.subarray(s, e));
           mountedMaps.add(m.map);
         }
@@ -489,6 +493,7 @@ self.onmessage = async (e: MessageEvent<ToWorker>) => {
         const files: Record<string, Uint8Array> = {};
         for (const [name, b64] of Object.entries(result.files as Record<string, string>))
           files[name] = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+        matchMaps.set(result.id, files);
         if (!mountedMaps.has(result.id)) {
           const dir = `/vfs/mods/rtsai/web/content/maps/${result.id}`;
           for (const [name, bytes] of Object.entries(files)) lazy.add(`${dir}/${name}`, bytes.length, (s, e) => bytes.subarray(s, e));
@@ -580,6 +585,7 @@ self.onmessage = async (e: MessageEvent<ToWorker>) => {
         if (!lazy || !/^\/vfs\/mods\/rtsai\/web\/content\/maps\/[a-z0-9-]+$/.test(m.dir)) { post({ type: "reply", req: m.req, json: JSON.stringify({ error: "Invalid map" }) }); break; }
         // Ids hash the map's content: a map mounted under this id already has these files.
         const mapId = m.dir.split("/").pop()!;
+        matchMaps.set(mapId, Object.fromEntries(Object.entries(m.files).map(([name, buf]) => [name, new Uint8Array(buf)])));
         if (!mountedMaps.has(mapId)) {
           for (const [name, buf] of Object.entries(m.files)) { const bytes = new Uint8Array(buf); lazy.add(`${m.dir}/${name}`, bytes.length, (s0, e0) => bytes.subarray(s0, e0)); }
           mountedMaps.add(mapId);
@@ -666,7 +672,9 @@ self.onmessage = async (e: MessageEvent<ToWorker>) => {
         const selection = (JSON.parse(S.UiState()).selection ?? []).map((a: { id: number }) => a.id);
         const groups = Array.from({ length: 10 }, (_, index) => JSON.parse(S.Command(JSON.stringify({ cmd: "group", action: "select", index }))).selection);
         S.Select(JSON.stringify(selection), false);
-        post({ type: "reply", req: m.req, json: JSON.stringify({ log: JSON.parse(S.SessionLog()), tick: S.WorldTick(), selection, groups }) }); break;
+        const files = m.map ? matchMaps.get(m.map) : undefined;
+        const mapFiles = files ? Object.fromEntries(Object.entries(files).map(([name, bytes]) => [name, toBase64(bytes)])) : undefined;
+        post({ type: "reply", req: m.req, json: JSON.stringify({ log: JSON.parse(S.SessionLog()), tick: S.WorldTick(), selection, groups, mapFiles }) }); break;
       }
       case "resync": S.Resync(); S.UiResync(); lastUi = ""; sendShroud(true); break;
     }
