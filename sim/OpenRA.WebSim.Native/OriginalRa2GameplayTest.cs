@@ -89,6 +89,7 @@ static class OriginalRa2GameplayTest
                 var source = Spawn("cleg", own, origin); var victim = Spawn("gatech", enemy, origin + new CVec(3, 0)); Tick(1); var hp = victim.Trait<Health>().HP;
                 Attack(source, victim); Check(Until(() => victim.Trait<OriginalRa2Target>().TemporalProgress > 0, 80), "Erasure did not begin: activity="+source.CurrentActivity?.GetType().Name+" sourceTarget="+source.Trait<OriginalRa2Target>().TemporalTarget?.Info.Name+" victimSource="+victim.Trait<OriginalRa2Target>().TemporalSource?.Info.Name+" arms="+string.Join(";",source.TraitsImplementing<Armament>().Select(a=>a.Info.Name+":"+a.IsTraitDisabled+":"+a.FireDelay+":"+a.Weapon.Projectile.GetType().Name)));
                 Check(victim.Trait<Health>().HP == hp, "Temporal beam dealt ordinary damage");
+                Snapshot.Build(); Check(Snapshot.UnsupportedRenderables == 0, "Temporal wave or original target animation did not render");
                 w.IssueOrder(new Order("Stop", source, false)); Tick(5); Check(victim.Trait<OriginalRa2Target>().TemporalProgress == 0, "Stopped erasure did not cancel");
                 Attack(source, victim); Check(Until(() => victim.IsDead, 350), "Sustained erasure did not remove victim");
                 var to = new MPos(11, 55).ToCPos(w.Map); w.IssueOrder(new Order("Move", source, Target.FromCell(w, to), false)); Tick(3);

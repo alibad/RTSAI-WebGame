@@ -10,6 +10,7 @@ using OpenRA.Mods.Common.Orders;
 using OpenRA.Mods.Common.Projectiles;
 using OpenRA.Mods.Common.Traits;
 using OpenRA.Mods.Cnc.Activities;
+using OpenRA.Mods.RA2.Projectiles;
 using OpenRA.Primitives;
 using OpenRA.Traits;
 
@@ -212,6 +213,16 @@ namespace OpenRA.WebSim
 
     public sealed class OriginalRa2ActionInfo : IProjectileInfo
     {
+        static readonly RadBeamInfo TemporalBeam = MakeTemporalBeam();
+        static RadBeamInfo MakeTemporalBeam()
+        {
+            var beam = new RadBeamInfo();
+            OriginalRa2Rules.Set(beam, nameof(beam.Amplitude), new WDist(476));
+            OriginalRa2Rules.Set(beam, nameof(beam.WaveLength), new WDist(384));
+            OriginalRa2Rules.Set(beam, nameof(beam.Color), Color.FromArgb(128, 200, 255));
+            OriginalRa2Rules.Set(beam, nameof(beam.ZOffset), 2047);
+            return beam;
+        }
         public readonly string Mode = "Temporal";
         public readonly int Damage = 8;
         public readonly int Interval = 100;
@@ -243,9 +254,12 @@ namespace OpenRA.WebSim
                 args.DamageModifiers = args.DamageModifiers.Append(100 + n * (support?.Info.Modifier ?? 150)).ToArray();
             }
             if (Mode is "Drone" or "Squid" or "IvanBomb") return null;
+            if (Mode == "Temporal") return TemporalBeam.Create(args);
             var laser = new LaserZapInfo();
             OriginalRa2Rules.Set(laser, nameof(laser.UsePlayerColor), Mode is "PrismTower" or "Comet");
-            OriginalRa2Rules.Set(laser, nameof(laser.Color), Mode == "Temporal" ? Color.FromArgb(128, 200, 255) : Color.Red);
+            OriginalRa2Rules.Set(laser, nameof(laser.Width), new WDist(Mode == "PrismTower" ? 70 : 50));
+            OriginalRa2Rules.Set(laser, nameof(laser.Duration), 15);
+            OriginalRa2Rules.Set(laser, nameof(laser.ZOffset), 2047);
             return laser.Create(args);
         }
         internal static void Beam(Actor source, WeaponInfo weapon, WPos start, Actor target, int[] modifiers)
