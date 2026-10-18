@@ -403,7 +403,9 @@ async function cdnPublish(rel, roots, liveBuild) {
   //    campaign's films and index, which the page does not pin by hash) may change but not vanish.
   const local = folderManifest(dir);
   const liveManifest = await fetch(`${host}MANIFEST.json?release=${Date.now()}`).then((r) => (r.ok ? r.json() : null)).catch(() => null);
-  const mutable = (p) => (config.cdn.mutable ?? []).some((m) => p.startsWith(m));
+  // The deployment control file gains an encoding rule for each new immutable runtime.
+  // It must remain present, and its rules are validated below; it is not an immutable game asset.
+  const mutable = (p) => p === '_headers' || (config.cdn.mutable ?? []).some((m) => p.startsWith(m));
   const missing = liveManifest
     ? Object.entries(liveManifest.files).filter(([p, size]) => !retired.some((r) => p.startsWith(r)) && (mutable(p) ? !(p in local) : local[p] !== size)).map(([p]) => p)
     : [liveBuild.rtRoot, liveBuild.dataRoot].filter((r) => !fs.existsSync(path.join(dir, r))).concat(config.cdn.keep.filter((p) => !(p in local)));
