@@ -36,7 +36,7 @@ function gameContext(game: Game) {
   const s = useStore.getState();
   let scenario: { map?: string; mission?: string; multiplayer?: boolean } = {};
   try { scenario = JSON.parse(game.scenarioJson || "{}"); } catch { /* none */ }
-  const entries = [{ label: "Mode", value: s.profile === "public-classic" ? "Classic / top-down" : "Isometric" }];
+  const entries = [{ label: "Game", value: s.profile === "public-classic" ? "Classic" : "Red Alert 2" }];
   if (s.phase === "playing") {
     entries.push({ label: "Match", value: `${scenario.multiplayer ? "Multiplayer" : scenario.mission ? "Campaign" : "Skirmish"} on ${scenario.mission ?? scenario.map ?? "unknown map"}` });
     entries.push({ label: "Tick", value: String(s.ui?.tick ?? "unknown") });

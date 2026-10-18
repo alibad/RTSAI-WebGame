@@ -94,7 +94,7 @@ export function keepRecord(record: MatchRecord) {
 export async function startRecord(game: Game, record: MatchRecord, readonly: boolean): Promise<string> {
   try {
     const profile = useStore.getState().profile;
-    if (record.profile !== profile) return `This match was saved in the ${record.profile === "public-classic" ? "Classic / top-down" : "Isometric"} view. Switch views to open it.`;
+    if (record.profile !== profile) return `This battle was played in ${gameName(record.profile)}, which this version of the game doesn't include.`;
     if (!record.identity) return "This save does not identify its original game files. Your saved battle has been kept.";
     if (record.identity !== await buildIdentity(profile, runtime())) {
       const version = await findSaveVersion(record.identity);
@@ -142,12 +142,22 @@ function exportRecord(record: MatchRecord) {
   const link = document.createElement("a"); link.href = url; link.download = `rtsai-match-${record.id}.json`; link.click(); URL.revokeObjectURL(url);
 }
 
-/** The other battlefield view is another game profile: the page reloads into it (as the main menu's view tiles do). */
-function switchView(profile: string) {
+/** The game a save belongs to, as players know it (the profile is the engine's name for it). */
+export function gameName(profile: string) {
+  return profile === "public-classic" ? "Classic" : profile === "public" ? "Red Alert 2" : "";
+}
+
+/**
+ * A save from the other game opens in that game: the page reloads into its profile (as the main menu's game tiles do)
+ * and App.tsx opens the save from `openMatch` (`watch` for its replay).
+ */
+function openInGame(record: MatchRecord, readonly: boolean) {
   const url = new URL(location.href);
-  url.searchParams.delete('saveVersion'); url.searchParams.delete('openMatch'); url.searchParams.delete('watch');
-  url.searchParams.set("game", profile === "public-classic" ? "classic" : "isometric");
-  url.searchParams.set("profile", profile);
+  url.searchParams.delete('saveVersion');
+  url.searchParams.set("game", record.profile === "public-classic" ? "classic" : "isometric");
+  url.searchParams.set("profile", record.profile);
+  url.searchParams.set("openMatch", record.id);
+  if (readonly) url.searchParams.set("watch", "1"); else url.searchParams.delete("watch");
   location.assign(url);
 }
 
@@ -180,14 +190,15 @@ function SaveCard({ game, record, fresh, onStart }: { game: Game; record: MatchR
     if (!record.thumb && phase === "setup" && record.profile === profile && setup?.maps.some((m) => m.id === mapId)) game.preview(mapId);
   }, [game, record.thumb, phase, record.profile, profile, setup, mapId]);
   async function start(readonly: boolean) {
+    if (record.profile !== profile && offered) { setBusy(true); openInGame(record, readonly); return; }
     setBusy(true); setError("");
     const why = await startRecord(game, record, readonly);
     setBusy(false);
     if (why) setError(why); else onStart();
   }
-  const view = record.profile === "public-classic" ? "Classic" : record.profile === "public" ? "Isometric" : "";
-  // A static build offers only the views it was built with (tools/build-public.mjs, VITE_GAME_MODES).
-  const offered = import.meta.env.VITE_STATIC_BUILD !== "1" || (import.meta.env.VITE_GAME_MODES ?? "public").split(",").includes(record.profile);
+  const view = gameName(record.profile);
+  // A static build offers only the games it was built with (tools/build-public.mjs, VITE_GAME_MODES).
+  const offered = !!view && (import.meta.env.VITE_STATIC_BUILD !== "1" || (import.meta.env.VITE_GAME_MODES ?? "public").split(",").includes(record.profile));
   return (
     <li className={`lib-card${fresh ? " is-new" : ""}`}>
       <button type="button" className="lib-thumb" aria-label={`Watch the replay of ${title}`} data-sfx-hover disabled={busy} onClick={() => void start(true)}>
@@ -203,7 +214,7 @@ function SaveCard({ game, record, fresh, onStart }: { game: Game; record: MatchR
         {record.mapRecovery && <p className="settings-hint">{record.mapRecovery}</p>}
         <div className="lib-sides">
           {sides.map((s, i) => <span key={i} className="lib-side">{i > 0 && <span className="lib-vs">VS</span>}<Flag id={s.faction} /><span>{s.you ? <em>You</em> : s.nation}</span></span>)}
-          {view && profile !== record.profile && <span className="lib-tag">{view}</span>}
+          {view && profile !== record.profile && <span className="lib-tag" title={offered ? `Resume and Replay switch to ${view}` : undefined}>{view}</span>}
         </div>
         <div className="lib-actions">
           {confirming ? (
@@ -221,7 +232,6 @@ function SaveCard({ game, record, fresh, onStart }: { game: Game; record: MatchR
         </div>
         {error && <div className="lib-error-row">
           <p role="alert" className="lib-error"><AlertTriangle size={14} />{error}</p>
-          {view && offered && profile !== record.profile && <GameButton size="sm" variant="ghost" onClick={() => switchView(record.profile)}>Open the {view.toLowerCase()} view</GameButton>}
         </div>}
       </div>
     </li>

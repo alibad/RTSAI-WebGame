@@ -58,7 +58,7 @@ export function MainMenu({ onSkirmish, onCampaign, onSimulator, onEditor }: { on
         {offered.includes('public') && offered.includes('public-classic') && <section className="menu-views" aria-label="Battlefield mode">
           <span className="menu-eyebrow">Choose your battlefield mode</span>
           <div className="menu-view-row">
-            {[{ id: 'isometric', title: 'Isometric', text: 'Red Alert 2 maps', selected: !classic },
+            {[{ id: 'isometric', title: 'Red Alert 2', text: 'Red Alert 2 maps and countries', selected: !classic },
               { id: 'classic', title: 'Classic', text: 'Classic, Red Alert Plus & Combined Arms maps', selected: classic }].map(view => (
               <button key={view.id} type="button" className="view-tile" data-selected={view.selected} aria-pressed={view.selected} onClick={() => chooseMode(view.id === 'classic')}>
                 <img src={`menu/${view.id}.webp`} alt="" />
