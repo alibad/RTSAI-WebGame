@@ -249,6 +249,7 @@ def restore(retail):
         w=retail.by_lower[base].clone();w.key=name
         if base=='lightningstorm':
             for n in w.children:
+                if n.value=='CreateEffect':setv(n,'UsePlayerPalette','false')
                 if n.value=='SpreadDamage':
                     setv(n,'Damage',facts['LightningDamage']);setv(n,'Spread','2c0');setv(n,'Falloff','100, 50')
         else:

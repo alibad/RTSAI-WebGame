@@ -99,7 +99,9 @@ static class OriginalRa2GameplayTest
                 var drone = Spawn("dron", own, origin); var victim = Spawn("amcv", enemy, origin + new CVec(1, 0)); Tick(1); Attack(drone, victim);
                 Check(Until(() => victim.Trait<OriginalRa2Target>().Parasite == drone, 200), "Drone did not infest vehicle"); Tick(110);
                 Check(!drone.IsInWorld && victim.Trait<Health>().HP < 1000, "Infestation did not hide drone and damage vehicle: hp="+victim.Trait<Health>().HP+" world="+drone.IsInWorld+" dead="+drone.IsDead+" disposed="+drone.Disposed+" parasite="+victim.Trait<OriginalRa2Target>().Parasite?.Info.Name);
-                victim.Trait<OriginalRa2Target>().Release(victim, true); Tick(2); Check(drone.Disposed, "Depot removal failed");
+                var depot = Spawn("gadept", enemy, new MPos(10, 48).ToCPos(w.Map)); Tick(1);
+                w.IssueOrder(new Order("Repair", victim, Target.FromActor(depot), false));
+                Check(Until(() => drone.Disposed, 1800), "Real Service Depot repair order did not remove parasite");
                 var squid = Spawn("sqd", own, new MPos(14, 33).ToCPos(w.Map)); var ship = Spawn("dest", enemy, new MPos(14, 34).ToCPos(w.Map)); Tick(1); Attack(squid, ship);
                 Check(Until(() => ship.Trait<OriginalRa2Target>().Squid, 200), "Squid did not grab ship");
                 var cell = ship.Location; w.IssueOrder(new Order("Move", ship, Target.FromCell(w, new MPos(15, 30).ToCPos(w.Map)), false)); Tick(30);
@@ -124,6 +126,7 @@ static class OriginalRa2GameplayTest
                 var tower = Spawn("atesla", own, origin); var donor = Spawn("atesla", own, origin + new CVec(-4, 0)); var victim = Spawn("gatech", enemy, origin + new CVec(6, 0)); Tick(30); Attack(tower, victim);
                 Check(Until(() => donor.Trait<OriginalRa2Target>().PrismCooldown > 0, 200), "Prism support did not activate: power="+own.PlayerActor.Trait<PowerManager>().PowerState+" hp="+victim.Trait<Health>().HP+" arms="+string.Join(";",tower.TraitsImplementing<Armament>().Select(a=>a.Info.Name+":"+a.IsTraitDisabled+":"+a.FireDelay)));
                 Check(Until(() => victim.IsDead || victim.Trait<Health>().HP < 500, 30), "Supported beam did not damage target");
+                Check(victim.Trait<Health>().HP == 350, "One support tower must amplify the 60-vs-wood hit to 150");
                 var tank = Spawn("sref", own, origin + new CVec(0, 7)); var primary = Spawn("amcv", enemy, tank.Location + new CVec(5, 0)); var secondary = Spawn("amcv", enemy, primary.Location + new CVec(0, 2)); Tick(1); Attack(tank, primary);
                 Check(Until(() => secondary.Trait<Health>().HP < 1000, 200), "Prism Tank did not branch to secondary target"); result["supportAndBranching"] = true;
             }
@@ -135,6 +138,14 @@ static class OriginalRa2GameplayTest
                 var nuke = w.Map.Rules.Weapons["retailatomic"]; var blast = nuke.Warheads.OfType<SpreadDamageWarhead>().Single();
                 Check(blast.Damage == 600 && blast.Falloff.SequenceEqual(new[] { 100, 2 }), "Nuclear damage is still amplified");
                 Check(nuke.Warheads.Count(h => h.GetType().Name == "CreateTintedCellsWarhead") == 1, "Duplicate nuclear radiation"); result["repairStormNuclearRules"] = true;
+                // Calibrate actual area impacts as well as fields: concrete receives
+                // 600 * 8% = 48 at the center, without the old 1024% amplification.
+                nuke.Impact(Target.FromPos(building.CenterPosition), own.PlayerActor); Tick(30);
+                Check(building.Trait<Health>().HP == 952, "Nuclear central damage was not 48 versus concrete");
+                var vehicle = Spawn("amcv", enemy, origin + new CVec(20, 0)); Tick(1);
+                w.Map.Rules.Weapons["retaillightningstorm"].Impact(Target.FromPos(vehicle.CenterPosition), own.PlayerActor); Tick(60);
+                Check(vehicle.Trait<Health>().HP == 750, "Lightning strike did not deal 250 versus heavy armor");
+                result["nuclearConcreteDamage"] = 48; result["lightningHeavyDamage"] = 250;
             }
             else throw new Exception("Unknown gameplay case " + selected);
             Snapshot.Build(); Check(Snapshot.UnsupportedRenderables == 0, "Unsupported gameplay effect rendering");
