@@ -19,7 +19,7 @@ static class ClassicAssets
 		var allowed = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "allies.mix", "conquer.mix", "interior.mix", "lores.mix", "hires.mix", "local.mix", "russian.mix", "snow.mix", "sounds.mix", "temperat.mix", "expand2.mix", "lores1.mix", "hires1.mix", "desert.mix" };
 		var files = new List<object>();
 		var mounts = new List<object>();
-		foreach (var package in SimHost.ModData.DefaultFileSystem.MountedPackages)
+		foreach (var package in ((OpenRA.FileSystem.FileSystem)SimHost.ModData.DefaultFileSystem).MountedPackages)
 		{
 			var source = Path.GetFileName(package.Name);
 			if (!allowed.Contains(source)) continue;
