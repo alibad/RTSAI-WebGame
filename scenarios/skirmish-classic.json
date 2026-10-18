@@ -1,21 +1,21 @@
 {
-  "map": "classic-frontier",
+  "map": "ca-green-belt",
   "seed": 4242,
   "players": [
     {
       "slot": "Multi0",
-      "faction": "saudi",
+      "faction": "england",
       "color": "2A6FDB"
     },
     {
       "slot": "Multi1",
-      "faction": "iran",
+      "faction": "russia",
       "bot": "normal",
       "color": "D83A2E"
     }
   ],
   "options": {
-    "startingunits": "medium",
+    "startingunits": "heavy",
     "explored": "True",
     "fog": "False",
     "crates": "False"
