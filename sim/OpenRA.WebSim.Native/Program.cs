@@ -35,6 +35,7 @@ static class Program
 			return args[0] switch
 			{
 				"pack" => Bundle.Build(opts),
+				"classic-assets" => ClassicAssets.Run(opts),
 				"extract-content" => PrivateContent.Extract(opts),
 				"unpack" => Unpack(opts),
 				"bake" => Bake.Run(opts),
