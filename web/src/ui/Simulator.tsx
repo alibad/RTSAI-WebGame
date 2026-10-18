@@ -14,6 +14,7 @@ import { SearchSelect, type Option } from "../components/ui/fields";
 import { cn } from "../lib/utils";
 import { SIDE_COLORS, nationGroup, playableNations } from "../sides";
 import { GameMenu, Hud, Rank, RotateHint } from "./Hud";
+import { FeedbackSlot } from "./feedback/slot";
 import { Flag } from "./Flag";
 import { GameButton } from "./kit/game";
 import { MapStrip } from "./MapStrip";
@@ -285,6 +286,7 @@ export function Simulator({ game, exit }: { game: Game; exit: () => void }) {
       <nav className="hud-bar" aria-label="Game controls" data-ui-sfx>
         <button type="button" className="hud-tool" aria-label="Main menu" data-tip="Main menu" onClick={exit}><ArrowLeft /></button>
         <GameMenu game={game} />
+        <FeedbackSlot kind="hud" />
       </nav>
       <div className="sb-hint"><div className="hud-card">
         <MousePointerClick />{st.pickDestination !== null ? "Click the battlefield to set the destination" : st.brush ? "Click to place · right-click a unit to remove" : "Drag anything onto the battlefield · right-click removes"}

@@ -1,4 +1,4 @@
-// In-game HUD around the battlefield: the top bar (game menu, help, saves, settings, feedback), the command console
+// In-game HUD around the battlefield: the top bar (game menu, help, saves, settings, feedback's slot), the command console
 // (control groups, selection with health and veterancy, unit commands), the pause menu, the replay controls,
 // victory/defeat and the developer stats panel (F2).
 
@@ -14,10 +14,10 @@ import { CoCommander } from "./CoCommander";
 import { AttackMoveIcon, DeployIcon, GuardIcon, ScatterIcon, StopIcon } from "./icons";
 import { UnitPortrait } from "./UnitPortrait";
 import { MatchLibrary } from "./MatchLibrary";
+import { FeedbackSlot } from "./feedback/slot";
 import { GameSettings } from "./GameSettings";
 import { NowPlaying } from "./NowPlaying";
 import { keyFor, type Command } from "../preferences";
-import { Feedback } from "./Feedback";
 import { GameButton, Kbd } from "./kit/game";
 import { Flag } from "./Flag";
 import { exitReplay, replayOf, ReplayHud } from "./Replay";
@@ -374,7 +374,7 @@ export function Hud({ game }: { game: Game }) {
         <MatchLibrary game={game} variant="hud" />
         <NowPlaying game={game} />
         <span className="hud-tool-slot" style={{ "--tip": '"Settings"' } as React.CSSProperties}><GameSettings game={game} /></span>
-        <span className="hud-tool-slot" style={{ "--tip": '"Feedback"' } as React.CSSProperties}><Feedback game={game} compact /></span>
+        <FeedbackSlot kind="hud" />
       </nav>
       {developerTools && statsOpen && <Stats game={game} />}
       {!replay && <Console game={game} />}

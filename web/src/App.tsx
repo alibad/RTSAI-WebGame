@@ -17,6 +17,7 @@ import { CoachPanel } from "./ui/Coach";
 import { Annotations } from "./ui/Annotations";
 import { installTelemetry } from "./net/telemetry";
 import { Feedback } from "./ui/Feedback";
+import { FeedbackSlot } from "./ui/feedback/slot";
 import { MainMenu } from "./ui/MainMenu";
 import { GraphicsState } from "./ui/GraphicsState";
 import { RESUME_AFTER_RELOAD, savedRecord, startRecord } from "./ui/MatchLibrary";
@@ -311,9 +312,9 @@ export default function App() {
       {game && playing && !uiHidden && !editorMode && (sandboxMode ? <Simulator game={game} exit={exitSimulator} /> : <Hud game={game} />)}
       {game && editorMode && phase !== "boot" && <MapEditor game={game} exit={exitEditor} test={testInSimulator} mission={startMission} play={playEarth} earthFirst={earthFirst} />}
       {game && phase === "setup" && !sandboxMode && !editorMode && <>
-        {mode !== "skirmish" && <div className="menu-utility" data-ui-sfx><MatchLibrary game={game} /><GameSettings game={game} /><Feedback game={game} /></div>}
+        {mode !== "skirmish" && <div className="menu-utility" data-ui-sfx><MatchLibrary game={game} /><GameSettings game={game} /><FeedbackSlot kind="menu" /></div>}
         {mode === "home" ? <MainMenu onSkirmish={() => setMode("skirmish")} onCampaign={() => setMode("missions")} onSimulator={() => setMode("simulator")} onEditor={() => openEditor()} /> : <>
-          {mode === "missions" ? <Missions game={game} /> : <Setup game={game} utilities={<><MatchLibrary game={game} /><GameSettings game={game} /><Feedback game={game} /></>} />}
+          {mode === "missions" ? <Missions game={game} /> : <Setup game={game} utilities={<><MatchLibrary game={game} /><GameSettings game={game} /><FeedbackSlot kind="menu" /></>} />}
           <nav className="menu-subnav scr-subnav" aria-label="Game modes" data-ui-sfx>
             <button type="button" onClick={() => setMode("home")} className="menu-subnav-back" aria-label="Main menu"><ArrowLeft size={15} aria-hidden="true" /><span>Main menu</span></button>
             <div className="scr-tabs">
@@ -333,6 +334,8 @@ export default function App() {
       {(phase === "boot" || (phase === "loading" && !editorMode) || (phase === "setup" && sandboxMode)) && <Loading game={game} />}
       {phase === "error" && <ErrorCard game={game} />}
       {game && (playing || phase === "loading" || graphics === "failed") && <GraphicsState game={game} />}
+      {/* One feedback launcher for every screen: over the visible screen's FeedbackSlot, else in its own corner. */}
+      {game && !uiHidden && <Feedback game={game} />}
     </div>
   );
 }

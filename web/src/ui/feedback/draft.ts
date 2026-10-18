@@ -1,5 +1,5 @@
-// The player's unsent feedback. Module state (not component state): the HUD and the menus each mount their own
-// Feedback button, and hiding the HUD unmounts it, so the draft lives here until it is sent or discarded.
+// The player's unsent feedback. Module state (not component state): it outlives closing the dialog and lives here
+// until it is sent or discarded.
 import { create } from "zustand";
 import type { StoredFile } from "./report-files";
 
@@ -13,16 +13,20 @@ export type DraftFile = { id: string; blob: Blob; name: string; contentType: str
 type Draft = {
   text: string;
   category: string;
+  /** The topic was picked for the screen feedback was opened on, not by the player: the next opening picks again. */
+  autoCategory: boolean;
   rating: number;
   shots: DraftShot[];
+  /** The screenshot taken as the dialog opened: the next opening replaces it, unless the player marked it up. */
+  autoShot: string | null;
   voice: DraftVoice | null;
   files: DraftFile[];
   /** The report's id (feedbackReports/<id> in Firestore), fixed at the first send so a retry reuses its files. */
   submissionId: string | null;
   /** When this browser created the report document; null until it has files to store. */
   reportCreatedAt: number | null;
-  set: (patch: Partial<Pick<Draft, "text" | "category" | "rating">>) => void;
-  addShot: (blob: Blob) => string;
+  set: (patch: Partial<Pick<Draft, "text" | "category" | "autoCategory" | "rating">>) => void;
+  addShot: (blob: Blob, auto?: boolean) => string;
   replaceShot: (id: string, blob: Blob) => void;
   removeShot: (id: string) => void;
   setVoice: (note: { blob: Blob; contentType: string; seconds: number } | null) => void;
@@ -42,19 +46,22 @@ const revoke = (url?: string) => { if (url) URL.revokeObjectURL(url); };
 export const useFeedbackDraft = create<Draft>((set, get) => ({
   text: "",
   category: "",
+  autoCategory: false,
   rating: 0,
   shots: [],
+  autoShot: null,
   voice: null,
   files: [],
   submissionId: null,
   reportCreatedAt: null,
   set: (patch) => set(patch),
-  addShot: (blob) => {
+  addShot: (blob, auto = false) => {
     const id = nextId("shot");
-    set((s) => ({ shots: [...s.shots, { id, blob, previewUrl: URL.createObjectURL(blob) }] }));
+    set((s) => ({ shots: [...s.shots, { id, blob, previewUrl: URL.createObjectURL(blob) }], ...(auto ? { autoShot: id } : {}) }));
     return id;
   },
   replaceShot: (id, blob) => set((s) => ({
+    autoShot: s.autoShot === id ? null : s.autoShot,
     shots: s.shots.map((shot) => {
       if (shot.id !== id) return shot;
       revoke(shot.previewUrl);
@@ -63,7 +70,7 @@ export const useFeedbackDraft = create<Draft>((set, get) => ({
   })),
   removeShot: (id) => set((s) => {
     revoke(s.shots.find((shot) => shot.id === id)?.previewUrl);
-    return { shots: s.shots.filter((shot) => shot.id !== id) };
+    return { shots: s.shots.filter((shot) => shot.id !== id), autoShot: s.autoShot === id ? null : s.autoShot };
   }),
   setVoice: (note) => set((s) => {
     revoke(s.voice?.previewUrl);
@@ -98,6 +105,6 @@ export const useFeedbackDraft = create<Draft>((set, get) => ({
     s.shots.forEach((shot) => revoke(shot.previewUrl));
     revoke(s.voice?.previewUrl);
     s.files.forEach((file) => revoke(file.previewUrl));
-    set({ text: "", category: "", rating: 0, shots: [], voice: null, files: [], submissionId: null, reportCreatedAt: null });
+    set({ text: "", category: "", autoCategory: false, rating: 0, shots: [], autoShot: null, voice: null, files: [], submissionId: null, reportCreatedAt: null });
   },
 }));

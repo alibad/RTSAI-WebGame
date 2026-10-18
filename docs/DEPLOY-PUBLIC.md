@@ -117,8 +117,11 @@ standalone SHA, bundle id). To check the output exactly as a CDN would serve it:
 The public game starts only for signed-in players (`VITE_REQUIRE_SIGNIN=1`, set by `build-public.mjs`). Sign-in,
 `/api/event` and `/api/feedback` belong to the website (RTSAI-Web), which shares the rtsai.net origin with /play.
 
-In-game feedback (`web/src/ui/Feedback.tsx`) is the website's flow: the battlefield frame grabbed when Feedback opens
-(`Game.captureFrame`), the annotator, dictation, a voice note and files. The player's browser writes the files straight
+In-game feedback (`web/src/ui/Feedback.tsx`) is the website's flow: a screenshot of the screen the player is on, taken
+again each time Feedback opens (`ui/feedback/screen.ts`: menus, dialogs and the HUD drawn by modern-screenshot, the
+battlefield from `Game.captureFrame`), the annotator, dictation, a voice note and files. App mounts one launcher; it sits
+over the visible screen's `FeedbackSlot` (HUD bar, menus' utility row, editor toolbar, an open dialog's header) above
+every dialog, or in its own corner. The player's browser writes the files straight
 into Firestore (`feedbackReports/<id>`, readable only by the team in the website's `/feedback/<id>` viewer), so deploy
 RTSAI-Web's `firestore.rules` (and a website with the viewer) before a game build with this flow.
 `tools/feedback-browser-test.mjs` checks it in a running match against the Auth and Firestore emulators, with the

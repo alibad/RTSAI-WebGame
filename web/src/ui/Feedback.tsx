@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { Camera, Crosshair, ImagePlus, Loader2, MessageSquareHeart, Mic, MonitorUp, Paperclip, Send, Star, X } from "lucide-react";
 import type { Game } from "../game";
 import { useStore } from "../store";
-import { Button } from "../components/ui/button";
 import { OptionSelect, type Option } from "../components/ui/fields";
 import { kitPopupOpen } from "../components/ui/layers";
 import { accountsConfigured, currentUser, firestore, onAccountChange, signInUrl, siteApi } from "../net/account";
@@ -14,15 +14,18 @@ import {
   MAX_FILES, MAX_SCREENSHOTS, toJpeg, useVoiceRecorder, withWidgetHidden,
 } from "./feedback/media";
 import { createFeedbackReport, FEEDBACK_REPORT_REUSE_MS, storeFeedbackFile, type FeedbackFileKind } from "./feedback/report-files";
+import { captureScreen, FEEDBACK_LAUNCHER_CLASS } from "./feedback/screen";
 import { ScreenshotAnnotator } from "./feedback/ScreenshotAnnotator";
 import { GameButton } from "./kit/game";
 import { DictationButton, useFeedbackDictation } from "./feedback/useFeedbackDictation";
 import "./feedback/feedback-game.css";
 
 // The website's feedback flow (RTSAI-Web app/components/FeedbackPanel.tsx, the feedback skill's Full mode) in the
-// game's HUD: a screenshot of the battlefield to mark up, dictation, a voice note and files, sent with the player's
-// account to the site's /api/feedback (same origin at rtsai.net/play). The files go first, straight into Firestore
-// (feedbackReports/<id>, readable only by the team; see feedback/report-files.ts); the private issue links them.
+// game: a screenshot of the screen the player is on to mark up, dictation, a voice note and files, sent with the
+// player's account to the site's /api/feedback (same origin at rtsai.net/play). The files go first, straight into
+// Firestore (feedbackReports/<id>, readable only by the team; see feedback/report-files.ts); the private issue links them.
+// One launcher for the whole game (App mounts it once): over the visible screen's FeedbackSlot, else in its own
+// corner, and above the menus, the HUD and open dialogs such as Settings.
 const CATEGORIES: Option<string>[] = ["Bug", "Gameplay", "UI/UX", "Feature Request", "AI Companion", "General"].map(c => ({ value: c, label: c }));
 const SCREENSHOT_TYPES = ["image/png", "image/jpeg", "image/webp"];
 
@@ -41,20 +44,41 @@ function gameContext(game: Game) {
   return entries;
 }
 
+type Slot = { kind: string; left: number; top: number; width: number; height: number };
+
+/** The visible slot's place on screen (checked a few times a second: the HUD and the menus change under it). */
+function useSlot() {
+  const [slot, setSlot] = useState<Slot | null>(null);
+  useEffect(() => {
+    const find = () => {
+      const el = [...document.querySelectorAll<HTMLElement>("[data-feedback-slot]")].filter((e) => e.getClientRects().length > 0).at(-1);
+      const r = el?.getBoundingClientRect();
+      const next = el && r ? { kind: el.dataset.feedbackSlot ?? "menu", left: r.left, top: r.top, width: r.width, height: r.height } : null;
+      setSlot((prev) => prev && next && (Object.keys(next) as (keyof Slot)[]).every((k) => prev[k] === next[k]) ? prev : next);
+    };
+    find();
+    const timer = setInterval(find, 200);
+    addEventListener("resize", find);
+    return () => { clearInterval(timer); removeEventListener("resize", find); };
+  }, []);
+  return slot;
+}
+
 async function canvasToPng(canvas: HTMLCanvasElement) {
   const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/png"));
   if (!blob) throw new Error("Could not encode the screenshot");
   return blob;
 }
 
-export function Feedback({ game, compact = false }: { game: Game; compact?: boolean }) {
+export function Feedback({ game }: { game: Game }) {
   const draft = useFeedbackDraft();
   const [open, setOpen] = useState(false);
   const [signedIn, setSignedIn] = useState<boolean | null>(null);
   const [busy, setBusy] = useState(false), [progress, setProgress] = useState(""), [error, setError] = useState(""), [notice, setNotice] = useState(""), [receipt, setReceipt] = useState("");
   const [annotating, setAnnotating] = useState<{ src: string; shotId?: string; owned: boolean } | null>(null);
-  const [capturing, setCapturing] = useState(false);
+  const [capturing, setCapturing] = useState(false), [opening, setOpening] = useState(false);
   const [media] = useState(() => ({ tab: canCaptureTab(), voice: canRecordVoice(), touch: isCoarsePointer() }));
+  const slot = useSlot();
   const textRef = useRef<HTMLTextAreaElement>(null);
   const photoInput = useRef<HTMLInputElement>(null), fileInput = useRef<HTMLInputElement>(null);
 
@@ -75,6 +99,19 @@ export function Feedback({ game, compact = false }: { game: Game; compact?: bool
   useEffect(() => { if (open && !annotating) requestAnimationFrame(() => textRef.current?.focus()); }, [open, annotating]);
   useEffect(() => { if (!open && voice.recording) voice.stop(); }, [open, voice]);
   usePastedFiles(open && !annotating && !receipt, (files) => void addFiles(files));
+  // Escape closes feedback wherever focus is: opened over a dialog, focus can still be outside it (the dialog kit
+  // leaves Escape to feedback while it is open). Open pickers and the markup screen take their own Escape.
+  const closeRef = useRef(() => {});
+  useEffect(() => {
+    if (!open || annotating) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape" || kitPopupOpen()) return;
+      e.stopPropagation();
+      closeRef.current();
+    };
+    addEventListener("keydown", onKey, true);
+    return () => removeEventListener("keydown", onKey, true);
+  }, [open, annotating]);
 
   if (!accountsConfigured) return null;
 
@@ -84,13 +121,18 @@ export function Feedback({ game, compact = false }: { game: Game; compact?: bool
   }
 
   async function openFeedback() {
+    if (opening) return;
+    setOpening(true);
     setError(""); setNotice(""); setReceipt("");
     const state = useFeedbackDraft.getState();
-    if (!state.category) state.set({ category: playing() ? "Gameplay" : "General" });
-    // What the player was looking at when they pressed Feedback: grabbed before the dialog covers it.
-    if (playing() && !state.shots.length) {
-      try { state.addShot((await toJpeg(await game.captureFrame())).blob); } catch { /* no frame: the player can add one */ }
+    if (!state.category || state.autoCategory) state.set({ category: playing() ? "Gameplay" : "General", autoCategory: true });
+    // What the player is looking at now, grabbed before the dialog covers it. It replaces the one from an earlier
+    // opening (another screen, an earlier moment) unless the player marked that one up.
+    if (state.autoShot) state.removeShot(state.autoShot);
+    if (useFeedbackDraft.getState().shots.length < MAX_SCREENSHOTS) {
+      try { useFeedbackDraft.getState().addShot((await toJpeg(await captureScreen(game))).blob, true); } catch { /* nothing drawn: the player can add one */ }
     }
+    setOpening(false);
     setOpen(true);
   }
 
@@ -109,9 +151,11 @@ export function Feedback({ game, compact = false }: { game: Game; compact?: bool
     if (capturing || draft.shots.length >= MAX_SCREENSHOTS) return;
     setCapturing(true);
     try {
-      const png = await canvasToPng(await withWidgetHidden(captureTab));
-      setAnnotating({ src: URL.createObjectURL(png), owned: true });
-    } catch { setNotice("Screen capture was cancelled or isn't available in this browser."); }
+      // The page as drawn, without a prompt; the browser's own tab capture (one "Share" click) when that fails.
+      const shot = await captureScreen(game).catch(() => media.tab ? withWidgetHidden(captureTab) : Promise.reject());
+      if (media.touch) draft.addShot((await toJpeg(shot)).blob);
+      else setAnnotating({ src: URL.createObjectURL(await canvasToPng(shot)), owned: true });
+    } catch { setNotice("The screen couldn't be captured. Attach a screenshot file instead."); }
     finally { setCapturing(false); }
   }
 
@@ -206,6 +250,7 @@ export function Feedback({ game, compact = false }: { game: Game; compact?: bool
     if (voice.recording) voice.stop();
     setOpen(false); setReceipt(""); setError(""); setNotice("");
   }
+  closeRef.current = close;
 
   const shots = draft.shots.map((shot) => ({ id: shot.id, url: shot.previewUrl }));
   const files = draft.files.map((file) => ({ id: file.id, name: file.name, size: file.blob.size, contentType: file.contentType, previewUrl: file.previewUrl }));
@@ -213,8 +258,12 @@ export function Feedback({ game, compact = false }: { game: Game; compact?: bool
   const inMatch = playing();
   const full = draft.shots.length >= MAX_SCREENSHOTS;
 
-  return <>
-    <Button size="sm" variant="outline" aria-label="Feedback" onClick={() => void openFeedback()}><MessageSquareHeart size={14} />{!compact && " Feedback"}</Button>
+  // The page's top layer (document.body), above the HUD, the menus and open dialogs such as Settings.
+  return createPortal(<>
+    {!open && <button type="button" className={FEEDBACK_LAUNCHER_CLASS} data-variant={slot?.kind ?? "corner"} data-ui-sfx aria-label="Feedback" title="Send feedback (a screenshot of this screen is attached)" aria-busy={opening || undefined}
+      style={slot ? { left: slot.left, top: slot.top, width: slot.width, height: slot.height, bottom: "auto" } : undefined} onClick={() => void openFeedback()}>
+      {opening ? <Loader2 size={15} className="gfb-spin" aria-hidden="true" /> : <MessageSquareHeart size={15} aria-hidden="true" />}<span>Feedback</span>
+    </button>}
     {open && <div id={FEEDBACK_ROOT_ID}>
       {/* Stays mounted (hidden) under the annotator, so returning from markup keeps the draft view as it was. */}
       <div className="gfb-overlay" role="presentation" data-ui-sfx style={annotating ? { visibility: "hidden" } : undefined} onMouseDown={(e) => { if (e.target === e.currentTarget) close(); }} onKeyDown={(e) => { if (e.key === "Escape" && !kitPopupOpen()) close(); e.stopPropagation(); }}>
@@ -237,7 +286,7 @@ export function Feedback({ game, compact = false }: { game: Game; compact?: bool
             </div>
             <div className="gfb-tools" role="group" aria-label="Add to your report">
               {inMatch && <button type="button" className="gfb-chip" onClick={() => void takeBattlefield()} disabled={capturing || full}><Crosshair size={15} /> Battlefield</button>}
-              {media.tab && <button type="button" className="gfb-chip" onClick={() => void takeScreen()} disabled={capturing || full} title="The whole game screen, HUD included">{inMatch ? <MonitorUp size={15} /> : <Camera size={15} />} {inMatch ? "Full screen" : "Screenshot"}</button>}
+              <button type="button" className="gfb-chip" onClick={() => void takeScreen()} disabled={capturing || full} title="The whole game screen, HUD included">{inMatch ? <MonitorUp size={15} /> : <Camera size={15} />} {inMatch ? "Full screen" : "Screenshot"}</button>
               {media.touch && <button type="button" className="gfb-chip" onClick={() => photoInput.current?.click()} disabled={full}><ImagePlus size={15} /> Photo</button>}
               {media.voice && <button type="button" className="gfb-chip" onClick={() => void voice.start()} disabled={voice.recording || !!draft.voice}><Mic size={15} /> Voice note</button>}
               {media.touch && <button type="button" className="gfb-chip" onClick={() => fileInput.current?.click()}><Paperclip size={15} /> File</button>}
@@ -253,7 +302,7 @@ export function Feedback({ game, compact = false }: { game: Game; compact?: bool
             {error && <p role="alert" className="gfb-error">{error}</p>}
             <div className="gfb-footer">
               <div className="gfb-meta">
-                <OptionSelect aria-label="Feedback topic" className="gfb-topic" value={draft.category || "General"} options={CATEGORIES} onValueChange={(category) => draft.set({ category })} />
+                <OptionSelect aria-label="Feedback topic" className="gfb-topic" value={draft.category || "General"} options={CATEGORIES} onValueChange={(category) => draft.set({ category, autoCategory: false })} />
                 <div className="gfb-rating" role="radiogroup" aria-label="How’s the game so far? (optional)">{[1, 2, 3, 4, 5].map(n => <button key={n} type="button" role="radio" aria-checked={draft.rating === n} aria-label={`${n} of 5`} className={n <= draft.rating ? "on" : ""} onClick={() => draft.set({ rating: draft.rating === n ? 0 : n })}><Star size={17} /></button>)}</div>
               </div>
               <button type="button" className="gfb-send" disabled={busy || voice.recording || draft.text.trim().length < 10} onClick={() => void send()}>{busy ? <><Loader2 size={15} className="gfb-spin" /> {progress || "Sending…"}</> : <><Send size={15} /> Send</>}</button>
@@ -263,5 +312,5 @@ export function Feedback({ game, compact = false }: { game: Game; compact?: bool
       </div>
       {annotating && <ScreenshotAnnotator src={annotating.src} onSave={({ blob }) => finishMarkup(blob)} onCancel={() => finishMarkup(null)} />}
     </div>}
-  </>;
+  </>, document.body);
 }

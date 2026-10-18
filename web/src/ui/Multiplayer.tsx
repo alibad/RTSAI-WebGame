@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties } from 'react';
 import type { Game } from '../game';
 import { useStore } from '../store';
+import { FeedbackSlot } from './feedback/slot';
 import { Flag } from './Flag';
 import { OptionSelect, SearchSelect, Swatch, type Option } from '../components/ui/fields';
 import { MatchChat } from './MatchChat';
@@ -126,7 +127,7 @@ export function Multiplayer({ game }: { game: Game }) {
     <section role="dialog" aria-modal="true" aria-labelledby="mp-title" className={`gd-panel mp-dialog mp-stage-${view.stage}`} onKeyDown={e => { if (e.key === 'Escape' && view.stage !== 'lobby') close(); }}>
       <header className="gd-header mp-header">
         <div className="min-w-0"><span className="menu-eyebrow">Play together</span><h2 id="mp-title">{view.stage === 'lobby' ? 'Match lobby' : 'Multiplayer'}</h2></div>
-        <button type="button" autoFocus className="gd-close" aria-label={closeLabel} onClick={close}><X size={18} /></button>
+        <div className="gd-header-actions"><FeedbackSlot kind="dialog" /><button type="button" autoFocus className="gd-close" aria-label={closeLabel} onClick={close}><X size={18} /></button></div>
       </header>
 
       <div className="gd-body mp-body">

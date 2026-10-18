@@ -1,6 +1,8 @@
 import { useEffect, useRef, type ButtonHTMLAttributes, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
+import { FeedbackSlot } from "../feedback/slot";
+import { FEEDBACK_ROOT_ID } from "../feedback/media";
 
 // The game's own UI kit: every menu, dialog and panel is built from these so they share one look (ui/kit/game.css):
 // dark bevelled panels, gold for what matters, the mod's cursors, hover and press feedback with sound ([data-ui-sfx],
@@ -31,8 +33,10 @@ export function GameDialog({ title, eyebrow, onClose, footer, size = "md", label
     const focusable = () => [...(panel.current?.querySelectorAll<HTMLElement>('button:not(:disabled), input:not(:disabled), [tabindex="0"], a[href]') ?? [])].filter(el => el.getClientRects().length > 0);
     focusable()[0]?.focus({ preventScroll: true });
     const onKey = (e: KeyboardEvent) => {
-      // Portaled pickers get the first Escape; keep this dialog open while they restore focus.
+      // Portaled pickers get the first Escape; keep this dialog open while they restore focus. So does feedback opened
+      // over this dialog (its launcher stays above every dialog).
       if (document.querySelector('[aria-haspopup="listbox"][aria-expanded="true"], [role="combobox"][aria-expanded="true"]')) return;
+      if (document.getElementById(FEEDBACK_ROOT_ID)) return;
       if (e.key === "Tab") {
         const elements = focusable(), first = elements[0], last = elements.at(-1);
         if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last?.focus(); }
@@ -51,7 +55,10 @@ export function GameDialog({ title, eyebrow, onClose, footer, size = "md", label
       <div className={`gd-panel gd-${size}`}>
         <header className="gd-header">
           <div className="min-w-0">{eyebrow && <span className="menu-eyebrow">{eyebrow}</span>}<h2>{title}</h2></div>
-          <button type="button" className="gd-close" aria-label={name ? `Close ${name.toLowerCase()}` : "Close"} onClick={onClose}><X size={18} /></button>
+          <div className="gd-header-actions">
+            <FeedbackSlot kind="dialog" />
+            <button type="button" className="gd-close" aria-label={name ? `Close ${name.toLowerCase()}` : "Close"} onClick={onClose}><X size={18} /></button>
+          </div>
         </header>
         <div className="gd-body">{children}</div>
         {footer && <footer className="gd-footer">{footer}</footer>}

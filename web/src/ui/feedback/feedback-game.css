@@ -1,8 +1,32 @@
 /* In-game feedback dialog (ui/Feedback.tsx), on the game kit's look (ui/kit/game.css). Local to the feedback components:
    the shared tray and annotator styles are in feedback-kit.css, themed here through the --fbk-* variables. */
 
+/* The one launcher: drawn over the visible screen's slot (FeedbackSlot: an icon in the HUD bar, a labelled button in the
+   menus' utility row, an icon beside an open dialog's close button) from the page's top layer, so the menus, the HUD and open dialogs never cover it; its own corner
+   on screens without a slot. The dialog (.gfb-overlay) sits above it. */
+.gfb-slot { flex: none; }
+.gfb-slot[data-feedback-slot="hud"] { width: 36px; height: 36px; }
+.gfb-slot[data-feedback-slot="menu"] { width: 126px; height: 36px; }
+.gfb-slot[data-feedback-slot="dialog"] { width: 34px; height: 34px; }
+.gfb-launcher {
+  position: fixed; left: 16px; bottom: 16px; z-index: 150; display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+  height: 36px; padding: 0 14px; border-radius: 6px; border: 1px solid var(--hud-edge-hi); background: rgba(12, 15, 11, .86);
+  backdrop-filter: blur(6px); color: #dfe3d4; font: inherit; font-size: 12px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase;
+  white-space: nowrap; box-shadow: 0 6px 18px rgba(0, 0, 0, .4); cursor: pointer; transition: border-color .15s, color .15s, background .15s, transform .15s;
+}
+.gfb-launcher:hover { border-color: var(--hud-gold); color: var(--hud-gold); background: rgba(31, 35, 22, .94); transform: translateY(-1px); }
+.gfb-launcher:focus-visible { outline: 2px solid var(--hud-gold); outline-offset: 2px; }
+.gfb-launcher[data-variant="dialog"] { padding: 0; border-radius: 8px; background: transparent; backdrop-filter: none; box-shadow: none; color: #c8cfbd; }
+.gfb-launcher[data-variant="dialog"] span, .gfb-launcher[data-variant="hud"] span { display: none; }
+.gfb-launcher[data-variant="dialog"]:hover { background: rgba(241, 210, 139, .08); transform: none; }
+.gfb-launcher[data-variant="hud"] { padding: 0; border-color: transparent; border-radius: 8px; background: transparent; backdrop-filter: none; box-shadow: none; color: #c9d0bd; }
+.gfb-launcher[data-variant="hud"] svg { width: 18px; height: 18px; }
+.gfb-launcher[data-variant="hud"]:hover { color: var(--hud-gold); background: rgba(241, 210, 139, .09); border-color: rgba(241, 210, 139, .3); transform: none; }
+@media (max-width: 899px), (max-height: 599px) { .gfb-slot[data-feedback-slot="hud"] { width: 32px; height: 32px; } }
+@media (pointer: coarse) { .gfb-slot[data-feedback-slot="menu"] { height: 44px; } .gfb-launcher { height: 44px; } }
+
 .gfb-overlay {
-  position: fixed; inset: 0; z-index: 130; display: grid; place-items: center; padding: 20px;
+  position: fixed; inset: 0; z-index: 160; display: grid; place-items: center; padding: 20px;
   background: rgba(3, 5, 3, .78); backdrop-filter: blur(6px); animation: settings-fade .16s ease-out;
   --fbk-surface: #0b1109; --fbk-ink: #e9eee2; --fbk-muted: #9aa58f; --fbk-edge: #343d2f;
   --fbk-accent: var(--hud-gold, #f1d28b); --fbk-accent-ink: #151a12; --fbk-radius: 8px;

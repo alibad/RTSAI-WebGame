@@ -26,6 +26,7 @@
 .gd-xl { width: min(1040px, 100%); }
 .gd-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; padding: 20px 24px 12px; }
 .gd-header h2 { margin-top: 4px; font-size: 22px; font-weight: 800; line-height: 1.15; color: #f2ecdc; }
+.gd-header-actions { display: flex; flex: none; gap: 8px; }
 .gd-close { display: grid; place-items: center; flex: none; width: 34px; height: 34px; border-radius: 8px; border: 1px solid var(--hud-edge-hi); color: #c8cfbd; transition: color .15s, border-color .15s, background .15s; }
 .gd-close:hover { color: var(--hud-gold); border-color: var(--hud-gold); background: rgba(241, 210, 139, .08); }
 .gd-close:focus-visible { outline: 2px solid var(--hud-gold); outline-offset: 2px; }
