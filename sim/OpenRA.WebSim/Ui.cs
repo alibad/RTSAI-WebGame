@@ -989,14 +989,13 @@ namespace OpenRA.WebSim
 				return "{\"error\":\"unknown actor\"}";
 
 			var rules = world.Map.Rules;
-			var tooltip = a.TraitInfos<TooltipInfo>().FirstOrDefault(t => t.EnabledByDefault);
 			var description = a.TraitInfoOrDefault<TooltipDescriptionInfo>()?.Description ?? a.TraitInfoOrDefault<BuildableInfo>()?.Description;
 			var speed = a.TraitInfoOrDefault<MobileInfo>()?.Speed ?? a.TraitInfoOrDefault<AircraftInfo>()?.Speed ?? 0;
 			var sight = a.TraitInfos<RevealsShroudInfo>().Select(r => r.Range.Length).DefaultIfEmpty(0).Max();
 			var sb = new StringBuilder("{");
 			sb.Append("\"name\":").Append(J(type))
 				.Append(",\"contentRevision\":").Append(J(SharedContent.Revision()))
-				.Append(",\"label\":").Append(J(tooltip != null ? FluentProvider.GetMessage(tooltip.Name) : type))
+				.Append(",\"label\":").Append(J(ActorLabel(a)))
 				.Append(",\"description\":").Append(J(description != null ? FluentProvider.GetMessage(description) : ""))
 				.Append(",\"cost\":").Append(a.TraitInfoOrDefault<ValuedInfo>()?.Cost ?? 0)
 				.Append(",\"hp\":").Append(a.TraitInfoOrDefault<HealthInfo>()?.HP ?? 0)
