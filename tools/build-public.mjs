@@ -192,8 +192,9 @@ fs.writeFileSync(headerFile, blocks.flatMap(block => block.includes("(public|pub
 
 // 5. Notices: EA's notice for the original art and voices (also shown in the page), at the static root.
 const eaSummary = profiles.find((p) => p.ea)?.ea ?? null;
-fs.writeFileSync(path.join(out, "NOTICE"), noticeText(eaSummary));
-checkOutput(out, eaSummary);
+const classicEaSummary = profiles.find(p => p.id === "public-classic")?.ea ?? null;
+fs.writeFileSync(path.join(out, "NOTICE"), noticeText(eaSummary, classicEaSummary));
+checkOutput(out, eaSummary, classicEaSummary);
 
 // 6. What was built: sizes on disk (raw) and over the wire (as stored: brotli, or raw for the range-read packs).
 const files = [];

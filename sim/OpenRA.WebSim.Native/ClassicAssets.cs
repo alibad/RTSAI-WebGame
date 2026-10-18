@@ -15,7 +15,7 @@ static class ClassicAssets
 		if (Directory.Exists(output)) throw new IOException("Choose a new Classic asset output directory");
 		SimHost.Boot(opts["root"]);
 		Directory.CreateDirectory(output);
-		var art = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { ".shp", ".pal", ".tem", ".sno", ".des", ".int", ".icn" };
+		var art = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { ".shp", ".pal", ".tem", ".sno", ".des", ".int", ".icn", ".lut" };
 		var sound = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { ".aud", ".v00", ".v01", ".v02", ".v03", ".r00", ".r01", ".r02", ".r03" };
 		var allowed = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "allies.mix", "conquer.mix", "interior.mix", "lores.mix", "hires.mix", "local.mix", "russian.mix", "snow.mix", "sounds.mix", "temperat.mix", "expand2.mix", "lores1.mix", "hires1.mix", "desert.mix" };
 		var soundPackages = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "allies.mix", "russian.mix", "sounds.mix", "expand2.mix", "expand" };
