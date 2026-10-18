@@ -26,6 +26,9 @@ experience resolves to a frozen compatible web manifest on the published runtime
 - Cloudflare: `6788c0a4.rtsai-play-cdn.pages.dev`, 19,530 files / 37 header rules.
 - Vercel preview `dpl_3wuRgDstzRoGjfpMch7nVrTZcWVU`, production `dpl_6Yt5p5AMY2625kHTQkqJSFzP8LVY`, standard build machine.
 - Receipt: `D:/rtsai-play-release/releases/2026-10-18T11-26-59-133Z/receipt.json`.
+- Prepared data artifact for subsequent releases: `D:/rtsai-map-release-20261018/static-startup`.
+  Raw reviewed profiles are under `data-startup/public` and `data-startup/public-classic`
+  in that same evidence root. Reuse these inputs when preserving this release's maps.
 
 ## Verification
 
@@ -48,12 +51,19 @@ experience resolves to a frozen compatible web manifest on the published runtime
 - Chrome visual checks against those live CDN assets confirmed the two repaired
   cliff maps and the 14-map Classic catalog; snow/desert spot-checks supplement
   the earlier visual review of all 14 maps. These used the release tool's local
-  no-sign-in test page. The actual production entry still requires the owner's
-  Chrome Google sign-in; a manual signed-in production-origin play check remains
-  pending that handoff. No authentication gate was weakened.
+  no-sign-in test page.
+- Follow-up signed-in Chrome verification ran directly on `https://rtsai.net/play/`:
+  Little Big Lake reached 5,729 ticks, with MCV deployment, a placed power plant
+  and enemy attacks observed. The queued refinery was cancelled after the enemy
+  destroyed the power plant. Tsunami's repaired cliff walls were inspected in
+  the production editor. Classic Green Belt reached 5,653 ticks, with MCV
+  deployment, placed power/refinery, ore harvesting and $2,000 earned income.
+  All 14 Classic/mod maps were present. Both matches reported no game error and
+  no console errors. The Green Belt match was left paused for the owner. The
+  ordinary Google sign-in completed; no authentication gate was weakened.
 
 Full evidence: `D:/rtsai-map-release-20261018/`. Browser shots are under
-`browser-cdn/` and the release receipt's `smoke-shots/`. Earlier all-map visual
+`browser-cdn/`, `browser-production/` and the release receipt's `smoke-shots/`. Earlier all-map visual
 evidence remains under `build/map-expansion/` and its frozen source directory.
 
 Two unpromoted candidates were rejected by browser QA: lazy map previews stalled
