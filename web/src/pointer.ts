@@ -20,6 +20,9 @@ export function setMouseLockSetting(on: boolean) {
 
 const MOUSE_EVENTS = ["mousedown", "mouseup", "click", "dblclick", "auxclick", "contextmenu", "wheel", "mousemove", "pointermove", "pointerdown", "pointerup", "pointerover", "pointerout", "mouseover", "mouseout"] as const;
 
+const scrolls = (overflow: string) => overflow === "auto" || overflow === "scroll" || overflow === "overlay";
+const setValue = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!;
+
 export class MouseLock {
   /** The drawn cursor's position (CSS px, inside the window). */
   x = 0;
@@ -28,6 +31,9 @@ export class MouseLock {
   private hint: HTMLDivElement | null = null;
   private over: Element | null = null;
   private down: { target: Element; button: number } | null = null;
+  /** A scrollbar thumb being dragged, and the range input being slid (replayed events do neither by themselves). */
+  private thumb: { el: Element; y0: number; top0: number; per: number } | null = null;
+  private slider: HTMLInputElement | null = null;
   private lastClick = { t: 0, x: 0, y: 0, target: null as Element | null };
   private cursorName = "default";
   private shown: { c: ModCursor | null; f: number } = { c: null, f: -1 };
@@ -99,6 +105,8 @@ export class MouseLock {
       // Hand the hover state back to the real pointer.
       if (this.over) this.dispatchMouse("mouseout", this.over, 0, null);
       this.over = null;
+      this.thumb = null;
+      this.slider = null;
       cancelAnimationFrame(this.raf);
       this.raf = 0;
     }
@@ -126,6 +134,13 @@ export class MouseLock {
       case "mousemove": {
         this.x = Math.min(window.innerWidth - 1, Math.max(0, this.x + m.movementX));
         this.y = Math.min(window.innerHeight - 1, Math.max(0, this.y + m.movementY));
+        if (this.thumb) {
+          const t = this.thumb;
+          t.el.scrollTop = t.top0 + (this.y - t.y0) * t.per;
+          this.schedule();
+          break;
+        }
+        if (this.slider) this.slide(this.slider);
         const target = this.elementAt();
         if (target !== this.over) {
           if (this.over) this.dispatchMouse("mouseout", this.over, m.buttons, m, target);
@@ -143,15 +158,36 @@ export class MouseLock {
       case "mousedown": {
         const target = this.elementAt();
         if (!target) break;
+        if (m.button === 0 && this.pressScrollbar(target)) break;
         this.down = { target, button: m.button };
         this.dispatchPointer("pointerdown", target, m);
         this.dispatchMouse("mousedown", target, m.buttons, m);
         // A synthetic press neither focuses nor opens a text box by itself.
         const focusable = (target as HTMLElement).closest?.("input, textarea, select, [tabindex], button, a[href]") as HTMLElement | null;
         if (focusable && focusable !== document.activeElement) focusable.focus({ preventScroll: true });
+        // Nor does it move a slider: it follows the drawn cursor until the release.
+        const range = (target as HTMLElement).closest?.('input[type="range"]') as HTMLInputElement | null;
+        if (m.button === 0 && range && !range.disabled) {
+          this.slider = range;
+          this.slide(range);
+        }
         break;
       }
       case "mouseup": {
+        if (this.thumb) {
+          this.thumb = null;
+          break;
+        }
+        const slider = this.slider;
+        if (slider) {
+          // The release belongs to the slider wherever the cursor ended, as with a captured pointer.
+          this.slider = null;
+          this.down = null;
+          this.dispatchPointer("pointerup", slider, m);
+          this.dispatchMouse("mouseup", slider, m.buttons, m);
+          slider.dispatchEvent(new Event("change", { bubbles: true }));
+          break;
+        }
         const target = this.elementAt();
         if (!target) break;
         this.dispatchPointer("pointerup", target, m);
@@ -179,7 +215,7 @@ export class MouseLock {
         const target = this.elementAt();
         if (!target) break;
         const ok = target.dispatchEvent(new WheelEvent("wheel", { ...this.init(w, w.buttons), deltaX: w.deltaX, deltaY: w.deltaY, deltaZ: w.deltaZ, deltaMode: w.deltaMode }));
-        if (!ok) e.preventDefault();
+        if (!ok || this.wheelScroll(target, w)) e.preventDefault();
         break;
       }
       default:
@@ -187,6 +223,71 @@ export class MouseLock {
         break;
     }
   };
+
+  /** The browser scrolls only what is under the real (hidden) pointer: scroll the panel under the drawn one. */
+  private wheelScroll(target: Element, w: WheelEvent) {
+    const unit = w.deltaMode === 1 ? 40 : 1;
+    let dx = w.deltaX * unit, dy = w.deltaY * unit;
+    if (w.shiftKey && !dx) { dx = dy; dy = 0; }
+    for (let el: Element | null = target; el; el = el.parentElement) {
+      const cs = getComputedStyle(el);
+      const y = !!dy && scrolls(cs.overflowY) && el.scrollHeight > el.clientHeight + 1;
+      const x = !!dx && scrolls(cs.overflowX) && el.scrollWidth > el.clientWidth + 1;
+      if (!x && !y) continue;
+      const page = w.deltaMode === 2;
+      const left = el.scrollLeft, top = el.scrollTop;
+      if (x) el.scrollLeft += page ? dx * el.clientWidth : dx;
+      if (y) el.scrollTop += page ? dy * el.clientHeight : dy;
+      if (el.scrollLeft !== left || el.scrollTop !== top) return true;
+      // At its end: a panel with contained overscroll keeps the wheel, as it does natively.
+      if ((y ? cs.overscrollBehaviorY : cs.overscrollBehaviorX) !== "auto") return true;
+    }
+    return false;
+  }
+
+  /** A press on a panel's vertical scrollbar: step at the arrows, page on the track, or drag the thumb. */
+  private pressScrollbar(target: Element) {
+    for (let el: Element | null = target; el; el = el.parentElement) {
+      if (!(el instanceof HTMLElement)) continue;
+      const cs = getComputedStyle(el);
+      const bl = parseFloat(cs.borderLeftWidth) || 0, br = parseFloat(cs.borderRightWidth) || 0;
+      const gutter = el.offsetWidth - el.clientWidth - bl - br;
+      if (gutter <= 0 || !scrolls(cs.overflowY) || el.scrollHeight <= el.clientHeight + 1) continue;
+      const r = el.getBoundingClientRect();
+      const left = cs.direction === "rtl" ? r.left + bl : r.right - br - gutter;
+      const top = r.top + (parseFloat(cs.borderTopWidth) || 0), h = el.clientHeight;
+      if (this.x < left || this.x >= left + gutter || this.y < top || this.y >= top + h) continue;
+      // Classic (Windows/Linux) scrollbars have square arrow buttons at both ends; the Mac's have none.
+      const arrow = /Mac|iP(hone|ad)/.test(navigator.platform) ? 0 : Math.min(gutter, h / 4);
+      const range = el.scrollHeight - h, track = h - 2 * arrow;
+      const size = Math.max(gutter, track * h / el.scrollHeight);
+      const at = top + arrow + (track - size) * el.scrollTop / range;
+      if (this.y < top + arrow) el.scrollTop -= 40;
+      else if (this.y >= top + h - arrow) el.scrollTop += 40;
+      else if (this.y < at) el.scrollTop -= h * 0.875;
+      else if (this.y >= at + size) el.scrollTop += h * 0.875;
+      else this.thumb = { el, y0: this.y, top0: el.scrollTop, per: range / Math.max(1, track - size) };
+      return true;
+    }
+    return false;
+  }
+
+  /** Sets a horizontal range input to the value under the drawn cursor and reports it as a drag would. */
+  private slide(input: HTMLInputElement) {
+    const r = input.getBoundingClientRect();
+    if (!r.width) return;
+    const min = input.min === "" ? 0 : Number(input.min), max = input.max === "" ? 100 : Number(input.max);
+    const step = input.step === "any" ? 0 : Number(input.step || 1);
+    let t = Math.min(1, Math.max(0, (this.x - r.left) / r.width));
+    if (getComputedStyle(input).direction === "rtl") t = 1 - t;
+    let v = min + t * (max - min);
+    if (step > 0) v = min + Math.round((v - min) / step) * step;
+    const value = String(Number(Math.min(max, Math.max(min, v)).toFixed(6)));
+    if (value === input.value) return;
+    // The prototype's setter, so React sees the change, then the input event a drag sends.
+    setValue.call(input, value);
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+  }
 
   private init(m: MouseEvent | null, buttons: number, related?: Element | null): MouseEventInit {
     return {

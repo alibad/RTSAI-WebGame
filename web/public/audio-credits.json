@@ -8524,17 +8524,17 @@
       "license": "MIT (code and weights); the output carries no third-party rights"
     },
     {
-      "filename": "standalone/audio/music/rtsai-final-push.ogg",
+      "filename": "standalone/audio/music/rtsai-grid-assault.ogg",
       "category": "music",
-      "sha256": "c287687a12762f28539c46d78e3713c6f831c5f04f4b5e9609f25bad759a3eda",
+      "sha256": "917cd0022f91599761da52bad8b7081b3c80b63756c8cf5d272e5dd407cd2a87",
       "source": "tools/standalone-music.py",
       "engine": "ACE-Step 1.5 text2music (XL turbo DiT + 5Hz LM planner), local BeTenshi music service",
       "license": "MIT (code and weights); the output carries no third-party rights"
     },
     {
-      "filename": "standalone/audio/music/rtsai-grid-assault.ogg",
+      "filename": "standalone/audio/music/rtsai-highland-caravan.ogg",
       "category": "music",
-      "sha256": "917cd0022f91599761da52bad8b7081b3c80b63756c8cf5d272e5dd407cd2a87",
+      "sha256": "4a8a077ace9c0a3d003dbbd02f95a2005ac2a675503a3ef380909236b9947081",
       "source": "tools/standalone-music.py",
       "engine": "ACE-Step 1.5 text2music (XL turbo DiT + 5Hz LM planner), local BeTenshi music service",
       "license": "MIT (code and weights); the output carries no third-party rights"
@@ -8559,6 +8559,14 @@
       "filename": "standalone/audio/music/rtsai-pressure-front.ogg",
       "category": "music",
       "sha256": "f924dd39e7a4c99c92d3a044f013dc97a57557b56f546afd4f69667cc611d0a2",
+      "source": "tools/standalone-music.py",
+      "engine": "ACE-Step 1.5 text2music (XL turbo DiT + 5Hz LM planner), local BeTenshi music service",
+      "license": "MIT (code and weights); the output carries no third-party rights"
+    },
+    {
+      "filename": "standalone/audio/music/rtsai-steel-horizon.ogg",
+      "category": "music",
+      "sha256": "dc24045947a87621950ba974e5ca54f8ec6c6528c8b714e24fa59bf788c4f9c8",
       "source": "tools/standalone-music.py",
       "engine": "ACE-Step 1.5 text2music (XL turbo DiT + 5Hz LM planner), local BeTenshi music service",
       "license": "MIT (code and weights); the output carries no third-party rights"
