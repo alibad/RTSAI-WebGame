@@ -14,6 +14,7 @@ import { encodeAdviserStatus } from "./adviser-rpc";
 import { fetchShippedSprites, SpriteBake, hashString } from "./spritecache";
 import { fluentActorNames, fluentFiles } from "./fluent-names";
 import { toBase64 } from "../elevation";
+import { Soundtrack } from "./soundtrack";
 
 declare const self: DedicatedWorkerGlobalScope;
 
@@ -22,6 +23,7 @@ const RADAR_EVERY = 5; // ticks between radar blip updates
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let S: any = null;
+const soundtrack = new Soundtrack(json => S.Command(json), () => S.UiState());
 let generation = 0;
 let voiceLanguage = "faction";
 let booted = false;
@@ -179,11 +181,11 @@ async function init(msg: Extract<ToWorker, { type: "init" }>) {
       post({ type: "audio", op: "play", sound, source, loop, relative, x, y, volume, attenuate }),
     soundStream: (sound: number, channels: number, bits: number, rate: number, view: { slice(): Uint8Array }, end: boolean, volume: number) => {
       const data = view.slice().buffer as ArrayBuffer;
-      post({ type: "audio", op: "stream", sound, channels, bits, rate, data, end, volume }, [data]);
+      soundtrack.buffer(sound, () => post({ type: "audio", op: "stream", sound, channels, bits, rate, data, end, volume }, [data]));
     },
-    soundStop: (sound: number) => post({ type: "audio", op: "stop", sound }),
-    soundVolume: (sound: number, volume: number) => post({ type: "audio", op: "volume", sound, volume }),
-    soundPause: (sound: number, paused: boolean) => post({ type: "audio", op: "pause", sound, paused }),
+    soundStop: (sound: number) => { soundtrack.stop(sound); post({ type: "audio", op: "stop", sound }); },
+    soundVolume: (sound: number, volume: number) => soundtrack.event(sound, () => post({ type: "audio", op: "volume", sound, volume })),
+    soundPause: (sound: number, paused: boolean) => soundtrack.event(sound, () => post({ type: "audio", op: "pause", sound, paused })),
     soundSeekStart: (sound: number, seconds: number) => post({ type: "audio", op: "seekStart", sound, seconds }),
     // Prebaked sprite sheets (SpriteStore.cs).
     spriteLoad: (key: string) => bake?.load(key) ?? new Uint8Array(0),
@@ -318,6 +320,7 @@ function stopLoop() {
 
 function start(scenario: string, startPaused = false, companion: boolean | "browser" = false) {
   stopLoop();
+  soundtrack.reset();
   cancelAdviserCalls();
   browserAdviser = false;
   const spec = JSON.parse(scenario);
@@ -387,7 +390,7 @@ function sendShroud(force: boolean) {
 }
 
 function sendUi() {
-  const ui: string = S.UiState();
+  const ui = soundtrack.settle();
   if (ui !== lastUi) {
     lastUi = ui;
     post({ type: "ui", json: ui });
@@ -624,7 +627,7 @@ self.onmessage = async (e: MessageEvent<ToWorker>) => {
         let json: string;
         try {
           const music = String(JSON.parse(m.json).cmd).startsWith("music-");
-          json = replayEnd !== null && !music ? JSON.stringify({ error: "Replays are read-only" }) : S.Command(m.json);
+          json = replayEnd !== null && !music ? JSON.stringify({ error: "Replays are read-only" }) : music ? soundtrack.command(m.json) : S.Command(m.json);
         } catch (err) { json = JSON.stringify({ error: String(err instanceof Error ? err.message : err) }); }
         post({ type: "reply", req: m.req, json });
         sendUi(); // mode changes show without waiting for the next tick

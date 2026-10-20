@@ -35,6 +35,14 @@ battle time before the player has control. `saveClientRefresh` is a one-time exp
 UI repair for the first archived client: its worker protocol and native identities
 stay unchanged, and the previous files remain available as a recovery backup.
 
+Retired soundtrack entries are a presentation policy in `sim/soundtrack.ts`, applied
+by compatible browser workers even when an old save retains its original audio pack.
+Final Push is excluded from the library, transport controls and automatic playback.
+PCM is held until the native call returns and its track identity is known, so no
+opening fragment escapes. This does not alter map files, simulation rules, orders,
+frame hashes or saved ticks. Refresh the compatible client catalog explicitly when
+shipping this policy; preserve the old clients and immutable packs for recovery.
+
 Saves are retained until the player explicitly deletes them. Storage pressure may
 omit the new thumbnail, but must never evict an earlier battle or discard map bytes.
 If the remaining save will not fit, report the failure and leave earlier saves intact.
