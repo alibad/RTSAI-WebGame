@@ -81,6 +81,7 @@ namespace OpenRA.WebSim
         readonly OriginalRa2TargetInfo info;
         public readonly List<(Actor Source, int Remaining, string Weapon)> Bombs = [];
         public Actor TemporalTarget;
+        public Target AttackIntent = Target.Invalid;
         public Actor TemporalSource { get; private set; }
         public Actor Parasite { get; private set; }
         public bool Squid { get; private set; }
@@ -90,17 +91,19 @@ namespace OpenRA.WebSim
         public int PrismCooldown;
         int temporalRate, temporalToken = Actor.InvalidConditionToken;
         int temporalRemainder, temporalTicks;
+        int temporalRange = 6 * 1024, bombToken = Actor.InvalidConditionToken, bombStage = -1;
         int parasiteDamage, parasiteInterval, parasiteTicks, squidToken = Actor.InvalidConditionToken;
         int squidDirectionToken = Actor.InvalidConditionToken;
         int prismToken = Actor.InvalidConditionToken;
         public OriginalRa2Target(OriginalRa2TargetInfo info) { this.info = info; }
 
-        public void BeginTemporal(Actor self, Actor source, int rate)
+        public void BeginTemporal(Actor self, Actor source, int rate, int range = 6 * 1024)
         {
             source.Trait<OriginalRa2Target>().TemporalTarget = self;
             if (TemporalSource != null && TemporalSource != source) return;
             TemporalSource = source;
             temporalRate = rate;
+            temporalRange = range;
             if (temporalToken == Actor.InvalidConditionToken) temporalToken = self.GrantCondition("retail-temporal");
         }
         void CancelTemporal(Actor self)
@@ -153,6 +156,13 @@ namespace OpenRA.WebSim
         }
         void ITick.Tick(Actor self)
         {
+            var stage = Bombs.Count == 0 ? -1 : Math.Clamp(5 - (Bombs.Min(b => b.Remaining) - 1) / 125, 0, 5);
+            if (stage != bombStage)
+            {
+                if (bombToken != Actor.InvalidConditionToken) bombToken = self.RevokeCondition(bombToken);
+                bombStage = stage;
+                if (stage >= 0) bombToken = self.GrantCondition("retail-bomb-" + stage);
+            }
             if (PrismCooldown > 0 && --PrismCooldown == 0 && prismToken != Actor.InvalidConditionToken)
                 prismToken = self.RevokeCondition(prismToken);
             if (TemporalSource != null)
@@ -160,7 +170,7 @@ namespace OpenRA.WebSim
                 var source = TemporalSource;
                 var state = source.TraitOrDefault<OriginalRa2Target>();
                 if (!OriginalRa2Rules.Alive(source) || state?.TemporalTarget != self || source.CurrentActivity == null ||
-                    (source.CenterPosition - self.CenterPosition).HorizontalLength > 6 * 1024)
+                    !Target.FromActor(self).IsInRange(source.CenterPosition, new WDist(temporalRange)))
                     CancelTemporal(self);
                 else
                 {
@@ -197,10 +207,13 @@ namespace OpenRA.WebSim
         }
         void IResolveOrder.ResolveOrder(Actor self, Order order)
         {
+            if (order.OrderString == "Attack") AttackIntent = order.Target;
+            if (order.OrderString is "Stop" or "Move" or "Scatter" or "Guard" or "AttackMove") AttackIntent = Target.Invalid;
             if (order.OrderString is "Stop" or "Move" or "Scatter" or "Guard" or "AttackMove") TemporalTarget = null;
         }
         void INotifyAttack.Attacking(Actor self, in Target target, Armament armament, Barrel barrel)
         {
+            AttackIntent = target;
             if (TemporalTarget != null && (target.Type != TargetType.Actor || target.Actor != TemporalTarget)) TemporalTarget = null;
         }
         void INotifyAttack.PreparingAttack(Actor self, in Target target, Armament armament, Barrel barrel) { }
@@ -234,10 +247,16 @@ namespace OpenRA.WebSim
             var source = args.SourceActor;
             var target = args.GuidedTarget.Type == TargetType.Actor ? args.GuidedTarget.Actor : null;
             var state = target?.TraitOrDefault<OriginalRa2Target>();
-            if (Mode == "Temporal") state?.BeginTemporal(target, source, Damage);
+            if (Mode == "Temporal") state?.BeginTemporal(target, source, Damage, args.Weapon.Range.Length);
             if (Mode == "Drone" && state?.Organic == true) target.Kill(source);
             else if (Mode == "Drone" || Mode == "Squid") state?.Attach(target, source, Mode == "Squid", Damage, Interval);
             if (Mode == "IvanBomb") state?.AddBomb(source, Delay, "retailivanexplosion");
+            if (Mode == "Suicide")
+            {
+                args.Weapon.Impact(Target.FromPos(source.CenterPosition), source);
+                source.Kill(source);
+                return null;
+            }
             if (Mode == "Comet" && target != null)
             {
                 var fragment = source.World.Map.Rules.Weapons[Fragment.ToLowerInvariant()];
@@ -373,25 +392,66 @@ namespace OpenRA.WebSim
         public readonly int DistanceFactor = 48;
         public override object Create(ActorInitializer init) => new OriginalRa2ChronoMovement(this);
     }
-    public sealed class OriginalRa2ChronoMovement : ConditionalTrait<OriginalRa2ChronoMovementInfo>, IResolveOrder, ITick
+    public sealed class OriginalRa2ChronoMovement : ConditionalTrait<OriginalRa2ChronoMovementInfo>, IWrapMove, ITick
     {
         int phaseTicks, phaseToken = Actor.InvalidConditionToken;
         public OriginalRa2ChronoMovement(OriginalRa2ChronoMovementInfo info) : base(info) { }
-        public void ResolveOrder(Actor self, Order order)
+        public OpenRA.Activities.Activity WrapMove(OpenRA.Activities.Activity inner) =>
+            IsTraitDisabled || inner is OpenRA.Mods.Common.Activities.Follow ? inner : new ChronoMove(this, inner);
+        sealed class ChronoMove : OpenRA.Activities.Activity
         {
-            if (IsTraitDisabled || order.OrderString != "Move" || phaseTicks > 0 || order.Target.Type == TargetType.Invalid) return;
-            var to = self.World.Map.CellContaining(order.Target.CenterPosition);
-            var mobile = self.Trait<Mobile>();
-            if (!self.Owner.Shroud.IsExplored(to) || !mobile.CanEnterCell(to)) return;
-            var distance = (self.CenterPosition - self.World.Map.CenterOfCell(to)).HorizontalLength;
-            phaseTicks = Math.Max(Info.MinimumDelay, (int)(distance * 256L * 25 / (1024L * Info.DistanceFactor * 15)));
-            phaseToken = self.GrantCondition("retail-phase");
-            self.World.AddFrameEndTask(w =>
+            readonly OriginalRa2ChronoMovement chrono;
+            readonly OpenRA.Activities.Activity inner;
+            bool started;
+            public ChronoMove(OriginalRa2ChronoMovement chrono, OpenRA.Activities.Activity inner) { this.chrono = chrono; this.inner = inner; }
+            [System.Diagnostics.CodeAnalysis.DynamicDependency(System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.NonPublicFields, typeof(OpenRA.Mods.Common.Activities.MoveWithinRange))]
+            [System.Diagnostics.CodeAnalysis.DynamicDependency(System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.NonPublicFields, typeof(OpenRA.Mods.Common.Activities.MoveAdjacentTo))]
+            public override bool Tick(Actor self)
             {
-                if (!OriginalRa2Rules.Alive(self)) return;
-                self.CancelActivity(); mobile.SetPosition(self, to);
-                w.Add(new SpriteEffect(self.CenterPosition, w, "ea-chrono", "warpin", "eaeffect"));
-            });
+                if (IsCanceling) return true;
+                if (chrono.IsTraitDisabled) { if (!started) { started = true; QueueChild(inner); } return true; }
+                if (started) return chrono.phaseTicks == 0;
+                if (chrono.phaseTicks > 0) return false;
+                started = true;
+                var target = inner.GetTargets(self).FirstOrDefault();
+                if (inner is OpenRA.Mods.Common.Activities.MoveAdjacentTo)
+                    target = (Target)typeof(OpenRA.Mods.Common.Activities.MoveAdjacentTo).GetField("target", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic).GetValue(inner);
+                if (target.Type == TargetType.Invalid) return true;
+                var mobile = self.Trait<Mobile>();
+                if (inner is OpenRA.Mods.Common.Activities.LocalMoveIntoTarget)
+                {
+                    mobile.SetCenterPosition(self, target.CenterPosition);
+                    mobile.MoveResult = MoveResult.CompleteDestinationReached;
+                    return true;
+                }
+                var min = WDist.Zero;
+                var max = WDist.Zero;
+                if (inner is OpenRA.Mods.Common.Activities.MoveWithinRange)
+                {
+                    const System.Reflection.BindingFlags flags = System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic;
+                    min = (WDist)typeof(OpenRA.Mods.Common.Activities.MoveWithinRange).GetField("minRange", flags).GetValue(inner);
+                    max = (WDist)typeof(OpenRA.Mods.Common.Activities.MoveWithinRange).GetField("maxRange", flags).GetValue(inner);
+                }
+                else if (inner is OpenRA.Mods.Common.Activities.MoveAdjacentTo) max = WDist.FromCells(1);
+                if (max.Length > 0 && target.IsInRange(self.CenterPosition, max) && !target.IsInRange(self.CenterPosition, min)) return true;
+                var center = self.World.Map.CellContaining(target.CenterPosition);
+                var candidates = self.World.Map.FindTilesInCircle(center, Math.Max(1, (max.Length + 1023) / 1024))
+                    .Where(c => self.Owner.Shroud.IsExplored(c) && mobile.CanEnterCell(c) && mobile.CanStayInCell(c) &&
+                        (max.Length == 0 ? c == center : target.IsInRange(self.World.Map.CenterOfCell(c), max) && !target.IsInRange(self.World.Map.CenterOfCell(c), min)))
+                    .OrderBy(c => (self.World.Map.CenterOfCell(c) - self.CenterPosition).HorizontalLengthSquared).ToArray();
+                if (candidates.Length == 0) { mobile.MoveResult = MoveResult.CompleteDestinationBlocked; return true; }
+                var to = candidates[0];
+                var distance = (self.CenterPosition - self.World.Map.CenterOfCell(to)).HorizontalLength;
+                chrono.phaseTicks = Math.Max(chrono.Info.MinimumDelay, (int)(distance * 256L * 25 / (1024L * chrono.Info.DistanceFactor * 15)));
+                chrono.phaseToken = self.GrantCondition("retail-phase");
+                self.World.AddFrameEndTask(w =>
+                {
+                    if (!OriginalRa2Rules.Alive(self)) return;
+                    mobile.SetPosition(self, to); mobile.MoveResult = MoveResult.CompleteDestinationReached;
+                    w.Add(new SpriteEffect(self.CenterPosition, w, "ea-chrono", "warpin", "eaeffect"));
+                });
+                return false;
+            }
         }
         void ITick.Tick(Actor self)
         {

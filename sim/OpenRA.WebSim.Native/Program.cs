@@ -55,6 +55,7 @@ static class Program
 				"rosteraudit" => FactionRosterAudit.Run(opts),
 				"originalra2test" => OriginalRa2Test.Run(opts),
 				"originalgameplaytest" => OriginalRa2GameplayTest.Run(opts),
+				"ninegapstest" => OriginalRa2NineGapsTest.Run(opts),
 				"editorresourcetest" => EditorResourcesTest.Run(opts),
 				"editorbridgetest" => EditorBridgesTest.Run(opts),
 				"editortestterrain" => EditorTerrainTest.Run(opts),

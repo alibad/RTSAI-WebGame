@@ -552,7 +552,7 @@ namespace OpenRA.WebSim
 				Capture.AboveShroud = true;
 				foreach (var t in world.ActorsWithTrait<IRenderAnnotations>())
 				{
-					if (!t.Actor.IsInWorld || t.Actor.Disposed || t.Trait.GetType().Name != "WithRangeCircle")
+					if (!t.Actor.IsInWorld || t.Actor.Disposed || (t.Trait.GetType().Name != "WithRangeCircle" && t.Trait is not OriginalRa2PsychicSensor))
 						continue;
 					foreach (var r in t.Trait.RenderAnnotations(t.Actor, wr))
 					{

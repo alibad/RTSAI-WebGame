@@ -394,11 +394,12 @@ class Retail:
         for source, target in [('ROF', 'ReloadDelay'), ('Range', 'Range'), ('MinimumRange', 'MinRange'), ('Burst', 'Burst')]:
             value = original.get(source)
             if value is not None and not (source == 'Range' and float(value) < 0):
-                set_value(E, twin, target, cells(value) if source in ('Range', 'MinimumRange') else value)
+                set_value(E, twin, target, cells(value) if source in ('Range', 'MinimumRange') else
+                          round(float(value) * 25 / 15) if source == 'ROF' else value)
         if 'Burst' not in original:
             set_value(E, twin, 'Burst', 1)
         warhead = self.baseline['warheads'].get(original.get('Warhead'), {})
-        if twin.key in ('ea-retail-demobomb', 'ea-retail-terrorbomb'):
+        if twin.key in ('ea-retail-demobomb', 'ea-retail-terrorbomb', 'ea-retail-crnuke', 'ea-retail-crterrorbomb'):
             # Retail suicide damage is one radial blast, not the port's extra delayed nuclear rings.
             twin.children = [n for n in twin.children if not n.key.startswith('Warhead')]
             spread = float(warhead.get('CellSpread', '1'))
@@ -408,7 +409,7 @@ class Retail:
                 E.Node('DamageTypes', 'FlameDeath' if warhead.get('InfDeath') == '4' else 'ExplosionDeath')])
             twin.children.append(blast)
             twin.children.append(E.Node('Warhead@retail-effect', 'CreateEffect', [
-                E.Node('Image', 'explosion'), E.Node('Explosions', 'demotruck_explosion' if 'demobomb' in twin.key else 'terrorist_explosion'),
+                E.Node('Image', 'explosion'), E.Node('Explosions', 'large_tumu' if 'crnuke' in twin.key else 'demotruck_explosion' if 'demobomb' in twin.key else 'terrorist_explosion'),
                 E.Node('ValidTargets', 'Ground, Water, Air')]))
             if original.get('RadLevel'):
                 twin.children.append(E.Node('Warhead@retail-radiation', 'CreateTintedCells', [
@@ -432,7 +433,7 @@ class Retail:
                 ('RetailDredLaunch', 'dmisl', 'DMisl', 'DMISLWH', 300, 2, 80, 25, 8)]:
             spec = self.baseline['warheads'][wh]
             spread = spec['CellSpread']
-            weapon = E.Node(name, None, [E.Node('ReloadDelay', str(cooldown)), E.Node('Range', cells(range_)),
+            weapon = E.Node(name, None, [E.Node('ReloadDelay', str(round(cooldown * 25 / 15))), E.Node('Range', cells(range_)),
                 E.Node('MinRange', cells(min_range)), E.Node('Burst', str(burst)), E.Node('BurstDelays', '20'),
                 E.Node('ValidTargets', 'Ground, Water'), E.Node('Projectile', 'OriginalRa2Rocket', [E.Node('Actor', rocket)]),
                 E.Node('Warhead@retail', 'SpreadDamage', [E.Node('Damage', str(damage)), E.Node('Spread', cells(spread)),
