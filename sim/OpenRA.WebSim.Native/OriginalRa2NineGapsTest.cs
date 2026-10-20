@@ -97,6 +97,7 @@ static class OriginalRa2NineGapsTest
                 var neutral=w.Players.First(p=>p.InternalName=="Neutral");var house=Spawn("cahse01",neutral,origin);var gi=Spawn("e1",own,origin+new CVec(-2,0));Tick(1);
                 w.IssueOrder(new Order("OriginalGarrison",gi,Target.FromActor(house),false));
                 Check(Until(()=>house.Trait<Cargo>().PassengerCount==1,160),"neutral house entry failed");Check(house.Owner==own,"garrison owner not transferred");
+                Snapshot.Build();Check(Snapshot.UnsupportedRenderables==0,"occupied house did not render");
                 var victim=Spawn("e2",enemy,origin+new CVec(5,0));Tick(1);var hp=victim.Trait<Health>().HP;Attack(house,victim);
                 Check(Until(()=>victim.IsDead || victim.Trait<Health>().HP<hp,160),"occupied house did not fire");
                 house.InflictDamage(enemy.PlayerActor,new Damage(350));Tick(3);

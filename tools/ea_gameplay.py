@@ -61,7 +61,9 @@ def restore(retail):
         setv(occupied,'ShadowStart',int(seq.get('idle').val('ShadowStart','4'))+2)
         if actor=='carus02g':setv(occupied,'ShadowStart','-1') # Retail SHP has six frames, no occupied shadow.
         seq.children.append(occupied);g.images.setdefault(actor,set()).add('occupied')
-        tr(p,'RenderSprites',Image='ea-'+actor,Palette='eaunit')
+        render=tr(p,'RenderSprites',Image='ea-'+actor,PlayerPalette='eaplayer')
+        if a.get('RenderSprites').get('Palette') is not None:
+            render.children.append(E.Node('-Palette')) # Occupied flags remap to their owner, rather than the village's fixed palette.
         tr(p,'WithSpriteBody',RequiresCondition='!retail-occupied')
         tr(p,'WithSpriteBody@occupied',Sequence='occupied',RequiresCondition='retail-occupied')
         tr(p,'Cargo',Types='RetailGarrison',MaxWeight=values.get('MaxNumberOccupants','10'),
@@ -207,7 +209,12 @@ def restore(retail):
             tr(p, 'OriginalRa2GarrisonOrder')
             tr(p, 'Passenger', CargoCondition='retail-passenger')
             w=weapon('AlliedOccupyW' if actor=='e1' else 'SovietOccupyW', 'M60' if actor=='e1' else 'M1Carbine')
-            tr(p,'Armament@retail-garrison',Name='retail-garrison',Weapon=w.key,RequiresCondition='retail-passenger')
+            setv(w,'Report','baocatta.wav, baocattb.wav, baocattc.wav')
+            for image in set(g.actors[actor]['images'].values()):
+                g.refseq[image].children.append(E.Node('retail-ucflash',None,[
+                    E.Node('Filename','ucflash.shp'),E.Node('Length','*'),E.Node('Facings','1'),
+                    E.Node('ShadowStart','-1'),E.Node('Tick','40'),E.Node('Offset','0,0,0')]))
+            tr(p,'Armament@retail-garrison',Name='retail-garrison',Weapon=w.key,MuzzleSequence='retail-ucflash',RequiresCondition='retail-passenger')
         if actor == 'napsis':
             old=a.get('DetectCloaked')
             if old:tr(p,old.key,RequiresCondition=E.both('!ea-art',old.val('RequiresCondition')))

@@ -35,11 +35,19 @@ Each case defaults to all nine original owners. IFV fixtures use ordinary passen
 and attack orders; suicide forms get fresh worlds so original radiation cannot contaminate
 the next fixture. Captured/combined-tech test units do not change the natural tech trees.
 
-The first-country focused checks passed during implementation. The full country matrix,
-legacy gameplay/content regressions, browser validation and production promotion are
+All 81 nine-gap/country combinations and all 72 legacy gameplay/country combinations
+passed. A further nine-country garrison render pass verifies original player remapping,
+occupied art and the original UCFLASH muzzle; original occupied-building gunshot clips are
+included. Faction content regressions, browser validation and production promotion are
 required before reporting this release delivered. Evidence is retained outside Git under
 `D:/rtsai-ra2-nine-gaps-20261021/`. Release exclusively with `tools/release-play.mjs`.
 
 Keep all 84 reviewed map/scenery overlays, Classic data, soundtrack retirement, frozen
 saved clients and immutable save deployments. Never advance the owner's paused Hormuz
 battle for release QA.
+
+The non-live `data-dbb802878e04/` alias is retired locally to keep the next CDN upload
+below its file limit. All 2,582 manifest entries match its preserved immutable
+`https://6788c0a4.rtsai-play-cdn.pages.dev/` deployment, already in the save archive seeds.
+The release tool moves the alias to the archive directory; it does not delete it or the
+immutable deployment. The current live root and the owner's original Hormuz root remain.
