@@ -57,3 +57,8 @@ Yuri IFV pulse: retail `AreaFire=yes` affects units around the IFV, rather than 
 the blast to its selected target. A two-sided infantry regression passed for all nine
 owners. Final nuclear launch/trail/impact rendering also passed 70 sampled frames per
 country. The browser and production steps remain the delivery gate.
+
+Chrono IFV erasure is also tied to an enabled temporal armament. Removing its passenger
+cancels erasure immediately, and destroyed sources are checked before reading their traits.
+An unload/reload regression passed under all nine owners; ordinary automatic acquisition
+was separately exercised. Re-entering retains the original weapon reload timer.

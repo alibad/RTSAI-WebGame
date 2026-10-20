@@ -78,7 +78,11 @@ static class OriginalRa2NineGapsTest
                         var target=Spawn("amcv",enemy,origin+new CVec(3,0));Tick(1);Attack(unit,target);
                         Check(Until(()=>target.Trait<OriginalRa2Target>().TemporalProgress>0,60),"chrono IFV never erased");
                         Check(target.Trait<Health>().HP==target.Trait<Health>().MaxHP,"chrono IFV ordinary damage");
-                        Check(Until(()=>target.IsDead,220),"chrono IFV did not finish erasure");target.Dispose();
+                        unit.Trait<Cargo>().Unload(unit);Tick(2);
+                        Check(target.Trait<OriginalRa2Target>().TemporalProgress==0,"chrono IFV erased without its passenger");
+                        unit.Trait<Cargo>().Load(unit,passenger);Tick(1);Attack(unit,target);
+                        // Reloading a passenger retains the weapon's original reload timer.
+                        Check(Until(()=>target.IsDead,450),"chrono IFV did not finish erasure");target.Dispose();
                     }
                     if(pair.Item1 is "ivan" or "terror")
                     {

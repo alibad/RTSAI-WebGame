@@ -168,8 +168,11 @@ namespace OpenRA.WebSim
             if (TemporalSource != null)
             {
                 var source = TemporalSource;
-                var state = source.TraitOrDefault<OriginalRa2Target>();
-                if (!OriginalRa2Rules.Alive(source) || state?.TemporalTarget != self || source.CurrentActivity == null ||
+                var alive = OriginalRa2Rules.Alive(source);
+                var state = alive ? source.TraitOrDefault<OriginalRa2Target>() : null;
+                var arm = alive ? source.TraitsImplementing<Armament>().FirstOrDefault(a => !a.IsTraitDisabled &&
+                    a.Weapon.Projectile is OriginalRa2ActionInfo action && action.Mode == "Temporal") : null;
+                if (!alive || arm == null || state?.TemporalTarget != self || source.CurrentActivity == null ||
                     !Target.FromActor(self).IsInRange(source.CenterPosition, new WDist(temporalRange)))
                     CancelTemporal(self);
                 else
@@ -181,8 +184,7 @@ namespace OpenRA.WebSim
                     temporalRemainder %= 25;
                     if (++temporalTicks % 10 == 0)
                     {
-                        var arm = source.TraitsImplementing<Armament>().FirstOrDefault(a => !a.IsTraitDisabled && a.Weapon.Projectile is OriginalRa2ActionInfo action && action.Mode == "Temporal");
-                        if (arm != null) OriginalRa2ActionInfo.Beam(source, arm.Weapon, source.CenterPosition, self, []);
+                        OriginalRa2ActionInfo.Beam(source, arm.Weapon, source.CenterPosition, self, []);
                     }
                     if (TemporalProgress >= self.Trait<Health>().MaxHP)
                         self.Kill(source, new BitSet<DamageType>("TemporalDeath"));
