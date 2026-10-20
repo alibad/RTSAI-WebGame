@@ -51,3 +51,9 @@ below its file limit. All 2,582 manifest entries match its preserved immutable
 `https://6788c0a4.rtsai-play-cdn.pages.dev/` deployment, already in the save archive seeds.
 The release tool moves the alias to the archive directory; it does not delete it or the
 immutable deployment. The current live root and the owner's original Hormuz root remain.
+
+All sixteen faction content tests passed. A final rules review added a carrier-centered
+Yuri IFV pulse: retail `AreaFire=yes` affects units around the IFV, rather than shifting
+the blast to its selected target. A two-sided infantry regression passed for all nine
+owners. Final nuclear launch/trail/impact rendering also passed 70 sampled frames per
+country. The browser and production steps remain the delivery gate.

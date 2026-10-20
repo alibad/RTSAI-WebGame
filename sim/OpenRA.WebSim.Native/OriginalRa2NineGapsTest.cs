@@ -53,6 +53,7 @@ static class OriginalRa2NineGapsTest
                 var forms=new Dictionary<string,string>();
                 foreach(var pair in new[]{("e1","crm60"),("engineer","repairbullet"),("snipe","awpe"),("tany","crmp5"),("shk","crelectricbolt"),("deso","crradbeamweapon"),("flakt","crflakguygun"),("cleg","crneutronrifle"),("yuri","crmindcontrol"),("ivan","crnuke"),("terror","crterrorbomb")})
                 {
+                    if(options.TryGetValue("passenger",out var onlyPassenger) && pair.Item1!=onlyPassenger)continue;
                     Console.WriteLine("IFV passenger "+pair.Item1);
                     // Each form gets a fresh world: the Ivan IFV leaves real radiation.
                     if(pair.Item1 is "ivan" or "terror")
@@ -67,6 +68,11 @@ static class OriginalRa2NineGapsTest
                     var active=unit.TraitsImplementing<Armament>().Where(a=>!a.IsTraitDisabled).ToArray();
                     Check(active.Length==1 && active[0].Info.Weapon=="ea-retail-"+pair.Item2,"IFV "+pair.Item1+": "+string.Join(",",active.Select(a=>a.Info.Weapon)));
                     forms[pair.Item1]=active[0].Info.Weapon;
+                    if(pair.Item1=="yuri")
+                    {
+                        var near=Spawn("e2",enemy,origin+new CVec(1,0));var behind=Spawn("e2",enemy,origin+new CVec(-2,0));Tick(1);Attack(unit,near);
+                        Check(Until(()=>near.IsDead && behind.IsDead,100),"Yuri IFV pulse was not centered on its carrier");near.Dispose();behind.Dispose();
+                    }
                     if(pair.Item1=="cleg")
                     {
                         var target=Spawn("amcv",enemy,origin+new CVec(3,0));Tick(1);Attack(unit,target);

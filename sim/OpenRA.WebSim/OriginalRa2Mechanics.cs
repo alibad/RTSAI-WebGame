@@ -251,10 +251,10 @@ namespace OpenRA.WebSim
             if (Mode == "Drone" && state?.Organic == true) target.Kill(source);
             else if (Mode == "Drone" || Mode == "Squid") state?.Attach(target, source, Mode == "Squid", Damage, Interval);
             if (Mode == "IvanBomb") state?.AddBomb(source, Delay, "retailivanexplosion");
-            if (Mode == "Suicide")
+            if (Mode is "Suicide" or "PsychicPulse")
             {
                 args.Weapon.Impact(Target.FromPos(source.CenterPosition), source);
-                source.Kill(source);
+                if (Mode == "Suicide") source.Kill(source);
                 return null;
             }
             if (Mode == "Comet" && target != null)

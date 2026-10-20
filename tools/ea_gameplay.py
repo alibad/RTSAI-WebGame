@@ -243,7 +243,7 @@ def restore(retail):
                 w=weapon(name,fallback)
                 if form!='psychic':action(w,'Suicide')
                 else:
-                    w.children=[n for n in w.children if n.key!='Projectile']
+                    action(w,'PsychicPulse') # Retail AreaFire centers the blast on the carrier.
                     setv(w,'ValidTargets','Infantry')
                 tr(p,'Armament@retail-ifv-'+form,Name='retail-ifv-'+form,Weapon=w.key,RequiresCondition='ea-art && ifv-'+form)
             names='primary, secondary, retail-ifv-psychic, retail-ifv-ivan, retail-ifv-terror'
