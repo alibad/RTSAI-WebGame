@@ -68,3 +68,35 @@ checks passing: the world-space fuse could be occluded by a voxel model. The sam
 frames now use a top-bound UI decoration, visible to allies, enemies and neutrals without
 selection. This keeps the indicator above infantry, vehicles and buildings rather than
 relying on a fixed world height.
+
+## Production verification — 21 October 2026
+
+Released from canonical main `e446daf6cb060fb6527d399ce01a9bc903b90c9e` through
+`tools/release-play.mjs prepare` and `promote`, with the owner's deployment authorization.
+Production: https://rtsai.net/play/?v=e446daf
+
+- Production deployment: `dpl_CeLRBRovp1kBeWBabaKXKY6Tbgxv`.
+- Release receipt: `2026-10-21T00-07-50-552Z`.
+- Runtime: `rt-35a4e258c802/`, gameplay source `e07526d`; reused because the last change
+  only replaces the fuse's data trait with an existing foreground decoration.
+- Data: `data-b80ffa239e04/`; original bundle `6416099874606af54679`.
+- Immutable assets: https://ae584510.rtsai-play-cdn.pages.dev/
+- Production BUILD.json, page, isolation headers and script bytes verified by release tool;
+  independent production BUILD.json fetch confirmed source, runtime, data and bundle.
+- Five official smoke scenarios passed, including original and modern matches, repeated
+  starts and retained Classic compatibility.
+- Final nine-country browser scenes passed with the exact release CDN roots. Real garrison
+  entry, Chrono attack teleport and completed Chrono IFV erasure passed again. The original
+  Ivan fuse was visually confirmed above the enemy MCV model, including blinking frames.
+- Native checks: 81 targeted country/case combinations, 72 legacy country/case combinations,
+  all sixteen faction content tests, plus nine-country targeted rendering/regression checks.
+  The final decoration's attach/move/render/defuse checks passed all nine owners.
+- Both timing risks passed deterministic host/retail rules-clock checks. A matched-speed
+  retail executable wall-clock comparison was not performed.
+- All 84 reviewed map/scenery overlays retained. Thirteen immutable engine/content pairs
+  remain indexed for saved games. Owner's paused Hormuz battle was not advanced or reloaded.
+- The non-live `data-6d6e5f05c328/` alias was moved to the local retired directory only after
+  all 2,586 entries matched preserved immutable deployment `b10de5d5`.
+
+Local visual recap and evidence: `D:/rtsai-ra2-nine-gaps-20261021/index.html`.
+This closes the nine confirmed gaps; it does not certify every retail gameplay system.
