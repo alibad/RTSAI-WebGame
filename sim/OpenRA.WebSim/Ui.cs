@@ -58,11 +58,20 @@ namespace OpenRA.WebSim
 		{
 			var world = SimHost.World;
 			var p = Local;
-			if (world == null || p == null)
+			if (world == null)
 				return "{}";
 
 			// One builder for every tick: the returned string is the only per-tick copy.
 			var sb = StateBuilder.Clear();
+			if (p == null)
+			{
+				// Spectating (Battle simulator, replays): no player panels, but the soundtrack panel still needs its
+				// track and duration, or it cannot show the track or seek.
+				sb.Append('{');
+				WriteMusic(sb, world);
+				return sb.Append('}').ToString();
+			}
+
 			sb.Append("{\"tick\":").Append(world.WorldTick);
 			sb.Append(",\"coach\":");
 			AiLab.WriteCoachJson(sb, world, p);
@@ -79,21 +88,8 @@ namespace OpenRA.WebSim
 			var radar = world.ActorsHavingTrait<ProvidesRadar>(r => !r.IsTraitDisabled).Any(a => a.Owner == p);
 			sb.Append(",\"radar\":").Append(radar ? "true" : "false");
 			sb.Append(",\"win\":").Append(J(p.WinState.ToString()));
-			sb.Append(",\"mission\":").Append(Missions.StateJson());
-			var music = Game.Sound.CurrentMusic;
-			// Only inspect the current, already fetched track. Preparing the whole playlist would download it all.
-			if (music != null && Game.Sound.MusicPlaying && music != measuredMusic)
-			{
-				measuredMusic = music;
-				try { music.Load(world.Map); }
-				catch { /* Playback can continue without a duration label. */ }
-			}
-			sb.Append(",\"music\":");
-			if (music == null)
-				sb.Append("null");
-			else
-				sb.Append("{\"id\":").Append(J(music.Filename)).Append(",\"title\":").Append(J(music.Title))
-					.Append(",\"duration\":").Append(music.Length).Append('}');
+			sb.Append(",\"mission\":").Append(Missions.StateJson()).Append(',');
+			WriteMusic(sb, world);
 			sb.Append(",\"mode\":").Append(J(ModeName(world.OrderGenerator)));
 
 			var selected = OwnSelection(world);
@@ -212,6 +208,25 @@ namespace OpenRA.WebSim
 
 			sb.Append('}');
 			return sb.ToString();
+		}
+
+		/// <summary>"music": the current track, measured once while it plays (its duration enables seeking).</summary>
+		static void WriteMusic(StringBuilder sb, World world)
+		{
+			var music = Game.Sound.CurrentMusic;
+			// Only inspect the current, already fetched track. Preparing the whole playlist would download it all.
+			if (music != null && Game.Sound.MusicPlaying && music != measuredMusic)
+			{
+				measuredMusic = music;
+				try { music.Load(world.Map); }
+				catch { /* Playback can continue without a duration label. */ }
+			}
+			sb.Append("\"music\":");
+			if (music == null)
+				sb.Append("null");
+			else
+				sb.Append("{\"id\":").Append(J(music.Filename)).Append(",\"title\":").Append(J(music.Title))
+					.Append(",\"duration\":").Append(music.Length).Append('}');
 		}
 
 		/// <summary>The page lost its state (a new game, a reload): send the catalog again with the next State().</summary>

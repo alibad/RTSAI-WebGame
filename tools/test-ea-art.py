@@ -163,7 +163,14 @@ class Generated(unittest.TestCase):
                   if arm.val('Weapon', '').startswith('ea-retail-')]
         self.assertTrue(retail)
         for actor, arm in retail:
-            self.assertIn('ea-art', arm.val('RequiresCondition', ''), actor)
+            if arm.key == 'Armament@retail-garrison':
+                # Fired from inside an occupied civilian building (ea_gameplay.py), so the passenger condition gates
+                # it. Only the original countries field GIs and Conscripts (websim rosteraudit).
+                self.assertIn(actor, ('e1', 'e2'))
+                self.assertEqual(arm.val('RequiresCondition'), 'retail-passenger', actor)
+                self.assertEqual(self.rules[actor].get('Passenger').val('CargoCondition'), 'retail-passenger', actor)
+            else:
+                self.assertIn('ea-art', arm.val('RequiresCondition', ''), actor)
             self.assertIsNotNone(self.rules[actor].get('GrantConditionOnFaction@ea-art'), actor)
         modern = {n.key: n for n in E.parse((self.content / 'ea-modern-preserve.yaml').read_text(encoding='utf-8'))}
         self.assertIn('r2crane', modern)
@@ -257,6 +264,14 @@ class Generated(unittest.TestCase):
             if rs is None:
                 self.assertIsNone(palettes, key)
                 continue
+            if rs.get('FactionImages') is None:
+                # Occupiable civilian buildings and their rubble (ea_gameplay.py): one neutral original image for
+                # every owner, with no faction palettes or art condition.
+                self.assertTrue(key.startswith('ca'), key)
+                self.assertIsNone(palettes, key)
+                self.assertIsNone(grant, key)
+                self.assertTrue(rs.val('Image', '').startswith('ea-') and rs.val('Image') in self.seqs, key)
+                continue
             images = {c.key: c.value for c in rs.get('FactionImages').children}
             factions = E.split_list(palettes.val('Factions'))
             self.assertEqual(sorted(images), sorted(factions), key)
@@ -317,8 +332,13 @@ class Generated(unittest.TestCase):
     def test_sprite_group_hints(self):
         for key, actor in self.rules.items():
             hint = actor.get('SpriteGroupFactions@ea')
-            if actor.get('RenderSprites') is not None:
-                self.assertIsNotNone(hint, key)
+            rs = actor.get('RenderSprites')
+            if rs is not None:
+                # Faction art is grouped by faction; neutral civilian art (no FactionImages) belongs to every group.
+                if rs.get('FactionImages') is not None:
+                    self.assertIsNotNone(hint, key)
+                else:
+                    self.assertIsNone(hint, key)
             if hint is not None:
                 factions = E.split_list(hint.val('Factions'))
                 self.assertTrue(factions and set(factions) <= set(E.COUNTRIES + E.MODERN), key)

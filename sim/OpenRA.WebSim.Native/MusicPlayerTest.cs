@@ -43,10 +43,13 @@ static class MusicPlayerTest
 		if (tracks.Length < 2) throw new Exception("Missing soundtrack library");
 		Ui.Command(JsonSerializer.Serialize(new { cmd = "music-play", id = tracks[0] }));
 		if (Game.Sound.CurrentMusic?.Filename != tracks[0]) throw new Exception("Track selection failed");
-		Ui.State(); // The browser reads metadata before enabling the seek slider.
+		// The browser reads metadata before enabling the seek slider, for players and spectators alike.
+		if (!Ui.State().Contains("\"duration\":" + Game.Sound.CurrentMusic.Length) || Game.Sound.CurrentMusic.Length <= 0)
+			throw new Exception("The page state must report the current track's duration");
 		Ui.Command("{\"cmd\":\"music-pause\"}");
 		Ui.Command("{\"cmd\":\"music-seek\",\"seconds\":40}");
-		if (Math.Abs(Game.Sound.MusicSeekPosition - 40) > .1 || Game.Sound.MusicPlaying) throw new Exception("Paused seek failed");
+		if (Math.Abs(Game.Sound.MusicSeekPosition - 40) > .1 || Game.Sound.MusicPlaying)
+			throw new Exception($"Paused seek failed: {Game.Sound.CurrentMusic?.Filename} ({Game.Sound.CurrentMusic?.Length} s) at {Game.Sound.MusicSeekPosition} s, playing {Game.Sound.MusicPlaying}");
 		var before = Game.Sound.MusicSeekPosition;
 		var chunks = sink.Chunks;
 		Thread.Sleep(150);
