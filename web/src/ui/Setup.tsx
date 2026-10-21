@@ -81,9 +81,12 @@ export function Setup({ game, utilities }: { game: Game; utilities: ReactNode })
     faction: factions.some(f => f.id === o.faction) ? o.faction : factions[0]?.id,
     bot: setup.bots.some(b => b.type === o.bot) ? o.bot : setup.bots[0]?.type,
   })));
+  // A saved choice the lobby no longer offers (a removed starting cash, say) falls back to the default: the engine
+  // would otherwise play any number it is given.
   const [options, setOptions] = useState<Record<string, string>>(() => ({
     ...Object.fromEntries((setup.options ?? []).map((o) => [o.id, o.default])),
-    ...load<Record<string, string>>(settingsKey('options'), {}),
+    ...Object.fromEntries(Object.entries(load<Record<string, string>>(settingsKey('options'), {}))
+      .filter(([id, value]) => setup.options?.find((o) => o.id === id)?.values.some((v) => v.value === value) ?? true)),
   }));
 
   useEffect(() => {
