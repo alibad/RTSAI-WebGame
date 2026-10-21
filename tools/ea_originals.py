@@ -24,6 +24,7 @@ import json
 import re
 from pathlib import Path
 import ea_retail
+import effect_anchors
 
 COUNTRIES = ('america', 'germany', 'england', 'france', 'korea', 'cuba', 'libya', 'iraq', 'russia')
 MODERN = ('china', 'iran', 'turkey', 'saudi', 'israel', 'yemen', 'hezbollah')
@@ -821,6 +822,8 @@ class Generator:
             availability.append(Node('gapurifier', None, [Node('Buildable', None, [Node('Prerequisites', self.plug_prerequisites)])]))
         self.rules_nodes = [self._palettes()] + availability + [self._actor(name) for name in sorted(self.actors)]
         self.retail.finish()
+        # Only the project "explosion" image: original ea-explosion keeps its own pivots.
+        self.seq_nodes.extend(effect_anchors.anchor_patches(self, __import__(__name__)))
         if validate:
             self._validate()
         return self
