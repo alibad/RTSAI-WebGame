@@ -77,6 +77,9 @@ export class LazyMount {
     if (complete) return true;
     if (!this.fetching.has(path)) {
       const job = bg.read(0, bg.size).then((all) => {
+        // A short body (the CDN's placeholder page for a path it cannot serve, a cut connection) is not the file:
+        // keep nothing, so the file stays unready and the next use fetches it again.
+        if (all.length !== bg.size) throw new Error(`expected ${bg.size} bytes, received ${all.length}`);
         for (let i = 0, o = 0; o < all.length; i++, o += CHUNK) {
           const piece = all.slice(o, Math.min(all.length, o + CHUNK));
           const id = `${path}#${i}`;
@@ -189,8 +192,11 @@ export function httpRangeReaderAsync(url: string): AsyncRangeReader {
   };
 }
 
-/** A single file read whole (and cached by the browser): returns [start, end) of it. */
-export function wholeFileReader(url: string): RangeReader {
+/**
+ * A single file read whole (and cached by the browser): returns [start, end) of it. With `size`, a body of another
+ * length (the CDN answers a path it cannot serve with its placeholder page and HTTP 200) is an error and is not kept.
+ */
+export function wholeFileReader(url: string, size?: number): RangeReader {
   let data: Uint8Array | null = null;
   return (start, end) => {
     if (!data) {
@@ -199,17 +205,21 @@ export function wholeFileReader(url: string): RangeReader {
       xhr.responseType = "arraybuffer";
       xhr.send(null);
       if (xhr.status !== 200) throw new Error(`${url}: HTTP ${xhr.status}`);
-      data = new Uint8Array(xhr.response as ArrayBuffer);
+      const body = new Uint8Array(xhr.response as ArrayBuffer);
+      if (size !== undefined && body.length !== size) throw new Error(`${url}: expected ${size} bytes, received ${body.length}`);
+      data = body;
     }
     return data.slice(start, end);
   };
 }
 
-export function wholeFileReaderAsync(url: string): AsyncRangeReader {
+export function wholeFileReaderAsync(url: string, size?: number): AsyncRangeReader {
   return async (start, end) => {
     const res = await fetch(url);
     if (!res.ok) throw new Error(`${url}: HTTP ${res.status}`);
-    return new Uint8Array(await res.arrayBuffer()).slice(start, end);
+    const body = new Uint8Array(await res.arrayBuffer());
+    if (size !== undefined && body.length !== size) throw new Error(`${url}: expected ${size} bytes, received ${body.length}`);
+    return body.slice(start, end);
   };
 }
 

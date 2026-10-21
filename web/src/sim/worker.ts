@@ -249,7 +249,7 @@ async function init(msg: Extract<ToWorker, { type: "init" }>) {
       if (f.file) {
         // A single file (static public build): fetched whole and cached by the browser.
         const fileUrl = new URL(`${dataRoot}${profileDir}${f.file}`, base).href;
-        const whole = wholeFileReader(fileUrl), wholeAsync = wholeFileReaderAsync(fileUrl);
+        const whole = wholeFileReader(fileUrl, f.size), wholeAsync = wholeFileReaderAsync(fileUrl, f.size);
         mount.add(`/vfs/${f.path}`, f.size, whole, true, background ? wholeAsync : undefined);
       } else {
         const offset = f.offset ?? 0;
