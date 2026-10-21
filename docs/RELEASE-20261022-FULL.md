@@ -75,3 +75,15 @@ node tools/release-play.mjs prepare --data <new>/static --update "..."   # promo
 
 `build-public --data-only` needs some runtime in `final/public/wasm-aot`; the release tool builds and verifies the
 real runtime from the same inputs, as it did here.
+
+## Update: music panel while spectating (22 October)
+
+`Ui.State` returned `{}` without a local player, so while spectating (Battle simulator, replays) the Now playing
+panel never learned the track or its duration and refused to seek. It now sends the music block to spectators
+(`8d60a60`). `musictest` passes as player and spectator in both the isometric game and Classic (12 tracks).
+
+- Page main `8d60a60` on new runtime `rt-7824bd8bb601/` (source `8d60a60`, engine `8dfa3b12ea`); data
+  `data-b9e0c656e8e4/` unchanged.
+- Smoke: skirmish 203/200/200 ticks, original-art battle 202, Classic 204; 18 saved-game identities retained.
+- Release `2026-10-21T22-57-16-216Z`; preview `dpl_9YhAnJ5952CPn3jmDBQvee9gbhjk`; production
+  `dpl_FZHXdq2Vf41YnMR8kkNUsAHUceaU`; standard build machine, $0 due.
