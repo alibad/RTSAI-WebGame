@@ -284,6 +284,19 @@ class Retail:
                     extra = [new for old in selected for new in renamed_armaments.get(old, [])]
                     if extra:
                         trait(E, patch, item.key, Armaments=', '.join(selected + extra))
+            # Traits that act when a named armament fires must hear the twin as well, or they never act for the
+            # original countries: Yuri's mind control, the carrier's and destroyer's aircraft (CarrierParent is a
+            # BaseSpawnerParent), attack-granted conditions and reveal-on-fire. Defaults as in the engine.
+            listeners = {'MindController': 'primary', 'BaseSpawnerParent': 'primary', 'CarrierParent': 'primary',
+                         'GrantConditionOnAttack': 'primary', 'RevealOnFire': 'primary, secondary'}
+            for item in g.cur[actor].children:
+                default = listeners.get(E.trait_type(item.key))
+                if default is None or not renamed_armaments:
+                    continue
+                selected = E.split_list(item.val('ArmamentNames', default))
+                extra = [new for old in selected for new in renamed_armaments.get(old, [])]
+                if extra:
+                    trait(E, patch, item.key, ArmamentNames=', '.join(selected + extra))
             # Infantry animation dictionaries select by armament name, too.
             for key, body in E.traits(g.cur[actor], 'WithInfantryBody'):
                 sequences = body.get('AttackSequences')

@@ -206,6 +206,15 @@ class Generated(unittest.TestCase):
         self.assertEqual(self.rules['amradr'].get('ParatroopersPower@paratroopers').val('ChargeInterval'), '6000')
         self.assertEqual(self.rules['nairon'].get('WithSupportPowerActivationAnimation').val('RequiresCondition'), 'true')
 
+    def test_named_armament_listeners_hear_the_original_twins(self):
+        # The original twin of an armament has a new name; a trait that acts on a named armament firing must list it,
+        # or Yuri never takes control and the carrier and destroyer never launch their aircraft.
+        for actor, trait, twin in [('yuri', 'MindController', 'retail-armament'), ('carrier', 'CarrierParent', 'retail-armament'),
+                                   ('dest', 'CarrierParent', 'retail-armament-asw')]:
+            node = self.rules[actor].get(trait)
+            self.assertIsNotNone(node, f'{actor} {trait}')
+            self.assertIn(twin, E.split_list(node.val('ArmamentNames', '')), f'{actor} {trait}')
+
     def test_suicide_damage_uses_restored_weapon_not_just_targeting_armament(self):
         weapons = {n.key: n for n in E.parse((self.content / 'ea-retail-weapons.yaml').read_text(encoding='utf-8'))}
         for actor, name, damage in [('terror', 'ea-retail-terrorbomb', '225'), ('dtruck', 'ea-retail-demobomb', '300')]:
