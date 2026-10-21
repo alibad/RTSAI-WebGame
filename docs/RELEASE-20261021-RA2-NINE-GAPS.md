@@ -62,3 +62,9 @@ Chrono IFV erasure is also tied to an enabled temporal armament. Removing its pa
 cancels erasure immediately, and destroyed sources are checked before reading their traits.
 An unload/reload regression passed under all nine owners; ordinary automatic acquisition
 was separately exercised. Re-entering retains the original weapon reload timer.
+
+The first production pixel check exposed a fuse depth issue despite the native enabled-state
+checks passing: the world-space fuse could be occluded by a voxel model. The same original
+frames now use a top-bound UI decoration, visible to allies, enemies and neutrals without
+selection. This keeps the indicator above infantry, vehicles and buildings rather than
+relying on a fixed world height.

@@ -130,7 +130,7 @@ static class OriginalRa2NineGapsTest
             {
                 var source=Spawn("ivan",own,origin);var victim=Spawn("amcv",enemy,origin+new CVec(2,0));Tick(1);Attack(source,victim);
                 Check(Until(()=>victim.Trait<OriginalRa2Target>().HasBomb,100),"Ivan did not attach bomb");Tick(2);
-                bool Visible()=>victim.TraitsImplementing<WithIdleOverlay>().Any(o=>o.Info.Sequence.StartsWith("stage-",StringComparison.Ordinal) && !o.IsTraitDisabled);
+                bool Visible()=>victim.TraitsImplementing<WithDecoration>().Any(o=>o.Info.Sequence.StartsWith("stage-",StringComparison.Ordinal) && !o.IsTraitDisabled);
                 Check(Visible(),"attached fuse invisible");Snapshot.Build();Check(Snapshot.UnsupportedRenderables==0,"bomb cursor failed render");
                 victim.Trait<Mobile>().SetPosition(victim,origin+new CVec(4,0));Tick(125);Check(Visible(),"moving victim lost fuse");
                 victim.Trait<OriginalRa2Target>().Defuse();Tick(2);Check(!Visible(),"defused fuse stayed visible");evidence["attachMoveRenderDefuse"]=true;

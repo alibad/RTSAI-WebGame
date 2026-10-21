@@ -100,8 +100,10 @@ def restore(retail):
         tr(p, 'DamageMultiplier@retail-temporal', Modifier=0, RequiresCondition='retail-temporal')
         if a.get('RenderSprites') is not None and a.get('BodyOrientation') is not None:
             for stage in range(6):
-                tr(p, 'WithIdleOverlay@retail-bomb-'+str(stage), Image='ea-ivan-fuse', Sequence='stage-'+str(stage),
-                   Palette='eaeffect', Offset='0,0,1024', RequiresCondition='retail-bomb-'+str(stage))
+                # A fuse is a UI marker: world-space sprites can be occluded by voxel depth.
+                tr(p, 'WithDecoration@retail-bomb-'+str(stage), Image='ea-ivan-fuse', Sequence='stage-'+str(stage),
+                   Palette='eaeffect', Position='Top', Margin='0,-18', ValidRelationships='Ally, Enemy, Neutral',
+                   RequiresSelection='false', RequiresCondition='retail-bomb-'+str(stage))
             tr(p, 'WithIdleOverlay@retail-temporal', Image='ea-explosion', Sequence='chronosk', Palette='eaeffect',
                RequiresCondition='retail-temporal')
         # Prevent ordinary death explosions/survivors when a target is erased from time.
