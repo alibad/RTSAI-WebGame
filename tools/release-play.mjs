@@ -422,6 +422,10 @@ async function cdnPublish(rel, roots, liveBuild) {
     }
     added.push(root);
   }
+  // Missing files answer 404: Cloudflare Pages serves 404.html for them. Without it every unknown path got the root
+  // index.html with HTTP 200, which a tab of a retired release took for its own files (faction showdown bug B2).
+  const notFound = path.join(dir, "404.html");
+  if (!fs.existsSync(notFound)) fs.writeFileSync(notFound, '<!doctype html><meta charset="utf-8"><title>Not found</title><p>Not a file of <a href="https://rtsai.net/play/">rtsai.net/play</a>. Reload the game for the current version.</p>\n');
   // A runtime root needs its own rule (data roots are covered by the generic /:root/... rules).
   const headersFile = path.join(dir, "_headers");
   let headers = fs.readFileSync(headersFile, "utf8");

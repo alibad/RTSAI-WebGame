@@ -20,6 +20,7 @@ import { Feedback } from "./ui/Feedback";
 import { FeedbackSlot } from "./ui/feedback/slot";
 import { MainMenu } from "./ui/MainMenu";
 import { GraphicsState } from "./ui/GraphicsState";
+import { ReleaseNotice } from "./ui/ReleaseNotice";
 import { RESUME_AFTER_RELOAD, savedRecord, startRecord } from "./ui/MatchLibrary";
 import { installUiFeel } from "./ui/feel";
 import { mySavedMaps, savedMap } from "./net/saved-maps";
@@ -334,6 +335,7 @@ export default function App() {
       {(phase === "boot" || (phase === "loading" && !editorMode) || (phase === "setup" && sandboxMode)) && <Loading game={game} />}
       {phase === "error" && <ErrorCard game={game} />}
       {game && (playing || phase === "loading" || graphics === "failed") && <GraphicsState game={game} />}
+      {!uiHidden && <ReleaseNotice playing={playing} />}
       {/* One feedback launcher for every screen: over the visible screen's FeedbackSlot, else in its own corner. */}
       {game && !uiHidden && <Feedback game={game} />}
     </div>

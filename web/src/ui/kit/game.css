@@ -44,3 +44,8 @@
 .g-empty .gbtn { margin-top: 8px; }
 
 .g-kbd { display: inline-grid; place-items: center; min-width: 20px; height: 20px; padding: 0 5px; border-radius: 4px; border: 1px solid #56604a; border-bottom-width: 2px; background: #171c15; color: var(--hud-gold); font-family: ui-monospace, "Cascadia Mono", monospace; font-size: 11px; font-weight: 700; }
+
+/* A newer release is live (ReleaseNotice.tsx): one quiet line at the top, over menus and battles alike. */
+.release-notice { position: absolute; top: 12px; left: 50%; transform: translateX(-50%); z-index: 55; display: flex; align-items: center; gap: 10px; max-width: calc(100vw - 32px); padding: 6px 6px 6px 12px; border: 1px solid var(--hud-gold-dim); border-radius: 8px; background: var(--hud-panel); color: #f0ead8; font-size: 13px; box-shadow: 0 6px 24px rgba(0, 0, 0, .45); animation: settings-fade .2s ease-out; }
+.release-notice > svg { flex: none; color: var(--hud-gold); }
+[data-playing] .release-notice { left: calc((100% - var(--sidebar-w)) / 2); }

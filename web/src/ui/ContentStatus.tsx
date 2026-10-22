@@ -5,6 +5,8 @@ type Status = { revision: string; savedRevision: string; verified: boolean; curr
 export function ContentStatus() {
   const [status, setStatus] = useState<Status | null>(null);
   useEffect(() => {
+    // Public releases have no such server: asking would be a 404 every 5 seconds for as long as the menu is open.
+    if (import.meta.env.VITE_STATIC_BUILD === '1') return;
     const controller = new AbortController();
     const refresh = () => void fetch(new URL('api/content-status', location.href), { signal: controller.signal, cache: 'no-store' })
       .then(r => r.ok ? r.json() : null).then(setStatus).catch(() => {});
