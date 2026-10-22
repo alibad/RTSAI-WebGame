@@ -46,6 +46,7 @@ static class Program
 				"contenttest" => ContentTest.Run(opts),
 				"placementtest" => SimulatorPlacementTest.Run(opts),
 				"effectstest" => CombatEffectsTest.Run(opts),
+				"effectsaudit" => EffectsAudit.Run(opts),
 				"missiontest" => MissionTest.Run(opts),
 				"soundtest" => SoundTest.Run(opts),
 				"musictest" => MusicPlayerTest.Run(opts),

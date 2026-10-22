@@ -90,6 +90,9 @@ crash descendants choose a land explosion or water splash from terrain, independ
 `websim effectstest --root <unpacked root> --map twin-fords` exercises modern/original infantry and helicopter/jet
 deaths in simulator and ordinary worlds; use `classic-coast` for Classic. `tools/combat-effects-browser-test.mjs`
 captures actual weapon kills through WASM and WebGL in both modes, including the falling wreck before impact.
+`websim effectsaudit --root <unpacked root>` widens that to every faction's whole roster: each unit killed by each
+damage set weapons deal, each weapon's impact on vehicles, infantry, buildings, aircraft, ships, ground and water; the
+exit code is the number of failures. `tools/gameplay-check.mjs` runs both on a release bundle.
 
 ```powershell
 node tools/battle-plan-unit-test.mjs

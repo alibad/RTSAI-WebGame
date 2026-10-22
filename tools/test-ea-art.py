@@ -215,6 +215,19 @@ class Generated(unittest.TestCase):
             self.assertIsNotNone(node, f'{actor} {trait}')
             self.assertIn(twin, E.split_list(node.val('ArmamentNames', '')), f'{actor} {trait}')
 
+    def test_original_country_deaths_leave_something_on_screen(self):
+        # websim effectsaudit found these vanishing without a trace for the original countries.
+        # The IFV's ordinary death explosion has no original twin, so it must stay on for them.
+        fv = self.rules['fv'].get('FireWarheadsOnDeath')
+        self.assertNotIn('!ea-art', (fv.val('RequiresCondition') if fv is not None else '') or '')
+        # The dolphin's death frames are drawn frames (116 onwards is its blank shadow half); the squid has one at all.
+        self.assertLess(int(self.seqs['ea-dlph'].get('die').val('Start')) + int(self.seqs['ea-dlph'].get('die').val('Length')), 117)
+        self.assertIsNotNone(self.seqs['ea-sqd'].get('die'))
+        self.assertIsNotNone(self.rules['sqd'].get('WithDeathAnimation@ea-default'))
+        # A burning dog plays a death too (it has no burning-infantry actor).
+        types = self.rules['dog'].get('WithDeathAnimation@ea-normal').get('DeathTypes')
+        self.assertIsNotNone(types.get('FlameDeath'))
+
     def test_suicide_damage_uses_restored_weapon_not_just_targeting_armament(self):
         weapons = {n.key: n for n in E.parse((self.content / 'ea-retail-weapons.yaml').read_text(encoding='utf-8'))}
         for actor, name, damage in [('terror', 'ea-retail-terrorbomb', '225'), ('dtruck', 'ea-retail-demobomb', '300')]:

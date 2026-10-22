@@ -50,6 +50,18 @@ def restore(retail):
         E.Node('Filename','bombcurs.shp'), E.Node('Start',str(i*2)), E.Node('Length','2'),
         E.Node('Tick',str(round(float(facts['IvanIconFlickerRate'])*1000/15)))]) for i in range(6)])
     retail.effects.add('ivan-fuse')
+    # Death frames the reference sequences get wrong. The dolphin's "die" is a TODO pointing at frames 116-129, which
+    # are its blank shadow half, so it died invisibly; the squid has no death at all. Both are the frames after the
+    # attack: the dolphin's last 12 drawn frames (it rolls over), the squid's last 16 (websim effectsaudit).
+    dolphin = g.refseq.get('dlph')
+    if dolphin is not None and dolphin.get('die') is not None:
+        setv(dolphin.get('die'), 'Start', '104'); setv(dolphin.get('die'), 'Length', '12')
+    squid = g.refseq.get('sqd')
+    if squid is not None and squid.get('die') is None and squid.get('idle') is not None:
+        die = squid.get('idle').clone(); die.key = 'die'
+        die.children = [n for n in die.children if n.key != 'Facings']
+        setv(die, 'Start', '280'); setv(die, 'Length', '16')
+        squid.children.append(die)
 
     for actor, values in b['garrisons'].items():
         if actor not in g.cur or actor not in g.refseq:continue
@@ -237,8 +249,12 @@ def restore(retail):
                         setv(item,'RequiresCondition',E.both(item.val('RequiresCondition'),'!ifv-ivan && !ifv-terror'))
             for key,item in E.traits(a,'Armament'):
                 tr(p,key,RequiresCondition=E.both('!ea-art',E.both(item.val('RequiresCondition'),'!ifv-psychic && !ifv-ivan && !ifv-terror')))
+            # Only a death explosion with an original twin is switched off for the original countries: the ordinary one
+            # has none, and switching it off made their IFVs vanish without a trace.
+            twins={item.key for layer in [p,*retail.rules] if layer.key.lower()=='fv' for item in layer.children}
             for key,item in E.traits(a,'FireWarheadsOnDeath'):
-                tr(p,key,RequiresCondition=E.both('!ea-art',E.both(item.val('RequiresCondition'),'!ifv-ivan && !ifv-terror')))
+                cond=E.both(item.val('RequiresCondition'),'!ifv-ivan && !ifv-terror')
+                tr(p,key,RequiresCondition=E.both('!ea-art',cond) if key+('-retail' if '@' in key else '@retail') in twins else cond)
             tr(p,'AutoTargetPriority@retail-psychic',ValidTargets='Infantry',InvalidTargets='NoAutoTarget',RequiresCondition='ea-art && ifv-psychic')
             tr(p,'AutoTargetPriority@retail-suicide',ValidTargets='Infantry, Vehicle, Structure, Water',InvalidTargets='NoAutoTarget',RequiresCondition='ea-art && (ifv-ivan || ifv-terror)')
             for form,name,fallback in [('psychic','CRMindControl','PsiWave'),('ivan','CRNuke','CRNuke'),('terror','CRTerrorBomb','CRTerrorBomb')]:
@@ -333,6 +349,8 @@ def restore(retail):
         w.children=[n for n in w.children if not n.key.startswith('Warhead')]
         action(w,'Squid',Damage=b['weapons'][name.lower()]['Damage'],Interval=frames(b['weapons'][name.lower()]['ROF']))
     p=E.Node('sqd');tr(p,'AttackFrontal',Armaments='primary, secondary, retail-armament, retail-armament-elite, retail-grab, retail-grab-elite')
+    # No rules gave the squid a death animation; its only owners, the original countries, get the retail one.
+    tr(p,'WithDeathAnimation@ea-default',UseDeathTypeSuffix='false',DeathSequencePalette='eaplayer',DeathPaletteIsPlayerPalette='true',RequiresCondition='ea-art')
     tr(p,'Armament@retail-grab',Name='retail-grab',Weapon='ea-retail-squidgrab',RequiresCondition='ea-art && !rank-elite')
     tr(p,'Armament@retail-grab-elite',Name='retail-grab-elite',Weapon='ea-retail-squidgrabe',RequiresCondition='ea-art && rank-elite')
     # The punch must not replace the grab against a valid ship.
