@@ -1,0 +1,76 @@
+{
+ "a": "turkey",
+ "b": "england",
+ "map": "ra2-tournament-2B",
+ "seed": 3011,
+ "bot": "normal",
+ "winner": "england",
+ "gameSeconds": 1365,
+ "wallSeconds": 317,
+ "video": "C:\\Users\\Admin\\Code\\hq\\games\\artifacts\\faction-showdown-20261021\\runs\\units-and-money\\videos\\turkey-vs-england-s3011.mp4",
+ "videoSeconds": 102.6,
+ "longestFrameGapMs": 586,
+ "timeline": [
+  {
+   "event": "plan",
+   "windows": [
+    {
+     "from": 277,
+     "to": 327,
+     "value": 4870
+    },
+    {
+     "from": 612,
+     "to": 662,
+     "value": 6110
+    },
+    {
+     "from": 928,
+     "to": 978,
+     "value": 7700
+    },
+    {
+     "from": 1013,
+     "to": 1063,
+     "value": 10200
+    },
+    {
+     "from": 1315,
+     "to": 1365,
+     "value": null
+    }
+   ]
+  },
+  {
+   "wall": 37.938,
+   "game": 277,
+   "event": "resume",
+   "skipped": 265
+  },
+  {
+   "wall": 93.11,
+   "game": 612,
+   "event": "resume",
+   "skipped": 283
+  },
+  {
+   "wall": 162.354,
+   "game": 927,
+   "event": "resume",
+   "skipped": 264
+  },
+  {
+   "wall": 194.728,
+   "game": 1013,
+   "event": "resume",
+   "skipped": 35
+  },
+  {
+   "wall": 293.739,
+   "game": 1315,
+   "event": "resume",
+   "skipped": 251
+  }
+ ],
+ "errors": []
+}

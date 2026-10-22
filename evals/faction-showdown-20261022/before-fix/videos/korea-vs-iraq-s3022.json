@@ -1,0 +1,76 @@
+{
+ "a": "korea",
+ "b": "iraq",
+ "map": "ra2-tournament-2B",
+ "seed": 3022,
+ "bot": "normal",
+ "winner": null,
+ "gameSeconds": 3604,
+ "wallSeconds": 846,
+ "video": "C:\\Users\\Admin\\Code\\hq\\games\\artifacts\\faction-showdown-20261021\\runs\\units-and-money\\videos\\korea-vs-iraq-s3022.mp4",
+ "videoSeconds": 113.5,
+ "longestFrameGapMs": 97,
+ "timeline": [
+  {
+   "event": "plan",
+   "windows": [
+    {
+     "from": 567,
+     "to": 617,
+     "value": 6600
+    },
+    {
+     "from": 1595,
+     "to": 1645,
+     "value": 8650
+    },
+    {
+     "from": 2206,
+     "to": 2256,
+     "value": 12400
+    },
+    {
+     "from": 2855,
+     "to": 2905,
+     "value": 11150
+    },
+    {
+     "from": 3554,
+     "to": 3604,
+     "value": null
+    }
+   ]
+  },
+  {
+   "wall": 59.881,
+   "game": 566,
+   "event": "resume",
+   "skipped": 550
+  },
+  {
+   "wall": 168.512,
+   "game": 1594,
+   "event": "resume",
+   "skipped": 976
+  },
+  {
+   "wall": 327.247,
+   "game": 2205,
+   "event": "resume",
+   "skipped": 560
+  },
+  {
+   "wall": 548.133,
+   "game": 2855,
+   "event": "resume",
+   "skipped": 599
+  },
+  {
+   "wall": 819.173,
+   "game": 3553,
+   "event": "resume",
+   "skipped": 647
+  }
+ ],
+ "errors": []
+}

@@ -1,0 +1,65 @@
+{
+ "a": "germany",
+ "b": "iran",
+ "map": "ra2-tournament-2B",
+ "seed": 3019,
+ "bot": "normal",
+ "winner": "iran",
+ "gameSeconds": 565,
+ "wallSeconds": 146,
+ "video": "C:\\Users\\Admin\\Code\\hq\\games\\artifacts\\faction-showdown-20261021\\runs\\units-and-money\\videos\\germany-vs-iran-s3019.mp4",
+ "videoSeconds": 79.8,
+ "longestFrameGapMs": 180,
+ "timeline": [
+  {
+   "event": "plan",
+   "windows": [
+    {
+     "from": 164,
+     "to": 214,
+     "value": 3630
+    },
+    {
+     "from": 250,
+     "to": 300,
+     "value": 7580
+    },
+    {
+     "from": 437,
+     "to": 487,
+     "value": 9890
+    },
+    {
+     "from": 515,
+     "to": 565,
+     "value": null
+    }
+   ]
+  },
+  {
+   "wall": 23.99,
+   "game": 163,
+   "event": "resume",
+   "skipped": 142
+  },
+  {
+   "wall": 51.902,
+   "game": 249,
+   "event": "resume",
+   "skipped": 35
+  },
+  {
+   "wall": 97.185,
+   "game": 437,
+   "event": "resume",
+   "skipped": 137
+  },
+  {
+   "wall": 124.084,
+   "game": 514,
+   "event": "resume",
+   "skipped": 27
+  }
+ ],
+ "errors": []
+}

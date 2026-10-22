@@ -1,0 +1,65 @@
+{
+ "a": "saudi",
+ "b": "germany",
+ "map": "ra2-tournament-2B",
+ "seed": 3010,
+ "bot": "normal",
+ "winner": "germany",
+ "gameSeconds": 605,
+ "wallSeconds": 171,
+ "video": "C:\\Users\\Admin\\Code\\hq\\games\\artifacts\\faction-showdown-20261021\\runs\\units-and-money\\videos\\saudi-vs-germany-s3010.mp4",
+ "videoSeconds": 82.2,
+ "longestFrameGapMs": 903,
+ "timeline": [
+  {
+   "event": "plan",
+   "windows": [
+    {
+     "from": 178,
+     "to": 228,
+     "value": 2960
+    },
+    {
+     "from": 301,
+     "to": 351,
+     "value": 8380
+    },
+    {
+     "from": 416,
+     "to": 466,
+     "value": 7910
+    },
+    {
+     "from": 555,
+     "to": 605,
+     "value": null
+    }
+   ]
+  },
+  {
+   "wall": 30.182,
+   "game": 177,
+   "event": "resume",
+   "skipped": 165
+  },
+  {
+   "wall": 65.601,
+   "game": 300,
+   "event": "resume",
+   "skipped": 72
+  },
+  {
+   "wall": 99.998,
+   "game": 415,
+   "event": "resume",
+   "skipped": 63
+  },
+  {
+   "wall": 146.721,
+   "game": 554,
+   "event": "resume",
+   "skipped": 88
+  }
+ ],
+ "errors": []
+}

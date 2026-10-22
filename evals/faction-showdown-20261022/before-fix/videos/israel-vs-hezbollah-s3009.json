@@ -1,0 +1,76 @@
+{
+ "a": "israel",
+ "b": "hezbollah",
+ "map": "ra2-tournament-2B",
+ "seed": 3009,
+ "bot": "normal",
+ "winner": "hezbollah",
+ "gameSeconds": 2062,
+ "wallSeconds": 443,
+ "video": "C:\\Users\\Admin\\Code\\hq\\games\\artifacts\\faction-showdown-20261021\\runs\\units-and-money\\videos\\israel-vs-hezbollah-s3009.mp4",
+ "videoSeconds": 102.6,
+ "longestFrameGapMs": 258,
+ "timeline": [
+  {
+   "event": "plan",
+   "windows": [
+    {
+     "from": 366,
+     "to": 416,
+     "value": 9200
+    },
+    {
+     "from": 841,
+     "to": 891,
+     "value": 5310
+    },
+    {
+     "from": 1377,
+     "to": 1427,
+     "value": 11500
+    },
+    {
+     "from": 1575,
+     "to": 1625,
+     "value": 12220
+    },
+    {
+     "from": 2012,
+     "to": 2062,
+     "value": null
+    }
+   ]
+  },
+  {
+   "wall": 34.42,
+   "game": 365,
+   "event": "resume",
+   "skipped": 347
+  },
+  {
+   "wall": 97.738,
+   "game": 840,
+   "event": "resume",
+   "skipped": 424
+  },
+  {
+   "wall": 183.96,
+   "game": 1376,
+   "event": "resume",
+   "skipped": 484
+  },
+  {
+   "wall": 287.353,
+   "game": 1574,
+   "event": "resume",
+   "skipped": 147
+  },
+  {
+   "wall": 418.838,
+   "game": 2011,
+   "event": "resume",
+   "skipped": 386
+  }
+ ],
+ "errors": []
+}

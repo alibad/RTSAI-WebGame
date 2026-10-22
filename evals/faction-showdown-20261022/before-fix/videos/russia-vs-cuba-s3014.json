@@ -1,0 +1,76 @@
+{
+ "a": "russia",
+ "b": "cuba",
+ "map": "ra2-tournament-2B",
+ "seed": 3014,
+ "bot": "normal",
+ "winner": "cuba",
+ "gameSeconds": 2870,
+ "wallSeconds": 839,
+ "video": "C:\\Users\\Admin\\Code\\hq\\games\\artifacts\\faction-showdown-20261021\\runs\\units-and-money\\videos\\russia-vs-cuba-s3014.mp4",
+ "videoSeconds": 130.5,
+ "longestFrameGapMs": 368,
+ "timeline": [
+  {
+   "event": "plan",
+   "windows": [
+    {
+     "from": 458,
+     "to": 508,
+     "value": 9600
+    },
+    {
+     "from": 896,
+     "to": 946,
+     "value": 8400
+    },
+    {
+     "from": 1623,
+     "to": 1673,
+     "value": 6100
+    },
+    {
+     "from": 2245,
+     "to": 2295,
+     "value": 11850
+    },
+    {
+     "from": 2820,
+     "to": 2870,
+     "value": null
+    }
+   ]
+  },
+  {
+   "wall": 43.544,
+   "game": 457,
+   "event": "resume",
+   "skipped": 441
+  },
+  {
+   "wall": 135.964,
+   "game": 895,
+   "event": "resume",
+   "skipped": 387
+  },
+  {
+   "wall": 292.429,
+   "game": 1622,
+   "event": "resume",
+   "skipped": 675
+  },
+  {
+   "wall": 516.637,
+   "game": 2244,
+   "event": "resume",
+   "skipped": 571
+  },
+  {
+   "wall": 812.05,
+   "game": 2819,
+   "event": "resume",
+   "skipped": 524
+  }
+ ],
+ "errors": []
+}

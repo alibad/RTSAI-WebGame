@@ -1,0 +1,76 @@
+{
+ "a": "cuba",
+ "b": "libya",
+ "map": "ra2-tournament-2B",
+ "seed": 3023,
+ "bot": "normal",
+ "winner": "cuba",
+ "gameSeconds": 928,
+ "wallSeconds": 277,
+ "video": "C:\\Users\\Admin\\Code\\hq\\games\\artifacts\\faction-showdown-20261021\\runs\\units-and-money\\videos\\cuba-vs-libya-s3023.mp4",
+ "videoSeconds": 119.6,
+ "longestFrameGapMs": 799,
+ "timeline": [
+  {
+   "event": "plan",
+   "windows": [
+    {
+     "from": 168,
+     "to": 218,
+     "value": 3000
+    },
+    {
+     "from": 402,
+     "to": 452,
+     "value": 5400
+    },
+    {
+     "from": 463,
+     "to": 513,
+     "value": 8900
+    },
+    {
+     "from": 713,
+     "to": 763,
+     "value": 9500
+    },
+    {
+     "from": 879,
+     "to": 929,
+     "value": null
+    }
+   ]
+  },
+  {
+   "wall": 28.079,
+   "game": 168,
+   "event": "resume",
+   "skipped": 148
+  },
+  {
+   "wall": 67.351,
+   "game": 401,
+   "event": "resume",
+   "skipped": 182
+  },
+  {
+   "wall": 98.297,
+   "game": 462,
+   "event": "resume",
+   "skipped": 10
+  },
+  {
+   "wall": 165.462,
+   "game": 712,
+   "event": "resume",
+   "skipped": 199
+  },
+  {
+   "wall": 246.917,
+   "game": 878,
+   "event": "resume",
+   "skipped": 114
+  }
+ ],
+ "errors": []
+}

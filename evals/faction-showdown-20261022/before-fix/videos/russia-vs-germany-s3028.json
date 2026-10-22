@@ -1,0 +1,76 @@
+{
+ "a": "russia",
+ "b": "germany",
+ "map": "ra2-tournament-2B",
+ "seed": 3028,
+ "bot": "normal",
+ "winner": "russia",
+ "gameSeconds": 837,
+ "wallSeconds": 265,
+ "video": "C:\\Users\\Admin\\Code\\hq\\games\\artifacts\\faction-showdown-20261021\\runs\\units-and-money\\videos\\russia-vs-germany-s3028.mp4",
+ "videoSeconds": 109.2,
+ "longestFrameGapMs": 647,
+ "timeline": [
+  {
+   "event": "plan",
+   "windows": [
+    {
+     "from": 176,
+     "to": 226,
+     "value": 3900
+    },
+    {
+     "from": 352,
+     "to": 402,
+     "value": 4200
+    },
+    {
+     "from": 467,
+     "to": 517,
+     "value": 4500
+    },
+    {
+     "from": 642,
+     "to": 692,
+     "value": 9100
+    },
+    {
+     "from": 787,
+     "to": 837,
+     "value": null
+    }
+   ]
+  },
+  {
+   "wall": 31.8,
+   "game": 175,
+   "event": "resume",
+   "skipped": 154
+  },
+  {
+   "wall": 67.247,
+   "game": 352,
+   "event": "resume",
+   "skipped": 126
+  },
+  {
+   "wall": 113.85,
+   "game": 466,
+   "event": "resume",
+   "skipped": 63
+  },
+  {
+   "wall": 173.718,
+   "game": 641,
+   "event": "resume",
+   "skipped": 123
+  },
+  {
+   "wall": 241.955,
+   "game": 786,
+   "event": "resume",
+   "skipped": 94
+  }
+ ],
+ "errors": []
+}

@@ -1,0 +1,76 @@
+{
+ "a": "yemen",
+ "b": "saudi",
+ "map": "ra2-tournament-2B",
+ "seed": 3017,
+ "bot": "normal",
+ "winner": "saudi",
+ "gameSeconds": 3203,
+ "wallSeconds": 707,
+ "video": "C:\\Users\\Admin\\Code\\hq\\games\\artifacts\\faction-showdown-20261021\\runs\\units-and-money\\videos\\yemen-vs-saudi-s3017.mp4",
+ "videoSeconds": 107.4,
+ "longestFrameGapMs": 345,
+ "timeline": [
+  {
+   "event": "plan",
+   "windows": [
+    {
+     "from": 404,
+     "to": 454,
+     "value": 11345
+    },
+    {
+     "from": 940,
+     "to": 990,
+     "value": 6975
+    },
+    {
+     "from": 2291,
+     "to": 2341,
+     "value": 7055
+    },
+    {
+     "from": 2961,
+     "to": 3011,
+     "value": 7455
+    },
+    {
+     "from": 3153,
+     "to": 3203,
+     "value": null
+    }
+   ]
+  },
+  {
+   "wall": 37.118,
+   "game": 403,
+   "event": "resume",
+   "skipped": 384
+  },
+  {
+   "wall": 96.997,
+   "game": 940,
+   "event": "resume",
+   "skipped": 485
+  },
+  {
+   "wall": 240.003,
+   "game": 2290,
+   "event": "resume",
+   "skipped": 1300
+  },
+  {
+   "wall": 464.401,
+   "game": 2960,
+   "event": "resume",
+   "skipped": 618
+  },
+  {
+   "wall": 677.294,
+   "game": 3152,
+   "event": "resume",
+   "skipped": 141
+  }
+ ],
+ "errors": []
+}

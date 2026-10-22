@@ -1,0 +1,76 @@
+{
+ "a": "iran",
+ "b": "france",
+ "map": "ra2-tournament-2B",
+ "seed": 3012,
+ "bot": "normal",
+ "winner": null,
+ "gameSeconds": 3601,
+ "wallSeconds": 1024,
+ "video": "C:\\Users\\Admin\\Code\\hq\\games\\artifacts\\faction-showdown-20261021\\runs\\units-and-money\\videos\\iran-vs-france-s3012.mp4",
+ "videoSeconds": 127.4,
+ "longestFrameGapMs": 486,
+ "timeline": [
+  {
+   "event": "plan",
+   "windows": [
+    {
+     "from": 541,
+     "to": 591,
+     "value": 8960
+    },
+    {
+     "from": 1404,
+     "to": 1454,
+     "value": 9700
+    },
+    {
+     "from": 2330,
+     "to": 2380,
+     "value": 9750
+    },
+    {
+     "from": 2885,
+     "to": 2935,
+     "value": 9250
+    },
+    {
+     "from": 3551,
+     "to": 3601,
+     "value": null
+    }
+   ]
+  },
+  {
+   "wall": 57.576,
+   "game": 540,
+   "event": "resume",
+   "skipped": 528
+  },
+  {
+   "wall": 178.399,
+   "game": 1403,
+   "event": "resume",
+   "skipped": 812
+  },
+  {
+   "wall": 399.628,
+   "game": 2329,
+   "event": "resume",
+   "skipped": 874
+  },
+  {
+   "wall": 653.814,
+   "game": 2884,
+   "event": "resume",
+   "skipped": 504
+  },
+  {
+   "wall": 998.142,
+   "game": 3550,
+   "event": "resume",
+   "skipped": 615
+  }
+ ],
+ "errors": []
+}

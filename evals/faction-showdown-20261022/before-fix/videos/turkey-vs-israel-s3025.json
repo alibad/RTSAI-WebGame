@@ -1,0 +1,76 @@
+{
+ "a": "turkey",
+ "b": "israel",
+ "map": "ra2-tournament-2B",
+ "seed": 3025,
+ "bot": "normal",
+ "winner": "turkey",
+ "gameSeconds": 2325,
+ "wallSeconds": 456,
+ "video": "C:\\Users\\Admin\\Code\\hq\\games\\artifacts\\faction-showdown-20261021\\runs\\units-and-money\\videos\\turkey-vs-israel-s3025.mp4",
+ "videoSeconds": 105,
+ "longestFrameGapMs": 473,
+ "timeline": [
+  {
+   "event": "plan",
+   "windows": [
+    {
+     "from": 232,
+     "to": 282,
+     "value": 7720
+    },
+    {
+     "from": 767,
+     "to": 817,
+     "value": 10135
+    },
+    {
+     "from": 1614,
+     "to": 1664,
+     "value": 8060
+    },
+    {
+     "from": 1897,
+     "to": 1947,
+     "value": 5630
+    },
+    {
+     "from": 2275,
+     "to": 2325,
+     "value": null
+    }
+   ]
+  },
+  {
+   "wall": 27.914,
+   "game": 232,
+   "event": "resume",
+   "skipped": 212
+  },
+  {
+   "wall": 76.848,
+   "game": 766,
+   "event": "resume",
+   "skipped": 483
+  },
+  {
+   "wall": 173.847,
+   "game": 1613,
+   "event": "resume",
+   "skipped": 795
+  },
+  {
+   "wall": 297.843,
+   "game": 1897,
+   "event": "resume",
+   "skipped": 233
+  },
+  {
+   "wall": 432.952,
+   "game": 2274,
+   "event": "resume",
+   "skipped": 327
+  }
+ ],
+ "errors": []
+}

@@ -1,0 +1,76 @@
+{
+ "a": "france",
+ "b": "saudi",
+ "map": "ra2-tournament-2B",
+ "seed": 3003,
+ "bot": "normal",
+ "winner": null,
+ "gameSeconds": 3604,
+ "wallSeconds": 1029,
+ "video": "C:\\Users\\Admin\\Code\\hq\\games\\artifacts\\faction-showdown-20261021\\runs\\units-and-money\\videos\\france-vs-saudi-s3003.mp4",
+ "videoSeconds": 128.4,
+ "longestFrameGapMs": 688,
+ "timeline": [
+  {
+   "event": "plan",
+   "windows": [
+    {
+     "from": 403,
+     "to": 453,
+     "value": 9070
+    },
+    {
+     "from": 1553,
+     "to": 1603,
+     "value": 10350
+    },
+    {
+     "from": 2170,
+     "to": 2220,
+     "value": 9350
+    },
+    {
+     "from": 3210,
+     "to": 3260,
+     "value": 14100
+    },
+    {
+     "from": 3554,
+     "to": 3604,
+     "value": null
+    }
+   ]
+  },
+  {
+   "wall": 41.292,
+   "game": 402,
+   "event": "resume",
+   "skipped": 385
+  },
+  {
+   "wall": 161.771,
+   "game": 1553,
+   "event": "resume",
+   "skipped": 1100
+  },
+  {
+   "wall": 345.084,
+   "game": 2169,
+   "event": "resume",
+   "skipped": 565
+  },
+  {
+   "wall": 651.566,
+   "game": 3209,
+   "event": "resume",
+   "skipped": 989
+  },
+  {
+   "wall": 1001.891,
+   "game": 3554,
+   "event": "resume",
+   "skipped": 293
+  }
+ ],
+ "errors": []
+}

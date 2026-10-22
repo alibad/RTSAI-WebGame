@@ -1,0 +1,76 @@
+{
+ "a": "france",
+ "b": "russia",
+ "map": "ra2-tournament-2B",
+ "seed": 3021,
+ "bot": "normal",
+ "winner": null,
+ "gameSeconds": 3604,
+ "wallSeconds": 1118,
+ "video": "C:\\Users\\Admin\\Code\\hq\\games\\artifacts\\faction-showdown-20261021\\runs\\units-and-money\\videos\\france-vs-russia-s3021.mp4",
+ "videoSeconds": 121.9,
+ "longestFrameGapMs": 278,
+ "timeline": [
+  {
+   "event": "plan",
+   "windows": [
+    {
+     "from": 849,
+     "to": 899,
+     "value": 9000
+    },
+    {
+     "from": 1042,
+     "to": 1092,
+     "value": 9000
+    },
+    {
+     "from": 2416,
+     "to": 2466,
+     "value": 12600
+    },
+    {
+     "from": 3367,
+     "to": 3417,
+     "value": 24100
+    },
+    {
+     "from": 3554,
+     "to": 3604,
+     "value": null
+    }
+   ]
+  },
+  {
+   "wall": 67.278,
+   "game": 849,
+   "event": "resume",
+   "skipped": 830
+  },
+  {
+   "wall": 162.837,
+   "game": 1041,
+   "event": "resume",
+   "skipped": 141
+  },
+  {
+   "wall": 386.792,
+   "game": 2415,
+   "event": "resume",
+   "skipped": 1324
+  },
+  {
+   "wall": 732.685,
+   "game": 3366,
+   "event": "resume",
+   "skipped": 899
+  },
+  {
+   "wall": 1090.801,
+   "game": 3553,
+   "event": "resume",
+   "skipped": 136
+  }
+ ],
+ "errors": []
+}

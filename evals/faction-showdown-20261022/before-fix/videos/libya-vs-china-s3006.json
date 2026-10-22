@@ -1,0 +1,76 @@
+{
+ "a": "libya",
+ "b": "china",
+ "map": "ra2-tournament-2B",
+ "seed": 3006,
+ "bot": "normal",
+ "winner": "libya",
+ "gameSeconds": 2501,
+ "wallSeconds": 763,
+ "video": "C:\\Users\\Admin\\Code\\hq\\games\\artifacts\\faction-showdown-20261021\\runs\\units-and-money\\videos\\libya-vs-china-s3006.mp4",
+ "videoSeconds": 131.9,
+ "longestFrameGapMs": 1251,
+ "timeline": [
+  {
+   "event": "plan",
+   "windows": [
+    {
+     "from": 193,
+     "to": 243,
+     "value": 6110
+    },
+    {
+     "from": 975,
+     "to": 1025,
+     "value": 7550
+    },
+    {
+     "from": 1692,
+     "to": 1742,
+     "value": 10430
+    },
+    {
+     "from": 1861,
+     "to": 1911,
+     "value": 12610
+    },
+    {
+     "from": 2452,
+     "to": 2502,
+     "value": null
+    }
+   ]
+  },
+  {
+   "wall": 35.059,
+   "game": 193,
+   "event": "resume",
+   "skipped": 176
+  },
+  {
+   "wall": 121.896,
+   "game": 974,
+   "event": "resume",
+   "skipped": 730
+  },
+  {
+   "wall": 296.546,
+   "game": 1691,
+   "event": "resume",
+   "skipped": 666
+  },
+  {
+   "wall": 476.909,
+   "game": 1860,
+   "event": "resume",
+   "skipped": 118
+  },
+  {
+   "wall": 733.822,
+   "game": 2451,
+   "event": "resume",
+   "skipped": 539
+  }
+ ],
+ "errors": []
+}

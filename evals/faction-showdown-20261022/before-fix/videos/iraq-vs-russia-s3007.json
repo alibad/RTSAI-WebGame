@@ -1,0 +1,76 @@
+{
+ "a": "iraq",
+ "b": "russia",
+ "map": "ra2-tournament-2B",
+ "seed": 3007,
+ "bot": "normal",
+ "winner": null,
+ "gameSeconds": 3603,
+ "wallSeconds": 1283,
+ "video": "C:\\Users\\Admin\\Code\\hq\\games\\artifacts\\faction-showdown-20261021\\runs\\units-and-money\\videos\\iraq-vs-russia-s3007.mp4",
+ "videoSeconds": 134.3,
+ "longestFrameGapMs": 1180,
+ "timeline": [
+  {
+   "event": "plan",
+   "windows": [
+    {
+     "from": 756,
+     "to": 806,
+     "value": 7900
+    },
+    {
+     "from": 1542,
+     "to": 1592,
+     "value": 6600
+    },
+    {
+     "from": 2075,
+     "to": 2125,
+     "value": 10050
+    },
+    {
+     "from": 3031,
+     "to": 3081,
+     "value": 10900
+    },
+    {
+     "from": 3553,
+     "to": 3603,
+     "value": null
+    }
+   ]
+  },
+  {
+   "wall": 72.997,
+   "game": 756,
+   "event": "resume",
+   "skipped": 735
+  },
+  {
+   "wall": 257.134,
+   "game": 1541,
+   "event": "resume",
+   "skipped": 735
+  },
+  {
+   "wall": 492.324,
+   "game": 2074,
+   "event": "resume",
+   "skipped": 482
+  },
+  {
+   "wall": 856.015,
+   "game": 3031,
+   "event": "resume",
+   "skipped": 905
+  },
+  {
+   "wall": 1250.19,
+   "game": 3552,
+   "event": "resume",
+   "skipped": 470
+  }
+ ],
+ "errors": []
+}

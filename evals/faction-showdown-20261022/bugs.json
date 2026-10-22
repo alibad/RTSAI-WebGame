@@ -1,0 +1,108 @@
+[
+  {
+    "id": "B1",
+    "title": "A sound that fails to download ends the whole match",
+    "severity": "high",
+    "status": "live",
+    "statusDetail": "Live on rtsai.net/play since 21 Oct 22:58 (page ffbb5ce, released from main with another session's release; the live worker contains the length checks). Committed as RTSAI-WebGame 8d51e2e with regression tests.",
+    "where": "web/src/sim/lazyfs.ts (background audio fetch), web/src/sim/worker.ts",
+    "what": "Mid-match, the game stops with \"Uncaught Error: … is not a valid sound file!\" and the battle is lost.",
+    "evidence": [
+      "5 of 44 AI matches on the previous build (page b2642c4) ended this way, all within 20 minutes of the 21 Oct 03:08 release: 4 on irocdiea.wav (an original-country death cry), 1 on igenmela.wav (a modern-faction voice).",
+      "The CDN answers any path it cannot serve with a 118-byte HTML placeholder page and HTTP 200.",
+      "The background audio fetch stored that 118-byte page as the sound without checking its length, so the next time the sound played, the engine read it, failed, and ended the match."
+    ],
+    "fix": "A background fetch or whole-file read whose length differs from the file's known size is rejected and not kept. The sound is skipped and fetched again next time. Two regression tests reproduce the 118-byte placeholder case (they fail on the old code, pass on the fix); typecheck passes."
+  },
+  {
+    "id": "B3",
+    "title": "Starting with $2,500 can never build an economy",
+    "severity": "high",
+    "status": "live",
+    "statusDetail": "Live on rtsai.net/play since 22 Oct 00:03 (full release from latest main, data-b9e0c656e8e4: the lobby offers $5,000, $10,000 and $20,000; checked in the live bundle). Fixed as RTSAI-Mod f235dac and RTSAI-WebGame b3ef03f.",
+    "where": "RTSAI-Mod mods/rtsai/rules/player.yaml (PlayerResources), RTSAI-WebGame web/src/ui/Setup.tsx",
+    "what": "With $2,500 starting cash, no side can ever afford a refinery after the power plant it requires, so nobody earns money all game. With no starting units, nothing happens at all.",
+    "evidence": [
+      "Trial AI-vs-AI match, Israel vs Hezbollah, no starting units, $2,500: Israel built one power plant, Hezbollah a power plant and a barracks, then both sat idle for 40 minutes.",
+      "Live rules: Ore Refinery $2,000 requires a power plant; the cheapest power plant is $600 (Tesla Reactor), $800 for the Allies. $2,600 > $2,500.",
+      "No starting-units preset includes a harvester or refinery, so starting units do not help; the engine offers $2,500 by default because the mod never set its own choices."
+    ],
+    "fix": "The mod sets its own starting cash choices without $2,500, and the skirmish screen no longer restores a saved choice the lobby no longer offers (the engine would play any number it is given)."
+  },
+  {
+    "id": "B2",
+    "title": "Releasing a new version breaks sound for anyone with the previous version open",
+    "severity": "medium",
+    "status": "fixed",
+    "statusDetail": "Fixed on main (RTSAI-WebGame 291d865): the release tool writes 404.html into the CDN folder, and an open page offers a reload when BUILD.json names newer roots. Ships with the 22 Oct deaths-and-impacts release.",
+    "where": "Cloudflare rtsai-play-cdn (moving alias), tools/release-play.mjs root retirement",
+    "what": "After a release, the previous data root is retired from the CDN alias. A tab still running the previous page then gets the placeholder page for files it has not loaded yet. Before fix B1 that ended their match. With B1, those sounds are silent instead.",
+    "evidence": [
+      "On 21 Oct, 1,500 of the 1,901 sound files under the then-previous root data-6d6e5f05c328 returned the 118-byte placeholder (HTTP 200); the then-current root data-b80ffa239e04 served all 1,904 correctly.",
+      "Still true on 22 Oct after the AI-units release: public/sprites/index.json under the root that release retired (data-a3b0d296fd95) answers HTTP 200 with the 118-byte placeholder; the live root data-b1abd205626b serves the real 12 KB file.",
+      "Missing files never return 404, so the page cannot tell a missing file from a real one."
+    ],
+    "fix": "Missing CDN files now answer 404 (Cloudflare Pages serves 404.html; every page fetch already handles a non-OK status). An open page checks BUILD.json on focus and every 10 minutes and shows \"New version ready. Reload\" when its roots changed, never forcing it mid-battle. Checked in a browser: no notice while current, the notice once BUILD.json names newer roots."
+  },
+  {
+    "id": "B4",
+    "title": "The AI never builds the original countries’ signature units",
+    "severity": "high",
+    "status": "live",
+    "statusDetail": "Live on rtsai.net/play since 22 Oct 03:32 (data-b1abd205626b, production dpl_7fhkh3TppHFxbztWGvjsNyMF6aFR; checked in the live bundle). Fixed as RTSAI-Mod b286b94. Release record: RTSAI-WebGame docs/RELEASE-20261022-AI-UNITS.md.",
+    "where": "RTSAI-Mod mods/rtsai/rules/ai.yaml (DoctrineUnitBuilderBotModule, DoctrineBaseBuilderBotModule, SupportPowerBotModule)",
+    "what": "Against the AI, the nine original countries fight without their best units, so every result involving them measured a weakened bot rather than the faction.",
+    "evidence": [
+      "Across about 15 AI games per original country, the AI built 0 V3 Launchers, Kirov Airships, Dreadnoughts and Terror Drones (Soviets), 0 Terrorists (Cuba), 0 Demolition Trucks (Libya), 0 Harriers and Chrono Legionnaires (Allies), 0 Black Eagles (Korea), and no Weather Controller or Ore Purifier.",
+      "Their bases had the prerequisites: Russia owned a Radar in 196 and a Battle Lab in 122 base snapshots; America an air command in 149 and a Battle Lab in 128.",
+      "Players can build all of them (coverage check: 326 of 326 roster units buildable). The bots only train units on their UnitsToBuild list or carrying a strategic role, and these were on neither.",
+      "With the fix, four test games built all eleven, with no errors."
+    ],
+    "fix": "Every bot profile lists the missing units (Kirov capped at 2, Dreadnought 3, V3 4, Terror Drone 6, Chrono Legionnaire 2), builds the Weather Controller and Ore Purifier, and fires the Weather Controller like the nuclear missile. They belong only to the original countries, so the modern factions’ tuned rosters are unchanged."
+  },
+  {
+    "id": "B5",
+    "title": "Yuri’s mind control, and the carrier’s and destroyer’s aircraft, do nothing for the original countries",
+    "severity": "high",
+    "status": "live",
+    "statusDetail": "Live on rtsai.net/play since 22 Oct 03:32 (same release; checked in the live bundle). Fixed as RTSAI-WebGame 3c8ed56 with a regression test. Release record: RTSAI-WebGame docs/RELEASE-20261022-AI-UNITS.md.",
+    "where": "RTSAI-WebGame tools/ea_retail.py (the original-country overlay generator) → mods/rtsai/web/content/ea-art.yaml",
+    "what": "For the nine original countries, Yuri, Yuri Prime and the Psi trooper never take control of anything, and the Aircraft Carrier and Destroyer never launch their aircraft.",
+    "evidence": [
+      "Coverage check: Yuri was the only combat unit of Cuba, Libya, Iraq and Russia that never affected a target; in focused probes he stood beside an enemy GI, Grizzly, Rhino, Merkava and Chinese rifleman until he died.",
+      "Cause: the overlay turns each original weapon off for these countries (RequiresCondition !ea-art) and adds a renamed twin (retail-armament…). Attack selectors were told the new name, but MindController and CarrierParent still listened only for primary / asw, so their shots never counted.",
+      "An audit of every original-country unit found the same gap on exactly three roster units (Yuri, Aircraft Carrier, Destroyer); the regenerated overlay also fixes Yuri Prime and the Psi trooper."
+    ],
+    "fix": "Traits that act on a named armament (MindController, CarrierParent/BaseSpawnerParent, GrantConditionOnAttack, RevealOnFire) now also list the twin. Regenerated from the latest release’s inputs, ea-art.yaml changes by those five listener lines only."
+  },
+  {
+    "id": "B7",
+    "title": "Some units vanish when they die",
+    "severity": "high",
+    "status": "fixed",
+    "statusDetail": "Fixed on main (RTSAI-Mod f530495, RTSAI-WebGame 9711ab8). Ships with the 22 Oct deaths-and-impacts release.",
+    "where": "RTSAI-Mod modern-factions/*-roster.yaml and rules/allied-infantry.yaml; RTSAI-WebGame tools/ea_gameplay.py (original-country overlay)",
+    "what": "A killed unit disappeared with nothing on screen: no death animation, explosion or wreck.",
+    "evidence": [
+      "websim effectsaudit killed every roster unit of every faction with each of the 12 damage sets weapons deal (3,912 deaths) and counted what the snapshot sends the browser: 329 drew nothing.",
+      "Every modern nation's infantry (30 types) vanished when killed by Tesla (ElectroDeath), radiation (Desolator) or psychic damage (Yuri): their art has no melt, psychic or zap frames, so their rules removed that death animation without a replacement.",
+      "The original countries' IFV had its ordinary death explosion switched off by the overlay, which only twins the demolition one; their Dolphin's death pointed at blank shadow frames (116-129); the Giant Squid had no death at all; a burning dog drew nothing.",
+      "Impacts were fine: every weapon with an explosion drew it in 1,567 cases (vehicles, infantry, buildings, aircraft, ships, and misses on ground and water). In two live-like AI games the effect sheets loaded within seconds and no effect draw was skipped, so 'rockets land with no impact' was not reproduced; a unit vanishing as the rocket lands looks exactly like it."
+    ],
+    "fix": "Modern infantry play their ordinary falls for those deaths (as the dog already did) and the dog falls when burned; the overlay keeps the IFV's ordinary explosion, uses the dolphin's last 12 drawn frames and gives the squid its retail death (frames 280-295). After the fix: 0 of 3,912 deaths and 0 of 1,567 impacts draw nothing. tools/gameplay-check.mjs runs this audit on every release bundle (docs/DEPLOY-PUBLIC.md)."
+  },
+  {
+    "id": "B6",
+    "title": "The main menu asks the server for a missing file every 5 seconds",
+    "severity": "low",
+    "status": "fixed",
+    "statusDetail": "Fixed on main (RTSAI-WebGame 291d865). Ships with the 22 Oct deaths-and-impacts release.",
+    "where": "RTSAI-WebGame web/src/ui/ContentStatus.tsx",
+    "what": "While the main menu is open, the page requests api/content-status every 5 seconds; only the local content server has it, so rtsai.net answers 404 each time (wasted requests, console noise).",
+    "evidence": [
+      "curl https://rtsai.net/play/api/content-status: HTTP 404.",
+      "After the fix, a release-style build made no such request in 12 seconds on the menu."
+    ],
+    "fix": "Public builds (VITE_STATIC_BUILD) no longer ask."
+  }
+]

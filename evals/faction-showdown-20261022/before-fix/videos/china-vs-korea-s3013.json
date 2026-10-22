@@ -1,0 +1,76 @@
+{
+ "a": "china",
+ "b": "korea",
+ "map": "ra2-tournament-2B",
+ "seed": 3013,
+ "bot": "normal",
+ "winner": "china",
+ "gameSeconds": 2300,
+ "wallSeconds": 657,
+ "video": "C:\\Users\\Admin\\Code\\hq\\games\\artifacts\\faction-showdown-20261021\\runs\\units-and-money\\videos\\china-vs-korea-s3013.mp4",
+ "videoSeconds": 119.3,
+ "longestFrameGapMs": 430,
+ "timeline": [
+  {
+   "event": "plan",
+   "windows": [
+    {
+     "from": 456,
+     "to": 506,
+     "value": 5520
+    },
+    {
+     "from": 855,
+     "to": 905,
+     "value": 7170
+    },
+    {
+     "from": 1202,
+     "to": 1252,
+     "value": 10200
+    },
+    {
+     "from": 1714,
+     "to": 1764,
+     "value": 9150
+    },
+    {
+     "from": 2250,
+     "to": 2300,
+     "value": null
+    }
+   ]
+  },
+  {
+   "wall": 48.882,
+   "game": 455,
+   "event": "resume",
+   "skipped": 444
+  },
+  {
+   "wall": 132.101,
+   "game": 854,
+   "event": "resume",
+   "skipped": 348
+  },
+  {
+   "wall": 251.551,
+   "game": 1201,
+   "event": "resume",
+   "skipped": 296
+  },
+  {
+   "wall": 423.449,
+   "game": 1714,
+   "event": "resume",
+   "skipped": 462
+  },
+  {
+   "wall": 633.873,
+   "game": 2249,
+   "event": "resume",
+   "skipped": 484
+  }
+ ],
+ "errors": []
+}

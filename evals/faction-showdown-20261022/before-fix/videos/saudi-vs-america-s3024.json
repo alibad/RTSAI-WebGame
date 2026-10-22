@@ -1,0 +1,76 @@
+{
+ "a": "saudi",
+ "b": "america",
+ "map": "ra2-tournament-2B",
+ "seed": 3024,
+ "bot": "normal",
+ "winner": "saudi",
+ "gameSeconds": 775,
+ "wallSeconds": 197,
+ "video": "C:\\Users\\Admin\\Code\\hq\\games\\artifacts\\faction-showdown-20261021\\runs\\units-and-money\\videos\\saudi-vs-america-s3024.mp4",
+ "videoSeconds": 97,
+ "longestFrameGapMs": 131,
+ "timeline": [
+  {
+   "event": "plan",
+   "windows": [
+    {
+     "from": 165,
+     "to": 215,
+     "value": 1620
+    },
+    {
+     "from": 303,
+     "to": 353,
+     "value": 7630
+    },
+    {
+     "from": 480,
+     "to": 530,
+     "value": 9920
+    },
+    {
+     "from": 544,
+     "to": 594,
+     "value": 9120
+    },
+    {
+     "from": 725,
+     "to": 775,
+     "value": null
+    }
+   ]
+  },
+  {
+   "wall": 23.849,
+   "game": 165,
+   "event": "resume",
+   "skipped": 146
+  },
+  {
+   "wall": 55.581,
+   "game": 302,
+   "event": "resume",
+   "skipped": 86
+  },
+  {
+   "wall": 97.069,
+   "game": 480,
+   "event": "resume",
+   "skipped": 127
+  },
+  {
+   "wall": 119.133,
+   "game": 543,
+   "event": "resume",
+   "skipped": 12
+  },
+  {
+   "wall": 173.472,
+   "game": 724,
+   "event": "resume",
+   "skipped": 129
+  }
+ ],
+ "errors": []
+}

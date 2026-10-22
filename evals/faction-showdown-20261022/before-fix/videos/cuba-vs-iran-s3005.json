@@ -1,0 +1,76 @@
+{
+ "a": "cuba",
+ "b": "iran",
+ "map": "ra2-tournament-2B",
+ "seed": 3005,
+ "bot": "normal",
+ "winner": null,
+ "gameSeconds": 3603,
+ "wallSeconds": 1039,
+ "video": "C:\\Users\\Admin\\Code\\hq\\games\\artifacts\\faction-showdown-20261021\\runs\\units-and-money\\videos\\cuba-vs-iran-s3005.mp4",
+ "videoSeconds": 130.8,
+ "longestFrameGapMs": 2716,
+ "timeline": [
+  {
+   "event": "plan",
+   "windows": [
+    {
+     "from": 585,
+     "to": 635,
+     "value": 9130
+    },
+    {
+     "from": 1144,
+     "to": 1194,
+     "value": 8590
+    },
+    {
+     "from": 1928,
+     "to": 1978,
+     "value": 12100
+    },
+    {
+     "from": 2760,
+     "to": 2810,
+     "value": 13040
+    },
+    {
+     "from": 3553,
+     "to": 3603,
+     "value": null
+    }
+   ]
+  },
+  {
+   "wall": 80.653,
+   "game": 584,
+   "event": "resume",
+   "skipped": 574
+  },
+  {
+   "wall": 198.825,
+   "game": 1144,
+   "event": "resume",
+   "skipped": 507
+  },
+  {
+   "wall": 396.67,
+   "game": 1928,
+   "event": "resume",
+   "skipped": 732
+  },
+  {
+   "wall": 646.945,
+   "game": 2760,
+   "event": "resume",
+   "skipped": 781
+  },
+  {
+   "wall": 1010.775,
+   "game": 3552,
+   "event": "resume",
+   "skipped": 741
+  }
+ ],
+ "errors": []
+}

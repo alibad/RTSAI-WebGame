@@ -1,0 +1,76 @@
+{
+ "a": "china",
+ "b": "hezbollah",
+ "map": "ra2-tournament-2B",
+ "seed": 3027,
+ "bot": "normal",
+ "winner": "hezbollah",
+ "gameSeconds": 2549,
+ "wallSeconds": 514,
+ "video": "C:\\Users\\Admin\\Code\\hq\\games\\artifacts\\faction-showdown-20261021\\runs\\units-and-money\\videos\\china-vs-hezbollah-s3027.mp4",
+ "videoSeconds": 110.4,
+ "longestFrameGapMs": 378,
+ "timeline": [
+  {
+   "event": "plan",
+   "windows": [
+    {
+     "from": 361,
+     "to": 411,
+     "value": 9025
+    },
+    {
+     "from": 1089,
+     "to": 1139,
+     "value": 6340
+    },
+    {
+     "from": 1582,
+     "to": 1632,
+     "value": 6060
+    },
+    {
+     "from": 2416,
+     "to": 2466,
+     "value": 22035
+    },
+    {
+     "from": 2499,
+     "to": 2549,
+     "value": null
+    }
+   ]
+  },
+  {
+   "wall": 34.559,
+   "game": 360,
+   "event": "resume",
+   "skipped": 339
+  },
+  {
+   "wall": 107.891,
+   "game": 1089,
+   "event": "resume",
+   "skipped": 678
+  },
+  {
+   "wall": 250.9,
+   "game": 1581,
+   "event": "resume",
+   "skipped": 441
+  },
+  {
+   "wall": 459.598,
+   "game": 2415,
+   "event": "resume",
+   "skipped": 783
+  },
+  {
+   "wall": 490.575,
+   "game": 2498,
+   "event": "resume",
+   "skipped": 31
+  }
+ ],
+ "errors": []
+}

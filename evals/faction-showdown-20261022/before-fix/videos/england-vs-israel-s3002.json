@@ -1,0 +1,76 @@
+{
+ "a": "england",
+ "b": "israel",
+ "map": "ra2-tournament-2B",
+ "seed": 3002,
+ "bot": "normal",
+ "winner": "england",
+ "gameSeconds": 960,
+ "wallSeconds": 272,
+ "video": "C:\\Users\\Admin\\Code\\hq\\games\\artifacts\\faction-showdown-20261021\\runs\\units-and-money\\videos\\england-vs-israel-s3002.mp4",
+ "videoSeconds": 116.8,
+ "longestFrameGapMs": 1586,
+ "timeline": [
+  {
+   "event": "plan",
+   "windows": [
+    {
+     "from": 195,
+     "to": 245,
+     "value": 3380
+    },
+    {
+     "from": 370,
+     "to": 420,
+     "value": 9850
+    },
+    {
+     "from": 528,
+     "to": 578,
+     "value": 5990
+    },
+    {
+     "from": 825,
+     "to": 875,
+     "value": 11060
+    },
+    {
+     "from": 910,
+     "to": 960,
+     "value": null
+    }
+   ]
+  },
+  {
+   "wall": 27.389,
+   "game": 194,
+   "event": "resume",
+   "skipped": 184
+  },
+  {
+   "wall": 75.598,
+   "game": 369,
+   "event": "resume",
+   "skipped": 124
+  },
+  {
+   "wall": 133.177,
+   "game": 527,
+   "event": "resume",
+   "skipped": 107
+  },
+  {
+   "wall": 214.003,
+   "game": 824,
+   "event": "resume",
+   "skipped": 245
+  },
+  {
+   "wall": 246.013,
+   "game": 909,
+   "event": "resume",
+   "skipped": 33
+  }
+ ],
+ "errors": []
+}

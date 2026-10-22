@@ -1,0 +1,76 @@
+{
+ "a": "iraq",
+ "b": "england",
+ "map": "ra2-tournament-2B",
+ "seed": 3029,
+ "bot": "normal",
+ "winner": "iraq",
+ "gameSeconds": 2125,
+ "wallSeconds": 547,
+ "video": "C:\\Users\\Admin\\Code\\hq\\games\\artifacts\\faction-showdown-20261021\\runs\\units-and-money\\videos\\iraq-vs-england-s3029.mp4",
+ "videoSeconds": 129.7,
+ "longestFrameGapMs": 259,
+ "timeline": [
+  {
+   "event": "plan",
+   "windows": [
+    {
+     "from": 495,
+     "to": 545,
+     "value": 8700
+    },
+    {
+     "from": 865,
+     "to": 915,
+     "value": 5700
+    },
+    {
+     "from": 1188,
+     "to": 1238,
+     "value": 6500
+    },
+    {
+     "from": 1996,
+     "to": 2046,
+     "value": 9900
+    },
+    {
+     "from": 2075,
+     "to": 2125,
+     "value": null
+    }
+   ]
+  },
+  {
+   "wall": 50.425,
+   "game": 494,
+   "event": "resume",
+   "skipped": 475
+  },
+  {
+   "wall": 125.181,
+   "game": 864,
+   "event": "resume",
+   "skipped": 319
+  },
+  {
+   "wall": 248.687,
+   "game": 1187,
+   "event": "resume",
+   "skipped": 272
+  },
+  {
+   "wall": 469.627,
+   "game": 1995,
+   "event": "resume",
+   "skipped": 757
+  },
+  {
+   "wall": 512.752,
+   "game": 2074,
+   "event": "resume",
+   "skipped": 28
+  }
+ ],
+ "errors": []
+}

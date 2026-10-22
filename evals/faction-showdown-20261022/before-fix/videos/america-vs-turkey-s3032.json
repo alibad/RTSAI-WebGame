@@ -1,0 +1,65 @@
+{
+ "a": "america",
+ "b": "turkey",
+ "map": "ra2-tournament-2B",
+ "seed": 3032,
+ "bot": "normal",
+ "winner": "turkey",
+ "gameSeconds": 462,
+ "wallSeconds": 142,
+ "video": "C:\\Users\\Admin\\Code\\hq\\games\\artifacts\\faction-showdown-20261021\\runs\\units-and-money\\videos\\america-vs-turkey-s3032.mp4",
+ "videoSeconds": 86.8,
+ "longestFrameGapMs": 541,
+ "timeline": [
+  {
+   "event": "plan",
+   "windows": [
+    {
+     "from": 162,
+     "to": 212,
+     "value": 3055
+    },
+    {
+     "from": 251,
+     "to": 301,
+     "value": 6855
+    },
+    {
+     "from": 323,
+     "to": 373,
+     "value": 7250
+    },
+    {
+     "from": 412,
+     "to": 462,
+     "value": null
+    }
+   ]
+  },
+  {
+   "wall": 25.039,
+   "game": 162,
+   "event": "resume",
+   "skipped": 142
+  },
+  {
+   "wall": 54.072,
+   "game": 250,
+   "event": "resume",
+   "skipped": 37
+  },
+  {
+   "wall": 78.46,
+   "game": 322,
+   "event": "resume",
+   "skipped": 22
+  },
+  {
+   "wall": 113.567,
+   "game": 411,
+   "event": "resume",
+   "skipped": 38
+  }
+ ],
+ "errors": []
+}

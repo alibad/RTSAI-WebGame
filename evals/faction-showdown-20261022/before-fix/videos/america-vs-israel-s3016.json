@@ -1,0 +1,76 @@
+{
+ "a": "america",
+ "b": "israel",
+ "map": "ra2-tournament-2B",
+ "seed": 3016,
+ "bot": "normal",
+ "winner": "israel",
+ "gameSeconds": 790,
+ "wallSeconds": 210,
+ "video": "C:\\Users\\Admin\\Code\\hq\\games\\artifacts\\faction-showdown-20261021\\runs\\units-and-money\\videos\\america-vs-israel-s3016.mp4",
+ "videoSeconds": 111,
+ "longestFrameGapMs": 597,
+ "timeline": [
+  {
+   "event": "plan",
+   "windows": [
+    {
+     "from": 163,
+     "to": 213,
+     "value": 1220
+    },
+    {
+     "from": 231,
+     "to": 281,
+     "value": 4220
+    },
+    {
+     "from": 419,
+     "to": 469,
+     "value": 8100
+    },
+    {
+     "from": 659,
+     "to": 709,
+     "value": 14800
+    },
+    {
+     "from": 740,
+     "to": 790,
+     "value": null
+    }
+   ]
+  },
+  {
+   "wall": 27.026,
+   "game": 163,
+   "event": "resume",
+   "skipped": 152
+  },
+  {
+   "wall": 53.017,
+   "game": 230,
+   "event": "resume",
+   "skipped": 16
+  },
+  {
+   "wall": 94.062,
+   "game": 418,
+   "event": "resume",
+   "skipped": 136
+  },
+  {
+   "wall": 152.548,
+   "game": 658,
+   "event": "resume",
+   "skipped": 189
+  },
+  {
+   "wall": 184.99,
+   "game": 739,
+   "event": "resume",
+   "skipped": 30
+  }
+ ],
+ "errors": []
+}

@@ -1,0 +1,76 @@
+{
+ "a": "america",
+ "b": "hezbollah",
+ "map": "ra2-tournament-2B",
+ "seed": 3000,
+ "bot": "normal",
+ "winner": null,
+ "gameSeconds": 3601,
+ "wallSeconds": 941,
+ "video": "C:\\Users\\Admin\\Code\\hq\\games\\artifacts\\faction-showdown-20261021\\runs\\units-and-money\\videos\\america-vs-hezbollah-s3000.mp4",
+ "videoSeconds": 130.1,
+ "longestFrameGapMs": 403,
+ "timeline": [
+  {
+   "event": "plan",
+   "windows": [
+    {
+     "from": 422,
+     "to": 472,
+     "value": 14600
+    },
+    {
+     "from": 1027,
+     "to": 1077,
+     "value": 10510
+    },
+    {
+     "from": 1816,
+     "to": 1866,
+     "value": 8300
+    },
+    {
+     "from": 2628,
+     "to": 2678,
+     "value": 7405
+    },
+    {
+     "from": 3551,
+     "to": 3601,
+     "value": null
+    }
+   ]
+  },
+  {
+   "wall": 47.444,
+   "game": 421,
+   "event": "resume",
+   "skipped": 404
+  },
+  {
+   "wall": 134.94,
+   "game": 1026,
+   "event": "resume",
+   "skipped": 554
+  },
+  {
+   "wall": 297.897,
+   "game": 1816,
+   "event": "resume",
+   "skipped": 739
+  },
+  {
+   "wall": 565.698,
+   "game": 2627,
+   "event": "resume",
+   "skipped": 760
+  },
+  {
+   "wall": 910.784,
+   "game": 3550,
+   "event": "resume",
+   "skipped": 872
+  }
+ ],
+ "errors": []
+}

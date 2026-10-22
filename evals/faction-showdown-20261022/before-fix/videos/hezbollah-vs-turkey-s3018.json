@@ -1,0 +1,76 @@
+{
+ "a": "hezbollah",
+ "b": "turkey",
+ "map": "ra2-tournament-2B",
+ "seed": 3018,
+ "bot": "normal",
+ "winner": "hezbollah",
+ "gameSeconds": 1069,
+ "wallSeconds": 215,
+ "video": "C:\\Users\\Admin\\Code\\hq\\games\\artifacts\\faction-showdown-20261021\\runs\\units-and-money\\videos\\hezbollah-vs-turkey-s3018.mp4",
+ "videoSeconds": 97,
+ "longestFrameGapMs": 49,
+ "timeline": [
+  {
+   "event": "plan",
+   "windows": [
+    {
+     "from": 212,
+     "to": 262,
+     "value": 7260
+    },
+    {
+     "from": 397,
+     "to": 447,
+     "value": 6515
+    },
+    {
+     "from": 480,
+     "to": 530,
+     "value": 4405
+    },
+    {
+     "from": 908,
+     "to": 958,
+     "value": 9620
+    },
+    {
+     "from": 1019,
+     "to": 1069,
+     "value": null
+    }
+   ]
+  },
+  {
+   "wall": 27.423,
+   "game": 212,
+   "event": "resume",
+   "skipped": 190
+  },
+  {
+   "wall": 61.737,
+   "game": 396,
+   "event": "resume",
+   "skipped": 133
+  },
+  {
+   "wall": 87.184,
+   "game": 479,
+   "event": "resume",
+   "skipped": 31
+  },
+  {
+   "wall": 151.935,
+   "game": 907,
+   "event": "resume",
+   "skipped": 377
+  },
+  {
+   "wall": 191.084,
+   "game": 1019,
+   "event": "resume",
+   "skipped": 61
+  }
+ ],
+ "errors": []
+}

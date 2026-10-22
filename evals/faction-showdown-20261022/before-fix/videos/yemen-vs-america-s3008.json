@@ -1,0 +1,76 @@
+{
+ "a": "yemen",
+ "b": "america",
+ "map": "ra2-tournament-2B",
+ "seed": 3008,
+ "bot": "normal",
+ "winner": "yemen",
+ "gameSeconds": 927,
+ "wallSeconds": 267,
+ "video": "C:\\Users\\Admin\\Code\\hq\\games\\artifacts\\faction-showdown-20261021\\runs\\units-and-money\\videos\\yemen-vs-america-s3008.mp4",
+ "videoSeconds": 118.8,
+ "longestFrameGapMs": 524,
+ "timeline": [
+  {
+   "event": "plan",
+   "windows": [
+    {
+     "from": 181,
+     "to": 231,
+     "value": 3575
+    },
+    {
+     "from": 276,
+     "to": 326,
+     "value": 6480
+    },
+    {
+     "from": 530,
+     "to": 580,
+     "value": 5130
+    },
+    {
+     "from": 795,
+     "to": 845,
+     "value": 10415
+    },
+    {
+     "from": 877,
+     "to": 927,
+     "value": null
+    }
+   ]
+  },
+  {
+   "wall": 27.485,
+   "game": 180,
+   "event": "resume",
+   "skipped": 165
+  },
+  {
+   "wall": 68.304,
+   "game": 275,
+   "event": "resume",
+   "skipped": 44
+  },
+  {
+   "wall": 123.908,
+   "game": 530,
+   "event": "resume",
+   "skipped": 203
+  },
+  {
+   "wall": 201.941,
+   "game": 794,
+   "event": "resume",
+   "skipped": 214
+  },
+  {
+   "wall": 239.5,
+   "game": 876,
+   "event": "resume",
+   "skipped": 31
+  }
+ ],
+ "errors": []
+}

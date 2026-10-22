@@ -1,0 +1,76 @@
+{
+ "a": "korea",
+ "b": "turkey",
+ "map": "ra2-tournament-2B",
+ "seed": 3004,
+ "bot": "normal",
+ "winner": "turkey",
+ "gameSeconds": 2738,
+ "wallSeconds": 838,
+ "video": "C:\\Users\\Admin\\Code\\hq\\games\\artifacts\\faction-showdown-20261021\\runs\\units-and-money\\videos\\korea-vs-turkey-s3004.mp4",
+ "videoSeconds": 135.3,
+ "longestFrameGapMs": 1104,
+ "timeline": [
+  {
+   "event": "plan",
+   "windows": [
+    {
+     "from": 229,
+     "to": 279,
+     "value": 7515
+    },
+    {
+     "from": 1175,
+     "to": 1225,
+     "value": 7770
+    },
+    {
+     "from": 1371,
+     "to": 1421,
+     "value": 6955
+    },
+    {
+     "from": 2374,
+     "to": 2424,
+     "value": 12000
+    },
+    {
+     "from": 2688,
+     "to": 2738,
+     "value": null
+    }
+   ]
+  },
+  {
+   "wall": 37.665,
+   "game": 228,
+   "event": "resume",
+   "skipped": 216
+  },
+  {
+   "wall": 154.276,
+   "game": 1174,
+   "event": "resume",
+   "skipped": 894
+  },
+  {
+   "wall": 288.023,
+   "game": 1370,
+   "event": "resume",
+   "skipped": 145
+  },
+  {
+   "wall": 516.489,
+   "game": 2373,
+   "event": "resume",
+   "skipped": 952
+  },
+  {
+   "wall": 805.447,
+   "game": 2688,
+   "event": "resume",
+   "skipped": 263
+  }
+ ],
+ "errors": []
+}

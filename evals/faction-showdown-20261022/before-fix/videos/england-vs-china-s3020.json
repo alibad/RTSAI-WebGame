@@ -1,0 +1,76 @@
+{
+ "a": "england",
+ "b": "china",
+ "map": "ra2-tournament-2B",
+ "seed": 3020,
+ "bot": "normal",
+ "winner": "china",
+ "gameSeconds": 1723,
+ "wallSeconds": 383,
+ "video": "C:\\Users\\Admin\\Code\\hq\\games\\artifacts\\faction-showdown-20261021\\runs\\units-and-money\\videos\\england-vs-china-s3020.mp4",
+ "videoSeconds": 103.8,
+ "longestFrameGapMs": 417,
+ "timeline": [
+  {
+   "event": "plan",
+   "windows": [
+    {
+     "from": 244,
+     "to": 294,
+     "value": 5230
+    },
+    {
+     "from": 483,
+     "to": 533,
+     "value": 7280
+    },
+    {
+     "from": 894,
+     "to": 944,
+     "value": 8910
+    },
+    {
+     "from": 1284,
+     "to": 1334,
+     "value": 7820
+    },
+    {
+     "from": 1673,
+     "to": 1723,
+     "value": null
+    }
+   ]
+  },
+  {
+   "wall": 28.559,
+   "game": 243,
+   "event": "resume",
+   "skipped": 229
+  },
+  {
+   "wall": 69.63,
+   "game": 482,
+   "event": "resume",
+   "skipped": 188
+  },
+  {
+   "wall": 134.616,
+   "game": 893,
+   "event": "resume",
+   "skipped": 360
+  },
+  {
+   "wall": 242.907,
+   "game": 1283,
+   "event": "resume",
+   "skipped": 339
+  },
+  {
+   "wall": 357.206,
+   "game": 1672,
+   "event": "resume",
+   "skipped": 338
+  }
+ ],
+ "errors": []
+}

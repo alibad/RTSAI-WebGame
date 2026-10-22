@@ -1,0 +1,76 @@
+{
+ "a": "iraq",
+ "b": "libya",
+ "map": "ra2-tournament-2B",
+ "seed": 3015,
+ "bot": "normal",
+ "winner": null,
+ "gameSeconds": 3602,
+ "wallSeconds": 1306,
+ "video": "C:\\Users\\Admin\\Code\\hq\\games\\artifacts\\faction-showdown-20261021\\runs\\units-and-money\\videos\\iraq-vs-libya-s3015.mp4",
+ "videoSeconds": 145,
+ "longestFrameGapMs": 562,
+ "timeline": [
+  {
+   "event": "plan",
+   "windows": [
+    {
+     "from": 559,
+     "to": 609,
+     "value": 8200
+    },
+    {
+     "from": 1738,
+     "to": 1788,
+     "value": 7900
+    },
+    {
+     "from": 2571,
+     "to": 2621,
+     "value": 10000
+    },
+    {
+     "from": 3419,
+     "to": 3469,
+     "value": 11100
+    },
+    {
+     "from": 3552,
+     "to": 3602,
+     "value": null
+    }
+   ]
+  },
+  {
+   "wall": 52.621,
+   "game": 558,
+   "event": "resume",
+   "skipped": 545
+  },
+  {
+   "wall": 223.902,
+   "game": 1737,
+   "event": "resume",
+   "skipped": 1129
+  },
+  {
+   "wall": 524.717,
+   "game": 2570,
+   "event": "resume",
+   "skipped": 781
+  },
+  {
+   "wall": 901.956,
+   "game": 3418,
+   "event": "resume",
+   "skipped": 796
+  },
+  {
+   "wall": 1279.015,
+   "game": 3552,
+   "event": "resume",
+   "skipped": 83
+  }
+ ],
+ "errors": []
+}
