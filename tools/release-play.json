@@ -20,7 +20,7 @@
     "mutable": [
       "campaign-v2/"
     ],
-    "$retired": "Historical data roots preserved in retiredDir to stay below Cloudflare's 20,000-file limit. 18 October original RA2 restoration retains current data-5371825e5fda and previous data-a3b0d296fd95 for rollback; older 2b1/d1e roots are archived, never deleted. The unpromoted restoration candidate75b3 is archived after visual QA found incorrect V3 normals. Unpromoted candidate0fd is also preserved after the final original-name audit. Unpromoted map candidate87a is preserved after browser QA caught lazy map previews blocking startup. Candidateef6 is archived after QA caught startup cursor art moved into the omitted lazy archive. Save compatibility release: data44 alias copy retired locally after immutable acecb80b deployment and exact save catalog were verified; original Hormuz data537 and current data-dbb remain served. 21 October full release from latest main: the 15 October alias data-f2d5 (no saved battle or rollback references it) is archived to make room; previous live data-b80 and current data-d6e remain served. 22 October AI units and original-country listeners: the 18 October rollback root data-a3b0 (not in the saved-game catalog; superseded by four releases) is archived to make room; original Hormuz data537, previous data-d6e, current data-b9e and the new root remain served. Never delete immutable save deployments.",
+    "$retired": "Historical data roots preserved in retiredDir to stay below Cloudflare's 20,000-file limit. 18 October original RA2 restoration retains current data-5371825e5fda and previous data-a3b0d296fd95 for rollback; older 2b1/d1e roots are archived, never deleted. The unpromoted restoration candidate75b3 is archived after visual QA found incorrect V3 normals. Unpromoted candidate0fd is also preserved after the final original-name audit. Unpromoted map candidate87a is preserved after browser QA caught lazy map previews blocking startup. Candidateef6 is archived after QA caught startup cursor art moved into the omitted lazy archive. Save compatibility release: data44 alias copy retired locally after immutable acecb80b deployment and exact save catalog were verified; original Hormuz data537 and current data-dbb remain served. 21 October full release from latest main: the 15 October alias data-f2d5 (no saved battle or rollback references it) is archived to make room; previous live data-b80 and current data-d6e remain served. 22 October AI units and original-country listeners: the 18 October rollback root data-a3b0 (not in the saved-game catalog; superseded by four releases) is archived to make room; original Hormuz data537, previous data-d6e, current data-b9e and the new root remain served. 22 October deaths and impacts: data-b80 (superseded by three releases; its saved battles load from their immutable deployment) is archived to make room; data537, data-d6e, data-b9e, data-b1a and the new root remain served. Never delete immutable save deployments.",
     "retiredDir": "D:/rtsai-ea-build/play-cdn-retired",
     "retired": [
       "data-169d5132ea83/",
@@ -38,7 +38,8 @@
       "data-6d6e5f05c328/",
       "data-b5df9dd495d8/",
       "data-f2d5ece96d44/",
-      "data-a3b0d296fd95/"
+      "data-a3b0d296fd95/",
+      "data-b80ffa239e04/"
     ]
   },
   "vercel": {
