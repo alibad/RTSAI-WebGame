@@ -33,8 +33,8 @@
     "id": "B2",
     "title": "Releasing a new version breaks sound for anyone with the previous version open",
     "severity": "medium",
-    "status": "fixed",
-    "statusDetail": "Fixed on main (RTSAI-WebGame 291d865): the release tool writes 404.html into the CDN folder, and an open page offers a reload when BUILD.json names newer roots. Ships with the 22 Oct deaths-and-impacts release.",
+    "status": "live",
+    "statusDetail": "Live on rtsai.net/play since 22 Oct 11:24 (data-bad1fbdfc616, production dpl_DzSJXrLUwxCjvGEyApyd9fewdHvX; the live bundle is byte-identical to the audited one). Release record: RTSAI-WebGame docs/RELEASE-20261022-DEATHS-IMPACTS.md. Fixed as RTSAI-WebGame 291d865: missing CDN paths answer 404 (177 bytes), checked on rtsai-play-cdn after the release.",
     "where": "Cloudflare rtsai-play-cdn (moving alias), tools/release-play.mjs root retirement",
     "what": "After a release, the previous data root is retired from the CDN alias. A tab still running the previous page then gets the placeholder page for files it has not loaded yet. Before fix B1 that ended their match. With B1, those sounds are silent instead.",
     "evidence": [
@@ -79,8 +79,8 @@
     "id": "B7",
     "title": "Some units vanish when they die",
     "severity": "high",
-    "status": "fixed",
-    "statusDetail": "Fixed on main (RTSAI-Mod f530495, RTSAI-WebGame 9711ab8). Ships with the 22 Oct deaths-and-impacts release.",
+    "status": "live",
+    "statusDetail": "Live on rtsai.net/play since 22 Oct 11:24 (data-bad1fbdfc616, production dpl_DzSJXrLUwxCjvGEyApyd9fewdHvX; the live bundle is byte-identical to the audited one). Release record: RTSAI-WebGame docs/RELEASE-20261022-DEATHS-IMPACTS.md. Fixed as RTSAI-Mod f530495 and RTSAI-WebGame 9711ab8.",
     "where": "RTSAI-Mod modern-factions/*-roster.yaml and rules/allied-infantry.yaml; RTSAI-WebGame tools/ea_gameplay.py (original-country overlay)",
     "what": "A killed unit disappeared with nothing on screen: no death animation, explosion or wreck.",
     "evidence": [
@@ -95,8 +95,8 @@
     "id": "B6",
     "title": "The main menu asks the server for a missing file every 5 seconds",
     "severity": "low",
-    "status": "fixed",
-    "statusDetail": "Fixed on main (RTSAI-WebGame 291d865). Ships with the 22 Oct deaths-and-impacts release.",
+    "status": "live",
+    "statusDetail": "Live on rtsai.net/play since 22 Oct 11:24 (data-bad1fbdfc616, production dpl_DzSJXrLUwxCjvGEyApyd9fewdHvX; the live bundle is byte-identical to the audited one). Release record: RTSAI-WebGame docs/RELEASE-20261022-DEATHS-IMPACTS.md. Fixed as RTSAI-WebGame 291d865.",
     "where": "RTSAI-WebGame web/src/ui/ContentStatus.tsx",
     "what": "While the main menu is open, the page requests api/content-status every 5 seconds; only the local content server has it, so rtsai.net answers 404 each time (wasted requests, console noise).",
     "evidence": [

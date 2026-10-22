@@ -48,9 +48,9 @@ modern rosters. Rebalancing is a product decision and was not made here.
 | B3 | $2,500 starting cash could never build an economy | live 22 Oct |
 | B4 | The AI never built the original countries' signature units | live 22 Oct |
 | B5 | Yuri's mind control and carrier/destroyer aircraft did nothing for the original countries | live 22 Oct |
-| B7 | Some units vanished when they died (modern infantry vs Tesla/radiation/psychic, original IFV, Dolphin, Squid, burning dog) | see bugs.json |
-| B2 | Missing CDN files answered 200 with a placeholder; open tabs broke after a release | see bugs.json |
-| B6 | The main menu polled a missing file every 5 seconds | see bugs.json |
+| B7 | Some units vanished when they died (modern infantry vs Tesla/radiation/psychic, original IFV, Dolphin, Squid, burning dog) | live 22 Oct |
+| B2 | Missing CDN files answered 200 with a placeholder; open tabs broke after a release | live 22 Oct |
+| B6 | The main menu polled a missing file every 5 seconds | live 22 Oct |
 
 ## Keeping it from regressing
 
