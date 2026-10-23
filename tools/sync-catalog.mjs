@@ -1,5 +1,5 @@
 // Copies the player-facing faction identity (title, tagline, accent, strengths) from the website's catalog
-// (RTSAI-Web data/factions.generated.json, itself generated from OpenRA-AI/catalog/factions.json) into
+// (RTSAI-Web data/factions.generated.json, itself made from the one master, RTSAI-Mod/catalog/factions.json) into
 // web/src/data/factions.json, keyed by the RA2 engine faction id. Re-run when the catalog changes:
 //   node tools/sync-catalog.mjs [--from ../RTSAI-Web]
 import fs from "node:fs";
