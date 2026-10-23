@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Text.Json;
 using OpenRA;
+using OpenRA.Mods.Common;
 using OpenRA.Mods.Common.Traits;
 using OpenRA.WebSim;
 
@@ -48,6 +49,17 @@ static class SkirmishAudit
 		while (world.WorldTick < cap && !players.Any(p => p.WinState == WinState.Won) && !players.All(p => p.WinState == WinState.Lost))
 		{
 			SimHost.Tick();
+			if (world.WorldTick == 25 && opts.ContainsKey("check-training"))
+				foreach (var p in players)
+				{
+					var fighters = world.Actors.Where(a => a.Owner == p && a.IsInWorld && !a.IsDead && a.Info.TraitInfos<ArmamentInfo>().Any()).ToArray();
+					if (fighters.Length == 0) throw new InvalidDataException("Training check needs ordinary armed starting forces.");
+					foreach (var fighter in fighters)
+					{
+						var training = fighter.TraitsImplementing<IFirepowerModifier>().Any(m => m.GetFirepowerModifier() == 60);
+						if (training != (p.BotType == "medium")) throw new InvalidDataException($"Unexpected training modifier: {p.InternalName}/{fighter.Info.Name}");
+					}
+				}
 			if (world.WorldTick % 25 == 0) Record();
 		}
 		Record();
