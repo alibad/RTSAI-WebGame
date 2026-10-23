@@ -68,6 +68,20 @@ adviser reads) into a few closed questions:
   - Only idle units are ever given new orders, so a fight in progress is never interrupted.
   - Before 23 October every unit was re-sent every 5 seconds. Fresh units trickled into the enemy defences one by one;
     one game lost 53,200 worth of units with a 10× larger army and killed 5 buildings.
+- **Early defence (24 October), against an AI rush:** the Rush AI with 15,000 extra credits is at the base by minute
+  2–5.
+  - **Towers before the factory:** two ground-defence towers come before the war factory unless credits are
+    plentiful. Walls are never offered. Anti-air and coastal guns, and support buildings without weapons, are rarely
+    chosen.
+  - **Under pressure** (enemy at the base, or more enemy army in sight than ours):
+    - up to six towers;
+    - combat units before harvesters and technology;
+    - a second refinery only once the army is worth 2,000 or from minute 4.
+  - **The army stays home while weak:** the staging point is just in front of the base (12% of the way) until the army
+    is worth 6,000 and not under pressure, so a rush meets the whole army and the towers together.
+  - **Scouting:** one cheap scout, from minute 2.5.
+  - **Reading a game:** `node tools/arena/game-story.mjs <game id>` prints it minute by minute: what was built, what
+    the army did, and what each army turn saw.
 
 The chosen options become the adviser's own command types, sent through `client.adviserExecute()` in groups of at most
 12 commands. They are synchronized player orders and go into the replay like clicks.

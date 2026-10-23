@@ -35,6 +35,20 @@ function rolesOf(item) {
 }
 const roleOf = (item) => rolesOf(item)[0];
 
+/**
+ * What a Support-line structure is for, from its catalog name: "ground" (towers and bunkers that shoot ground units),
+ * "air", "coast", "wall" (walls and gates: never worth a turn against an AI), or "support" (no weapon: relays,
+ * workshops, sensors, superweapons).
+ */
+export function defenseKind(obs, item) {
+  const n = nameOf(obs, item);
+  if (/\bwall\b|\bgate\b|fence/i.test(n)) return "wall";
+  if (/\bAA\b|anti-air|air-defense|air defense|flak|patriot|\bsam\b|skyshield|interceptor|zu-23|siper|raad/i.test(n)) return "air";
+  if (/coastal|denial missile/i.test(n)) return "coast";
+  if (/bunker|sentry|pill ?box|turret|guard tower|bastion|autocannon|anti-armor|\btow\b|tesla|arc coil|spectrum tower|grand cannon|prism|emplacement|cannon/i.test(n)) return "ground";
+  return "support";
+}
+
 const roleText = {
   power: "more power", refinery: "income: comes with a harvester", barracks: "trains infantry", factory: "builds vehicles",
   airfield: "builds aircraft", shipyard: "builds ships", radar: "radar and advanced units", tech: "technology", defense: "base defense",
@@ -114,21 +128,26 @@ export function plan(obs, memory = {}) {
   const available = [...new Set(obs.availableProduction.map((i) => i.toLowerCase()))].filter((i) => !i.endsWith("f") || !tree[i.slice(0, -1)]);
   const owned = (pred) => obs.buildings.filter((b) => pred(b.kind)).length;
   const t = threat(obs);
+  const towers = owned((k) => info(k).queue === "Support" && defenseKind(obs, k) === "ground");
+  const minutes = obs.tick / 25 / 60;
+  const DEFENSE_TEXT = { ground: "a tower that shoots ground attackers", air: "anti-air defense", coast: "coastal defense against ships", support: "support structure, no weapon" };
   for (const [queue, name] of Object.entries(QUEUES)) {
     if (!asking || busy.has(queue)) continue;
-    // Base defenses are only worth a question under pressure or with credits to spare.
-    if (queue === "Support" && t.level === "calm" && obs.cash < 3000) continue;
-    const items = available.filter((i) => info(i).queue === queue && !isMcv(i, obs));
+    // Base defenses: asked under pressure, until the first two towers stand (an AI rush can come by minute 2), or with
+    // credits to spare.
+    if (queue === "Support" && t.level === "calm" && !(minutes >= 1.2 && towers < 2) && obs.cash < 3000) continue;
+    // Walls and gates are never worth a turn against the engine's AI.
+    const items = available.filter((i) => info(i).queue === queue && !isMcv(i, obs) && !(queue === "Support" && defenseKind(obs, i) === "wall"));
     if (!items.length) continue;
     const options = items.map((item) => {
       const i = info(item), cost = i.cost ?? 0;
       const batch = BATCH[queue] ?? 1, n = isHarvester(item, obs) ? 1 : batch;
       const have = queue === "Building" || queue === "Support" ? owned((k) => baseType(k) === baseType(item)) : obs.units.filter((u) => baseType(u.kind) === baseType(item)).length;
-      const what = queue === "Building" || queue === "Support" ? roleText[roleOf(item)] : isHarvester(item, obs) ? "more income" : support.test(nameOf(obs, item)) ? "support unit" : "combat unit";
+      const what = queue === "Support" ? DEFENSE_TEXT[defenseKind(obs, item)] : queue === "Building" ? roleText[roleOf(item)] : isHarvester(item, obs) ? "more income" : support.test(nameOf(obs, item)) ? "support unit" : "combat unit";
       return {
         value: item, label: `${n > 1 ? `${n} × ` : ""}${nameOf(obs, item)}`,
         description: `${nameOf(obs, item)}: ${what}; costs ${cost * n}; you have ${have}.`,
-        cost: cost * n, role: queue === "Building" || queue === "Support" ? roleOf(item) : what, roles: queue === "Building" || queue === "Support" ? rolesOf(item) : [],
+        cost: cost * n, role: queue === "Support" ? defenseKind(obs, item) : queue === "Building" ? roleOf(item) : what, roles: queue === "Building" || queue === "Support" ? rolesOf(item) : [],
         commands: Array.from({ length: n }, () => ({ action: queue === "Building" || queue === "Support" ? "build" : "train", item_type: item })),
       };
     });
@@ -160,9 +179,11 @@ export function plan(obs, memory = {}) {
       if (near.length) options.push({ value: "defend", label: "Defend the base", description: `Send the ${near.length} units near the base at the closest enemy (${t.nearest ?? "?"} cells away).`,
         commands: order(near, contact) });
     }
-    // One scout at a time: offered again 45 game seconds after the last one was sent.
-    if (!targets.length && front.far && tick - (memory.lastScoutTick ?? -1e9) >= 25 * 45) {
-      const scout = [...army].sort((a, b) => (b.speed ?? 0) - (a.speed ?? 0))[0];
+    // One scout at a time, from minute 2.5 (the opening army stays home for an early rush), offered again 45 game
+    // seconds after the last one was sent: the cheapest of the faster half, never an expensive tank.
+    if (!targets.length && front.far && tick >= 25 * 150 && tick - (memory.lastScoutTick ?? -1e9) >= 25 * 45) {
+      const bySpeed = [...army].sort((a, b) => (b.speed ?? 0) - (a.speed ?? 0)).slice(0, Math.max(1, Math.ceil(army.length / 2)));
+      const scout = bySpeed.sort((a, b) => (info(a.kind).cost ?? 300) - (info(b.kind).cost ?? 300))[0];
       options.push({ value: "scout", label: "Scout for the enemy", description: `Send the fastest unit toward the far side of the map to find the enemy base (${Math.round(obs.exploredPercent)}% explored).`,
         commands: order([scout], front.far) });
     }
@@ -181,10 +202,21 @@ export function plan(obs, memory = {}) {
 }
 
 /**
+ * Under pressure: the enemy is at the base, or what we can see of its army outweighs ours. A player under pressure
+ * keeps the army home, builds towers and units, and saves expansion and technology for later.
+ */
+export function underPressure(obs) {
+  const t = threat(obs);
+  const ours = valueOf(fighters(obs)), theirs = valueOf(obs.visibleEnemies);
+  return t.level === "high" || t.level === "critical" || (theirs > 1500 && theirs > ours * 1.2);
+}
+
+/**
  * Where the army stands: the enemy buildings we know of, the one to hit next (the nearest to our base: the enemy's
- * base is worn down from its edge, the way the engine's own AI attacks), a staging point 40% of the way to the enemy
- * base's centre (or toward the far side of the map while it is unknown), and which idle fighters are at home,
- * gathered at the staging point, or anywhere else forward.
+ * base is worn down from its edge, the way the engine's own AI attacks), a staging point toward the enemy base's
+ * centre (or the far side of the map while it is unknown), and which idle fighters are at home, gathered at the
+ * staging point, or anywhere else forward. The staging point is 40% of the way there once the army is strong, and
+ * just in front of the base (12%) while it is weak or under pressure, so a rush meets the whole army at home.
  */
 export function armyFront(obs, base = centroid(obs.buildings) ?? centroid(obs.units)) {
   const army = fighters(obs);
@@ -192,12 +224,16 @@ export function armyFront(obs, base = centroid(obs.buildings) ?? centroid(obs.un
   const far = base && { cellX: Math.max(1, Math.min(obs.mapWidth - 2, obs.mapWidth - base.cellX)), cellY: Math.max(1, Math.min(obs.mapHeight - 2, obs.mapHeight - base.cellY)) };
   const target = targets.length && base ? [...targets].sort((a, b) => sq(a, base) - sq(b, base))[0] : null;
   const toward = centroid([...obs.visibleEnemyBuildings, ...(obs.rememberedEnemyBuildings ?? [])]) ?? far;
-  const staging = base && toward ? { cellX: Math.round(base.cellX + (toward.cellX - base.cellX) * 0.4), cellY: Math.round(base.cellY + (toward.cellY - base.cellY) * 0.4) } : null;
+  const strong = valueOf(army) >= 6000 && !underPressure(obs);
+  const reach = strong ? 0.4 : 0.12;
+  const staging = base && toward ? { cellX: Math.round(base.cellX + (toward.cellX - base.cellX) * reach), cellY: Math.round(base.cellY + (toward.cellY - base.cellY) * reach) } : null;
   const gatherFrom = base;
   const idle = army.filter((u) => u.idle);
-  const home = gatherFrom ? idle.filter((u) => sq(u, gatherFrom) <= 16 ** 2) : [];
-  const gathered = staging ? idle.filter((u) => !home.includes(u) && sq(u, staging) <= 10 ** 2) : [];
-  return { army, targets, target, far, staging, idle, home, gathered };
+  // At home: idle near the base and not already standing at the staging point (which can be close by when weak).
+  const atStaging = (u) => staging && sq(u, staging) <= 10 ** 2;
+  const home = gatherFrom ? idle.filter((u) => sq(u, gatherFrom) <= 16 ** 2 && !atStaging(u)) : [];
+  const gathered = staging ? idle.filter((u) => !home.includes(u) && atStaging(u)) : [];
+  return { army, targets, target, far, staging, idle, home, gathered, strong };
 }
 
 /**
@@ -212,13 +248,20 @@ export function scriptedAnswers(obs, questions) {
   const sameType = (item) => obs.buildings.filter((b) => baseType(b.kind) === baseType(item)).length;
   const minutes = obs.tick / 25 / 60, spare = obs.powerProvided - obs.powerDrained;
   const enemyValue = state.enemySeen.unitValue, armyValue = state.army.value;
-  // What each structure role is worth now; a building is worth its best role.
+  const pressure = underPressure(obs), rich = obs.cash > 4000;
+  const towers = obs.buildings.filter((b) => info(b.kind).queue === "Support" && defenseKind(obs, b.kind) === "ground").length;
+  // What each structure role is worth now; a building is worth its best role. Under pressure, expansion and technology
+  // wait (credits go to units and towers) unless credits pile up.
   const need = {
     power: spare < 10 ? 6 : spare < 60 && obs.cash > 1500 ? 1.5 : -1,
-    refinery: !has("refinery") ? 6 : refineries < 2 && minutes > 2 ? 3.5 : refineries < 3 && minutes > 6 && obs.cash > 2500 ? 2 : -1,
-    barracks: !has("barracks") && !queued("barracks") ? 4.5 : -1, factory: !has("factory") && has("refinery") ? 5 : -1,
-    radar: !has("radar") && has("factory") ? 3 : -1, airfield: !has("airfield") && has("radar") && obs.cash > 2500 ? 1 : -1,
-    tech: has("radar") && obs.cash > 3000 ? 1.5 : -1, shipyard: -2,
+    // A second refinery once the base can hold: an army worth 2,000 or minute 4 (an AI rush arrives at minutes 2-5).
+    refinery: !has("refinery") ? 6 : pressure && !rich ? -1 : refineries < 2 && minutes > 2 && (armyValue >= 2000 || minutes >= 4 || rich) ? 3.5 : refineries < 3 && minutes > 6 && obs.cash > 2500 ? 2 : -1,
+    barracks: !has("barracks") && !queued("barracks") ? 4.5 : -1,
+    // The first two towers come before the war factory (2,000 credits) unless credits are plentiful: an AI rush that
+    // arrives at minute 2-3 otherwise meets a base with no money left for defence.
+    factory: !has("factory") && has("refinery") && (towers >= 2 || minutes >= 3.5 || obs.cash >= 2600) ? 5 : -1,
+    radar: !has("radar") && has("factory") && (!pressure || rich) ? 3 : -1, airfield: !has("airfield") && has("radar") && obs.cash > 2500 && !pressure ? 1 : -1,
+    tech: has("radar") && obs.cash > 3000 && (!pressure || rich) ? 1.5 : -1, shipyard: -2,
   };
   const answers = {};
   for (const q of questions) {
@@ -226,7 +269,7 @@ export function scriptedAnswers(obs, questions) {
       if (q.name === "army") {
         const f = armyFront(obs), forward = f.idle.filter((u) => !f.home.includes(u)), forwardValue = valueOf(forward);
         const atTarget = f.target ? forward.filter((u) => sq(u, f.target) <= 15 ** 2).length : 0;
-        if (o.value === "defend") return t.level === "critical" || t.level === "high" ? 6 : 1;
+        if (o.value === "defend") return t.level === "critical" || t.level === "high" || (t.nearest !== null && t.nearest <= 15) ? 6 : 1;
         // Strike with a gathered group, and keep units already at the enemy base pushing on to the next building.
         if (o.value === "attack") return atTarget >= 2 ? 5.5 : forward.length >= 10 && forwardValue >= Math.max(3500, enemyValue * 1.2) ? 5.5 : forward.length >= 18 ? 5 : -1;
         if (o.value === "scout") return army.length >= 2 ? 3 : 0.5;
@@ -241,11 +284,19 @@ export function scriptedAnswers(obs, questions) {
         const copies = ["power", "refinery"].some((r) => o.roles.includes(r)) ? 0 : sameType(o.value) * (obs.cash > 5000 ? 1 : 3);
         return best - copies + (affordable ? 0 : -3);
       }
-      if (q.name === "defense") return (t.level === "high" || t.level === "critical") && obs.cash > 1000 && o.cost <= 1500 ? 3 : -1;
-      if (o.role === "more income") return obs.harvesterCount < desiredHarvesters(obs) && has("refinery") ? 6 : -2;
+      if (q.name === "defense") {
+        // Towers that shoot ground attackers: two early (an AI rush can arrive by minute 2), more under pressure, a
+        // few more once credits pile up. The strongest affordable one. Anti-air, coast guns and support buildings
+        // rarely, since the opponents attack by land.
+        if (o.role !== "ground") return o.role === "air" && rich && towers >= 3 ? 0.5 : -2;
+        const wanted = pressure ? towers < 6 : minutes >= 1.2 ? towers < 2 : false;
+        return (wanted || (rich && towers < 4)) && affordable ? 4 + Math.min(1.5, o.cost / 1000) : -1;
+      }
+      // Under pressure, a harvester waits unless we have none: the credits buy combat units first.
+      if (o.role === "more income") return obs.harvesterCount < desiredHarvesters(obs) && has("refinery") && (!pressure || obs.harvesterCount === 0) ? 6 : -2;
       if (o.role === "support unit") return -1.5;
-      // Combat units: keep every factory busy with the strongest unit we can afford.
-      return affordable ? 2 + Math.min(3, o.cost / 700) : -3;
+      // Combat units: keep every factory busy with the strongest unit we can afford; more so under pressure.
+      return affordable ? 2 + Math.min(3, o.cost / 700) + (pressure ? 1 : 0) : -3;
     };
     const scores = q.options.map(score);
     const max = Math.max(...scores), exp = scores.map((s) => Math.exp((s - max) * 1.5)), sum = exp.reduce((a, b) => a + b, 0);

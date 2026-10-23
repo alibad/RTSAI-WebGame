@@ -1,7 +1,7 @@
 // One AI Arena match in the live game's sign-in-free twin page: our seat (Multi0) is played by a brain, the other
 // seat by the engine's own AI at the chosen skill. Orders go through the same native co-commander path the public
 // game's adviser uses (adviserObserve / adviserExecute), so they are ordinary synchronized player orders.
-import { plan, scriptedAnswers } from "./brain.mjs";
+import { plan, scriptedAnswers, describe } from "./brain.mjs";
 import { decide, PROVIDERS } from "./providers.mjs";
 
 /** The opponent skills of the game's Battle simulator (web/src/sandbox.ts AI_SKILLS), as skirmish seats. Veteran
@@ -102,6 +102,8 @@ export async function runMatch(spec, env) {
       // The army is looked at every 5 game seconds, whether or not it had a choice to make this time.
       if (armyTurn) memory.lastArmyTick = obs.tick;
       const entry = { tick: obs.tick, auto: [], questions: [], ms: 0, usd: 0, inputTokens: 0 };
+      // What an army turn saw, for reading a game afterwards (tools/arena/game-story.mjs).
+      if (armyTurn) { const d = describe(obs); entry.seen = `threat ${d.threat}; enemy army in sight ${d.enemySeen.unitValue}; ours ${d.army.value}; credits ${d.credits}`; }
       for (const a of auto) { const r = await execute("auto", a.commands, obs.tick); entry.auto.push({ label: a.label, accepted: !!r.accepted }); }
       if (questions.length) {
         const think = spec.pauseWhileThinking && PROVIDERS[spec.provider]?.label && spec.provider !== "scripted";
@@ -127,7 +129,7 @@ export async function runMatch(spec, env) {
         }
         if (questions.some((q) => q.name !== "army")) memory.lastAskTick = obs.tick;
       }
-      if (entry.auto.length || entry.questions.length) { decisions.push(entry); memory.notBefore = obs.tick + 12; }
+      if (entry.auto.length || entry.questions.length || entry.seen) { decisions.push(entry); if (entry.auto.length || entry.questions.length) memory.notBefore = obs.tick + 12; }
       await sleep(250);
     }
   } catch (e) {
