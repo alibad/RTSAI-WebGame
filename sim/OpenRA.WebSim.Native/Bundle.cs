@@ -203,7 +203,7 @@ static class Bundle
 				Add("mods/rtsai-topdown/mod.yaml", Encoding.UTF8.GetBytes(WebModYaml(File.ReadAllText(Path.Combine(primaryDir, "mod.yaml")), Directory.Exists(content), true, soundFallbacks: soundFallbacks)));
 			}
 			Add("mods/rtsai/web/web-rules.yaml", Encoding.UTF8.GetBytes(WebRules));
-			Add("mods/rtsai/web/web-names.ftl", Encoding.UTF8.GetBytes(WebNames));
+			Add("mods/rtsai/web/web-names.ftl", Encoding.UTF8.GetBytes(WebNames(modDir)));
 
 			var blank = Path.Combine(primaryDir, "maps", classic ? "blank" : "blank-shellmap");
 			Add($"mods/{modId}/maps/web-arena/map.bin", File.ReadAllBytes(Path.Combine(blank, "map.bin")));
@@ -517,15 +517,9 @@ static class Bundle
 		return yaml.Insert(end, "\t" + entry + "\n");
 	}
 
-	// UI text only (bot names as the standalone build shows them).
-	const string WebNames =
-		"## Web build: player-facing names (RTSAI-WebGame Bundle.cs)\n" +
-		"ra2-bot-normal = Normal AI\n" +
-		"ra2-bot-medium = Medium AI\n" +
-		"ra2-bot-rush = Rush AI\n" +
-		"ra2-bot-turtle = Turtle AI\n" +
-		"ra2-bot-naval = Naval AI\n" +
-		"web-idle = Idle AI\n";
+	// Use the desktop's authoritative names. A copied list hid difficulty changes in the browser.
+	static string WebNames(string modDir) => File.ReadAllText(Path.Combine(modDir, "languages", "native-preview.ftl")) +
+		"\nweb-idle = Idle AI\n";
 
 	// UI-only and lobby-only changes; nothing here alters unit, weapon or economy rules.
 	internal const string WebRules =
