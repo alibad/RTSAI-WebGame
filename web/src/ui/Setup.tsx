@@ -253,7 +253,7 @@ export function Setup({ game, utilities }: { game: Game; utilities: ReactNode })
                 <div className="sk-opp-fields">
                   <SearchSelect size="sm" value={o.faction} onValueChange={(v) => updateOpponent(i, { faction: v })} options={factionOptions} aria-label={`Opponent ${i + 1} nation`} />
                   <div className="sk-opp-row">
-                    <label className="sk-opp-choice"><span>Difficulty</span><OptionSelect size="sm" value={o.bot} onValueChange={(v) => updateOpponent(i, { bot: v })} options={botOptions} aria-label={`Opponent ${i + 1} difficulty`} /></label>
+                    <label className="sk-opp-choice"><span>AI profile</span><OptionSelect size="sm" value={o.bot} onValueChange={(v) => updateOpponent(i, { bot: v })} options={botOptions} aria-label={`Opponent ${i + 1} AI profile`} /></label>
                     <label className="sk-opp-choice"><span>Tactics</span><OptionSelect size="sm" aria-label={`Opponent ${i + 1} tactics`} value={o.doctrine ?? "standard"} onValueChange={(doctrine) => updateOpponent(i, { doctrine })} options={PERSONALITIES} /></label>
                   </div>
                 </div>
