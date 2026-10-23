@@ -271,6 +271,11 @@ static class Program
 		if (opts.TryGetValue("timings", out var timingFile))
 			File.WriteAllLines(timingFile, tickTimes.Select(x => x.ToString("F3")));
 
+		if (opts.TryGetValue("outcome", out var outcomeFile))
+			File.WriteAllText(outcomeFile, JsonSerializer.Serialize(new { tick = SimHost.World.WorldTick,
+				players = SimHost.PlayablePlayers().Select(p => new { slot = p.InternalName,
+					faction = p.Faction.InternalName, win = p.WinState.ToString() }) }));
+
 		return 0;
 	}
 
