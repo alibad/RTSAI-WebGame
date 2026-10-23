@@ -21,7 +21,7 @@ static class SkirmishAudit
 		var cap = int.Parse(opts.GetValueOrDefault("ticks", "45000"));
 		if (cap <= 0) throw new ArgumentException("Tick cap must be positive.");
 		var wall = Stopwatch.StartNew();
-		SimHost.Boot(opts["root"]);
+		SimHost.Boot(opts["root"], opts.GetValueOrDefault("support"));
 		SimHost.Start(scenario);
 		var world = SimHost.World;
 		var players = world.Players.Where(p => p.Playable && !p.NonCombatant).ToArray();
