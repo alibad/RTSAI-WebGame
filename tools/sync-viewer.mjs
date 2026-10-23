@@ -6,12 +6,15 @@
 import { execFileSync } from "node:child_process";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import fs from 'node:fs';
+import { verifySiteInput } from './release-site-input.mjs';
 
 const repo = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const i = process.argv.indexOf("--from");
 const site = path.resolve(repo, i > 0 ? process.argv[i + 1] : process.env.RTSAI_SITE_ROOT ?? "../RTSAI-Web");
 if (process.argv.includes('--published')) {
-  execFileSync('git', ['diff', '--quiet', 'HEAD', '--', 'data/shared-content.generated.json', 'data/unit-modifications.generated.json'], { cwd: site, stdio: 'inherit' });
+  if (fs.existsSync(path.join(site, '.release-site-input.json'))) verifySiteInput(site);
+  else execFileSync('git', ['diff', '--quiet', 'HEAD', '--', 'data/shared-content.generated.json', 'data/unit-modifications.generated.json'], { cwd: site, stdio: 'inherit' });
 } else {
   execFileSync(process.execPath, ['scripts/sync-shared-content.mjs'], { cwd: site, stdio: 'inherit' });
 }

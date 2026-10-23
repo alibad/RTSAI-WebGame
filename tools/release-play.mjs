@@ -5,6 +5,7 @@
 //   node tools/release-play.mjs status                 what is live, what main would change, who holds the lock
 //   node tools/release-play.mjs prepare --update "<what players get>" [--runtime rebuild] [--data <build-public output>]
 //        [--inputs <prepare-inputs output>] [--sizes <dir>...] [--no-smoke] [--dry [--engine <commit>]]
+//        [--published-site: verify/export the already-live website commit as a Git-free build dependency]
 //     builds, smoke-tests, adds new runtime/data roots to Cloudflare (immutable, unused until the page names them)
 //     and makes a Vercel PREVIEW of the page, checked byte for byte. Production is untouched.
 //     --dry: build and smoke-test only (new roots served locally); deploys nothing, and may run on unpushed commits
@@ -22,6 +23,7 @@ import path from "node:path";
 import zlib from "node:zlib";
 import { fileURLToPath } from "node:url";
 import { createSaveVersionCatalog, refreshSaveClients } from './save-version-catalog.mjs';
+import { publishedSiteInput, verifySiteInput } from './release-site-input.mjs';
 
 const repo = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const config = JSON.parse(fs.readFileSync(path.join(repo, "tools", "release-play.json"), "utf8"));
@@ -274,18 +276,26 @@ function webDependencies() {
 }
 
 /** Build from the clean canonical website checkout at origin/main. Worktrees require an explicit owner request. */
-function siteCheckout(webgame) {
+function siteCheckout(webgame, publishedCommit) {
   const site = config.repos.site;
   gitIn(site, "fetch", "--quiet", "origin");
   const commit = gitIn(site, "rev-parse", "origin/main");
-  const dir = site;
-  if (gitIn(dir, "branch", "--show-current") !== "main" || gitIn(dir, "rev-parse", "HEAD") !== commit)
+  if (gitIn(site, "branch", "--show-current") !== "main")
+    refuse(`${site} must remain on canonical main`);
+  let input = { dir: site, commit, webgame };
+  if (flag("published-site")) {
+    if (commit !== publishedCommit) refuse('--published-site requires origin/main to match the website commit already live; coordinate its publication separately');
+    input = { ...publishedSiteInput(site, work, commit), webgame };
+    say(`  verified frozen website dependency ${commit.slice(0, 7)}; canonical unpublished work is untouched`);
+  }
+  const dir = input.dir;
+  if (!input.frozen && gitIn(dir, "rev-parse", "HEAD") !== commit)
     refuse(`${dir} must be on canonical main at origin/main before a release; no automatic worktree or checkout is created`);
-  if (gitIn(dir, "status", "--porcelain", "--untracked-files=no"))
+  if (!input.frozen && gitIn(dir, "status", "--porcelain", "--untracked-files=no"))
     refuse(`${dir} has local source changes; commit and validate them on main before a release`);
   const lock = sha("sha1", fs.readFileSync(path.join(dir, "package-lock.json")));
   const marker = path.join(dir, "node_modules", ".release-play-lock");
-  if (!fs.existsSync(marker) || fs.readFileSync(marker, "utf8") !== lock) {
+  if (!input.sharedDependencies && (!fs.existsSync(marker) || fs.readFileSync(marker, "utf8") !== lock)) {
     say(`  npm ci in ${dir} (its package-lock.json changed)`);
     execSync("npm ci --no-audit --no-fund", { cwd: dir, stdio: "inherit" });
     fs.writeFileSync(marker, lock);
@@ -297,7 +307,7 @@ function siteCheckout(webgame) {
   // would mix local editing candidates into a production page whose runtime and data use frozen published inputs.
   run(process.execPath, [path.join(repo, "tools", "sync-viewer.mjs"), "--from", dir, "--published"], { stdio: ["ignore", "ignore", "inherit"] });
   run(process.execPath, [path.join(repo, "tools", "sync-catalog.mjs"), "--from", dir], { stdio: ["ignore", "ignore", "inherit"] });
-  return { dir, commit, webgame };
+  return input;
 }
 
 // A build may spend minutes compiling its already-captured runtime. Recheck page inputs around both Vite builds
@@ -306,7 +316,13 @@ function assertPageSources(site) {
   const changed = git("diff", "--name-only", site.webgame, "--", "web");
   const untracked = git("ls-files", "--others", "--exclude-standard", "--", "web");
   if (changed || untracked) refuse(`web/ changed after release source capture ${site.webgame.slice(0, 7)}: coordinate a clean page window before retrying`);
-  if (gitIn(site.dir, "rev-parse", "HEAD") !== site.commit || gitIn(site.dir, "status", "--porcelain", "--untracked-files=no"))
+  if (site.frozen) {
+    verifySiteInput(site.dir);
+    if (gitIn(site.canonical, "rev-parse", "origin/main") !== site.commit)
+      refuse('published website origin/main changed during page build');
+    if (site.sharedDependencies && sha('sha256', fs.readFileSync(path.join(site.canonical, 'package-lock.json'))) !== sha('sha256', fs.readFileSync(path.join(site.dir, 'package-lock.json'))))
+      refuse('canonical website dependency lock changed during frozen-input build');
+  } else if (gitIn(site.dir, "rev-parse", "HEAD") !== site.commit || gitIn(site.dir, "status", "--porcelain", "--untracked-files=no"))
     refuse(`website source changed after capture ${site.commit.slice(0, 7)}: preserve the pending work and retry in a clean page window`);
 }
 
@@ -316,7 +332,7 @@ function buildPage(out, { rtBase, dataBase, profiles, gate, site }) {
   const env = Object.fromEntries(Object.entries(process.env).filter(([k]) => !k.startsWith("VITE_")));
   Object.assign(env, config.page, {
     VITE_DEFAULT_PROFILE: "public", VITE_GAME_MODES: profiles.join(","), RTSAI_PUBLIC_BUILD: "1", VITE_STATIC_BUILD: "1",
-    VITE_RT_BASE: rtBase, VITE_DATA_BASE: dataBase, VITE_FIREBASE_EMULATORS: "", RTSAI_SITE_ROOT: site.dir,
+    VITE_RT_BASE: rtBase, VITE_DATA_BASE: dataBase, VITE_FIREBASE_EMULATORS: "", RTSAI_SITE_ROOT: site.dir, RTSAI_SITE_COMMIT: site.commit,
   }, gate ? { ...firebaseEnv(), VITE_REQUIRE_SIGNIN: "1" }
     : { VITE_REQUIRE_SIGNIN: "", VITE_FIREBASE_API_KEY: "", VITE_FIREBASE_AUTH_DOMAIN: "", VITE_FIREBASE_PROJECT_ID: "", VITE_FIREBASE_APP_ID: "", VITE_FIREBASE_MEASUREMENT_ID: "" });
   fs.rmSync(out, { recursive: true, force: true });
@@ -686,7 +702,11 @@ async function prepare() {
 
     step("page");
     webDependencies();
-    const site = siteCheckout(p.src.head);
+    const site = siteCheckout(p.src.head, p.build.release?.site);
+    const siteInput = site.frozen ? { kind: 'published-commit-export',
+      manifestSha256: sha('sha256', fs.readFileSync(path.join(site.dir, '.release-site-input.json'))),
+      files: Object.keys(verifySiteInput(site.dir).files).length } : { kind: 'canonical-checkout' };
+    Object.assign(state, { siteInput }); save();
     say(`  website source: RTSAI-Web origin/main ${site.commit.slice(0, 7)}`);
     const pageDir = path.join(rel, "page");
     buildPage(pageDir, { rtBase: host + roots.rtRoot, dataBase: host + roots.dataRoot, profiles, gate: true, site });
@@ -701,7 +721,7 @@ async function prepare() {
         ...(runtime ? { "runtime (AOT)": { files: runtime.files, raw: runtime.raw, wire: runtime.wire } } : {}) },
       runtimeSource, pageSettings: config.page,
       frontendSourceCommit: `alibad/RTSAI-WebGame@${p.src.head.slice(0, 7)}`, frontendBuiltAt: new Date().toISOString(), frontendUpdate: update, assetHost: host,
-      release: { tool: "tools/release-play.mjs", id, commit: p.src.head, site: site.commit, base: p.production } };
+      release: { tool: "tools/release-play.mjs", id, commit: p.src.head, site: site.commit, siteInput, base: p.production } };
     fs.writeFileSync(path.join(pageDir, "BUILD.json"), JSON.stringify(build, null, 2) + "\n");
     if (config.page.VITE_CAMPAIGN_BASE) {
       const r = await fetch(`${config.page.VITE_CAMPAIGN_BASE}index.json`, { method: "HEAD" });

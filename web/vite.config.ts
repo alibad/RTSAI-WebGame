@@ -23,8 +23,8 @@ function websiteSource(): Plugin {
     config() {
       if (!fs.existsSync(path.join(site, "lib", "earth-evidence.ts")))
         throw new Error(`The website's source (RTSAI-Web) isn't at ${siteCandidates.join(" or ")}. Clone it beside RTSAI-WebGame or set RTSAI_SITE_ROOT.`);
-      let commit = "";
-      try { commit = execFileSync("git", ["rev-parse", "--short=12", "HEAD"], { cwd: site }).toString().trim(); } catch { /* not a git checkout */ }
+      let commit = process.env.RTSAI_SITE_COMMIT?.slice(0, 12) ?? "";
+      if (!commit) try { commit = execFileSync("git", ["rev-parse", "--short=12", "HEAD"], { cwd: site }).toString().trim(); } catch { /* verified Git-free release input */ }
       return { define: { "import.meta.env.VITE_SITE_COMMIT": JSON.stringify(commit) } };
     },
     buildStart() {

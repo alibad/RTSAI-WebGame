@@ -429,3 +429,7 @@ The code paths those browsers would exercise:
 - **Original sounds for shared weapons, buildings and EVA** for the original countries. Weapons are shared definitions:
   per-faction sounds for a weapon modern factions also fire (the G.I.'s gun) would need per-faction weapon twins behind
   conditional armaments, which changes the actors' armaments (simulation) and needs a parity check.
+
+### Keep an already-published website dependency while canonical main is busy
+
+For an authorized game-only release, prepare --published-site can use a verified Git-free export of the website version already live. It requires RTSAI-Web origin/main to equal BUILD.json release.site; it never exports unpushed HEAD or dirty files. Every exported file is SHA256-checked around both builds and the manifest identity is recorded in BUILD.json. Canonical main and pending work remain intact. It does not authorize a Website push or remove the normal dirty/ahead guard for releases without this explicit option.
