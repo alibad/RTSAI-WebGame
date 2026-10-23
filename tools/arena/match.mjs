@@ -98,7 +98,9 @@ export async function runMatch(spec, env) {
       if (obs.error) { await sleep(400); continue; }
       if (obs.done) { await sleep(400); continue; }
       if (obs.tick < memory.notBefore) { await sleep(150); continue; }
-      const { auto, questions } = plan(obs, memory);
+      const { auto, questions, armyTurn } = plan(obs, memory);
+      // The army is looked at every 5 game seconds, whether or not it had a choice to make this time.
+      if (armyTurn) memory.lastArmyTick = obs.tick;
       const entry = { tick: obs.tick, auto: [], questions: [], ms: 0, usd: 0, inputTokens: 0 };
       for (const a of auto) { const r = await execute("auto", a.commands, obs.tick); entry.auto.push({ label: a.label, accepted: !!r.accepted }); }
       if (questions.length) {

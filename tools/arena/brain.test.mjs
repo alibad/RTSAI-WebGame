@@ -46,14 +46,16 @@ test("a building that is both radar and airfield counts as both, so it is not bu
   assert.notEqual(a.build.choice, "gaweap");
 });
 
-test("new units gather at the front first instead of trickling into the enemy base", () => {
+test("new units always gather at the front instead of piling up at home or trickling into the enemy base", () => {
   const army = Array.from({ length: 12 }, (_, i) => actor(10 + i, "mtnk", 22, 22, { canAttack: true, speed: 60 }));
   const obs = { ...base, cash: 300, buildings: [actor(2, "gacnst", 20, 20)], units: army, rememberedEnemyBuildings: [actor(99, "nacnst", 100, 100)] };
-  const { questions } = plan(obs);
+  const { questions, auto, armyTurn } = plan(obs);
+  assert.ok(armyTurn);
   const q = questions.find((x) => x.name === "army");
-  assert.ok(!q.options.some((o) => o.value === "attack"), "nothing is forward yet");
-  assert.equal(scriptedAnswers(obs, questions).army.choice, "gather");
-  assert.equal(q.options.find((o) => o.value === "gather").commands.length, 12);
+  assert.ok(!q?.options.some((o) => o.value === "attack"), "nothing is forward yet");
+  const gather = auto.find((a) => /Gather/.test(a.label));
+  assert.equal(gather.commands.length, 12);
+  assert.ok(gather.commands.every((c) => c.action === "move"));
 });
 
 test("a gathered group attacks together; units already fighting are left alone", () => {
@@ -65,7 +67,15 @@ test("a gathered group attacks together; units already fighting are left alone",
   assert.equal(scriptedAnswers(obs, questions).army.choice, "attack");
   assert.equal(attack.commands.length, 12);
   assert.ok(!attack.commands.some((c) => c.actor_id === 40));
-  assert.deepEqual([attack.commands[0].target_x, attack.commands[0].target_y], [100, 100], "the construction yard comes first");
+  assert.deepEqual([attack.commands[0].target_x, attack.commands[0].target_y], [100, 100], "the nearest enemy building comes first");
+});
+
+test("a building in sight gets an explicit attack order; units do not fire at plain buildings on their own", () => {
+  const gathered = Array.from({ length: 12 }, (_, i) => actor(10 + i, "mtnk", 52, 52, { canAttack: true, speed: 60 }));
+  const yard = actor(99, "nacnst", 100, 100);
+  const obs = { ...base, cash: 300, buildings: [actor(2, "gacnst", 20, 20)], units: gathered, visibleEnemyBuildings: [yard], rememberedEnemyBuildings: [yard] };
+  const attack = plan(obs).questions.find((x) => x.name === "army").options.find((o) => o.value === "attack");
+  assert.ok(attack.commands.every((c) => c.action === "attack" && c.target_actor_id === 99));
 });
 
 test("the shared state names things and never exposes engine ids", async () => {

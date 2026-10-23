@@ -144,12 +144,16 @@ export function plan(obs, memory = {}) {
     const front = armyFront(obs, base);
     const { targets, target, staging, gathered, home, idle } = front;
     const order = (list, cell, action = "attack_move") => list.map((u) => ({ action, actor_id: u.actorId, target_x: cell.cellX, target_y: cell.cellY }));
+    // Units fire at enemy units and defences on their own, not at ordinary buildings: a building in sight gets an
+    // explicit attack order (as the engine's own AI gives); one under fog is approached with attack-move.
+    const strike = (list, building) => obs.visibleEnemyBuildings.some((b) => b.actorId === building.actorId)
+      ? list.map((u) => ({ action: "attack", actor_id: u.actorId, target_actor_id: building.actorId })) : order(list, building);
     const options = [];
     // Units already moving or fighting keep their orders: only idle units are given new ones, so a fight is never
     // interrupted and fresh units never trickle one by one into the enemy's defences.
     if (target && idle.length - home.length > 0)
       options.push({ value: "attack", label: "Attack the enemy base", description: `Send the ${idle.length - home.length} idle units gathered at the front (worth ${valueOf(idle.filter((u) => !home.includes(u)))}) together at the nearest known enemy building; ${targets.length} known enemy buildings remain.`,
-        commands: order(idle.filter((u) => !home.includes(u)), target) });
+        commands: strike(idle.filter((u) => !home.includes(u)), target) });
     if (obs.visibleEnemies.length && base) {
       const contact = [...obs.visibleEnemies].sort((a, b) => sq(a, base) - sq(b, base))[0];
       const near = army.filter((u) => sq(u, base) <= 30 ** 2 && (u.idle || !u.targetId));
@@ -165,29 +169,31 @@ export function plan(obs, memory = {}) {
     if (!targets.length && front.far && idle.length >= 8)
       options.push({ value: "sweep", label: "Sweep toward the enemy side", description: `Move the ${idle.length} idle combat units together toward the far side of the map, fighting what they meet, to find the enemy base.`,
         commands: order(idle, front.far) });
-    if (home.length && staging)
-      options.push({ value: "gather", label: "Gather at the front", description: `Move the ${home.length} idle units at the base to the staging point toward the enemy (${gathered.length} already there).`,
-        commands: order(home, staging, "move") });
-    options.push({ value: "hold", label: "Hold", description: "Keep every unit where it is.", commands: [] });
+    // Gathering is not a choice: whatever the army does, idle units at home walk to the staging point (unless the base
+    // is under pressure), so new units always join the group instead of piling up at home.
+    if (home.length && staging && !["high", "critical"].includes(t.level))
+      auto.push({ label: `Gather ${home.length} units at the front`, commands: order(home, staging, "move") });
+    options.push({ value: "hold", label: "Hold", description: `Keep the units where they are (${gathered.length} gathered at the front).`, commands: [] });
     if (options.length >= 2) questions.push({ name: "army", type: "choice", instructions: "What should the army do now?", options });
+    return { auto, questions, armyTurn: true };
   }
-  return { auto, questions };
+  return { auto, questions, armyTurn: false };
 }
 
 /**
- * Where the army stands: the enemy buildings we know of, the one to hit next (production and economy first, then the
- * nearest), a staging point 40% of the way there (or toward the far side of the map while the enemy base is unknown),
- * and which idle fighters are at home, gathered at the staging point, or anywhere else forward.
+ * Where the army stands: the enemy buildings we know of, the one to hit next (the nearest to our base: the enemy's
+ * base is worn down from its edge, the way the engine's own AI attacks), a staging point 40% of the way to the enemy
+ * base's centre (or toward the far side of the map while it is unknown), and which idle fighters are at home,
+ * gathered at the staging point, or anywhere else forward.
  */
 export function armyFront(obs, base = centroid(obs.buildings) ?? centroid(obs.units)) {
   const army = fighters(obs);
   const targets = obs.visibleEnemyBuildings.length ? obs.visibleEnemyBuildings : obs.rememberedEnemyBuildings ?? [];
   const far = base && { cellX: Math.max(1, Math.min(obs.mapWidth - 2, obs.mapWidth - base.cellX)), cellY: Math.max(1, Math.min(obs.mapHeight - 2, obs.mapHeight - base.cellY)) };
-  const priority = (b) => { const r = rolesOf(b.kind); return /cnst|yard/i.test(b.kind) || /construction yard/i.test(nameOf(obs, b.kind)) ? 0 : r.some((x) => ["factory", "barracks", "refinery", "airfield"].includes(x)) ? 1 : 2; };
-  const gatherFrom = base;
-  const target = targets.length && base ? [...targets].sort((a, b) => priority(a) - priority(b) || sq(a, base) - sq(b, base))[0] : null;
-  const toward = target ?? far;
+  const target = targets.length && base ? [...targets].sort((a, b) => sq(a, base) - sq(b, base))[0] : null;
+  const toward = centroid([...obs.visibleEnemyBuildings, ...(obs.rememberedEnemyBuildings ?? [])]) ?? far;
   const staging = base && toward ? { cellX: Math.round(base.cellX + (toward.cellX - base.cellX) * 0.4), cellY: Math.round(base.cellY + (toward.cellY - base.cellY) * 0.4) } : null;
+  const gatherFrom = base;
   const idle = army.filter((u) => u.idle);
   const home = gatherFrom ? idle.filter((u) => sq(u, gatherFrom) <= 16 ** 2) : [];
   const gathered = staging ? idle.filter((u) => !home.includes(u) && sq(u, staging) <= 10 ** 2) : [];
@@ -223,7 +229,6 @@ export function scriptedAnswers(obs, questions) {
         if (o.value === "defend") return t.level === "critical" || t.level === "high" ? 6 : 1;
         // Strike with a gathered group, and keep units already at the enemy base pushing on to the next building.
         if (o.value === "attack") return atTarget >= 2 ? 5.5 : forward.length >= 10 && forwardValue >= Math.max(3500, enemyValue * 1.2) ? 5.5 : forward.length >= 18 ? 5 : -1;
-        if (o.value === "gather") return f.home.length >= 2 ? 3.5 : 0.5;
         if (o.value === "scout") return army.length >= 2 ? 3 : 0.5;
         if (o.value === "sweep") return f.idle.length >= 12 && armyValue >= 5000 ? 4 : -1;
         return 1;

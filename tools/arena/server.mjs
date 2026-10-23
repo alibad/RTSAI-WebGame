@@ -46,6 +46,14 @@ if (page) {
   for (const signal of ["SIGINT", "SIGTERM", "SIGBREAK"]) process.on(signal, () => process.exit(0));
 }
 const pageUrl = `http://127.0.0.1:${PAGE_PORT}/`;
+/** Games start only once the twin page answers (the static server takes a moment after the runner starts). */
+const pageUp = (async () => {
+  for (let i = 0; i < 120; i++) {
+    if (await fetch(pageUrl, { signal: AbortSignal.timeout(2000) }).then((r) => r.ok).catch(() => false)) return true;
+    await new Promise((r) => setTimeout(r, 250));
+  }
+  return false;
+})();
 
 function chromiumPath() {
   const root = path.join(process.env.LOCALAPPDATA ?? "", "ms-playwright");
@@ -113,6 +121,7 @@ async function start(run, job) {
   const spec = { id, runId: run.id, brain: run.brain, provider: run.provider, opponent: job.opponent, ours: job.ours, theirs: job.theirs, map: run.map, seed: job.seed,
     speed: run.speed, limit: run.limit, pauseWhileThinking: run.pauseWhileThinking, page: page && { release: page.release, page: page.page, runtime: page.runtime, data: page.data } };
   try {
+    if (!(await pageUp)) throw new Error("The live game's twin page did not start.");
     let env;
     if (run.brain === "you") {
       // A real window for the owner, at normal speed and full size.
