@@ -1,11 +1,18 @@
-param([switch]$NoOpen)
+param([switch]$NoOpen, [switch]$BrowserTab)
 $ErrorActionPreference = 'Stop'
 $repository = Split-Path $PSScriptRoot -Parent
 try {
     $result = & node (Join-Path $PSScriptRoot 'local-game.mjs') start 2>&1
     if ($LASTEXITCODE -ne 0) { throw ($result -join "`n") }
     $game = ($result -join "`n") | ConvertFrom-Json
-    if (!$NoOpen) { Start-Process $game.url }
+    if (!$NoOpen) {
+        $browser = @(
+            "$env:ProgramFiles/Google/Chrome/Application/chrome.exe",
+            "${env:ProgramFiles(x86)}/Microsoft/Edge/Application/msedge.exe"
+        ) | Where-Object { Test-Path -LiteralPath $_ } | Select-Object -First 1
+        if ($browser -and !$BrowserTab) { Start-Process -FilePath $browser -ArgumentList "--app=$($game.url)" }
+        else { Start-Process $game.url }
+    }
     Write-Output ($game | ConvertTo-Json -Compress)
 } catch {
     if (!$NoOpen) {

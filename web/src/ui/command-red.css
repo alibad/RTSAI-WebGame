@@ -1,0 +1,68 @@
+/* Owner-selected Command Red identity. Gameplay colors and battlefield pixels keep their meanings. */
+:root {
+  --background: #151719;
+  --foreground: #f5efe4;
+  --card: #22272b;
+  --card-foreground: #f5efe4;
+  --popover: #22272b;
+  --popover-foreground: #f5efe4;
+  --primary: #e15a43;
+  --primary-foreground: #151719;
+  --secondary: #2b3034;
+  --secondary-foreground: #f5efe4;
+  --muted: #2b3034;
+  --muted-foreground: #b5b8b8;
+  --accent: #49302c;
+  --accent-foreground: #f5efe4;
+  --border: #42494e;
+  --input: #51595f;
+  --field: #181d20;
+  --ring: #f18470;
+  --hud-frame: #151719;
+  --hud-panel: rgba(27, 31, 34, .95);
+  --hud-edge: #343c42;
+  --hud-edge-hi: #56616a;
+  --hud-gold: #d8b66c;
+  --hud-gold-dim: #bda36d;
+  --hud-red: #e15a43;
+  --command-accent: #e15a43;
+}
+
+.menu-root, .scr-root { background-color: #151719; }
+.menu-shade { background:
+  linear-gradient(90deg, rgba(14, 17, 20, .96), rgba(14, 17, 20, .80) 36%, rgba(14, 17, 20, .35) 72%, rgba(14, 17, 20, .6)),
+  radial-gradient(ellipse at 50% 125%, rgba(0, 0, 0, .85), transparent 62%),
+  repeating-linear-gradient(0deg, rgba(255,255,255,.02) 0 1px, transparent 1px 3px);
+}
+.menu-title h1 { color: #f5efe4; text-shadow: 0 3px 0 #000, 0 0 36px rgba(225,90,67,.16); }
+.menu-title h1 b { color: #f18470; }
+.view-tile { background-color: #151719; }
+.view-tile[data-selected="true"] { border-color: #e15a43; box-shadow: 0 0 0 4px rgba(225,90,67,.15), 0 12px 30px #0008; }
+.view-tile[data-selected="true"] .view-tile-label b { color: #fff0e5; }
+.view-tile-badge { background: #e15a43; color: #151719; }
+.menu-card, .menu-card.wide { background: linear-gradient(180deg, rgba(43,48,52,.96), rgba(21,23,25,.96)); }
+.menu-card-body b { color: #f5efe4; }
+.menu-card-body small, .menu-card.wide .menu-card-body small { color: #c4c9ca; }
+.menu-card-icon { background: rgba(225,90,67,.12); border-color: rgba(225,90,67,.55); color: #f18470; box-shadow: inset 0 0 12px rgba(225,90,67,.08); }
+.menu-card:hover, .menu-card:focus-visible { border-color: #e15a43; box-shadow: 0 18px 40px #0009, 0 0 0 1px rgba(225,90,67,.3), 0 0 30px rgba(225,90,67,.13); }
+.menu-card-brackets i { border-color: #f18470; }
+.menu-card-go { color: #f18470; }
+.menu-card:focus-visible, .view-tile:focus-visible { outline-color: #f18470; }
+.menu-utility > [data-slot="button"], .menu-subnav button { background: rgba(21,23,25,.94); }
+.menu-utility > [data-slot="button"]:hover, .menu-subnav button:hover { background: #2b3034; border-color: #f18470; color: #f5efe4; }
+.menu-notice { color: #a9b0b3; }
+.mp-launch { background: linear-gradient(180deg, #3c2b29, #201b1c); border-color: #e15a43; color: #f5efe4; }
+.mp-launch:hover { background: linear-gradient(180deg, #52332d, #292124); border-color: #f18470; }
+
+.gbtn-primary { background: linear-gradient(180deg, #f18470, #e15a43); color: #151719; border-color: #171a1c; box-shadow: 0 6px 18px rgba(225,90,67,.2); }
+.gbtn-primary:hover:not(:disabled) { box-shadow: 0 8px 22px rgba(225,90,67,.3); }
+.gbtn-secondary, .pm-item, .pm-list > .pm-slot > button { background: rgba(27,31,34,.94); }
+.gbtn-secondary:hover:not(:disabled), .pm-item:hover:not(:disabled) { background: #2b3034; }
+.hud-panel, .hud-card, .hud-sel, .hud-cmds, .gd-panel, .pm-panel, .settings-panel { background: linear-gradient(180deg, rgba(43,48,52,.97), rgba(21,23,25,.97)); color: #f5efe4; }
+.hud-inset, .settings-close, .gd-close { background-color: #151719; }
+.pm-item.is-primary { border-color: #e15a43; box-shadow: inset 3px 0 #e15a43; }
+.account-gate-primary { background: #e15a43; color: #151719; }
+.account-gate-card, .scr-panel { background-color: #20262b; }
+
+/* Portalled themed pickers inherit the same tokens as the menu that opened them. */
+[data-slot="select-content"], [data-slot="combobox-content"], [data-slot="select-popup"], [data-slot="combobox-popup"] { background: #22272b; color: #f5efe4; border-color: #56616a; }

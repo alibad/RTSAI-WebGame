@@ -21,7 +21,7 @@ foreach ($destination in $destinations) {
     $shortcut.Arguments = "-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$launcher`""
     $shortcut.WorkingDirectory = $repository
     $shortcut.Description = 'Open the checksum-verified local web game; refuse missing or mismatched builds.'
-    $shortcut.IconLocation = (Join-Path $env:SystemRoot 'System32/shell32.dll') + ',14'
+    $shortcut.IconLocation = (Join-Path $repository 'web/public/favicon.ico') + ',0'
     $shortcut.Save()
     Write-Output "Installed $destination"
 }
