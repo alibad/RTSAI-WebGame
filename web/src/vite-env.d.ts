@@ -1,6 +1,8 @@
 /// <reference types="vite/client" />
 
 interface ImportMetaEnv {
+  /** A verified local Studio build includes interp; public production defaults to AOT. */
+  readonly VITE_DEFAULT_RUNTIME?: "aot" | "interp";
   /** Explicitly enables engine diagnostics in the development server only. */
   readonly VITE_DEVELOPER_TOOLS?: string;
   /** Developer server only: opt into local-model and scripted test hooks. Never enabled by production builds. */

@@ -188,7 +188,7 @@ export default function App() {
         useStore.getState().set({ ccLocalAvailable: local });
         if (!local) g.cc.setMode("browser");
       }).catch(() => g.cc.setMode("browser"));
-    g.boot(params.get("runtime") ?? "aot", params.get("private") !== "0", profile);
+    g.boot(params.get("runtime") ?? import.meta.env.VITE_DEFAULT_RUNTIME ?? "aot", params.get("private") !== "0", profile);
     return () => { uninstallFeel(); g.dispose(); };
   }, []);
 

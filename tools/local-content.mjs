@@ -43,5 +43,9 @@ export async function startContentBuild() {
     }
   }
   if (active?.buildId !== build.buildId || active?.revision !== build.revision) throw Error('Local content port belongs to another build; it was left untouched.');
-  return { buildId: build.buildId, revision: build.revision, verified: true, url: build.webUrl };
+  // Studio builds and verifies the interpreter runtime. Its immutable payload must
+  // not be opened with the public AOT default, which is not present in this build.
+  const launchUrl = new URL(build.webUrl);
+  if (!launchUrl.searchParams.has('runtime')) launchUrl.searchParams.set('runtime', 'interp');
+  return { buildId: build.buildId, revision: build.revision, verified: true, url: launchUrl.href };
 }
