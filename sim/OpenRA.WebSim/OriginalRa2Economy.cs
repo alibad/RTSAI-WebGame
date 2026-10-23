@@ -142,8 +142,8 @@ namespace OpenRA.WebSim
     public sealed class OriginalRa2CashInfiltrationInfo : TraitInfo
     {
         public readonly BitSet<TargetableType> Types = default;
-        public readonly int Percentage = 50;
-        public readonly int Minimum = 0;
+        public readonly int Percentage = 100;
+        public readonly int Minimum = -1;
         public readonly int Maximum = int.MaxValue;
         public readonly int PlayerExperience = 0;
         public readonly int PlayerExperiencePercentage = 0;

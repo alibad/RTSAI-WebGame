@@ -17,6 +17,27 @@ static class OriginalRa2EconomyTest
     public static int Run(Dictionary<string, string> opts)
     {
         SimHost.Boot(opts["root"]);
+        var defaults = new OriginalRa2CashInfiltrationInfo();
+        Check(defaults.Percentage == 100 && defaults.Minimum == -1, "engine infiltration defaults changed");
+        if (opts.ContainsKey("classic"))
+        {
+            SimHost.Start(new ScenarioSpec { Map = "ca-all-connected", Bare = true,
+                Players = [new PlayerSpec { Slot = "Multi0", Faction = "england" }, new PlayerSpec { Slot = "Multi1", Faction = "russia", Bot = "webidle" }],
+                Options = new() { ["fog"] = "False", ["shortgame"] = "False", ["startingcash"] = "5000", ["crates"] = "False" } });
+            var cw = SimHost.World; var co = cw.LocalPlayer; var ce = cw.Players.First(p => p.InternalName == "Multi1");
+            Actor ClassicSpawn(string name, Player owner, int x, int y) => cw.CreateActor(true, name,
+                new TypeDictionary { new OwnerInit(owner), new LocationInit(new CPos(x, y)), new SkipMakeAnimsInit() });
+            ClassicSpawn("fact", co, 10, 10); ClassicSpawn("fact", ce, 35, 35);
+            var refinery = ClassicSpawn("proc", ce, 20, 20); var spy = ClassicSpawn("spy", co, 17, 20); SimHost.Tick(); SimHost.Tick();
+            var victim = ce.PlayerActor.Trait<PlayerResources>(); var thief = co.PlayerActor.Trait<PlayerResources>();
+            victim.TakeCash(victim.Cash); victim.GiveCash(200); var before = thief.Cash;
+            foreach (var t in refinery.TraitsImplementing<INotifyInfiltrated>()) t.Infiltrated(refinery, spy, BitSet<TargetableType>.FromStringsNoAlloc(["SpyInfiltrate"]));
+            var gain = thief.Cash - before; var price = spy.Info.TraitInfo<ValuedInfo>().Cost;
+            Check(gain == Math.Max(100, price) && victim.Cash == 100, "Classic fallback minimum changed");
+            Check(co.PlayerActor.TraitsImplementing<ProductionQueue>().All(q => q is not OriginalRa2ProductionQueue), "Classic queue changed");
+            Console.WriteLine("CLASSIC-CASH " + JsonSerializer.Serialize(new { gain, victimCash = victim.Cash, spyPrice = price, preserved = true }));
+            SimHost.EndGame(); return 0;
+        }
         string[] countries = ["america", "germany", "england", "france", "korea", "cuba", "libya", "iraq", "russia"];
         string[] modern = ["china", "iran", "turkey", "saudi", "israel", "yemen", "hezbollah"];
         foreach (var country in opts.TryGetValue("faction", out var f) ? [f] : countries.Concat(modern))
