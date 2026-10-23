@@ -25,3 +25,5 @@ The generated-content-only release updates ea-art.yaml and ea-retail-weapons.yam
 Native regression command: `websim originaleconomytest --root <verified-vfs>` (nine original and seven modern countries). It exercises actual production orders, normal/critical power, min/intermediate/max power ratios, three balances for spy theft, the outage timer,1,000 ticks of actual oil account changes, and actual AP impact HP at center/midpoint/radius/outside. Synthetic captured-tech cases are intentional and do not add units to natural rosters. The generated-art suite passes38 tests.
 
 Evidence: D:/rtsai-ra2-seven-fixes-20261023/ . Build/release/browser verification is still pending; production details will be appended only after successful promotion.
+
+The non-live data-b1abd205626b alias is scheduled for local archival to keep the CDN below20,000 files. All2,592 manifest entries match immutable deployment06a5cd0d, and its downloaded bundle SHA256 matches the existing save-catalog identity. The current live bad1 root and original Hormuz537 root remain served. The immutable deployment and frozen client are retained; the release tool owns the move.

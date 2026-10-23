@@ -39,7 +39,8 @@
       "data-b5df9dd495d8/",
       "data-f2d5ece96d44/",
       "data-a3b0d296fd95/",
-      "data-b80ffa239e04/"
+      "data-b80ffa239e04/",
+      "data-b1abd205626b/"
     ]
   },
   "vercel": {
@@ -64,6 +65,12 @@
     "D:/"
   ],
   "saveArchiveSeeds": [
+    {
+      "assetHost": "https://06a5cd0d.rtsai-play-cdn.pages.dev/",
+      "rtRoot": "rt-7824bd8bb601/",
+      "dataRoot": "data-b1abd205626b/",
+      "profiles": ["public"]
+    },
     {
       "assetHost": "https://b10de5d5.rtsai-play-cdn.pages.dev/",
       "rtRoot": "rt-738104198cd2/",
