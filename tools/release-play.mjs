@@ -284,9 +284,11 @@ function siteCheckout(webgame, publishedCommit) {
     refuse(`${site} must remain on canonical main`);
   let input = { dir: site, commit, webgame };
   if (flag("published-site")) {
-    if (commit !== publishedCommit) refuse('--published-site requires origin/main to match the website commit already live; coordinate its publication separately');
-    input = { ...publishedSiteInput(site, work, commit), webgame };
-    say(`  verified frozen website dependency ${commit.slice(0, 7)}; canonical unpublished work is untouched`);
+    if (!/^[a-f0-9]{40}$/.test(publishedCommit ?? '')) refuse('live BUILD.json has no verified website source commit');
+    try { gitIn(site, 'merge-base', '--is-ancestor', publishedCommit, 'origin/main'); }
+    catch { refuse('the already-live website commit is not on origin/main; preserve pending work and coordinate its history'); }
+    input = { ...publishedSiteInput(site, work, publishedCommit), originAtCapture: commit, webgame };
+    say(`  verified frozen website dependency ${publishedCommit.slice(0, 7)}; canonical unpublished work is untouched`);
   }
   const dir = input.dir;
   if (!input.frozen && gitIn(dir, "rev-parse", "HEAD") !== commit)
@@ -318,7 +320,7 @@ function assertPageSources(site) {
   if (changed || untracked) refuse(`web/ changed after release source capture ${site.webgame.slice(0, 7)}: coordinate a clean page window before retrying`);
   if (site.frozen) {
     verifySiteInput(site.dir);
-    if (gitIn(site.canonical, "rev-parse", "origin/main") !== site.commit)
+    if (gitIn(site.canonical, "rev-parse", "origin/main") !== site.originAtCapture)
       refuse('published website origin/main changed during page build');
     if (site.sharedDependencies && sha('sha256', fs.readFileSync(path.join(site.canonical, 'package-lock.json'))) !== sha('sha256', fs.readFileSync(path.join(site.dir, 'package-lock.json'))))
       refuse('canonical website dependency lock changed during frozen-input build');
