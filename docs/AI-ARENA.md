@@ -60,20 +60,54 @@ adviser reads) into a few closed questions:
   vehicle, aircraft, ship.
   - The options are the items buildable now, each described by role, cost and how many we have, plus Wait.
   - Defenses are asked only under pressure or with credits to spare.
-- **Army, every 5 game seconds:** attack the nearest known enemy building, defend the base, scout (one scout every 45
-  s), sweep toward the far side while the enemy base is unknown, gather, or hold.
+- **Army, every 5 game seconds:** attack, defend the base, gather at the front, scout (one scout every 45 s), sweep
+  toward the far side while the enemy base is unknown, or hold. It fights like a player, not a stream:
+  - New units gather at a staging point 40 % of the way to the enemy.
+  - Attack sends the idle units gathered forward together, at the enemy's construction yard first, then factories and
+    the economy, then the nearest building.
+  - Only idle units are ever given new orders, so a fight in progress is never interrupted.
+  - Before 23 October every unit was re-sent every 5 seconds. Fresh units trickled into the enemy defences one by one;
+    one game lost 53,200 worth of units with a 10× larger army and killed 5 buildings.
 
 The chosen options become the adviser's own command types, sent through `client.adviserExecute()` in groups of at most
 12 commands. They are synchronized player orders and go into the replay like clicks.
 
-Providers (`tools/arena/providers.mjs`) all answer the same questions and return a probability per option:
+Providers (`tools/arena/providers.mjs`, `askQuestions()`) all answer the same questions and return a probability per
+option:
 
 | Provider | Call | Price (input; output free) |
 |---|---|---|
-| Scripted scorer | Hand-written scores, softmax. Free. It is the bar a model has to beat. | $0 |
-| Local model | OpenAI-compatible gateway (`OPENRA_AI_ROUTER_URL`, default :4000), JSON-schema enum per question | $0 |
+| Scripted scorer | Hand-written scores, softmax. It is the bar a model has to beat. | $0 |
+| Laya | The BeTenshi console's local decision service (`:8040/decide`; ModernBERT, Apache-2.0, on the CPU), one question per call, a turn's questions in parallel. | $0 |
+| Local LLM | OpenAI-compatible gateway (`OPENRA_AI_ROUTER_URL`, default :4000), JSON-schema enum per question | $0 |
 | OpenAI Decisions | `POST /v1/decisions`, `gpt-6-luna`, one `choice` question each | $0.10 / M ($0.01 cached) |
-| TypeSafe Jev | `POST https://api.typesafe.ai/v1/systemone`, `jev-latest`, `choice` questions | $0.042 / M |
+| TypeSafe Jev | TypeSafe's `/v1/systemone` (`jev-latest`) with a TypeSafe key, or the same request through OpenRouter (`typesafe/jev-1.13`) with an OpenRouter key; OpenRouter returns the exact cost | $0.042 / M |
+
+## Voice orders bench
+
+How well each brain reads what the player says, on the OpenRA-AI companion's own 281 spoken/typed order cases
+(`OpenRA-AI services/companion/evals/nl_orders`), graded by that benchmark's own grader. The cases mix:
+
+- orders, with slang, jargon, misheard words and several steps;
+- refusals (support powers, surrender);
+- clarifications;
+- questions.
+
+- **Adapter:** `tools/arena/order-adapter.mjs` looks like an OpenAI-compatible model to the companion.
+  - The companion asks for an order form: intent, action, units, count, item, target and stance.
+  - The adapter makes each blank a closed question, with options taken from the vocabulary the companion sends: the
+    units and buildings we have, what can be built or trained, what is in production, visible enemies, named
+    coordinates.
+  - The decision model picks the answers.
+  - Free answers to questions, which a decision model cannot write, go to gpt-4.1-mini.
+  - The "LLM" baseline sends the whole form to gpt-4.1-mini, as the companion would with an external model.
+- **Two views:**
+  - **Every order:** the companion's own rule-based interpreter is switched off in the bench's worker process only
+    (`bench-model-only/sitecustomize.py`), so every order is read by the brain. This compares brains.
+  - **Full pipeline:** the rules read what they can and the brain gets the rest. This is what the product does.
+- **Runner:** `node tools/arena/bench.mjs --orders llm|openai|jev|laya|offline [--path model|pipeline]`, or the
+  Arena page's Voice orders card. Records go in `<arena>/bench/<id>/` (record.json, graded.json, report.md,
+  model-calls.json).
 
 While a paid or local model thinks, the game is paused. Its latency is still measured and shown, but it does not cost
 the brain game time, so results compare decisions, not network speed. If a call fails, the scripted scorer answers
@@ -81,8 +115,12 @@ that turn. The turn is marked as a fallback and counted on the page.
 
 ## Cost guards
 
-- **Keys:** paid providers need a key. It is pasted in the page and stored in the Arena folder, or read from
-  `OPENAI_API_KEY` / `TYPESAFE_API_KEY`. The page only ever shows the last four characters.
+- **Keys:** paid providers need a key. The runner looks in four places, in this order, and the page only ever shows
+  where a key came from and its last four characters:
+  - pasted in the page (stored in the Arena folder);
+  - the environment: `OPENAI_API_KEY`, `TYPESAFE_API_KEY`, `OPENROUTER_API_KEY`;
+  - `OpenRA-AI/.env`, the companion's own git-ignored key file;
+  - `AI/betenshi-console/.env`, whose OpenRouter key the console's Decision Lab already uses for Jev.
 - **Caps:** each run has a cap ($0.25–$5, default $1), and the day has one (`budget.json` `dailyCapUsd`, default $5).
   A run stops at whichever is reached first.
 - **Scope:** nothing here is reachable from the internet. Public players keep the free built-in adviser.
@@ -96,6 +134,8 @@ a brain through the opponents both of you played.
 ## Checks
 
 - `node --test tools/arena/brain.test.mjs`
+- `node tools/arena/provider-smoke.mjs openai jev laya scripted`: one real turn per provider, with time and cost.
+- `node tools/cocommander-talk-test.mjs`: spoken and typed words reach the order path (no engine or model needed).
 - One real game (about 3 minutes):
 
   ```sh

@@ -141,40 +141,57 @@ export function plan(obs, memory = {}) {
   const tick = obs.tick;
   if (army.length && tick - (memory.lastArmyTick ?? -1e9) >= 125) {
     const base = centroid(obs.buildings) ?? centroid(units);
-    const targets = obs.visibleEnemyBuildings.length ? obs.visibleEnemyBuildings : obs.rememberedEnemyBuildings ?? [];
+    const front = armyFront(obs, base);
+    const { targets, target, staging, gathered, home, idle } = front;
+    const order = (list, cell, action = "attack_move") => list.map((u) => ({ action, actor_id: u.actorId, target_x: cell.cellX, target_y: cell.cellY }));
     const options = [];
-    if (targets.length && base) {
-      const target = [...targets].sort((a, b) => sq(a, base) - sq(b, base))[0];
-      options.push({ value: "attack", label: "Attack the enemy base", description: `Send all ${army.length} combat units together to the nearest known enemy building.`,
-        commands: army.map((u) => ({ action: "attack_move", actor_id: u.actorId, target_x: target.cellX, target_y: target.cellY })) });
-    }
+    // Units already moving or fighting keep their orders: only idle units are given new ones, so a fight is never
+    // interrupted and fresh units never trickle one by one into the enemy's defences.
+    if (target && idle.length - home.length > 0)
+      options.push({ value: "attack", label: "Attack the enemy base", description: `Send the ${idle.length - home.length} idle units gathered at the front (worth ${valueOf(idle.filter((u) => !home.includes(u)))}) together at the nearest known enemy building; ${targets.length} known enemy buildings remain.`,
+        commands: order(idle.filter((u) => !home.includes(u)), target) });
     if (obs.visibleEnemies.length && base) {
       const contact = [...obs.visibleEnemies].sort((a, b) => sq(a, base) - sq(b, base))[0];
-      const near = army.filter((u) => sq(u, base) <= 30 ** 2);
+      const near = army.filter((u) => sq(u, base) <= 30 ** 2 && (u.idle || !u.targetId));
       if (near.length) options.push({ value: "defend", label: "Defend the base", description: `Send the ${near.length} units near the base at the closest enemy (${t.nearest ?? "?"} cells away).`,
-        commands: near.map((u) => ({ action: "attack_move", actor_id: u.actorId, target_x: contact.cellX, target_y: contact.cellY })) });
+        commands: order(near, contact) });
     }
-    // The enemy base is unknown: the far side of the map, mirrored through the centre, is where a two-player map puts it.
-    const far = base && { cellX: Math.max(1, Math.min(obs.mapWidth - 2, obs.mapWidth - base.cellX)), cellY: Math.max(1, Math.min(obs.mapHeight - 2, obs.mapHeight - base.cellY)) };
     // One scout at a time: offered again 45 game seconds after the last one was sent.
-    if (!targets.length && far && tick - (memory.lastScoutTick ?? -1e9) >= 25 * 45) {
+    if (!targets.length && front.far && tick - (memory.lastScoutTick ?? -1e9) >= 25 * 45) {
       const scout = [...army].sort((a, b) => (b.speed ?? 0) - (a.speed ?? 0))[0];
       options.push({ value: "scout", label: "Scout for the enemy", description: `Send the fastest unit toward the far side of the map to find the enemy base (${Math.round(obs.exploredPercent)}% explored).`,
-        commands: [{ action: "attack_move", actor_id: scout.actorId, target_x: far.cellX, target_y: far.cellY }] });
+        commands: order([scout], front.far) });
     }
-    if (!targets.length && far && army.length >= 8)
-      options.push({ value: "sweep", label: "Sweep toward the enemy side", description: `Move all ${army.length} combat units together toward the far side of the map, fighting what they meet, to find the enemy base.`,
-        commands: army.map((u) => ({ action: "attack_move", actor_id: u.actorId, target_x: far.cellX, target_y: far.cellY })) });
-    const idle = army.filter((u) => u.idle);
-    if (idle.length >= 2 && base) {
-      const toward = { cellX: Math.round(base.cellX + (obs.mapWidth / 2 - base.cellX) * 0.15), cellY: Math.round(base.cellY + (obs.mapHeight / 2 - base.cellY) * 0.15) };
-      options.push({ value: "regroup", label: "Gather the army", description: `Gather the ${idle.length} idle units in front of the base.`,
-        commands: idle.map((u) => ({ action: "move", actor_id: u.actorId, target_x: toward.cellX, target_y: toward.cellY })) });
-    }
+    if (!targets.length && front.far && idle.length >= 8)
+      options.push({ value: "sweep", label: "Sweep toward the enemy side", description: `Move the ${idle.length} idle combat units together toward the far side of the map, fighting what they meet, to find the enemy base.`,
+        commands: order(idle, front.far) });
+    if (home.length && staging)
+      options.push({ value: "gather", label: "Gather at the front", description: `Move the ${home.length} idle units at the base to the staging point toward the enemy (${gathered.length} already there).`,
+        commands: order(home, staging, "move") });
     options.push({ value: "hold", label: "Hold", description: "Keep every unit where it is.", commands: [] });
     if (options.length >= 2) questions.push({ name: "army", type: "choice", instructions: "What should the army do now?", options });
   }
   return { auto, questions };
+}
+
+/**
+ * Where the army stands: the enemy buildings we know of, the one to hit next (production and economy first, then the
+ * nearest), a staging point 40% of the way there (or toward the far side of the map while the enemy base is unknown),
+ * and which idle fighters are at home, gathered at the staging point, or anywhere else forward.
+ */
+export function armyFront(obs, base = centroid(obs.buildings) ?? centroid(obs.units)) {
+  const army = fighters(obs);
+  const targets = obs.visibleEnemyBuildings.length ? obs.visibleEnemyBuildings : obs.rememberedEnemyBuildings ?? [];
+  const far = base && { cellX: Math.max(1, Math.min(obs.mapWidth - 2, obs.mapWidth - base.cellX)), cellY: Math.max(1, Math.min(obs.mapHeight - 2, obs.mapHeight - base.cellY)) };
+  const priority = (b) => { const r = rolesOf(b.kind); return /cnst|yard/i.test(b.kind) || /construction yard/i.test(nameOf(obs, b.kind)) ? 0 : r.some((x) => ["factory", "barracks", "refinery", "airfield"].includes(x)) ? 1 : 2; };
+  const gatherFrom = base;
+  const target = targets.length && base ? [...targets].sort((a, b) => priority(a) - priority(b) || sq(a, base) - sq(b, base))[0] : null;
+  const toward = target ?? far;
+  const staging = base && toward ? { cellX: Math.round(base.cellX + (toward.cellX - base.cellX) * 0.4), cellY: Math.round(base.cellY + (toward.cellY - base.cellY) * 0.4) } : null;
+  const idle = army.filter((u) => u.idle);
+  const home = gatherFrom ? idle.filter((u) => sq(u, gatherFrom) <= 16 ** 2) : [];
+  const gathered = staging ? idle.filter((u) => !home.includes(u) && sq(u, staging) <= 10 ** 2) : [];
+  return { army, targets, target, far, staging, idle, home, gathered };
 }
 
 /**
@@ -201,11 +218,14 @@ export function scriptedAnswers(obs, questions) {
   for (const q of questions) {
     const score = (o) => {
       if (q.name === "army") {
+        const f = armyFront(obs), forward = f.idle.filter((u) => !f.home.includes(u)), forwardValue = valueOf(forward);
+        const atTarget = f.target ? forward.filter((u) => sq(u, f.target) <= 15 ** 2).length : 0;
         if (o.value === "defend") return t.level === "critical" || t.level === "high" ? 6 : 1;
-        if (o.value === "attack") return army.length >= 10 && armyValue >= Math.max(4000, enemyValue * 1.3) ? 5 : army.length >= 16 ? 4.5 : -2;
+        // Strike with a gathered group, and keep units already at the enemy base pushing on to the next building.
+        if (o.value === "attack") return atTarget >= 2 ? 5.5 : forward.length >= 10 && forwardValue >= Math.max(3500, enemyValue * 1.2) ? 5.5 : forward.length >= 18 ? 5 : -1;
+        if (o.value === "gather") return f.home.length >= 2 ? 3.5 : 0.5;
         if (o.value === "scout") return army.length >= 2 ? 3 : 0.5;
-        if (o.value === "sweep") return army.length >= 12 && armyValue >= 5000 ? 4 : -1;
-        if (o.value === "regroup") return army.filter((u) => u.idle).length >= 4 ? 1.5 : 0.5;
+        if (o.value === "sweep") return f.idle.length >= 12 && armyValue >= 5000 ? 4 : -1;
         return 1;
       }
       if (o.value === "wait") return obs.cash < 300 ? 4 : 0.2;

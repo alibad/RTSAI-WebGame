@@ -46,15 +46,26 @@ test("a building that is both radar and airfield counts as both, so it is not bu
   assert.notEqual(a.build.choice, "gaweap");
 });
 
-test("the army is sent at the enemy base once it is large and the base is known", () => {
-  const army = Array.from({ length: 12 }, (_, i) => actor(10 + i, "mtnk", 25, 25, { canAttack: true, speed: 60 }));
+test("new units gather at the front first instead of trickling into the enemy base", () => {
+  const army = Array.from({ length: 12 }, (_, i) => actor(10 + i, "mtnk", 22, 22, { canAttack: true, speed: 60 }));
   const obs = { ...base, cash: 300, buildings: [actor(2, "gacnst", 20, 20)], units: army, rememberedEnemyBuildings: [actor(99, "nacnst", 100, 100)] };
   const { questions } = plan(obs);
   const q = questions.find((x) => x.name === "army");
-  assert.ok(q);
-  const a = scriptedAnswers(obs, questions);
-  assert.equal(a.army.choice, "attack");
-  assert.equal(q.options.find((o) => o.value === "attack").commands.length, 12);
+  assert.ok(!q.options.some((o) => o.value === "attack"), "nothing is forward yet");
+  assert.equal(scriptedAnswers(obs, questions).army.choice, "gather");
+  assert.equal(q.options.find((o) => o.value === "gather").commands.length, 12);
+});
+
+test("a gathered group attacks together; units already fighting are left alone", () => {
+  const gathered = Array.from({ length: 12 }, (_, i) => actor(10 + i, "mtnk", 52, 52, { canAttack: true, speed: 60 }));
+  const fighting = actor(40, "mtnk", 90, 90, { canAttack: true, idle: false, targetId: 99 });
+  const obs = { ...base, cash: 300, buildings: [actor(2, "gacnst", 20, 20)], units: [...gathered, fighting], rememberedEnemyBuildings: [actor(99, "nacnst", 100, 100), actor(98, "napowr", 104, 100)] };
+  const { questions } = plan(obs);
+  const attack = questions.find((x) => x.name === "army").options.find((o) => o.value === "attack");
+  assert.equal(scriptedAnswers(obs, questions).army.choice, "attack");
+  assert.equal(attack.commands.length, 12);
+  assert.ok(!attack.commands.some((c) => c.actor_id === 40));
+  assert.deepEqual([attack.commands[0].target_x, attack.commands[0].target_y], [100, 100], "the construction yard comes first");
 });
 
 test("the shared state names things and never exposes engine ids", async () => {
