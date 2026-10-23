@@ -31,7 +31,8 @@ const pct = (xs, p) => { if (!xs.length) return 0; const s = [...xs].sort((a, b)
 export async function runMatch(spec, env) {
   const t0 = Date.now();
   const decisions = [], errors = [];
-  const page = await env.browser.newPage({ viewport: { width: 1280, height: 720 } });
+  // Headless games draw into a small window: nobody watches them, and the GPU is often shared with local models.
+  const page = await env.browser.newPage({ viewport: spec.brain === "you" ? null : { width: 640, height: 360 } });
   page.on("pageerror", (e) => errors.push(`page: ${String(e).slice(0, 300)}`));
   page.on("crash", () => errors.push("page crashed"));
   const opp = OPPONENTS[spec.opponent];
