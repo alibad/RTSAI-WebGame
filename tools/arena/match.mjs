@@ -104,7 +104,7 @@ export async function runMatch(spec, env) {
         const think = spec.pauseWhileThinking && PROVIDERS[spec.provider]?.label && spec.provider !== "scripted";
         if (think) await page.evaluate(() => window.game.client.send({ type: "pause", paused: true }));
         let result;
-        try { result = await decide(spec.provider, obs, questions, { key: env.key }); }
+        try { result = await decide(spec.provider, obs, questions, env.credential ?? {}); }
         catch (e) {
           // A failed call still has to move the game on: the scripted scorer answers this turn, flagged as a fallback.
           errors.push(`decide: ${String(e.message ?? e).slice(0, 300)}`);

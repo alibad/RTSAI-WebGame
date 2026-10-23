@@ -12,12 +12,14 @@ import crypto from "node:crypto";
 import { spawn } from "node:child_process";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { runMatch, OPPONENTS, BRAINS } from "./match.mjs";
-import { PROVIDERS, PRICES, keyStore, localReady } from "./providers.mjs";
+import { PROVIDERS, PRICES, keyStore, localReady, layaReady } from "./providers.mjs";
+import { runBench, BENCH_BRAINS } from "./bench.mjs";
 
 const repo = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 const PORT = Number(process.env.RTSAI_ARENA_PORT ?? 3463);
 const PAGE_PORT = Number(process.env.RTSAI_ARENA_PAGE_PORT ?? 3464);
-const dir = path.join(process.env.LOCALAPPDATA ?? os.homedir(), "RTSAI-WebGame", "arena");
+// RTSAI_ARENA_DIR: a separate data folder, e.g. for a trial runner beside the main one (with other ports).
+const dir = process.env.RTSAI_ARENA_DIR ?? path.join(process.env.LOCALAPPDATA ?? os.homedir(), "RTSAI-WebGame", "arena");
 for (const sub of ["decisions", "replays"]) fs.mkdirSync(path.join(dir, sub), { recursive: true });
 const { chromium } = await import(pathToFileURL(path.join(repo, "web", "node_modules", "playwright-core", "index.mjs")).href);
 const keys = keyStore(dir);
@@ -119,7 +121,7 @@ async function start(run, job) {
       const ctx = await visible.newContext({ viewport: null });
       env = { browser: { newPage: () => ctx.newPage() }, url: pageUrl, stopped: () => run.status === "stopped", charge: () => true, progress: (p) => Object.assign(job, p) };
     } else {
-      env = { browser: await browser(), url: pageUrl, key: PROVIDERS[run.provider]?.paid ? keys.get(run.provider) : "", stopped: () => run.status === "stopped",
+      env = { browser: await browser(), url: pageUrl, credential: PROVIDERS[run.provider]?.paid ? keys.credential(run.provider) : {}, stopped: () => run.status === "stopped",
         charge: (usd) => { run.spentUsd = (run.spentUsd ?? 0) + usd; budget.spent[today()] = spentToday() + usd; saveBudget(); return run.spentUsd < run.capUsd && spentToday() < budget.dailyCapUsd; },
         progress: (p) => Object.assign(job, p) };
     }
@@ -202,12 +204,52 @@ function summary() {
 
 async function status() {
   const providers = {};
-  const local = await localReady();
-  for (const [id, p] of Object.entries(PROVIDERS)) providers[id] = { ...p, keyHint: p.paid ? keys.hint(id) : "", ready: p.paid ? !!keys.get(id) : id === "local" ? local : true, price: PRICES[id] ?? null };
+  const [local, laya] = await Promise.all([localReady(), layaReady()]);
+  for (const [id, p] of Object.entries(PROVIDERS)) providers[id] = { ...p, keyHint: p.paid ? keys.hint(id) : "", ready: p.paid ? !!keys.get(id) : id === "local" ? local : id === "laya" ? laya : true, price: PRICES[id] ?? null };
   return { ready: !!page, page, pageUrl, providers, opponents: OPPONENTS, brains: BRAINS, factions: MODERN, maps: MAPS,
     budget: { dailyCapUsd: budget.dailyCapUsd, spentToday: spentToday(), maxParallel: budget.maxParallel ?? 2 },
     runs: runs.slice(-20).reverse().map(({ jobs, ...r }) => ({ ...r, jobs: jobs.map(({ window, ...j }) => j) })) };
 }
+
+// ---------------------------------------------------------------------------------------------------------------
+// Voice-orders bench (bench.mjs): one at a time, in the background; records in <dir>/bench/<id>/record.json.
+
+let benchJob = null;
+const benchQueue = [];
+function benchRecords() {
+  const root = path.join(dir, "bench");
+  return (fs.existsSync(root) ? fs.readdirSync(root) : []).sort().reverse()
+    .map((id) => readJson(path.join(root, id, "record.json"), null)).filter(Boolean);
+}
+function startBench(spec) {
+  if (spec.orders !== "offline" && PROVIDERS[spec.orders]?.paid && !keys.get(spec.orders)) throw new Error(`No key for ${PROVIDERS[spec.orders].label}.`);
+  if (spec.orders === "laya") spec.needsLaya = true;
+  benchQueue.push(spec);
+  pumpBench();
+  return { queued: benchQueue.length + (benchJob ? 1 : 0) };
+}
+async function pumpBench() {
+  if (benchJob || !benchQueue.length) return;
+  const spec = benchQueue.shift();
+  benchJob = { ...spec, label: BENCH_BRAINS[spec.orders], state: "running", done: 0, last: "", startedAt: new Date().toISOString() };
+  try {
+    if (spec.needsLaya && !(await layaReady())) throw new Error("Laya is not running: start it in the BeTenshi console.");
+    const record = await runBench({ orders: spec.orders, pathMode: spec.path, only: spec.only ?? "", dir, keys,
+      progress: (line) => { if (/^(nl|ho)-\d+/.test(line)) { benchJob.done++; benchJob.last = line.replace(/\s+/g, " ").slice(0, 120); } },
+      stopped: () => benchJob?.state === "stopping" });
+    budget.spent[today()] = spentToday() + record.usd;
+    saveBudget();
+  } catch (e) {
+    fs.mkdirSync(path.join(dir, "bench"), { recursive: true });
+    benchJob.error = String(e.message ?? e).slice(0, 300);
+  } finally {
+    const finished = benchJob;
+    benchJob = null;
+    if (finished?.error) lastBenchError = { orders: finished.orders, error: finished.error, at: new Date().toISOString() };
+    pumpBench();
+  }
+}
+let lastBenchError = null;
 
 // ---------------------------------------------------------------------------------------------------------------
 // HTTP: loopback clients only; CORS for the admin pages on any loopback origin.
@@ -243,6 +285,13 @@ const server = http.createServer(async (req, res) => {
       if (["queued", "running"].includes(run.status)) { run.status = "stopped"; for (const j of run.jobs) if (j.state === "queued") j.state = "skipped"; saveRuns(); }
       return send(200, { ok: true });
     }
+    if (req.method === "GET" && url.pathname === "/bench") return send(200, { brains: BENCH_BRAINS, running: benchJob, queued: benchQueue, lastError: lastBenchError, records: benchRecords() });
+    if (req.method === "POST" && url.pathname === "/bench") {
+      const b = await body();
+      if (!BENCH_BRAINS[b.orders]) return send(400, { error: "Choose a bench brain." });
+      return send(200, startBench({ orders: b.orders, path: b.path === "pipeline" ? "pipeline" : "model", only: typeof b.only === "string" ? b.only : "" }));
+    }
+    if (req.method === "POST" && url.pathname === "/bench/stop") { if (benchJob) benchJob.state = "stopping"; benchQueue.length = 0; return send(200, { ok: true }); }
     if (req.method === "POST" && url.pathname === "/keys") {
       const b = await body();
       if (!PROVIDERS[b.provider]?.paid) return send(400, { error: "Unknown provider" });
