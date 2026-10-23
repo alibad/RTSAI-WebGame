@@ -443,6 +443,11 @@ class Retail:
                 twin.children.append(E.Node('Warhead@retail-radiation', 'CreateTintedCells', [
                     E.Node('Spread', cells(spread)), E.Node('Level', original['RadLevel']), E.Node('MaxLevel', '500')]))
         damages = [n for n in twin.children if n.value == 'SpreadDamage']
+        if damages and float(warhead.get('CellSpread', '0')) > 0:
+            # The radius is measured from actor centers. Aim there too: the
+            # port's nearest footprint point can be outside a building's small
+            # AP radius even when the shot lands on its intended target.
+            set_value(E, twin, 'TargetActorCenter', 'true')
         if len(damages) == 1 and original.get('Damage'):
             set_value(E, damages[0], 'Damage', original['Damage'])
         verses = warhead.get('Verses', '').split(',')
@@ -472,6 +477,7 @@ class Retail:
                     E.Node('Versus', None, [E.Node(a, x.strip().rstrip('%')) for a,x in zip(ARMORS, spec['Verses'].split(','))])]),
                 E.Node('Warhead@retail-effect', 'CreateEffect', [E.Node('Image', 'explosion'), E.Node('Explosions', 'large_explosion')])])
             weapon.children.append(E.Node('Report', 'vv3latta.wav, vv3lattb.wav' if rocket == 'v3rocket' else 'vdreatta.wav, vdreattb.wav'))
+            set_value(E, weapon, 'TargetActorCenter', 'true')
             restore_spread(E, weapon.get('Warhead@retail'), spec)
             self._effect_refs(weapon, 'weapon')
             self.weapons.append(weapon)
