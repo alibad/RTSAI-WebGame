@@ -376,6 +376,25 @@ async function smoke(rel, roots, profiles, local, site) {
 // ---------------------------------------------------------------------------------------------------------------
 // Cloudflare: the shared folder holds every root ever served; wrangler replaces the whole deployment with it.
 
+/**
+ * A new data root should have passed tools/gameplay-check.mjs (every death and impact draws, both games ship the same
+ * units, the catalog copies agree): its receipt is keyed by the bundle's SHA-256. Warn-only for now (owner, 23 Oct
+ * 2026): it becomes a refusal once a release has gone out with it.
+ */
+function gameplayReceipt(pack) {
+  if (!fs.existsSync(pack)) { say(`  WARNING: no ${pack}; gameplay check not looked up`); return; }
+  // Static data stores the bundle brotli-compressed; the check fingerprints the plain bundle (final/public).
+  const bytes = fs.readFileSync(pack);
+  const sha = crypto.createHash("sha256").update(bytes.subarray(0, 7).toString("latin1") === "ORAPACK" ? bytes : zlib.brotliDecompressSync(bytes)).digest("hex");
+  const file = path.join(work, "gameplay-check", "receipts", `${sha}.json`);
+  const fix = `run node tools/gameplay-check.mjs --pack ${pack}`;
+  if (!fs.existsSync(file)) { say(`  WARNING: this data has not been through the gameplay check; ${fix}`); return; }
+  const receipt = JSON.parse(fs.readFileSync(file, "utf8"));
+  const games = Object.entries(receipt.results?.games ?? {}).map(([k, g]) => `${k} ${g.passed ? "agree" : `${g.new.length} new difference(s)`}`).join(", ");
+  if (receipt.passed) say(`  gameplay check passed ${receipt.at.slice(0, 16)}Z (mod ${receipt.mod.slice(0, 7)}; ${games || "games not compared"})`);
+  else say(`  WARNING: gameplay check FAILED ${receipt.at.slice(0, 16)}Z (${games || "effects"}${receipt.results?.catalog === false ? ", catalog copies differ" : ""}); see ${file}`);
+}
+
 function folderManifest(dir) {
   const files = {};
   for (const [rel, f] of walk(dir)) if (rel !== "MANIFEST.json") files[rel] = fs.statSync(f).size;
@@ -660,6 +679,7 @@ async function prepare() {
     if (p.dataDir) {
       if (!fs.existsSync(path.join(p.dataDir, p.data.dataRoot))) refuse(`${p.dataDir} has no ${p.data.dataRoot}`);
       newRoots[p.data.dataRoot] = path.join(p.dataDir, p.data.dataRoot);
+      gameplayReceipt(path.join(p.dataDir, p.data.dataRoot, "public", "web-bundle.pack"));
     }
     Object.assign(state, { roots, runtimeSource });
     save();

@@ -1,0 +1,3711 @@
+{
+ "$comment": "Differences between the web game and the desktop game accepted as they were on 23 October 2026 (artifacts/desktop-compare-20261023/differences.html), so the release check flags only new drift. Remove an entry once the games agree on it; add one only with the owner's approval.",
+ "ra2": [
+  {
+   "id": "aegis",
+   "factions": [
+    "america",
+    "germany",
+    "england",
+    "france",
+    "korea"
+   ],
+   "fields": {
+    "name": {
+     "web": "Aegis Cruiser",
+     "desktop": "Air Defense Cruiser"
+    },
+    "weapons": {
+     "web": [
+      {
+       "burst": 1,
+       "damage": 100,
+       "excludes": [],
+       "projectile": "Missile",
+       "range": 12288,
+       "reload": 25,
+       "targets": [
+        "Air"
+       ],
+       "versus": {
+        "Concrete": 0,
+        "Drone": 100,
+        "Flak": 100,
+        "Heavy": 100,
+        "Light": 100,
+        "Medium": 100,
+        "None": 100,
+        "Plate": 100,
+        "Rocket": 100,
+        "Steel": 0,
+        "Wood": 0
+       },
+       "weapon": "ea-retail-medusa"
+      }
+     ],
+     "desktop": [
+      {
+       "burst": 3,
+       "damage": 100,
+       "excludes": [],
+       "projectile": "Missile",
+       "range": 12288,
+       "reload": 100,
+       "targets": [
+        "Air"
+       ],
+       "versus": {
+        "Concrete": 0,
+        "Drone": 100,
+        "Flak": 100,
+        "Heavy": 100,
+        "Light": 100,
+        "Medium": 100,
+        "None": 100,
+        "Plate": 100,
+        "Rocket": 100,
+        "Steel": 0,
+        "Wood": 0
+       },
+       "weapon": "Medusa"
+      }
+     ]
+    }
+   },
+   "name": "Aegis Cruiser",
+   "who": "original countries"
+  },
+  {
+   "id": "amcv",
+   "factions": [
+    "america",
+    "germany",
+    "england",
+    "france",
+    "korea",
+    "china",
+    "turkey",
+    "saudi",
+    "israel"
+   ],
+   "fields": {
+    "sight": {
+     "web": 6144,
+     "desktop": 4096
+    }
+   },
+   "name": "Mobile Construction Vehicle",
+   "who": "both"
+  },
+  {
+   "id": "amradr",
+   "factions": [
+    "america"
+   ],
+   "fields": {
+    "sight": {
+     "web": 5120,
+     "desktop": 10240
+    },
+    "name": {
+     "web": "American Airforce Command Headquarters",
+     "desktop": "American Airfield"
+    }
+   },
+   "name": "American Airforce Command Headquarters",
+   "who": "original countries"
+  },
+  {
+   "id": "apoc",
+   "factions": [
+    "cuba",
+    "libya",
+    "iraq",
+    "russia"
+   ],
+   "fields": {
+    "name": {
+     "web": "Apocalypse Tank",
+     "desktop": "Heavy Assault Tank"
+    },
+    "weapons": {
+     "web": [
+      {
+       "burst": 2,
+       "damage": 100,
+       "excludes": [],
+       "projectile": "Bullet",
+       "range": 5888,
+       "reload": 133,
+       "targets": [
+        "Ground",
+        "Water"
+       ],
+       "versus": {
+        "Concrete": 70,
+        "Drone": 60,
+        "Flak": 25,
+        "Heavy": 100,
+        "Light": 75,
+        "Medium": 100,
+        "None": 25,
+        "Plate": 25,
+        "Rocket": 100,
+        "Steel": 100,
+        "Wood": 100
+       },
+       "weapon": "ea-retail-120mmx"
+      },
+      {
+       "burst": 2,
+       "damage": 50,
+       "excludes": [],
+       "projectile": "Missile",
+       "range": 8192,
+       "reload": 133,
+       "targets": [
+        "Air"
+       ],
+       "versus": {
+        "Concrete": 20,
+        "Drone": 80,
+        "Flak": 90,
+        "Heavy": 35,
+        "Light": 70,
+        "Medium": 35,
+        "None": 100,
+        "Plate": 80,
+        "Rocket": 100,
+        "Steel": 40,
+        "Wood": 75
+       },
+       "weapon": "ea-retail-mammothtusk"
+      }
+     ],
+     "desktop": [
+      {
+       "burst": 2,
+       "damage": 100,
+       "excludes": [],
+       "projectile": "Bullet",
+       "range": 5888,
+       "reload": 65,
+       "targets": [
+        "Ground",
+        "Water"
+       ],
+       "versus": {
+        "Concrete": 70,
+        "Drone": 60,
+        "Flak": 25,
+        "Heavy": 100,
+        "Light": 75,
+        "Medium": 100,
+        "None": 25,
+        "Plate": 25,
+        "Rocket": 100,
+        "Steel": 100,
+        "Wood": 100
+       },
+       "weapon": "120mmx"
+      },
+      {
+       "burst": 2,
+       "damage": 80,
+       "excludes": [],
+       "projectile": "Missile",
+       "range": 8192,
+       "reload": 80,
+       "targets": [
+        "Air"
+       ],
+       "versus": {
+        "Concrete": 20,
+        "Drone": 80,
+        "Flak": 90,
+        "Heavy": 35,
+        "Light": 70,
+        "Medium": 35,
+        "None": 100,
+        "Plate": 80,
+        "Rocket": 100,
+        "Steel": 40,
+        "Wood": 75
+       },
+       "weapon": "MammothTusk"
+      }
+     ]
+    }
+   },
+   "name": "Apocalypse Tank",
+   "who": "original countries"
+  },
+  {
+   "id": "atesla",
+   "factions": [
+    "america",
+    "germany",
+    "england",
+    "france",
+    "korea"
+   ],
+   "fields": {
+    "name": {
+     "web": "Prism Tower",
+     "desktop": "Spectrum Tower"
+    },
+    "weapons": {
+     "web": [
+      {
+       "burst": 1,
+       "damage": 120,
+       "excludes": [],
+       "projectile": "OriginalRa2Action",
+       "range": 8192,
+       "reload": 100,
+       "targets": [
+        "Ground",
+        "Water"
+       ],
+       "versus": {
+        "Concrete": 50,
+        "Drone": 200,
+        "Flak": 100,
+        "Heavy": 100,
+        "Light": 100,
+        "Medium": 100,
+        "None": 200,
+        "Plate": 100,
+        "Rocket": 100,
+        "Steel": 50,
+        "Wood": 50
+       },
+       "weapon": "ea-retail-prismshot"
+      }
+     ],
+     "desktop": [
+      {
+       "burst": 1,
+       "damage": 120,
+       "excludes": [],
+       "projectile": "LaserZap",
+       "range": 8192,
+       "reload": 1,
+       "targets": [
+        "Ground",
+        "Water"
+       ],
+       "versus": {
+        "Concrete": 50,
+        "Drone": 200,
+        "Flak": 100,
+        "Heavy": 100,
+        "Light": 100,
+        "Medium": 100,
+        "None": 200,
+        "Plate": 100,
+        "Rocket": 100,
+        "Steel": 50,
+        "Wood": 50
+       },
+       "weapon": "PrismShot"
+      }
+     ]
+    }
+   },
+   "name": "Prism Tower",
+   "who": "original countries"
+  },
+  {
+   "id": "beag",
+   "factions": [
+    "korea"
+   ],
+   "fields": {
+    "name": {
+     "web": "Black Eagle",
+     "desktop": "Strike Fighter"
+    },
+    "weapons": {
+     "web": [
+      {
+       "burst": 2,
+       "damage": 200,
+       "excludes": [],
+       "projectile": "Missile",
+       "range": 6144,
+       "reload": 17,
+       "targets": [
+        "Ground",
+        "Water"
+       ],
+       "versus": {
+        "Concrete": 75,
+        "Drone": 100,
+        "Flak": 100,
+        "Heavy": 100,
+        "Light": 100,
+        "Medium": 100,
+        "None": 100,
+        "Plate": 100,
+        "Rocket": 100,
+        "Steel": 100,
+        "Wood": 100
+       },
+       "weapon": "ea-retail-maverick2"
+      }
+     ],
+     "desktop": [
+      {
+       "burst": 1,
+       "damage": 200,
+       "excludes": [],
+       "projectile": "Missile",
+       "range": 6144,
+       "reload": 10,
+       "targets": [
+        "Ground",
+        "Water"
+       ],
+       "versus": {
+        "Concrete": 75
+       },
+       "weapon": "Maverick2"
+      }
+     ]
+    }
+   },
+   "name": "Black Eagle",
+   "who": "original countries"
+  },
+  {
+   "id": "carrier",
+   "factions": [
+    "america",
+    "germany",
+    "england",
+    "france",
+    "korea"
+   ],
+   "fields": {
+    "weapons": {
+     "web": [
+      {
+       "burst": 1,
+       "damage": 0,
+       "excludes": [],
+       "projectile": "InstantHit",
+       "range": 25600,
+       "reload": 250,
+       "targets": [
+        "Ground",
+        "Water"
+       ],
+       "versus": {},
+       "weapon": "ea-retail-hornetlauncher"
+      }
+     ],
+     "desktop": [
+      {
+       "burst": 1,
+       "damage": 0,
+       "excludes": [],
+       "projectile": "InstantHit",
+       "range": 25600,
+       "reload": 30,
+       "targets": [
+        "Ground",
+        "Water"
+       ],
+       "versus": {},
+       "weapon": "HornetLauncher"
+      }
+     ]
+    }
+   },
+   "name": "Aircraft Carrier",
+   "who": "original countries"
+  },
+  {
+   "id": "cleg",
+   "factions": [
+    "america",
+    "germany",
+    "england",
+    "france",
+    "korea"
+   ],
+   "fields": {
+    "name": {
+     "web": "Chrono Legionnaire",
+     "desktop": "Phase Legionnaire"
+    },
+    "weapons": {
+     "web": [
+      {
+       "burst": 1,
+       "damage": 0,
+       "excludes": [],
+       "projectile": "OriginalRa2Action",
+       "range": 5120,
+       "reload": 200,
+       "targets": [
+        "Ground"
+       ],
+       "versus": {},
+       "weapon": "ea-retail-neutronrifle"
+      }
+     ],
+     "desktop": [
+      {
+       "burst": 1,
+       "damage": 8,
+       "excludes": [],
+       "projectile": "RadBeam",
+       "range": 5120,
+       "reload": 120,
+       "targets": [
+        "Ground"
+       ],
+       "versus": {},
+       "weapon": "NeutronRifle"
+      }
+     ]
+    }
+   },
+   "name": "Chrono Legionnaire",
+   "who": "original countries"
+  },
+  {
+   "id": "cmin",
+   "factions": [
+    "america",
+    "germany",
+    "england",
+    "france",
+    "korea",
+    "china",
+    "turkey",
+    "saudi",
+    "israel"
+   ],
+   "fields": {
+    "name": {
+     "web": "Chrono Miner",
+     "desktop": "Ore Harvester"
+    }
+   },
+   "name": "Chrono Miner",
+   "who": "both"
+  },
+  {
+   "id": "deso",
+   "factions": [
+    "iraq"
+   ],
+   "fields": {
+    "name": {
+     "web": "Desolator",
+     "desktop": "Area Denial Trooper"
+    },
+    "weapons": {
+     "web": [
+      {
+       "burst": 1,
+       "damage": 125,
+       "excludes": [],
+       "projectile": "RadBeam",
+       "range": 6144,
+       "reload": 83,
+       "targets": [
+        "Ground"
+       ],
+       "versus": {
+        "Concrete": 0,
+        "Drone": 100,
+        "Flak": 100,
+        "Heavy": 10,
+        "Light": 20,
+        "Medium": 15,
+        "None": 100,
+        "Plate": 100,
+        "Rocket": 100,
+        "Steel": 0,
+        "Wood": 0
+       },
+       "weapon": "ea-retail-radbeamweapon"
+      }
+     ],
+     "desktop": [
+      {
+       "burst": 1,
+       "damage": 125,
+       "excludes": [],
+       "projectile": "RadBeam",
+       "range": 6144,
+       "reload": 100,
+       "targets": [
+        "Ground"
+       ],
+       "versus": {
+        "Concrete": 0,
+        "Drone": 0,
+        "Flak": 100,
+        "Heavy": 10,
+        "Light": 20,
+        "Medium": 15,
+        "None": 100,
+        "Plate": 100,
+        "Rocket": 100,
+        "Steel": 0,
+        "Wood": 0
+       },
+       "weapon": "RadBeamWeapon"
+      }
+     ]
+    }
+   },
+   "name": "Desolator",
+   "who": "original countries"
+  },
+  {
+   "id": "dest",
+   "factions": [
+    "america",
+    "germany",
+    "england",
+    "france",
+    "korea"
+   ],
+   "fields": {
+    "weapons": {
+     "web": [
+      {
+       "burst": 1,
+       "damage": 0,
+       "excludes": [],
+       "projectile": "InstantHit",
+       "range": 8192,
+       "reload": 250,
+       "targets": [
+        "Underwater"
+       ],
+       "versus": {},
+       "weapon": "ea-retail-aswlauncher"
+      },
+      {
+       "burst": 1,
+       "damage": 60,
+       "excludes": [
+        "Underwater"
+       ],
+       "projectile": "Bullet",
+       "range": 8192,
+       "reload": 183,
+       "targets": [
+        "Ground",
+        "Water"
+       ],
+       "versus": {
+        "Concrete": 60,
+        "Drone": 100,
+        "Flak": 80,
+        "Heavy": 60,
+        "Light": 100,
+        "Medium": 60,
+        "None": 100,
+        "Plate": 60,
+        "Rocket": 100,
+        "Steel": 80,
+        "Wood": 100
+       },
+       "weapon": "ea-retail-155mm"
+      }
+     ],
+     "desktop": [
+      {
+       "burst": 1,
+       "damage": 0,
+       "excludes": [],
+       "projectile": "InstantHit",
+       "range": 8192,
+       "reload": 150,
+       "targets": [
+        "Underwater"
+       ],
+       "versus": {},
+       "weapon": "ASWLauncher"
+      },
+      {
+       "burst": 1,
+       "damage": 60,
+       "excludes": [
+        "Underwater"
+       ],
+       "projectile": "Bullet",
+       "range": 8192,
+       "reload": 110,
+       "targets": [
+        "Ground",
+        "Water"
+       ],
+       "versus": {
+        "Concrete": 60,
+        "Drone": 100,
+        "Flak": 80,
+        "Heavy": 60,
+        "Light": 100,
+        "Medium": 60,
+        "None": 100,
+        "Plate": 60,
+        "Rocket": 100,
+        "Steel": 80,
+        "Wood": 100
+       },
+       "weapon": "155mm"
+      }
+     ]
+    }
+   },
+   "name": "Destroyer",
+   "who": "original countries"
+  },
+  {
+   "id": "dlph",
+   "factions": [
+    "america",
+    "germany",
+    "england",
+    "france",
+    "korea"
+   ],
+   "fields": {
+    "name": {
+     "web": "Dolphin",
+     "desktop": "Scout Submersible"
+    },
+    "weapons": {
+     "web": [
+      {
+       "burst": 1,
+       "damage": 8,
+       "excludes": [],
+       "projectile": "AreaBeam",
+       "range": 6144,
+       "reload": 200,
+       "targets": [
+        "Underwater",
+        "Water"
+       ],
+       "versus": {
+        "Concrete": 60,
+        "Drone": 100,
+        "Flak": 100,
+        "Heavy": 80,
+        "Light": 100,
+        "Medium": 80,
+        "None": 100,
+        "Plate": 100,
+        "Rocket": 100,
+        "Steel": 60,
+        "Wood": 100
+       },
+       "weapon": "ea-retail-soniczap"
+      }
+     ],
+     "desktop": [
+      {
+       "burst": 1,
+       "damage": 8,
+       "excludes": [],
+       "projectile": "AreaBeam",
+       "range": 6144,
+       "reload": 180,
+       "targets": [
+        "Underwater",
+        "Water"
+       ],
+       "versus": {
+        "Concrete": 60,
+        "Heavy": 80
+       },
+       "weapon": "SonicZap"
+      }
+     ]
+    }
+   },
+   "name": "Dolphin",
+   "who": "original countries"
+  },
+  {
+   "id": "dred",
+   "factions": [
+    "cuba",
+    "libya",
+    "iraq",
+    "russia"
+   ],
+   "only": "web",
+   "name": "Dreadnought",
+   "who": "original countries"
+  },
+  {
+   "id": "dron",
+   "factions": [
+    "cuba",
+    "libya",
+    "iraq",
+    "russia"
+   ],
+   "fields": {
+    "name": {
+     "web": "Terror Drone",
+     "desktop": "Attack Drone"
+    },
+    "weapons": {
+     "web": [
+      {
+       "burst": 1,
+       "damage": 0,
+       "excludes": [
+        "RetailInvulnerable"
+       ],
+       "projectile": "OriginalRa2Action",
+       "range": 1874,
+       "reload": 100,
+       "targets": [
+        "Infantry",
+        "RetailVehicle"
+       ],
+       "versus": {},
+       "weapon": "ea-retail-dronejump"
+      }
+     ],
+     "desktop": [
+      {
+       "burst": 1,
+       "damage": 200,
+       "excludes": [],
+       "projectile": "InstantHit",
+       "range": 3072,
+       "reload": 10,
+       "targets": [
+        "Infantry"
+       ],
+       "versus": {
+        "Concrete": 0,
+        "Drone": 0,
+        "Flak": 100,
+        "Heavy": 0,
+        "Light": 0,
+        "Medium": 0,
+        "None": 100,
+        "Plate": 100,
+        "Rocket": 0,
+        "Steel": 0,
+        "Wood": 0
+       },
+       "weapon": "DroneJump"
+      }
+     ]
+    }
+   },
+   "name": "Terror Drone",
+   "who": "original countries"
+  },
+  {
+   "id": "dtruck",
+   "factions": [
+    "libya"
+   ],
+   "fields": {
+    "sight": {
+     "web": 5120,
+     "desktop": 4096
+    }
+   },
+   "name": "Demolition Truck",
+   "who": "original countries"
+  },
+  {
+   "id": "e1",
+   "factions": [
+    "america",
+    "germany",
+    "england",
+    "france",
+    "korea"
+   ],
+   "fields": {
+    "weapons": {
+     "web": [
+      {
+       "burst": 1,
+       "damage": 15,
+       "excludes": [],
+       "projectile": "InstantHit",
+       "range": 4096,
+       "reload": 33,
+       "targets": [
+        "Ground",
+        "MicroDrone",
+        "Water"
+       ],
+       "versus": {
+        "Concrete": 25,
+        "Drone": 100,
+        "Flak": 80,
+        "Heavy": 25,
+        "Light": 50,
+        "Medium": 25,
+        "None": 100,
+        "Plate": 70,
+        "Rocket": 100,
+        "Steel": 50,
+        "Wood": 75
+       },
+       "weapon": "ea-retail-m60"
+      }
+     ],
+     "desktop": [
+      {
+       "burst": 1,
+       "damage": 20,
+       "excludes": [],
+       "projectile": "InstantHit",
+       "range": 4096,
+       "reload": 20,
+       "targets": [
+        "Ground",
+        "MicroDrone",
+        "Water"
+       ],
+       "versus": {
+        "Concrete": 25,
+        "Drone": 100,
+        "Flak": 80,
+        "Heavy": 25,
+        "Light": 50,
+        "Medium": 25,
+        "None": 100,
+        "Plate": 70,
+        "Rocket": 100,
+        "Steel": 50,
+        "Wood": 75
+       },
+       "weapon": "M60"
+      }
+     ]
+    }
+   },
+   "name": "G.I.",
+   "who": "original countries"
+  },
+  {
+   "id": "e2",
+   "factions": [
+    "cuba",
+    "libya",
+    "iraq",
+    "russia"
+   ],
+   "fields": {
+    "armor": {
+     "web": "Flak",
+     "desktop": "None"
+    },
+    "name": {
+     "web": "Conscript",
+     "desktop": "Rifleman"
+    },
+    "weapons": {
+     "web": [
+      {
+       "burst": 1,
+       "damage": 15,
+       "excludes": [],
+       "projectile": "InstantHit",
+       "range": 4096,
+       "reload": 42,
+       "targets": [
+        "Ground",
+        "MicroDrone",
+        "Water"
+       ],
+       "versus": {
+        "Concrete": 25,
+        "Drone": 100,
+        "Flak": 80,
+        "Heavy": 25,
+        "Light": 50,
+        "Medium": 25,
+        "None": 100,
+        "Plate": 70,
+        "Rocket": 100,
+        "Steel": 50,
+        "Wood": 75
+       },
+       "weapon": "ea-retail-m1carbine"
+      }
+     ],
+     "desktop": [
+      {
+       "burst": 1,
+       "damage": 15,
+       "excludes": [],
+       "projectile": "InstantHit",
+       "range": 4096,
+       "reload": 25,
+       "targets": [
+        "Ground",
+        "MicroDrone",
+        "Water"
+       ],
+       "versus": {
+        "Concrete": 25,
+        "Drone": 100,
+        "Flak": 80,
+        "Heavy": 25,
+        "Light": 50,
+        "Medium": 25,
+        "None": 100,
+        "Plate": 70,
+        "Rocket": 100,
+        "Steel": 50,
+        "Wood": 75
+       },
+       "weapon": "M1Carbine"
+      }
+     ]
+    }
+   },
+   "name": "Conscript",
+   "who": "original countries"
+  },
+  {
+   "id": "engineer",
+   "factions": [
+    "america",
+    "germany",
+    "england",
+    "france",
+    "korea",
+    "cuba",
+    "libya",
+    "iraq",
+    "russia",
+    "china",
+    "iran",
+    "turkey",
+    "saudi",
+    "israel",
+    "yemen",
+    "hezbollah"
+   ],
+   "fields": {
+    "cost": {
+     "web": 500,
+     "desktop": 700
+    },
+    "hp": {
+     "web": 75,
+     "desktop": 100
+    }
+   },
+   "name": "Engineer",
+   "who": "both"
+  },
+  {
+   "id": "flakt",
+   "factions": [
+    "cuba",
+    "libya",
+    "iraq",
+    "russia"
+   ],
+   "fields": {
+    "weapons": {
+     "web": [
+      {
+       "burst": 1,
+       "damage": 20,
+       "excludes": [],
+       "projectile": "Bullet",
+       "range": 5120,
+       "reload": 33,
+       "targets": [
+        "Ground",
+        "Water"
+       ],
+       "versus": {
+        "Concrete": 10,
+        "Drone": 100,
+        "Flak": 100,
+        "Heavy": 10,
+        "Light": 60,
+        "Medium": 10,
+        "None": 150,
+        "Plate": 50,
+        "Rocket": 100,
+        "Steel": 20,
+        "Wood": 30
+       },
+       "weapon": "ea-retail-flakguygun"
+      },
+      {
+       "burst": 1,
+       "damage": 20,
+       "excludes": [],
+       "projectile": "Bullet",
+       "range": 8192,
+       "reload": 42,
+       "targets": [
+        "Air"
+       ],
+       "versus": {
+        "Concrete": 0,
+        "Drone": 100,
+        "Flak": 100,
+        "Heavy": 20,
+        "Light": 80,
+        "Medium": 20,
+        "None": 150,
+        "Plate": 50,
+        "Rocket": 100,
+        "Steel": 0,
+        "Wood": 0
+       },
+       "weapon": "ea-retail-flakguyaagun"
+      }
+     ],
+     "desktop": [
+      {
+       "burst": 1,
+       "damage": 20,
+       "excludes": [],
+       "projectile": "Bullet",
+       "range": 5120,
+       "reload": 25,
+       "targets": [
+        "Ground",
+        "Water"
+       ],
+       "versus": {
+        "Concrete": 10,
+        "Drone": 100,
+        "Flak": 100,
+        "Heavy": 10,
+        "Light": 60,
+        "Medium": 10,
+        "None": 150,
+        "Plate": 50,
+        "Rocket": 100,
+        "Steel": 20,
+        "Wood": 30
+       },
+       "weapon": "FlakGuyGun"
+      },
+      {
+       "burst": 1,
+       "damage": 20,
+       "excludes": [],
+       "projectile": "Bullet",
+       "range": 8192,
+       "reload": 25,
+       "targets": [
+        "Air"
+       ],
+       "versus": {
+        "Concrete": 0,
+        "Drone": 100,
+        "Flak": 100,
+        "Heavy": 20,
+        "Light": 80,
+        "Medium": 20,
+        "None": 150,
+        "Plate": 50,
+        "Rocket": 100,
+        "Steel": 0,
+        "Wood": 0
+       },
+       "weapon": "FlakGuyAAGun"
+      }
+     ]
+    }
+   },
+   "name": "Flak Trooper",
+   "who": "original countries"
+  },
+  {
+   "id": "fv",
+   "factions": [
+    "america",
+    "germany",
+    "england",
+    "france",
+    "korea"
+   ],
+   "fields": {
+    "weapons": {
+     "web": [
+      {
+       "burst": 2,
+       "damage": 25,
+       "excludes": [],
+       "projectile": "Missile",
+       "range": 6144,
+       "reload": 83,
+       "targets": [
+        "Air",
+        "Ground"
+       ],
+       "versus": {
+        "Concrete": 20,
+        "Drone": 80,
+        "Flak": 90,
+        "Heavy": 35,
+        "Light": 70,
+        "Medium": 35,
+        "None": 100,
+        "Plate": 80,
+        "Rocket": 100,
+        "Steel": 40,
+        "Wood": 75
+       },
+       "weapon": "ea-retail-hovermissile"
+      }
+     ],
+     "desktop": [
+      {
+       "burst": 2,
+       "damage": 25,
+       "excludes": [],
+       "projectile": "Missile",
+       "range": 6144,
+       "reload": 50,
+       "targets": [
+        "Air",
+        "Ground"
+       ],
+       "versus": {
+        "Concrete": 20,
+        "Drone": 80,
+        "Flak": 90,
+        "Heavy": 35,
+        "Light": 70,
+        "Medium": 35,
+        "None": 100,
+        "Plate": 80,
+        "Rocket": 100,
+        "Steel": 40,
+        "Wood": 75
+       },
+       "weapon": "HoverMissile"
+      }
+     ]
+    }
+   },
+   "name": "Infantry Fighting Vehicle",
+   "who": "original countries"
+  },
+  {
+   "id": "gaairc",
+   "factions": [
+    "germany",
+    "england",
+    "france",
+    "korea",
+    "china",
+    "turkey",
+    "saudi",
+    "israel"
+   ],
+   "fields": {
+    "sight": {
+     "web": 5120,
+     "desktop": 10240
+    },
+    "name": {
+     "web": "Airforce Command Headquarters",
+     "desktop": "Airfield"
+    }
+   },
+   "name": "Airforce Command Headquarters",
+   "who": "both"
+  },
+  {
+   "id": "gacsph",
+   "factions": [
+    "america",
+    "germany",
+    "england",
+    "france",
+    "korea",
+    "china",
+    "turkey",
+    "saudi",
+    "israel"
+   ],
+   "fields": {
+    "name": {
+     "web": "Chronosphere",
+     "desktop": "Strategic Uplink"
+    }
+   },
+   "name": "Chronosphere",
+   "who": "both"
+  },
+  {
+   "id": "gagap",
+   "factions": [
+    "america",
+    "germany",
+    "england",
+    "france",
+    "korea"
+   ],
+   "only": "web",
+   "name": "Gap Generator",
+   "who": "original countries"
+  },
+  {
+   "id": "gaorep",
+   "factions": [
+    "america",
+    "germany",
+    "england",
+    "france",
+    "korea"
+   ],
+   "only": "web",
+   "name": "Ore Purifier",
+   "who": "original countries"
+  },
+  {
+   "id": "gapill",
+   "factions": [
+    "america",
+    "germany",
+    "england",
+    "france",
+    "korea"
+   ],
+   "fields": {
+    "weapons": {
+     "web": [
+      {
+       "burst": 1,
+       "damage": 50,
+       "excludes": [],
+       "projectile": "InstantHit",
+       "range": 5632,
+       "reload": 43,
+       "targets": [
+        "Ground",
+        "MicroDrone",
+        "Water"
+       ],
+       "versus": {
+        "Concrete": 25,
+        "Drone": 100,
+        "Flak": 80,
+        "Heavy": 25,
+        "Light": 50,
+        "Medium": 25,
+        "None": 100,
+        "Plate": 70,
+        "Rocket": 100,
+        "Steel": 50,
+        "Wood": 75
+       },
+       "weapon": "ea-retail-vulcan2"
+      }
+     ],
+     "desktop": [
+      {
+       "burst": 1,
+       "damage": 50,
+       "excludes": [],
+       "projectile": "InstantHit",
+       "range": 5632,
+       "reload": 26,
+       "targets": [
+        "Ground",
+        "MicroDrone",
+        "Water"
+       ],
+       "versus": {
+        "Concrete": 25,
+        "Drone": 100,
+        "Flak": 80,
+        "Heavy": 25,
+        "Light": 50,
+        "Medium": 25,
+        "None": 100,
+        "Plate": 70,
+        "Rocket": 100,
+        "Steel": 50,
+        "Wood": 75
+       },
+       "weapon": "vulcan2"
+      }
+     ]
+    }
+   },
+   "name": "Pill Box",
+   "who": "original countries"
+  },
+  {
+   "id": "gapurifier",
+   "factions": [
+    "america",
+    "germany",
+    "england",
+    "france",
+    "korea"
+   ],
+   "only": "desktop",
+   "name": "Refinery Purifier",
+   "who": "original countries"
+  },
+  {
+   "id": "gapurifier",
+   "factions": [
+    "china",
+    "turkey",
+    "saudi",
+    "israel"
+   ],
+   "fields": {
+    "prerequisites": {
+     "web": [
+      "garefn",
+      "gatech",
+      "~structures.allies",
+      "~!original-ra2-country"
+     ],
+     "desktop": [
+      "garefn",
+      "gatech",
+      "~structures.allies"
+     ]
+    }
+   },
+   "name": "Refinery Purifier",
+   "who": "modern factions"
+  },
+  {
+   "id": "gaspysat",
+   "factions": [
+    "america",
+    "germany",
+    "england",
+    "france",
+    "korea"
+   ],
+   "only": "web",
+   "name": "Spy Satellite Uplink",
+   "who": "original countries"
+  },
+  {
+   "id": "gatech",
+   "factions": [
+    "america",
+    "germany",
+    "england",
+    "france",
+    "korea",
+    "china",
+    "turkey",
+    "saudi",
+    "israel"
+   ],
+   "fields": {
+    "name": {
+     "web": "Battle Lab",
+     "desktop": "Tech Center"
+    }
+   },
+   "name": "Battle Lab",
+   "who": "both"
+  },
+  {
+   "id": "gawall",
+   "factions": [
+    "america",
+    "germany",
+    "england",
+    "france",
+    "korea",
+    "china",
+    "turkey",
+    "saudi",
+    "israel"
+   ],
+   "fields": {
+    "name": {
+     "web": "Allied Wall",
+     "desktop": "Wall"
+    }
+   },
+   "name": "Allied Wall",
+   "who": "both"
+  },
+  {
+   "id": "gaweap",
+   "factions": [
+    "america",
+    "germany",
+    "england",
+    "france",
+    "korea",
+    "china",
+    "turkey",
+    "saudi",
+    "israel"
+   ],
+   "fields": {
+    "name": {
+     "web": "War Factory",
+     "desktop": "Vehicle Factory"
+    }
+   },
+   "name": "War Factory",
+   "who": "both"
+  },
+  {
+   "id": "gaweat",
+   "factions": [
+    "america",
+    "germany",
+    "england",
+    "france",
+    "korea"
+   ],
+   "only": "web",
+   "name": "Weather Controller",
+   "who": "original countries"
+  },
+  {
+   "id": "gtgcan",
+   "factions": [
+    "france"
+   ],
+   "fields": {
+    "weapons": {
+     "web": [
+      {
+       "burst": 1,
+       "damage": 150,
+       "excludes": [],
+       "projectile": "Bullet",
+       "range": 15360,
+       "reload": 200,
+       "targets": [
+        "Ground",
+        "Water"
+       ],
+       "versus": {
+        "Concrete": 50,
+        "Drone": 100,
+        "Flak": 100,
+        "Heavy": 100,
+        "Light": 100,
+        "Medium": 100,
+        "None": 100,
+        "Plate": 100,
+        "Rocket": 100,
+        "Steel": 100,
+        "Wood": 50
+       },
+       "weapon": "ea-retail-grandcannonweapon"
+      }
+     ],
+     "desktop": [
+      {
+       "burst": 1,
+       "damage": 150,
+       "excludes": [],
+       "projectile": "Bullet",
+       "range": 15360,
+       "reload": 75,
+       "targets": [
+        "Ground",
+        "Water"
+       ],
+       "versus": {
+        "Concrete": 50,
+        "Drone": 100,
+        "Flak": 100,
+        "Heavy": 100,
+        "Light": 100,
+        "Medium": 100,
+        "None": 100,
+        "Plate": 100,
+        "Rocket": 100,
+        "Steel": 100,
+        "Wood": 50
+       },
+       "weapon": "GrandCannonWeapon"
+      }
+     ]
+    }
+   },
+   "name": "Grand Cannon",
+   "who": "original countries"
+  },
+  {
+   "id": "harv",
+   "factions": [
+    "cuba",
+    "libya",
+    "iraq",
+    "russia"
+   ],
+   "fields": {
+    "name": {
+     "web": "War Miner",
+     "desktop": "Armed Harvester"
+    },
+    "weapons": {
+     "web": [
+      {
+       "burst": 1,
+       "damage": 30,
+       "excludes": [],
+       "projectile": "InstantHit",
+       "range": 5632,
+       "reload": 33,
+       "targets": [
+        "Ground",
+        "MicroDrone",
+        "Water"
+       ],
+       "versus": {
+        "Concrete": 10,
+        "Drone": 200,
+        "Flak": 80,
+        "Heavy": 20,
+        "Light": 50,
+        "Medium": 20,
+        "None": 100,
+        "Plate": 70,
+        "Rocket": 100,
+        "Steel": 15,
+        "Wood": 20
+       },
+       "weapon": "ea-retail-20mmrapid"
+      }
+     ],
+     "desktop": [
+      {
+       "burst": 1,
+       "damage": 30,
+       "excludes": [],
+       "projectile": "InstantHit",
+       "range": 5632,
+       "reload": 20,
+       "targets": [
+        "Ground",
+        "MicroDrone",
+        "Water"
+       ],
+       "versus": {
+        "Concrete": 10,
+        "Drone": 200,
+        "Flak": 80,
+        "Heavy": 20,
+        "Light": 50,
+        "Medium": 20,
+        "None": 100,
+        "Plate": 70,
+        "Rocket": 100,
+        "Steel": 15,
+        "Wood": 20
+       },
+       "weapon": "20mmrapid"
+      }
+     ]
+    }
+   },
+   "name": "War Miner",
+   "who": "original countries"
+  },
+  {
+   "id": "harv",
+   "factions": [
+    "iran",
+    "yemen",
+    "hezbollah"
+   ],
+   "fields": {
+    "name": {
+     "web": "War Miner",
+     "desktop": "Armed Harvester"
+    }
+   },
+   "name": "War Miner",
+   "who": "modern factions"
+  },
+  {
+   "id": "htk",
+   "factions": [
+    "cuba",
+    "libya",
+    "iraq",
+    "russia"
+   ],
+   "fields": {
+    "name": {
+     "web": "Flak Track",
+     "desktop": "AA Carrier"
+    },
+    "weapons": {
+     "web": [
+      {
+       "burst": 1,
+       "damage": 25,
+       "excludes": [],
+       "projectile": "Bullet",
+       "range": 5120,
+       "reload": 67,
+       "targets": [
+        "Ground",
+        "Water"
+       ],
+       "versus": {
+        "Concrete": 10,
+        "Drone": 100,
+        "Flak": 100,
+        "Heavy": 10,
+        "Light": 60,
+        "Medium": 10,
+        "None": 150,
+        "Plate": 50,
+        "Rocket": 100,
+        "Steel": 20,
+        "Wood": 30
+       },
+       "weapon": "ea-retail-flaktrackgun"
+      },
+      {
+       "burst": 1,
+       "damage": 35,
+       "excludes": [],
+       "projectile": "Bullet",
+       "range": 10240,
+       "reload": 42,
+       "targets": [
+        "Air"
+       ],
+       "versus": {
+        "Concrete": 0,
+        "Drone": 100,
+        "Flak": 80,
+        "Heavy": 20,
+        "Light": 100,
+        "Medium": 20,
+        "None": 150,
+        "Plate": 50,
+        "Rocket": 100,
+        "Steel": 0,
+        "Wood": 0
+       },
+       "weapon": "ea-retail-flaktrackaagun"
+      }
+     ],
+     "desktop": [
+      {
+       "burst": 1,
+       "damage": 25,
+       "excludes": [],
+       "projectile": "Bullet",
+       "range": 5120,
+       "reload": 25,
+       "targets": [
+        "Ground",
+        "Water"
+       ],
+       "versus": {
+        "Concrete": 10,
+        "Drone": 100,
+        "Flak": 100,
+        "Heavy": 10,
+        "Light": 60,
+        "Medium": 10,
+        "None": 150,
+        "Plate": 50,
+        "Rocket": 100,
+        "Steel": 20,
+        "Wood": 30
+       },
+       "weapon": "FlakTrackGun"
+      },
+      {
+       "burst": 1,
+       "damage": 35,
+       "excludes": [],
+       "projectile": "Bullet",
+       "range": 10240,
+       "reload": 25,
+       "targets": [
+        "Air"
+       ],
+       "versus": {
+        "Concrete": 0,
+        "Drone": 100,
+        "Flak": 80,
+        "Heavy": 20,
+        "Light": 100,
+        "Medium": 20,
+        "None": 150,
+        "Plate": 50,
+        "Rocket": 100,
+        "Steel": 0,
+        "Wood": 0
+       },
+       "weapon": "FlakTrackAAGun"
+      }
+     ]
+    }
+   },
+   "name": "Flak Track",
+   "who": "original countries"
+  },
+  {
+   "id": "htk",
+   "factions": [
+    "iran",
+    "yemen",
+    "hezbollah"
+   ],
+   "fields": {
+    "name": {
+     "web": "Flak Track",
+     "desktop": "AA Carrier"
+    }
+   },
+   "name": "Flak Track",
+   "who": "modern factions"
+  },
+  {
+   "id": "htnk",
+   "factions": [
+    "cuba",
+    "libya",
+    "iraq",
+    "russia"
+   ],
+   "fields": {
+    "name": {
+     "web": "Rhino Heavy Tank",
+     "desktop": "Heavy Tank"
+    },
+    "weapons": {
+     "web": [
+      {
+       "burst": 1,
+       "damage": 90,
+       "excludes": [],
+       "projectile": "Bullet",
+       "range": 5888,
+       "reload": 108,
+       "targets": [
+        "Ground",
+        "Water"
+       ],
+       "versus": {
+        "Concrete": 60,
+        "Drone": 60,
+        "Flak": 25,
+        "Heavy": 100,
+        "Light": 75,
+        "Medium": 100,
+        "None": 25,
+        "Plate": 25,
+        "Rocket": 100,
+        "Steel": 45,
+        "Wood": 65
+       },
+       "weapon": "ea-retail-120mm"
+      }
+     ],
+     "desktop": [
+      {
+       "burst": 1,
+       "damage": 90,
+       "excludes": [],
+       "projectile": "Bullet",
+       "range": 5888,
+       "reload": 65,
+       "targets": [
+        "Ground",
+        "Water"
+       ],
+       "versus": {
+        "Concrete": 60,
+        "Drone": 60,
+        "Flak": 25,
+        "Heavy": 100,
+        "Light": 75,
+        "Medium": 100,
+        "None": 25,
+        "Plate": 25,
+        "Rocket": 100,
+        "Steel": 45,
+        "Wood": 65
+       },
+       "weapon": "120mm"
+      }
+     ]
+    }
+   },
+   "name": "Rhino Heavy Tank",
+   "who": "original countries"
+  },
+  {
+   "id": "hyd",
+   "factions": [
+    "cuba",
+    "libya",
+    "iraq",
+    "russia"
+   ],
+   "fields": {
+    "cost": {
+     "web": 600,
+     "desktop": 900
+    },
+    "hp": {
+     "web": 400,
+     "desktop": 300
+    },
+    "weapons": {
+     "web": [
+      {
+       "burst": 1,
+       "damage": 25,
+       "excludes": [],
+       "projectile": "Bullet",
+       "range": 5120,
+       "reload": 67,
+       "targets": [
+        "Ground",
+        "Water"
+       ],
+       "versus": {
+        "Concrete": 10,
+        "Drone": 100,
+        "Flak": 100,
+        "Heavy": 10,
+        "Light": 60,
+        "Medium": 10,
+        "None": 150,
+        "Plate": 50,
+        "Rocket": 100,
+        "Steel": 20,
+        "Wood": 30
+       },
+       "weapon": "ea-retail-flaktrackgun"
+      },
+      {
+       "burst": 1,
+       "damage": 40,
+       "excludes": [],
+       "projectile": "Bullet",
+       "range": 12288,
+       "reload": 33,
+       "targets": [
+        "Air"
+       ],
+       "versus": {
+        "Concrete": 0,
+        "Drone": 100,
+        "Flak": 80,
+        "Heavy": 20,
+        "Light": 100,
+        "Medium": 20,
+        "None": 150,
+        "Plate": 50,
+        "Rocket": 100,
+        "Steel": 0,
+        "Wood": 0
+       },
+       "weapon": "ea-retail-flakweapon"
+      }
+     ],
+     "desktop": [
+      {
+       "burst": 1,
+       "damage": 25,
+       "excludes": [],
+       "projectile": "Bullet",
+       "range": 5120,
+       "reload": 25,
+       "targets": [
+        "Ground",
+        "Water"
+       ],
+       "versus": {
+        "Concrete": 10,
+        "Drone": 100,
+        "Flak": 100,
+        "Heavy": 10,
+        "Light": 60,
+        "Medium": 10,
+        "None": 150,
+        "Plate": 50,
+        "Rocket": 100,
+        "Steel": 20,
+        "Wood": 30
+       },
+       "weapon": "FlakTrackGun"
+      },
+      {
+       "burst": 1,
+       "damage": 40,
+       "excludes": [],
+       "projectile": "Bullet",
+       "range": 12288,
+       "reload": 20,
+       "targets": [
+        "Air"
+       ],
+       "versus": {
+        "Concrete": 0,
+        "Drone": 100,
+        "Flak": 80,
+        "Heavy": 20,
+        "Light": 100,
+        "Medium": 20,
+        "None": 150,
+        "Plate": 50,
+        "Rocket": 100,
+        "Steel": 0,
+        "Wood": 0
+       },
+       "weapon": "FlakWeapon"
+      }
+     ]
+    }
+   },
+   "name": "Sea Scorpion",
+   "who": "original countries"
+  },
+  {
+   "id": "ivan",
+   "factions": [
+    "cuba",
+    "libya",
+    "iraq",
+    "russia"
+   ],
+   "fields": {
+    "name": {
+     "web": "Crazy Ivan",
+     "desktop": "Demolition Specialist"
+    },
+    "weapons": {
+     "web": [
+      {
+       "burst": 1,
+       "damage": 0,
+       "excludes": [],
+       "projectile": "OriginalRa2Action",
+       "range": 1536,
+       "reload": 83,
+       "targets": [
+        "Ground",
+        "Water"
+       ],
+       "versus": {},
+       "weapon": "ea-retail-ivanbomber"
+      }
+     ],
+     "desktop": [
+      {
+       "burst": 1,
+       "damage": 400,
+       "excludes": [],
+       "projectile": "Bullet",
+       "range": 1873,
+       "reload": 50,
+       "targets": [
+        "Ground",
+        "Water"
+       ],
+       "versus": {
+        "Concrete": 20,
+        "Drone": 100,
+        "Flak": 100,
+        "Heavy": 100,
+        "Light": 100,
+        "Medium": 100,
+        "None": 100,
+        "Plate": 100,
+        "Rocket": 100,
+        "Steel": 250,
+        "Wood": 100
+       },
+       "weapon": "IvanBomber"
+      }
+     ]
+    }
+   },
+   "name": "Crazy Ivan",
+   "who": "original countries"
+  },
+  {
+   "id": "jumpjet",
+   "factions": [
+    "america",
+    "germany",
+    "england",
+    "france",
+    "korea"
+   ],
+   "fields": {
+    "name": {
+     "web": "Rocketeer",
+     "desktop": "Airborne Trooper"
+    },
+    "weapons": {
+     "web": [
+      {
+       "burst": 1,
+       "damage": 25,
+       "excludes": [],
+       "projectile": "InstantHit",
+       "range": 5120,
+       "reload": 50,
+       "targets": [
+        "Air",
+        "Ground",
+        "Water"
+       ],
+       "versus": {
+        "Concrete": 25,
+        "Drone": 100,
+        "Flak": 100,
+        "Heavy": 40,
+        "Light": 60,
+        "Medium": 40,
+        "None": 100,
+        "Plate": 70,
+        "Rocket": 100,
+        "Steel": 50,
+        "Wood": 75
+       },
+       "weapon": "ea-retail-20mm"
+      }
+     ],
+     "desktop": [
+      {
+       "burst": 1,
+       "damage": 25,
+       "excludes": [],
+       "projectile": "InstantHit",
+       "range": 5120,
+       "reload": 20,
+       "targets": [
+        "Air",
+        "Ground",
+        "Water"
+       ],
+       "versus": {
+        "Concrete": 25,
+        "Drone": 100,
+        "Flak": 100,
+        "Heavy": 40,
+        "Light": 60,
+        "Medium": 40,
+        "None": 100,
+        "Plate": 70,
+        "Rocket": 100,
+        "Steel": 50,
+        "Wood": 75
+       },
+       "weapon": "20mm"
+      }
+     ]
+    }
+   },
+   "name": "Rocketeer",
+   "who": "original countries"
+  },
+  {
+   "id": "mgtk",
+   "factions": [
+    "america",
+    "germany",
+    "england",
+    "france",
+    "korea"
+   ],
+   "fields": {
+    "name": {
+     "web": "Mirage Tank",
+     "desktop": "Camouflage Tank"
+    },
+    "weapons": {
+     "web": [
+      {
+       "burst": 1,
+       "damage": 100,
+       "excludes": [],
+       "projectile": "Bullet",
+       "range": 7168,
+       "reload": 117,
+       "targets": [
+        "Ground",
+        "Water"
+       ],
+       "versus": {
+        "Concrete": 20,
+        "Drone": 100,
+        "Flak": 100,
+        "Heavy": 100,
+        "Light": 100,
+        "Medium": 100,
+        "None": 100,
+        "Plate": 80,
+        "Rocket": 100,
+        "Steel": 20,
+        "Wood": 30
+       },
+       "weapon": "ea-retail-miragegun"
+      }
+     ],
+     "desktop": [
+      {
+       "burst": 1,
+       "damage": 100,
+       "excludes": [],
+       "projectile": "Bullet",
+       "range": 7168,
+       "reload": 70,
+       "targets": [
+        "Ground",
+        "Water"
+       ],
+       "versus": {
+        "Concrete": 20,
+        "Drone": 100,
+        "Flak": 100,
+        "Heavy": 100,
+        "Light": 100,
+        "Medium": 100,
+        "None": 100,
+        "Plate": 80,
+        "Rocket": 100,
+        "Steel": 20,
+        "Wood": 30
+       },
+       "weapon": "MirageGun"
+      }
+     ]
+    }
+   },
+   "name": "Mirage Tank",
+   "who": "original countries"
+  },
+  {
+   "id": "mtnk",
+   "factions": [
+    "america",
+    "germany",
+    "england",
+    "france",
+    "korea"
+   ],
+   "fields": {
+    "name": {
+     "web": "Grizzly Battle Tank",
+     "desktop": "Battle Tank"
+    },
+    "weapons": {
+     "web": [
+      {
+       "burst": 1,
+       "damage": 65,
+       "excludes": [],
+       "projectile": "Bullet",
+       "range": 5120,
+       "reload": 100,
+       "targets": [
+        "Ground",
+        "Water"
+       ],
+       "versus": {
+        "Concrete": 60,
+        "Drone": 60,
+        "Flak": 25,
+        "Heavy": 100,
+        "Light": 75,
+        "Medium": 100,
+        "None": 25,
+        "Plate": 25,
+        "Rocket": 100,
+        "Steel": 45,
+        "Wood": 65
+       },
+       "weapon": "ea-retail-105mm"
+      }
+     ],
+     "desktop": [
+      {
+       "burst": 1,
+       "damage": 65,
+       "excludes": [],
+       "projectile": "Bullet",
+       "range": 5120,
+       "reload": 60,
+       "targets": [
+        "Ground",
+        "Water"
+       ],
+       "versus": {
+        "Concrete": 60,
+        "Drone": 60,
+        "Flak": 25,
+        "Heavy": 100,
+        "Light": 75,
+        "Medium": 100,
+        "None": 25,
+        "Plate": 25,
+        "Rocket": 100,
+        "Steel": 45,
+        "Wood": 65
+       },
+       "weapon": "105mm"
+      }
+     ]
+    }
+   },
+   "name": "Grizzly Battle Tank",
+   "who": "original countries"
+  },
+  {
+   "id": "naclon",
+   "factions": [
+    "cuba",
+    "libya",
+    "iraq",
+    "russia"
+   ],
+   "only": "web",
+   "name": "Cloning Vats",
+   "who": "original countries"
+  },
+  {
+   "id": "naflak",
+   "factions": [
+    "cuba",
+    "libya",
+    "iraq",
+    "russia"
+   ],
+   "fields": {
+    "weapons": {
+     "web": [
+      {
+       "burst": 1,
+       "damage": 40,
+       "excludes": [],
+       "projectile": "Bullet",
+       "range": 12288,
+       "reload": 33,
+       "targets": [
+        "Air"
+       ],
+       "versus": {
+        "Concrete": 0,
+        "Drone": 100,
+        "Flak": 80,
+        "Heavy": 20,
+        "Light": 100,
+        "Medium": 20,
+        "None": 150,
+        "Plate": 50,
+        "Rocket": 100,
+        "Steel": 0,
+        "Wood": 0
+       },
+       "weapon": "ea-retail-flakweapon"
+      }
+     ],
+     "desktop": [
+      {
+       "burst": 1,
+       "damage": 40,
+       "excludes": [],
+       "projectile": "Bullet",
+       "range": 12288,
+       "reload": 20,
+       "targets": [
+        "Air"
+       ],
+       "versus": {
+        "Concrete": 0,
+        "Drone": 100,
+        "Flak": 80,
+        "Heavy": 20,
+        "Light": 100,
+        "Medium": 20,
+        "None": 150,
+        "Plate": 50,
+        "Rocket": 100,
+        "Steel": 0,
+        "Wood": 0
+       },
+       "weapon": "FlakWeapon"
+      }
+     ]
+    }
+   },
+   "name": "Flak Cannon",
+   "who": "original countries"
+  },
+  {
+   "id": "nairon",
+   "factions": [
+    "cuba",
+    "libya",
+    "iraq",
+    "russia",
+    "iran",
+    "yemen",
+    "hezbollah"
+   ],
+   "fields": {
+    "name": {
+     "web": "Iron Curtain Device",
+     "desktop": "EW Array"
+    }
+   },
+   "name": "Iron Curtain Device",
+   "who": "both"
+  },
+  {
+   "id": "nalasr",
+   "factions": [
+    "cuba",
+    "libya",
+    "iraq",
+    "russia"
+   ],
+   "fields": {
+    "weapons": {
+     "web": [
+      {
+       "burst": 1,
+       "damage": 50,
+       "excludes": [],
+       "projectile": "InstantHit",
+       "range": 5632,
+       "reload": 43,
+       "targets": [
+        "Ground",
+        "MicroDrone",
+        "Water"
+       ],
+       "versus": {
+        "Concrete": 25,
+        "Drone": 100,
+        "Flak": 80,
+        "Heavy": 25,
+        "Light": 50,
+        "Medium": 25,
+        "None": 100,
+        "Plate": 70,
+        "Rocket": 100,
+        "Steel": 50,
+        "Wood": 75
+       },
+       "weapon": "ea-retail-vulcan"
+      }
+     ],
+     "desktop": [
+      {
+       "burst": 1,
+       "damage": 50,
+       "excludes": [],
+       "projectile": "InstantHit",
+       "range": 5632,
+       "reload": 26,
+       "targets": [
+        "Ground",
+        "MicroDrone",
+        "Water"
+       ],
+       "versus": {
+        "Concrete": 25,
+        "Drone": 100,
+        "Flak": 80,
+        "Heavy": 25,
+        "Light": 50,
+        "Medium": 25,
+        "None": 100,
+        "Plate": 70,
+        "Rocket": 100,
+        "Steel": 50,
+        "Wood": 75
+       },
+       "weapon": "vulcan"
+      }
+     ]
+    }
+   },
+   "name": "Sentry Gun",
+   "who": "original countries"
+  },
+  {
+   "id": "namisl",
+   "factions": [
+    "cuba",
+    "libya",
+    "iraq",
+    "russia"
+   ],
+   "only": "web",
+   "name": "Nuclear Missile Silo",
+   "who": "original countries"
+  },
+  {
+   "id": "nanrct",
+   "factions": [
+    "cuba",
+    "libya",
+    "iraq",
+    "russia",
+    "iran",
+    "yemen",
+    "hezbollah"
+   ],
+   "fields": {
+    "name": {
+     "web": "Nuclear Reactor",
+     "desktop": "Heavy Power Plant"
+    }
+   },
+   "name": "Nuclear Reactor",
+   "who": "both"
+  },
+  {
+   "id": "napowr",
+   "factions": [
+    "cuba",
+    "libya",
+    "iraq",
+    "russia",
+    "iran",
+    "yemen",
+    "hezbollah"
+   ],
+   "fields": {
+    "name": {
+     "web": "Tesla Reactor",
+     "desktop": "Power Plant"
+    }
+   },
+   "name": "Tesla Reactor",
+   "who": "both"
+  },
+  {
+   "id": "napsis",
+   "factions": [
+    "cuba",
+    "libya",
+    "iraq",
+    "russia"
+   ],
+   "only": "web",
+   "name": "Psychic Sensor",
+   "who": "original countries"
+  },
+  {
+   "id": "nasam",
+   "factions": [
+    "america",
+    "germany",
+    "england",
+    "france",
+    "korea"
+   ],
+   "fields": {
+    "sight": {
+     "web": 10240,
+     "desktop": 7168
+    },
+    "weapons": {
+     "web": [
+      {
+       "burst": 1,
+       "damage": 75,
+       "excludes": [],
+       "projectile": "Missile",
+       "range": 12288,
+       "reload": 92,
+       "targets": [
+        "Air"
+       ],
+       "versus": {
+        "Concrete": 0,
+        "Drone": 100,
+        "Flak": 100,
+        "Heavy": 100,
+        "Light": 100,
+        "Medium": 100,
+        "None": 100,
+        "Plate": 100,
+        "Rocket": 100,
+        "Steel": 0,
+        "Wood": 0
+       },
+       "weapon": "ea-retail-redeye2"
+      }
+     ],
+     "desktop": [
+      {
+       "burst": 1,
+       "damage": 75,
+       "excludes": [],
+       "projectile": "Missile",
+       "range": 12288,
+       "reload": 60,
+       "targets": [
+        "Air"
+       ],
+       "versus": {
+        "Concrete": 0,
+        "Drone": 100,
+        "Flak": 100,
+        "Heavy": 100,
+        "Light": 100,
+        "Medium": 100,
+        "None": 100,
+        "Plate": 100,
+        "Rocket": 100,
+        "Steel": 0,
+        "Wood": 0
+       },
+       "weapon": "RedEye2"
+      }
+     ]
+    }
+   },
+   "name": "Patriot Missile System",
+   "who": "original countries"
+  },
+  {
+   "id": "natech",
+   "factions": [
+    "cuba",
+    "libya",
+    "iraq",
+    "russia",
+    "iran",
+    "yemen",
+    "hezbollah"
+   ],
+   "fields": {
+    "name": {
+     "web": "Battle Lab",
+     "desktop": "Tech Center"
+    }
+   },
+   "name": "Battle Lab",
+   "who": "both"
+  },
+  {
+   "id": "nawall",
+   "factions": [
+    "cuba",
+    "libya",
+    "iraq",
+    "russia",
+    "iran",
+    "yemen",
+    "hezbollah"
+   ],
+   "fields": {
+    "name": {
+     "web": "Soviet Wall",
+     "desktop": "Wall"
+    }
+   },
+   "name": "Soviet Wall",
+   "who": "both"
+  },
+  {
+   "id": "naweap",
+   "factions": [
+    "cuba",
+    "libya",
+    "iraq",
+    "russia",
+    "iran",
+    "yemen",
+    "hezbollah"
+   ],
+   "fields": {
+    "name": {
+     "web": "War Factory",
+     "desktop": "Vehicle Factory"
+    }
+   },
+   "name": "War Factory",
+   "who": "both"
+  },
+  {
+   "id": "orca",
+   "factions": [
+    "america",
+    "germany",
+    "england",
+    "france"
+   ],
+   "fields": {
+    "name": {
+     "web": "Harrier",
+     "desktop": "Strike Aircraft"
+    },
+    "weapons": {
+     "web": [
+      {
+       "burst": 2,
+       "damage": 150,
+       "excludes": [],
+       "projectile": "Missile",
+       "range": 6144,
+       "reload": 17,
+       "targets": [
+        "Ground",
+        "Water"
+       ],
+       "versus": {
+        "Concrete": 75,
+        "Drone": 100,
+        "Flak": 100,
+        "Heavy": 100,
+        "Light": 100,
+        "Medium": 100,
+        "None": 100,
+        "Plate": 100,
+        "Rocket": 100,
+        "Steel": 100,
+        "Wood": 100
+       },
+       "weapon": "ea-retail-maverick"
+      }
+     ],
+     "desktop": [
+      {
+       "burst": 1,
+       "damage": 150,
+       "excludes": [],
+       "projectile": "Missile",
+       "range": 6144,
+       "reload": 10,
+       "targets": [
+        "Ground",
+        "Water"
+       ],
+       "versus": {
+        "Concrete": 75
+       },
+       "weapon": "Maverick"
+      }
+     ]
+    }
+   },
+   "name": "Harrier",
+   "who": "original countries"
+  },
+  {
+   "id": "shad",
+   "factions": [
+    "america",
+    "germany",
+    "england",
+    "france",
+    "korea"
+   ],
+   "fields": {
+    "weapons": {
+     "web": [
+      {
+       "burst": 1,
+       "damage": 35,
+       "excludes": [],
+       "projectile": "InstantHit",
+       "range": 6144,
+       "reload": 67,
+       "targets": [
+        "Ground",
+        "MicroDrone",
+        "Water"
+       ],
+       "versus": {
+        "Concrete": 25,
+        "Drone": 100,
+        "Flak": 80,
+        "Heavy": 25,
+        "Light": 50,
+        "Medium": 25,
+        "None": 100,
+        "Plate": 70,
+        "Rocket": 100,
+        "Steel": 50,
+        "Wood": 75
+       },
+       "weapon": "ea-retail-blackhawkcannon"
+      }
+     ],
+     "desktop": [
+      {
+       "burst": 1,
+       "damage": 25,
+       "excludes": [],
+       "projectile": "InstantHit",
+       "range": 6144,
+       "reload": 40,
+       "targets": [
+        "Ground",
+        "MicroDrone",
+        "Water"
+       ],
+       "versus": {
+        "Concrete": 25,
+        "Drone": 100,
+        "Flak": 80,
+        "Heavy": 25,
+        "Light": 50,
+        "Medium": 25,
+        "None": 100,
+        "Plate": 70,
+        "Rocket": 100,
+        "Steel": 50,
+        "Wood": 75
+       },
+       "weapon": "BlackHawkCannon"
+      }
+     ]
+    }
+   },
+   "name": "Night Hawk",
+   "who": "original countries"
+  },
+  {
+   "id": "shk",
+   "factions": [
+    "cuba",
+    "libya",
+    "iraq",
+    "russia"
+   ],
+   "fields": {
+    "name": {
+     "web": "Tesla Trooper",
+     "desktop": "Arc Trooper"
+    },
+    "weapons": {
+     "web": [
+      {
+       "burst": 1,
+       "damage": 0,
+       "excludes": [],
+       "projectile": "ElectricBolt",
+       "range": 1874,
+       "reload": 42,
+       "targets": [
+        "TeslaBoost"
+       ],
+       "versus": {},
+       "weapon": "ea-retail-assaultbolt"
+      },
+      {
+       "burst": 1,
+       "damage": 50,
+       "excludes": [],
+       "projectile": "ElectricBolt",
+       "range": 3072,
+       "reload": 100,
+       "targets": [
+        "Ground",
+        "Water"
+       ],
+       "versus": {
+        "Concrete": 50,
+        "Drone": 200,
+        "Flak": 100,
+        "Heavy": 100,
+        "Light": 85,
+        "Medium": 100,
+        "None": 100,
+        "Plate": 100,
+        "Rocket": 100,
+        "Steel": 50,
+        "Wood": 50
+       },
+       "weapon": "ea-retail-electricbolt"
+      }
+     ],
+     "desktop": [
+      {
+       "burst": 1,
+       "damage": 0,
+       "excludes": [],
+       "projectile": "ElectricBolt",
+       "range": 2048,
+       "reload": 70,
+       "targets": [
+        "TeslaBoost"
+       ],
+       "versus": {},
+       "weapon": "AssaultBolt"
+      },
+      {
+       "burst": 1,
+       "damage": 50,
+       "excludes": [],
+       "projectile": "ElectricBolt",
+       "range": 3072,
+       "reload": 60,
+       "targets": [
+        "Ground",
+        "Water"
+       ],
+       "versus": {
+        "Concrete": 50,
+        "Drone": 200,
+        "Flak": 100,
+        "Heavy": 100,
+        "Light": 85,
+        "Medium": 100,
+        "None": 100,
+        "Plate": 100,
+        "Rocket": 100,
+        "Steel": 50,
+        "Wood": 50
+       },
+       "weapon": "ElectricBolt"
+      }
+     ]
+    }
+   },
+   "name": "Tesla Trooper",
+   "who": "original countries"
+  },
+  {
+   "id": "smcv",
+   "factions": [
+    "cuba",
+    "libya",
+    "iraq",
+    "russia",
+    "iran",
+    "yemen",
+    "hezbollah"
+   ],
+   "fields": {
+    "sight": {
+     "web": 6144,
+     "desktop": 4096
+    }
+   },
+   "name": "Mobile Construction Vehicle",
+   "who": "both"
+  },
+  {
+   "id": "snipe",
+   "factions": [
+    "england"
+   ],
+   "fields": {
+    "weapons": {
+     "web": [
+      {
+       "burst": 1,
+       "damage": 125,
+       "excludes": [],
+       "projectile": "Bullet",
+       "range": 14336,
+       "reload": 250,
+       "targets": [
+        "Infantry"
+       ],
+       "versus": {
+        "Concrete": 1,
+        "Drone": 1,
+        "Flak": 100,
+        "Heavy": 1,
+        "Light": 1,
+        "Medium": 1,
+        "None": 200,
+        "Plate": 100,
+        "Rocket": 100,
+        "Steel": 1,
+        "Wood": 1
+       },
+       "weapon": "ea-retail-awp"
+      }
+     ],
+     "desktop": [
+      {
+       "burst": 1,
+       "damage": 125,
+       "excludes": [],
+       "projectile": "Bullet",
+       "range": 14336,
+       "reload": 100,
+       "targets": [
+        "Infantry"
+       ],
+       "versus": {
+        "Concrete": 0,
+        "Drone": 0,
+        "Flak": 100,
+        "Heavy": 0,
+        "Light": 0,
+        "Medium": 0,
+        "None": 200,
+        "Plate": 100,
+        "Rocket": 100,
+        "Steel": 0,
+        "Wood": 0
+       },
+       "weapon": "awp"
+      }
+     ]
+    }
+   },
+   "name": "Sniper",
+   "who": "original countries"
+  },
+  {
+   "id": "spy",
+   "factions": [
+    "america",
+    "germany",
+    "england",
+    "france",
+    "korea",
+    "china",
+    "turkey",
+    "saudi",
+    "israel"
+   ],
+   "fields": {
+    "hp": {
+     "web": 100,
+     "desktop": 25
+    },
+    "armor": {
+     "web": "Flak",
+     "desktop": "None"
+    },
+    "sight": {
+     "web": 9216,
+     "desktop": 5120
+    }
+   },
+   "name": "Spy",
+   "who": "both"
+  },
+  {
+   "id": "sqd",
+   "factions": [
+    "cuba",
+    "libya",
+    "iraq",
+    "russia"
+   ],
+   "fields": {
+    "name": {
+     "web": "Giant Squid",
+     "desktop": "Assault Submersible"
+    },
+    "weapons": {
+     "web": [
+      {
+       "burst": 1,
+       "damage": 0,
+       "excludes": [],
+       "projectile": "OriginalRa2Action",
+       "range": 1536,
+       "reload": 165,
+       "targets": [
+        "RetailShip"
+       ],
+       "versus": {},
+       "weapon": "ea-retail-squidgrab"
+      },
+      {
+       "burst": 1,
+       "damage": 50,
+       "excludes": [
+        "RetailShip"
+       ],
+       "projectile": "InstantHit",
+       "range": 1874,
+       "reload": 53,
+       "targets": [
+        "Underwater",
+        "Water"
+       ],
+       "versus": {
+        "Concrete": 20,
+        "Drone": 80,
+        "Flak": 90,
+        "Heavy": 35,
+        "Light": 70,
+        "Medium": 35,
+        "None": 100,
+        "Plate": 80,
+        "Rocket": 100,
+        "Steel": 40,
+        "Wood": 75
+       },
+       "weapon": "ea-retail-squidpunch"
+      }
+     ],
+     "desktop": [
+      {
+       "burst": 1,
+       "damage": 50,
+       "excludes": [],
+       "projectile": "InstantHit",
+       "range": 1880,
+       "reload": 32,
+       "targets": [
+        "Underwater",
+        "Water"
+       ],
+       "versus": {},
+       "weapon": "SquidPunch"
+      }
+     ]
+    }
+   },
+   "name": "Giant Squid",
+   "who": "original countries"
+  },
+  {
+   "id": "sref",
+   "factions": [
+    "america",
+    "germany",
+    "england",
+    "france",
+    "korea"
+   ],
+   "fields": {
+    "armor": {
+     "web": "Light",
+     "desktop": "Heavy"
+    },
+    "name": {
+     "web": "Prism Tank",
+     "desktop": "Spectrum Tank"
+    },
+    "weapons": {
+     "web": [
+      {
+       "burst": 1,
+       "damage": 100,
+       "excludes": [],
+       "projectile": "OriginalRa2Action",
+       "range": 10240,
+       "reload": 167,
+       "targets": [
+        "Ground",
+        "Water"
+       ],
+       "versus": {
+        "Concrete": 200,
+        "Drone": 100,
+        "Flak": 100,
+        "Heavy": 50,
+        "Light": 75,
+        "Medium": 50,
+        "None": 100,
+        "Plate": 100,
+        "Rocket": 100,
+        "Steel": 200,
+        "Wood": 200
+       },
+       "weapon": "ea-retail-comet"
+      }
+     ],
+     "desktop": [
+      {
+       "burst": 1,
+       "damage": 100,
+       "excludes": [],
+       "projectile": "LaserZap",
+       "range": 10240,
+       "reload": 100,
+       "targets": [
+        "Ground",
+        "Water"
+       ],
+       "versus": {
+        "Concrete": 200,
+        "Drone": 200,
+        "Flak": 100,
+        "Heavy": 50,
+        "Light": 75,
+        "Medium": 50,
+        "None": 100,
+        "Plate": 100,
+        "Rocket": 100,
+        "Steel": 200,
+        "Wood": 200
+       },
+       "weapon": "Comet"
+      }
+     ]
+    }
+   },
+   "name": "Prism Tank",
+   "who": "original countries"
+  },
+  {
+   "id": "sub",
+   "factions": [
+    "cuba",
+    "libya",
+    "iraq",
+    "russia"
+   ],
+   "fields": {
+    "sight": {
+     "web": 4096,
+     "desktop": 6144
+    },
+    "name": {
+     "web": "Typhoon Attack Sub",
+     "desktop": "Attack Submarine"
+    },
+    "weapons": {
+     "web": [
+      {
+       "burst": 1,
+       "damage": 100,
+       "excludes": [],
+       "projectile": "Missile",
+       "range": 7168,
+       "reload": 200,
+       "targets": [
+        "Underwater",
+        "Water"
+       ],
+       "versus": {
+        "Concrete": 60,
+        "Drone": 25,
+        "Flak": 25,
+        "Heavy": 100,
+        "Light": 75,
+        "Medium": 100,
+        "None": 25,
+        "Plate": 25,
+        "Rocket": 100,
+        "Steel": 65,
+        "Wood": 65
+       },
+       "weapon": "ea-retail-subtorpedo"
+      }
+     ],
+     "desktop": [
+      {
+       "burst": 1,
+       "damage": 100,
+       "excludes": [],
+       "projectile": "Missile",
+       "range": 7168,
+       "reload": 75,
+       "targets": [
+        "Underwater",
+        "Water"
+       ],
+       "versus": {
+        "Concrete": 60,
+        "Drone": 25,
+        "Flak": 25,
+        "Heavy": 100,
+        "Light": 75,
+        "Medium": 100,
+        "None": 25,
+        "Plate": 25,
+        "Rocket": 100,
+        "Steel": 65,
+        "Wood": 65
+       },
+       "weapon": "SubTorpedo"
+      }
+     ]
+    }
+   },
+   "name": "Typhoon Attack Sub",
+   "who": "original countries"
+  },
+  {
+   "id": "tany",
+   "factions": [
+    "america",
+    "germany",
+    "england",
+    "france",
+    "korea"
+   ],
+   "fields": {
+    "sight": {
+     "web": 8192,
+     "desktop": 6144
+    },
+    "name": {
+     "web": "Tanya",
+     "desktop": "Commando"
+    },
+    "weapons": {
+     "web": [
+      {
+       "burst": 1,
+       "damage": 125,
+       "excludes": [],
+       "projectile": "InstantHit",
+       "range": 6144,
+       "reload": 17,
+       "targets": [
+        "Ground",
+        "MicroDrone",
+        "Water"
+       ],
+       "versus": {
+        "Concrete": 1,
+        "Drone": 1,
+        "Flak": 100,
+        "Heavy": 1,
+        "Light": 1,
+        "Medium": 1,
+        "None": 200,
+        "Plate": 100,
+        "Rocket": 100,
+        "Steel": 1,
+        "Wood": 1
+       },
+       "weapon": "ea-retail-doublepistols"
+      }
+     ],
+     "desktop": [
+      {
+       "burst": 1,
+       "damage": 125,
+       "excludes": [],
+       "projectile": "InstantHit",
+       "range": 6144,
+       "reload": 10,
+       "targets": [
+        "Ground",
+        "MicroDrone",
+        "Water"
+       ],
+       "versus": {
+        "Concrete": 0,
+        "Drone": 0,
+        "Flak": 100,
+        "Heavy": 0,
+        "Light": 0,
+        "Medium": 0,
+        "None": 200,
+        "Plate": 100,
+        "Rocket": 100,
+        "Steel": 0,
+        "Wood": 0
+       },
+       "weapon": "DoublePistols"
+      }
+     ]
+    }
+   },
+   "name": "Tanya",
+   "who": "original countries"
+  },
+  {
+   "id": "terror",
+   "factions": [
+    "cuba"
+   ],
+   "fields": {
+    "sight": {
+     "web": 9216,
+     "desktop": 6144
+    }
+   },
+   "name": "Terrorist",
+   "who": "original countries"
+  },
+  {
+   "id": "tesla",
+   "factions": [
+    "cuba",
+    "libya",
+    "iraq",
+    "russia"
+   ],
+   "fields": {
+    "name": {
+     "web": "Tesla Coil",
+     "desktop": "Arc Coil"
+    },
+    "weapons": {
+     "web": [
+      {
+       "burst": 1,
+       "damage": 200,
+       "excludes": [],
+       "projectile": "ElectricBolt",
+       "range": 7168,
+       "reload": 200,
+       "targets": [
+        "Ground",
+        "Water"
+       ],
+       "versus": {
+        "Concrete": 50,
+        "Drone": 200,
+        "Flak": 100,
+        "Heavy": 100,
+        "Light": 85,
+        "Medium": 100,
+        "None": 100,
+        "Plate": 100,
+        "Rocket": 100,
+        "Steel": 50,
+        "Wood": 50
+       },
+       "weapon": "ea-retail-coilbolt"
+      }
+     ],
+     "desktop": [
+      {
+       "burst": 1,
+       "damage": 200,
+       "excludes": [],
+       "projectile": "ElectricBolt",
+       "range": 8192,
+       "reload": 3,
+       "targets": [
+        "Ground",
+        "Water"
+       ],
+       "versus": {
+        "Concrete": 50,
+        "Drone": 200,
+        "Flak": 100,
+        "Heavy": 100,
+        "Light": 85,
+        "Medium": 100,
+        "None": 100,
+        "Plate": 100,
+        "Rocket": 100,
+        "Steel": 50,
+        "Wood": 50
+       },
+       "weapon": "CoilBolt"
+      }
+     ]
+    }
+   },
+   "name": "Tesla Coil",
+   "who": "original countries"
+  },
+  {
+   "id": "tnkd",
+   "factions": [
+    "germany"
+   ],
+   "fields": {
+    "prerequisites": {
+     "web": [
+      "radar",
+      "~vehicles.germany"
+     ],
+     "desktop": [
+      "~vehicles.germany"
+     ]
+    },
+    "weapons": {
+     "web": [
+      {
+       "burst": 1,
+       "damage": 150,
+       "excludes": [],
+       "projectile": "Bullet",
+       "range": 5120,
+       "reload": 117,
+       "targets": [
+        "Ground",
+        "Water"
+       ],
+       "versus": {
+        "Concrete": 2,
+        "Drone": 2,
+        "Flak": 2,
+        "Heavy": 100,
+        "Light": 100,
+        "Medium": 40,
+        "None": 2,
+        "Plate": 2,
+        "Rocket": 100,
+        "Steel": 2,
+        "Wood": 2
+       },
+       "weapon": "ea-retail-sabot"
+      }
+     ],
+     "desktop": [
+      {
+       "burst": 1,
+       "damage": 150,
+       "excludes": [],
+       "projectile": "Bullet",
+       "range": 5120,
+       "reload": 70,
+       "targets": [
+        "Ground",
+        "Water"
+       ],
+       "versus": {
+        "Concrete": 2,
+        "Drone": 2,
+        "Flak": 2,
+        "Heavy": 100,
+        "Light": 100,
+        "Medium": 40,
+        "None": 2,
+        "Plate": 2,
+        "Rocket": 100,
+        "Steel": 2,
+        "Wood": 2
+       },
+       "weapon": "sabot"
+      }
+     ]
+    }
+   },
+   "name": "Tank Destroyer",
+   "who": "original countries"
+  },
+  {
+   "id": "ttnk",
+   "factions": [
+    "russia"
+   ],
+   "fields": {
+    "name": {
+     "web": "Tesla Tank",
+     "desktop": "Arc Tank"
+    },
+    "weapons": {
+     "web": [
+      {
+       "burst": 1,
+       "damage": 135,
+       "excludes": [],
+       "projectile": "ElectricBolt",
+       "range": 4096,
+       "reload": 125,
+       "targets": [
+        "Ground",
+        "Water"
+       ],
+       "versus": {
+        "Concrete": 50,
+        "Drone": 200,
+        "Flak": 100,
+        "Heavy": 100,
+        "Light": 85,
+        "Medium": 100,
+        "None": 100,
+        "Plate": 100,
+        "Rocket": 100,
+        "Steel": 50,
+        "Wood": 50
+       },
+       "weapon": "ea-retail-tankbolt"
+      }
+     ],
+     "desktop": [
+      {
+       "burst": 2,
+       "damage": 135,
+       "excludes": [],
+       "projectile": "ElectricBolt",
+       "range": 4096,
+       "reload": 75,
+       "targets": [
+        "Ground",
+        "Water"
+       ],
+       "versus": {
+        "Concrete": 50,
+        "Drone": 200,
+        "Flak": 100,
+        "Heavy": 100,
+        "Light": 85,
+        "Medium": 100,
+        "None": 100,
+        "Plate": 100,
+        "Rocket": 100,
+        "Steel": 50,
+        "Wood": 50
+       },
+       "weapon": "TankBolt"
+      }
+     ]
+    }
+   },
+   "name": "Tesla Tank",
+   "who": "original countries"
+  },
+  {
+   "id": "v3",
+   "factions": [
+    "cuba",
+    "libya",
+    "iraq",
+    "russia"
+   ],
+   "only": "web",
+   "name": "V3 Launcher",
+   "who": "original countries"
+  },
+  {
+   "id": "yuri",
+   "factions": [
+    "cuba",
+    "libya",
+    "iraq",
+    "russia"
+   ],
+   "fields": {
+    "name": {
+     "web": "Yuri",
+     "desktop": "Control Specialist"
+    },
+    "weapons": {
+     "web": [
+      {
+       "burst": 1,
+       "damage": 0,
+       "excludes": [],
+       "projectile": "ArcLaserZap",
+       "range": 7168,
+       "reload": 333,
+       "targets": [
+        "MindControl"
+       ],
+       "versus": {},
+       "weapon": "ea-retail-mindcontrol"
+      }
+     ],
+     "desktop": [
+      {
+       "burst": 1,
+       "damage": 0,
+       "excludes": [],
+       "projectile": "ArcLaserZap",
+       "range": 7168,
+       "reload": 200,
+       "targets": [
+        "MindControl"
+       ],
+       "versus": {},
+       "weapon": "MindControl"
+      }
+     ]
+    }
+   },
+   "name": "Yuri",
+   "who": "original countries"
+  },
+  {
+   "id": "zep",
+   "factions": [
+    "cuba",
+    "libya",
+    "iraq",
+    "russia"
+   ],
+   "fields": {
+    "name": {
+     "web": "Kirov Airship",
+     "desktop": "Heavy Airship"
+    },
+    "weapons": {
+     "web": [
+      {
+       "burst": 1,
+       "damage": 250,
+       "excludes": [],
+       "projectile": "GravityBomb",
+       "range": 1536,
+       "reload": 83,
+       "targets": [
+        "Ground",
+        "Water"
+       ],
+       "versus": {
+        "Concrete": 50,
+        "Drone": 100,
+        "Flak": 100,
+        "Heavy": 35,
+        "Light": 70,
+        "Medium": 35,
+        "None": 100,
+        "Plate": 100,
+        "Rocket": 100,
+        "Steel": 75,
+        "Wood": 85
+       },
+       "weapon": "ea-retail-blimpbomb"
+      }
+     ],
+     "desktop": [
+      {
+       "burst": 1,
+       "damage": 250,
+       "excludes": [],
+       "projectile": "GravityBomb",
+       "range": 256,
+       "reload": 50,
+       "targets": [
+        "Ground",
+        "Water"
+       ],
+       "versus": {
+        "Concrete": 50,
+        "Drone": 100,
+        "Flak": 100,
+        "Heavy": 35,
+        "Light": 70,
+        "Medium": 35,
+        "None": 100,
+        "Plate": 100,
+        "Rocket": 100,
+        "Steel": 75,
+        "Wood": 85
+       },
+       "weapon": "BlimpBomb"
+      }
+     ]
+    }
+   },
+   "name": "Kirov Airship",
+   "who": "original countries"
+  }
+ ],
+ "classic": []
+}

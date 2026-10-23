@@ -84,9 +84,15 @@ need no header rules of their own.
 (about 5 minutes) builds the native runner from the pinned engine and origin/main's mod, unpacks the bundle and runs
 `websim effectsaudit` and `websim effectstest`. Every roster unit of every faction must leave something on screen
 when killed by each damage set weapons deal, and every weapon with an explosion must draw it on each kind of target and
-as a miss on ground and water. It exits non-zero on any failure; do not ship a data root that fails it. Missing CDN
-files answer 404 (the release tool writes `404.html`), and an open page offers a reload when BUILD.json names newer
-roots (`web/src/ui/ReleaseNotice.tsx`).
+as a miss on ground and water. It also checks that both games ship the same units: the bundle (and its Classic sibling,
+or `--classic-pack`) against the desktop game origin/main builds, faction by faction, each read by its own engine
+(`tools/roster-audit/compare.py`). Differences listed in `tools/roster-audit/accepted-differences.json` (today's, frozen
+on 23 October 2026) pass; any other fails. And it runs RTSAI-Mod `tools/sync-faction-catalog.py --check`. It exits
+non-zero on any failure; do not ship a data root that fails it. It leaves a receipt keyed by the plain bundle's SHA-256
+in `<work>/gameplay-check/receipts/`: `prepare` prints it for a new data root and warns when it is missing or failed,
+and RTSAI-Mod `packaging/windows/build-release.ps1` warns when the mod commit it packages has no passing receipt (both
+warn-only until the owner turns them into refusals). Missing CDN files answer 404 (the release tool writes
+`404.html`), and an open page offers a reload when BUILD.json names newer roots (`web/src/ui/ReleaseNotice.tsx`).
 
 ## What gets published
 

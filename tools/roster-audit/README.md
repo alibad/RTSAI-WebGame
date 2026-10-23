@@ -73,3 +73,7 @@ python tools/roster-audit/compare.py web-ra2.json desktop-rts.json --out differe
 The web Red Alert 2 mode (`rtsai`, 16 factions) compares with the desktop RTS game (`rtsai`, 16 factions); the desktop
 RA2 game (`rtsai-ra2`) offers only the nine original countries and matched the RTS game for them on 23 Oct. Classic is
 `rtsai-classic-core` on both. First comparison: `hq/games/artifacts/desktop-compare-20261023/differences.html`.
+
+`accepted-differences.json` freezes the differences of 23 October 2026 (`ra2`: 72, `classic`: none) so the release
+check (`tools/gameplay-check.mjs`) fails only on new drift. Remove an entry when the games come to agree on it; add one
+only with the owner's approval.
