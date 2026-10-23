@@ -44,7 +44,8 @@ static class SkirmishAudit
 		}
 		void Record() => samples.Add(new { tick = world.WorldTick, players = players.Select(Sample).ToArray() });
 		Record();
-		while (world.WorldTick < cap && !players.Any(p => p.WinState != WinState.Undefined))
+		// Defeat and the opponent's victory can resolve on adjacent ticks. Observe the actual victory.
+		while (world.WorldTick < cap && !players.Any(p => p.WinState == WinState.Won) && !players.All(p => p.WinState == WinState.Lost))
 		{
 			SimHost.Tick();
 			if (world.WorldTick % 25 == 0) Record();
@@ -52,7 +53,7 @@ static class SkirmishAudit
 		Record();
 		var completed = players.Any(p => p.WinState == WinState.Won);
 		var result = new { schema = "rtsai.skirmish-audit/v1", completed,
-			reason = completed ? "conquest" : "tick-cap", scenario = JsonDocument.Parse(File.ReadAllText(opts["scenario"])).RootElement,
+			reason = completed ? "conquest" : players.All(p => p.WinState == WinState.Lost) ? "mutual-defeat" : "tick-cap", scenario = JsonDocument.Parse(File.ReadAllText(opts["scenario"])).RootElement,
 			ticks = world.WorldTick, gameMinutes = world.WorldTick / 1500.0, wallSeconds = wall.Elapsed.TotalSeconds,
 			firstLoss, firstSeen, samples };
 		File.WriteAllText(opts["out"], JsonSerializer.Serialize(result));
