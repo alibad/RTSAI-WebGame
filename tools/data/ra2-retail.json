@@ -3355,7 +3355,16 @@
     "LightningScatterDelay": "5",
     "LightningCellSpread": "10",
     "LightningSeparation": "3",
-    "IvanIconFlickerRate": "8"
+    "IvanIconFlickerRate": "8",
+    "BuildSpeed": ".7",
+    "MultipleFactory": "0.8",
+    "MinLowPowerProductionSpeed": ".5",
+    "MaxLowPowerProductionSpeed": ".8",
+    "LowPowerPenaltyModifier": "1",
+    "WallBuildSpeedCoefficient": "3.0",
+    "SpyPowerBlackout": "1000",
+    "SpyMoneyStealPercent": ".5",
+    "OilProduceCashDelay": "100"
   },
   "projectiles": {
     "LargeCometP": {

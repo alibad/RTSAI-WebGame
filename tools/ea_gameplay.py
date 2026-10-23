@@ -20,6 +20,18 @@ def restore(retail):
     def frames(value):
         # Retail's rules define a minute as 900 frames; the host runs 1500 ticks/minute.
         return round(float(value) * 25 / 15)
+
+    # A per-player runtime queue selects these only for original countries.
+    # Actor BuildDurationModifier=60 is the port's common base; .7 minutes per
+    # $1000 at 25 host ticks/sec requires 105%, hence the queue's 175% factor.
+    p = E.Node('Player')
+    tr(p, 'OriginalRa2Economy', QueueTimeModifier=round(float(facts['BuildSpeed']) * 150 / .6),
+       MultipleFactoryPercent=round(float(facts['MultipleFactory']) * 100),
+       MinLowPowerPercent=round(float(facts['MinLowPowerProductionSpeed']) * 100),
+       MaxLowPowerPercent=round(float(facts['MaxLowPowerProductionSpeed']) * 100),
+       LowPowerPenaltyPercent=round(float(facts['LowPowerPenaltyModifier']) * 100),
+       WallTimePercent=round(float(facts['WallBuildSpeedCoefficient']) * 100), Walls='gawall, nawall')
+    retail.rules.append(p)
     def weapon(name, fallback):
         key = name.lower()
         if key not in retail.by_lower:
@@ -99,6 +111,11 @@ def restore(retail):
             continue
         p = E.Node(a.key)
         values = b['actors'].get(actor, {})
+        if actor == 'caoild':
+            for key, _ in E.traits(a, 'CashTrickler'):
+                tr(p, key, RetailIntervalFrames=facts['OilProduceCashDelay'])
+        for key, _ in E.traits(a, 'InfiltrateForPowerOutage'):
+            tr(p, key, RetailDurationFrames=facts['SpyPowerBlackout'])
         # Targets can belong to any country. The attacker's original-only armament decides
         # when these dormant state machines are used (including captured enemy vehicles).
         mobile = a.get('Mobile')
@@ -374,6 +391,7 @@ def restore(retail):
         E.Node('ValidTargets','Ground, Water, Air'), E.Node('Versus',None,
             [E.Node(a,x.strip().rstrip('%')) for a,x in zip(__import__('ea_retail').ARMORS,wh['Verses'].split(','))])]))
     bomb.children.append(E.Node('Warhead@effect','CreateEffect',[E.Node('Image','explosion'),E.Node('Explosions','ivan_explosion'),E.Node('ImpactSounds','gexpcraa.wav')]))
+    __import__('ea_retail').restore_spread(E, bomb.get('Warhead@damage'), wh)
     retail._effect_refs(bomb,'weapon');retail.weapons.append(bomb)
     for name,base in [('RetailLightningStorm','lightningstorm'),('RetailAtomic','atomic')]:
         w=retail.by_lower[base].clone();w.key=name

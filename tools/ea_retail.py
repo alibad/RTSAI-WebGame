@@ -42,6 +42,21 @@ def cells(value):
     return f'{length // 1024}c{length % 1024}'
 
 
+def restore_spread(E, damage, facts):
+    if 'CellSpread' not in facts:
+        return
+    radius = round(float(facts['CellSpread']) * 1024)
+    if radius <= 0:
+        return
+    # An explicit final zero just beyond the radius preserves PercentAtMax at
+    # the inclusive boundary (SpreadDamage otherwise returns zero there).
+    first = int(damage.val('Falloff', '100').split(',')[0])
+    last = round(first * float(facts.get('PercentAtMax', '1')))
+    set_value(E, damage, 'Range', f'0c0, {cells(radius / 1024)}, {cells((radius + 1) / 1024)}')
+    set_value(E, damage, 'Falloff', f'{first}, {last}, 0')
+    set_value(E, damage, 'DamageCalculationType', 'CenterPosition')
+
+
 def normalize_voices(voices, E):
     # sound.ini's CrazyIvanMove/AttackCommand and TeslaTroopSelect do not name these clips.
     # Kirov has no fear/feedback voice event at all. Keep an explicitly empty phrase so the
@@ -432,6 +447,9 @@ class Retail:
             set_value(E, damages[0], 'Damage', original['Damage'])
         verses = warhead.get('Verses', '').split(',')
         for damage in damages:
+            # Preserve split enemy/ally warheads, including their first-point
+            # multiplier, while replacing the port's default exponential curve.
+            restore_spread(E, damage, warhead)
             if len(verses) == len(ARMORS):
                 versus = damage.get('Versus')
                 if versus is None:
@@ -454,12 +472,14 @@ class Retail:
                     E.Node('Versus', None, [E.Node(a, x.strip().rstrip('%')) for a,x in zip(ARMORS, spec['Verses'].split(','))])]),
                 E.Node('Warhead@retail-effect', 'CreateEffect', [E.Node('Image', 'explosion'), E.Node('Explosions', 'large_explosion')])])
             weapon.children.append(E.Node('Report', 'vv3latta.wav, vv3lattb.wav' if rocket == 'v3rocket' else 'vdreatta.wav, vdreattb.wav'))
+            restore_spread(E, weapon.get('Warhead@retail'), spec)
             self._effect_refs(weapon, 'weapon')
             self.weapons.append(weapon)
             elite = weapon.clone()
             elite.key += 'Elite'
             set_value(E, elite.get('Warhead@retail'), 'Damage', self.baseline['missiles'][prefix + 'EliteDamage'])
             spec_elite = self.baseline['warheads']['V3EWH' if rocket == 'v3rocket' else 'DMISLEWH']
+            restore_spread(E, elite.get('Warhead@retail'), spec_elite)
             for armor, value in zip(ARMORS, spec_elite['Verses'].split(',')):
                 set_value(E, elite.get('Warhead@retail').get('Versus'), armor, value.strip().rstrip('%'))
             self.weapons.append(elite)

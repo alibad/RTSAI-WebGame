@@ -143,6 +143,10 @@ namespace OpenRA.WebSim
 				Game.ModData.ObjectCreator.SetTypeOverride("GainsExperienceInfo", typeof(OriginalRa2ExperienceInfo));
 				Game.ModData.ObjectCreator.SetTypeOverride("RepairableBuildingInfo", typeof(OriginalRa2BuildingRepairInfo));
 				Game.ModData.ObjectCreator.SetTypeOverride("RepairsUnitsInfo", typeof(OriginalRa2UnitRepairInfo));
+				Game.ModData.ObjectCreator.SetTypeOverride("ClassicProductionQueueInfo", typeof(OriginalRa2ProductionQueueInfo));
+				Game.ModData.ObjectCreator.SetTypeOverride("CashTricklerInfo", typeof(OriginalRa2CashTricklerInfo));
+				Game.ModData.ObjectCreator.SetTypeOverride("InfiltrateForCashInfo", typeof(OriginalRa2CashInfiltrationInfo));
+				Game.ModData.ObjectCreator.SetTypeOverride("InfiltrateForPowerOutageInfo", typeof(OriginalRa2PowerInfiltrationInfo));
 			});
 			Time("boot.loaders", () =>
 			{

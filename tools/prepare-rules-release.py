@@ -33,7 +33,8 @@ def main():
         ap.add_argument('--' + key, type=Path, required=True)
     ap.add_argument('--from', dest='frm', required=True)
     ap.add_argument('--to', required=True)
-    ap.add_argument('--files', nargs='+', default=['mods/rtsai/rules/ai.yaml'])
+    ap.add_argument('--files', nargs='*', default=['mods/rtsai/rules/ai.yaml'],
+                    help='Explicitly empty for a generated-content-only release with identical --from/--to')
     ap.add_argument('--content', type=Path)
     ap.add_argument('--content-files', nargs='*', default=[])
     ap.add_argument('--content-lines', default=None)
