@@ -75,12 +75,14 @@ export interface StrategyState {
   execution?: string;
 }
 
-// Read while store.ts is still being evaluated (an import cycle): no module-level constants may be used here.
-export function initialCoCommander(): CoCommanderState {
+// Read while store.ts is still being evaluated (an import cycle): nothing defined at this module's level exists yet,
+// imports and a dev server's import.meta.env included (reading companionDeveloperTools here threw at startup in the
+// companion developer build). store.ts passes the developer-tools flag in.
+export function initialCoCommander(devTools: boolean): CoCommanderState {
   let saved: Partial<CoCommanderState> & { browserVersion?: number } = {};
   try { saved = JSON.parse(localStorage.getItem("rtsai.cocommander") ?? "{}"); } catch { /* private mode */ }
   return {
-    enabled: saved.enabled ?? true, mode: companionDeveloperTools && (saved.mode === "mock" || saved.mode === "local") ? saved.mode : "browser", muted: saved.muted ?? false, auto: saved.auto === true,
+    enabled: saved.enabled ?? true, mode: devTools && (saved.mode === "mock" || saved.mode === "local") ? saved.mode : "browser", muted: saved.muted ?? false, auto: saved.auto === true,
     running: false, linked: false, listening: false, thinking: false, open: false, feed: [], error: "",
     strategies: null, strategyOpen: false, strategyBusy: false, strategyError: "", offerSteps: true, uncertainProposalId: "", browserThreat: null,
   };
@@ -489,6 +491,40 @@ export class CoCommander {
     finally { if (match === this.matchRevision) this.set({ thinking: false }); }
   }
 
+  /**
+   * Spoken input. Like the desktop game's push-to-talk, everything goes through the companion's full input path
+   * (v1/proposals: questions are answered, orders become cards), not the advice-only path, which never makes a card.
+   * "Yes"/"cancel" decide the newest card here, since the proposal API takes those only with a card id. A phrase it
+   * refuses (a doctrine change, which has its own controls) is answered as a question instead.
+   */
+  async talk(text: string) {
+    text = text.trim();
+    if (!text) return;
+    if (this.s.mode === "browser") { await this.ask(text); return; }
+    const card = this.pending(), word = text.toLowerCase().replace(/[.!?,\s]+$/g, "");
+    if (card && /^(yes|yeah|yep|confirm|do it|go ahead|accept|execute|approved?)$/.test(word)) { this.push("you", text); await this.decide(card, true); return; }
+    if (card && /^(no|nope|cancel|never mind|reject|don't)$/.test(word)) { this.push("you", text); await this.decide(card, false); return; }
+    if (this.s.thinking || this.s.uncertainProposalId || !this.canIssue()) { await this.ask(text); return; }
+    const request = ++this.requestRevision;
+    const match = this.matchRevision;
+    this.push("you", text);
+    this.set({ thinking: true });
+    try {
+      let reply: CompanionReply;
+      try { reply = await this.post<CompanionReply>("v1/proposals", { contract_version: 1, instruction: text }); }
+      catch (refused) {
+        if (match !== this.matchRevision || request !== this.requestRevision || /Cancelled|abort/i.test(String(refused))) throw refused;
+        reply = await this.post<CompanionReply>("v1/advice", { contract_version: 1, question: text });
+      }
+      if (match === this.matchRevision && request === this.requestRevision) this.reply(reply);
+    } catch (e) {
+      if (match !== this.matchRevision || request !== this.requestRevision) return;
+      this.push("system", `No answer: ${e instanceof Error ? e.message : e}`);
+    } finally {
+      if (match === this.matchRevision && request === this.requestRevision) this.set({ thinking: false });
+    }
+  }
+
   private reply(r: CompanionReply) {
     if (r.interrupted) return;
     if (r.metadata?.contextual_strategy) this.set({ strategies: r.metadata.contextual_strategy });
@@ -591,7 +627,7 @@ export class CoCommander {
       if (match !== this.matchRevision) return;
       if (!res.ok || !t.text) throw new Error(t.error ?? `HTTP ${res.status}`);
       this.set({ thinking: false });
-      await this.ask(t.text);
+      await this.talk(t.text);
     } catch (e) {
       if (match !== this.matchRevision) return;
       this.push("system", `Not heard: ${e instanceof Error ? e.message : e}`);

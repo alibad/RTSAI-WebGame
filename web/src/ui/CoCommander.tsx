@@ -114,7 +114,8 @@ export function CoCommander({ game }: { game: Game }) {
     : last?.text ?? (hud?.message.replace(/^AI\s*•\s*/, "") || (cc.mode === "browser" ? "Watching the battlefield for useful tips." : "Hold V to talk"));
   const pending = game.cc.pending() ?? cc.feed.find(f => f.state === "applying");
   const threat = cc.mode === "browser" ? cc.browserThreat : hud?.threat;
-  const send = () => { const t = text; setText(""); game.cc.ask(t); };
+  // Typed like spoken: questions are answered and orders become cards (game.cc.talk).
+  const send = () => { const t = text; setText(""); void game.cc.talk(t); };
 
   return (
     <div aria-label={cc.mode === "browser" ? "Built-in adviser" : "AI co-commander"} className={`cc-root${mission ? " has-mission" : ""}${cc.open || cc.strategyOpen ? " is-open" : ""}`}>

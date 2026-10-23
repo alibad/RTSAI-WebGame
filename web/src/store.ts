@@ -2,6 +2,7 @@
 // update only re-renders the components whose slice changed).
 
 import { initialCoCommander, type CoCommanderState } from "./cocommander";
+import { companionDeveloperTools } from "./companion-policy";
 import { create } from "zustand";
 import type { CatalogQueue, LazyStats, SetupData, StartInfo, UiState } from "./sim/protocol";
 import type { SandboxState } from "./sandbox";
@@ -117,7 +118,7 @@ export const useStore = create<Store>((set) => ({
   menuOpen: false,
   keysOpen: false,
   uiHidden: false,
-  cc: initialCoCommander(),
+  cc: initialCoCommander(companionDeveloperTools),
   ccAvailable: false,
   ccLocalAvailable: false,
   sheets: { uploaded: 0, total: 0 },

@@ -44,8 +44,9 @@ await page.waitForTimeout(6000);
 log("relay:", JSON.stringify((await (await fetch("http://127.0.0.1:3490/api/companion/status")).json()).relay));
 await shot("cc-1-strip.png");
 
-// An order: the companion proposes, the player accepts, the engine queues it.
-await page.evaluate(() => window.game.cc.ask("Build a power plant"));
+// An order, said or typed (cc.talk, the push-to-talk path): the companion proposes, the player accepts, the engine
+// queues it.
+await page.evaluate(() => window.game.cc.talk("Build a power plant"));
 const proposal = await until(() => window.store.getState().cc.feed.find((f) => f.kind === "proposal" && f.state === "pending")?.text, null, 60000);
 log("proposal:", proposal);
 await page.waitForTimeout(500);
@@ -71,7 +72,7 @@ await page.evaluate(() => {
   const f = window.fetch.bind(window);
   window.fetch = async (input, init) => {
     const url = String(input instanceof Request ? input.url : input);
-    const stage = /v1\/transcribe/.test(url) ? "transcribe" : /v1\/ask/.test(url) ? "answer" : /v1\/speak/.test(url) ? "speech" : null;
+    const stage = /v1\/transcribe/.test(url) ? "transcribe" : /v1\/(ask|proposals|advice)$/.test(url) ? "answer" : /v1\/speak/.test(url) ? "speech" : null;
     const res = await f(input, init);
     if (stage) mark(stage);
     return res;
