@@ -55,3 +55,21 @@ drawer's incomplete prerequisite heuristic with a graph over the **current
 Ruleset**, including conditional prerequisite providers, country gates, tech
 providers and transformations. It deliberately does not read baseline registry
 membership, so a saved Studio prerequisite override can change the roster.
+
+## Web vs desktop: what each build ships (23 October 2026)
+
+`rosteraudit` exports carry each actor's resolved numbers (health, armour, speed, sight, every weapon's range, reload,
+burst, damage, damage versus armour and targets) and, per faction, the weapons and name an owner gets at rest
+(`factionArmaments`, `factionNames`). `--rules-only` skips the live-world pass for a web bundle. Read each side with its
+own engine: a websim built against the web pin for the bundle, and one built against the desktop engine for a desktop
+build (desktop manifests use `FinalRules`, which the web engine does not read).
+
+```powershell
+websim rosteraudit --root <unpacked web bundle> --rules-only --out web-ra2.json
+websim rosteraudit --desktop <desktop build> --support <dir> --mod rtsai --out desktop-rts.json
+python tools/roster-audit/compare.py web-ra2.json desktop-rts.json --out differences.json
+```
+
+The web Red Alert 2 mode (`rtsai`, 16 factions) compares with the desktop RTS game (`rtsai`, 16 factions); the desktop
+RA2 game (`rtsai-ra2`) offers only the nine original countries and matched the RTS game for them on 23 Oct. Classic is
+`rtsai-classic-core` on both. First comparison: `hq/games/artifacts/desktop-compare-20261023/differences.html`.
