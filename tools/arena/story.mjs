@@ -131,10 +131,19 @@ const clip = (f) => {
 const tally = (r) => Object.entries(r.byOpponent).map(([o, c]) => `${o} ${[c.win && `${c.win} won`, c.draw && `${c.draw} drawn`, c.loss && `${c.loss} lost`].filter(Boolean).join(", ")}`).join("; ");
 
 try {
-  if (entry.slides) {
+  if (entry.chapters) {
+    // A reel: an opening card, then each chapter's story film as it is (story.mjs encodes them all alike).
+    await card("title", slideHtml({ kicker: kicker.replace(/Milestone|Experiment/, "The story so far"), title: entry.title, body: entry.question, big: true }), 6, `${entry.title}. ${entry.question}`);
+    for (const id of entry.chapters) {
+      const f = path.join(films, `story-${id}.mp4`);
+      if (!fs.existsSync(f)) { console.warn(`no story film for ${id} yet; run story.mjs ${id} first`); continue; }
+      segments.push(f);
+      cue(duration(f), readNotebook(dir).find((e) => e.id === id)?.title);
+    }
+  } else if (entry.slides) {
     // An explainer: its own slides, game films where a slide names one.
     for (const [i, s] of entry.slides.entries()) {
-      if (s.film) { const f = entry.films.find((x) => x.game === s.film && x.ready); if (f) { await card(`watch${i}`, page(`<div class="k">Watch</div><p class="big">${esc(f.caption)}</p>`), 3.5, `Watch: ${f.caption}`); clip(f); } continue; }
+      if (s.film) { const f = entry.films.find((x) => (x.game ?? x.name) === s.film && x.ready); if (f) { await card(`watch${i}`, page(`<div class="k">Watch</div><p class="big">${esc(f.caption)}</p>`), 3.5, `Watch: ${f.caption}`); clip(f); } continue; }
       await card(`slide${i}`, slideHtml(s), s.seconds ?? 6, [s.title, s.body, s.say].filter(Boolean).join(". "));
     }
   } else {

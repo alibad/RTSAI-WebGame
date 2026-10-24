@@ -1,7 +1,7 @@
 // node --test tools/arena/brain.test.mjs
 import test from "node:test";
 import assert from "node:assert/strict";
-import { plan, scriptedAnswers, describe } from "./brain.mjs";
+import { plan, scriptedAnswers, describe, armyFront } from "./brain.mjs";
 import { decide } from "./providers.mjs";
 
 const actor = (actorId, kind, cellX, cellY, extra = {}) => ({ actorId, kind, cellX, cellY, idle: true, canAttack: false, ...extra });
@@ -90,7 +90,7 @@ test("with the enemy at the base, the defense line offers no walls and picks a r
 const china = (extra = {}) => ({ ...base, cash: 3000, buildings: [actor(2, "gacnst", 20, 20), actor(3, "gapowr", 22, 20), actor(4, "garefn", 24, 20), actor(5, "gapile", 26, 20), actor(6, "gaweap", 28, 20)],
   availableProduction: ["r2cnrifle", "r2cnportable", "r2lynx", "r2qilin", "r2mantis"], ...extra });
 
-test("experiment counters: riflemen against infantry, missile teams against vehicles, tanks over scout cars and anti-air", () => {
+test("counters (adopted): riflemen against infantry, missile teams against vehicles, tanks over scout cars and anti-air", () => {
   const opts = (memory) => ({ experiment: "counters", memory });
   const infantryRush = china({ visibleEnemies: Array.from({ length: 8 }, (_, i) => actor(50 + i, "r2cnrifle", 60, 60, { canAttack: true })) });
   let memory = {};
@@ -101,7 +101,10 @@ test("experiment counters: riflemen against infantry, missile teams against vehi
   memory = {};
   a = scriptedAnswers(tanks, plan(tanks, memory, opts(memory)).questions, opts(memory));
   assert.equal(a.infantry.choice, "r2cnportable");
-  assert.equal(scriptedAnswers(infantryRush, plan(infantryRush).questions).infantry.choice, "r2cnportable", "without the experiment the dearer unit wins");
+  memory = {};
+  assert.equal(scriptedAnswers(infantryRush, plan(infantryRush, memory).questions, { memory }).infantry.choice, "r2cnrifle", "adopted: the brain picks against the enemy without asking for it");
+  const before = { experiment: "before", memory: {} };
+  assert.equal(scriptedAnswers(infantryRush, plan(infantryRush, before.memory, before).questions, before).infantry.choice, "r2cnportable", "'before' plays the brain without its adopted rules: the dearer unit");
 });
 
 test("experiment scouting: the scout moves without fighting; a far sighting is not defended against", () => {
@@ -122,7 +125,7 @@ test("experiment budget: the second refinery waits for minute 3 unless credits a
   assert.equal(scriptedAnswers(later, plan(later).questions, { experiment: "budget" }).build.choice, "garefn");
 });
 
-test("experiment hunt: with the enemy base unknown, sweeps move on across the map once the army arrives", () => {
+test("hunt (adopted): with the enemy base unknown, sweeps move on across the map once the army arrives", () => {
   const at = (x, y) => Array.from({ length: 12 }, (_, i) => actor(10 + i, "mtnk", x, y, { canAttack: true, speed: 60 }));
   const memory = {}, opts = { experiment: "hunt" };
   const obs = (army, tick) => ({ ...base, tick, cash: 300, buildings: [actor(2, "gacnst", 20, 20)], units: army });
@@ -131,8 +134,18 @@ test("experiment hunt: with the enemy base unknown, sweeps move on across the ma
   assert.deepEqual(first, [100, 100], "the mirror of our base first");
   const second = sweepTo(obs(at(100, 100), 5200));
   assert.notDeepEqual(second, first, "once the army is there, the next point");
-  const plain = plan(obs(at(100, 100), 5400)).questions.find((q) => q.name === "army").options.find((x) => x.value === "sweep").commands[0];
-  assert.deepEqual([plain.target_x, plain.target_y], [100, 100], "without the experiment, always the mirror");
+});
+
+test("experiment turtle: two towers from minute 1.5 beside the factory, and a small army waits at home", () => {
+  const obs = { ...base, tick: 25 * 100, cash: 2600, buildings: [actor(2, "gacnst", 20, 20), actor(3, "gapowr", 22, 20), actor(4, "garefn", 24, 20), actor(5, "gapile", 26, 20)],
+    availableProduction: ["gaweap", "gapill"], units: Array.from({ length: 4 }, (_, i) => actor(10 + i, "e1", 21, 21, { canAttack: true })), rememberedEnemyBuildings: [actor(99, "nacnst", 100, 100)] };
+  const opts = { experiment: "turtle" };
+  const a = scriptedAnswers(obs, plan(obs, {}, opts).questions, opts);
+  assert.equal(a.build.choice, "gaweap", "the factory is not held back");
+  assert.equal(a.defense.choice, "gapill");
+  assert.ok(!plan(obs).questions.some((q) => q.name === "defense"), "without the experiment a calm base is not asked");
+  assert.ok(armyFront(obs, undefined, opts).staging.cellX < 35);
+  assert.ok(armyFront(obs).staging.cellX > 45);
 });
 
 test("the shared state names things and never exposes engine ids", async () => {

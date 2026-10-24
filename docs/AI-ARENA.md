@@ -70,6 +70,12 @@ adviser reads) into a few closed questions:
   - Only idle units are ever given new orders, so a fight in progress is never interrupted.
   - Before 23 October every unit was re-sent every 5 seconds. Fresh units trickled into the enemy defences one by one;
     one game lost 53,200 worth of units with a 10× larger army and killed 5 buildings.
+- **Adopted on 24 October** (`ADOPTED` in `brain.mjs`), after winning their experiments on the same seeds:
+  - **counters:** units are picked against what the enemy fielded in the last two minutes: riflemen against infantry,
+    anti-tank teams against vehicles, tanks over scout cars and anti-air. Before, the brain bought the dearest unit
+    it could afford. Each unit's description also says what it is good against, for decision models.
+  - **hunt:** while the enemy base is unknown, sweeps and scouts work through points across the whole map, nearest to
+    the enemy's start first, and move on once the army arrives. Before, they always went to the mirror of our base.
 - **Reading a game:** `node tools/arena/game-story.mjs <game id>` prints it minute by minute: what was built, what the
   army did, and what each army turn saw.
 
@@ -118,7 +124,30 @@ option:
 - **Restarts:** the runner picks its queue back up after a restart. A game that was playing starts again from the
   beginning.
 
-## Early-defence experiments (24 October)
+## Experiments of 24 October: one change at a time
+
+Scripted brain, 4 games per opponent on seeds 1000–1003 (China, Iran, Turkey, Saudi), speed 8, `ra2-tournament-2B`.
+"Before" is the 23 October brain with towers only ("24 Oct towers"), 22 games including reruns of the same seeds.
+
+| Rules | Normal | Rush | Hard | Brutal | Wins |
+|---|---|---|---|---|---|
+| Before | 3 W 1 D 2 L | 1 W 3 D 2 L | 6 L | 4 L | 4 of 22 |
+| counters | 1 W 2 D 1 L | 3 W 1 L | 1 W 2 D 1 L | 4 L | 5 of 16 |
+| scouting | 2 D 2 L | 1 D 3 L | 1 D 3 L | 4 L | 0 of 16 |
+| budget | 3 D 1 L | 2 D 2 L | 1 D 3 L | 4 L | 0 of 16 |
+| hunt | 2 W 2 L | 1 W 1 D 2 L | 2 W 2 L | 4 L | 5 of 16 |
+| **counters + hunt (adopted)** | **4 W** | **3 W 1 L** | **4 W** | **1 W 3 L** | **12 of 16** |
+| counters + hunt + turtle | not run | 3 W, 1 still playing | 2 W 2 L | 1 D 3 L | not adopted |
+
+- **counters + hunt** won the first game ever against Brutal (Iran, minute 20). On the Turkey seed against Hard, each
+  rule alone lost at minute 7; together they won at minute 17. Surviving the opening (counters) and finishing the
+  game (hunt) were two different problems, and each fix alone looked weak.
+- **Repeatability:** rerunning the same seeds with the same brain changed several results. Normal went from 2 wins in 2
+  to 1 win, 1 draw and 2 losses in the rerun. Read results over at least 4 games per opponent.
+- **turtle** (two towers from minute 1.5 beside the factory, army home until worth 4,000 or minute 8) held Brutal
+  longer, up to a draw, but cost two Hard games. A slower brain is not a stronger one.
+
+## Early-defence experiments (24 October, morning)
 
 Goal: survive and beat Brutal (the Rush AI with 15,000 extra credits, at the base by minute 2–5). Scripted brain,
 speed 8, `ra2-tournament-2B`, mirror factions. Each version is its own row on the ladder (`BRAIN_VERSION`).

@@ -14,7 +14,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import { runMatch, OPPONENTS, BRAINS } from "./match.mjs";
 import { PROVIDERS, PRICES, keyStore, localReady, layaReady } from "./providers.mjs";
 import { runBench, BENCH_BRAINS } from "./bench.mjs";
-import { BRAIN_VERSION, EXPERIMENTS } from "./brain.mjs";
+import { BRAIN_VERSION, BEFORE_VERSION, EXPERIMENTS, ADOPTED } from "./brain.mjs";
 import { readNotebook } from "./notebook.mjs";
 
 const repo = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
@@ -132,7 +132,8 @@ async function start(run, job) {
   active.set(key, { run, job });
   const id = `${new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19)}-${crypto.randomBytes(3).toString("hex")}`;
   // An experiment is part of the brain's version, so its games get their own ladder row.
-  const version = run.brain === "decision" ? `${BRAIN_VERSION}${run.experiment ? ` + ${run.experiment}` : ""}` : undefined;
+  // "before" plays the brain as it was before its adopted experiments, under that version's name.
+  const version = run.brain !== "decision" ? undefined : run.experiment === "before" ? BEFORE_VERSION : `${BRAIN_VERSION}${run.experiment ? ` + ${run.experiment}` : ""}`;
   const spec = { id, runId: run.id, brain: run.brain, provider: run.provider, version, experiment: run.experiment || undefined, opponent: job.opponent, ours: job.ours, theirs: job.theirs, map: run.map, seed: job.seed,
     speed: run.speed, limit: run.limit, pauseWhileThinking: run.pauseWhileThinking, page: page && { release: page.release, page: page.page, runtime: page.runtime, data: page.data } };
   try {
@@ -232,7 +233,9 @@ async function status() {
   const providers = {};
   const [local, laya] = await Promise.all([localReady(), layaReady()]);
   for (const [id, p] of Object.entries(PROVIDERS)) providers[id] = { ...p, keyHint: p.paid ? keys.hint(id) : "", ready: p.paid ? !!keys.get(id) : id === "local" ? local : id === "laya" ? laya : true, price: PRICES[id] ?? null };
-  return { ready: !!page, page, pageUrl, providers, opponents: OPPONENTS, brains: BRAINS, factions: MODERN, maps: MAPS, brainVersion: BRAIN_VERSION, experiments: EXPERIMENTS,
+  return { ready: !!page, page, pageUrl, providers, opponents: OPPONENTS, brains: BRAINS, factions: MODERN, maps: MAPS, brainVersion: BRAIN_VERSION,
+    // Adopted experiments are part of the brain; the rest can be switched on per run.
+    experiments: Object.fromEntries(Object.entries(EXPERIMENTS).filter(([k]) => !ADOPTED.has(k))), adopted: [...ADOPTED],
     budget: { dailyCapUsd: budget.dailyCapUsd, spentToday: spentToday(), maxParallel: budget.maxParallel ?? 2 },
     runs: runs.slice(-20).reverse().map(({ jobs, ...r }) => ({ ...r, jobs: jobs.map(({ window, ...j }) => j) })) };
 }

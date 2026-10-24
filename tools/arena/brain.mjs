@@ -7,23 +7,32 @@ import tree from "../../web/src/adviser-tree.json" with { type: "json" };
 
 /**
  * Recorded with every game, so the ladder keeps each version of the brain apart. Change it with the brain's rules.
- * "24 Oct towers" is the 23 Oct brain (the best record so far) with walls, anti-air and support buildings kept out of
- * its tower choices; the early-defence versions tried on 24 Oct are described in docs/AI-ARENA.md.
+ * "24 Oct counters+hunt" is the 23 Oct brain with walls, anti-air and support buildings kept out of its tower choices
+ * ("24 Oct towers") and the two experiments that won on the same seeds (ADOPTED). docs/AI-ARENA.md has the record.
  */
-export const BRAIN_VERSION = "24 Oct towers";
+export const BRAIN_VERSION = "24 Oct counters+hunt";
 
 /**
  * Experiments: one rule change each, switched on per Arena run (a run's `experiment`, several joined with "+"), so a
  * variant plays the same seeds and factions as the brain without it, and the ladder keeps its games apart
- * ("24 Oct towers + counters"). Each answers one finding from the 24 Oct game logs (docs/AI-ARENA.md).
+ * ("24 Oct towers + counters"). Each answers one finding from the 24 Oct game logs (docs/AI-ARENA.md). An experiment
+ * that wins is ADOPTED: always on, and named in BRAIN_VERSION.
  */
+export const ADOPTED = new Set(["counters", "hunt"]);
+/** The brain before the adopted experiments: a run with the experiment "before" plays it, under this version. */
+export const BEFORE_VERSION = "24 Oct towers";
 export const EXPERIMENTS = {
+  before: "The brain before the adopted experiments (24 Oct towers), to compare against on new maps or seeds.",
   counters: "Units are picked against what the enemy fields (riflemen against infantry, anti-tank against vehicles, tanks over scout cars and anti-air), not by price.",
   scouting: "Scouts move without stopping to fight, and Defend answers only enemies near our base, not a scout's sighting across the map.",
   budget: "The opening keeps credits for the army: the second refinery and extra harvesters wait for minute 3 or spare credits.",
   hunt: "While the enemy base is unknown, sweeps and scouts work through points across the whole map, not only the mirror of our base.",
+  turtle: "Against an early rush: two ground towers from minute 1.5 beside the factory (not before it), and the army waits at home until it is worth 4,000 or minute 8. The economy is left alone.",
 };
-const on = (opts, name) => String(opts?.experiment ?? "").split("+").includes(name);
+const on = (opts, name) => {
+  const asked = String(opts?.experiment ?? "").split("+");
+  return (ADOPTED.has(name) && !asked.includes("before")) || asked.includes(name);
+};
 
 export const QUEUES = { Building: "build", Support: "defense", Infantry: "infantry", Vehicle: "vehicle", Aircraft: "aircraft", Ship: "ship" };
 const BATCH = { Infantry: 3, Vehicle: 2, Aircraft: 1, Ship: 1 };
@@ -198,10 +207,12 @@ export function plan(obs, memory = {}, opts = {}) {
   const available = [...new Set(obs.availableProduction.map((i) => i.toLowerCase()))].filter((i) => !i.endsWith("f") || !tree[i.slice(0, -1)]);
   const owned = (pred) => obs.buildings.filter((b) => pred(b.kind)).length;
   const t = threat(obs);
+  const towers = owned((k) => info(k).queue === "Support" && defenseKind(obs, k) === "ground");
   for (const [queue, name] of Object.entries(QUEUES)) {
     if (!asking || busy.has(queue)) continue;
-    // Base defenses are only worth a question under pressure or with credits to spare.
-    if (queue === "Support" && t.level === "calm" && obs.cash < 3000) continue;
+    // Base defenses are only worth a question under pressure or with credits to spare (with "turtle", also until two
+    // towers stand from minute 1.5).
+    if (queue === "Support" && t.level === "calm" && obs.cash < 3000 && !(on(opts, "turtle") && obs.tick >= 25 * 90 && towers < 2)) continue;
     // Walls and gates are never worth a turn against the engine's AI.
     const items = available.filter((i) => info(i).queue === queue && !isMcv(i, obs) && !(queue === "Support" && defenseKind(obs, i) === "wall"));
     if (!items.length) continue;
@@ -228,7 +239,7 @@ export function plan(obs, memory = {}, opts = {}) {
   const tick = obs.tick;
   if (army.length && tick - (memory.lastArmyTick ?? -1e9) >= 125) {
     const base = centroid(obs.buildings) ?? centroid(units);
-    const front = armyFront(obs, base);
+    const front = armyFront(obs, base, opts);
     const { targets, target, staging, gathered, home, idle } = front;
     const order = (list, cell, action = "attack_move") => list.map((u) => ({ action, actor_id: u.actorId, target_x: cell.cellX, target_y: cell.cellY }));
     // Units fire at enemy units and defences on their own, not at ordinary buildings: a building in sight gets an
@@ -279,19 +290,23 @@ export function plan(obs, memory = {}, opts = {}) {
  * Where the army stands: the enemy buildings we know of, the one to hit next (the nearest to our base: the enemy's
  * base is worn down from its edge, the way the engine's own AI attacks), a staging point 40% of the way to the enemy
  * base's centre (or toward the far side of the map while it is unknown), and which idle fighters are at home,
- * gathered at the staging point, or anywhere else forward.
+ * gathered at the staging point, or anywhere else forward. With "turtle" the staging point is just in front of the base
+ * (12% of the way) until the army is worth 4,000 or minute 8, so an early rush meets the army and the towers together.
  */
-export function armyFront(obs, base = centroid(obs.buildings) ?? centroid(obs.units)) {
+export function armyFront(obs, base = centroid(obs.buildings) ?? centroid(obs.units), opts = {}) {
   const army = fighters(obs);
   const targets = obs.visibleEnemyBuildings.length ? obs.visibleEnemyBuildings : obs.rememberedEnemyBuildings ?? [];
   const far = base && { cellX: Math.max(1, Math.min(obs.mapWidth - 2, obs.mapWidth - base.cellX)), cellY: Math.max(1, Math.min(obs.mapHeight - 2, obs.mapHeight - base.cellY)) };
   const target = targets.length && base ? [...targets].sort((a, b) => sq(a, base) - sq(b, base))[0] : null;
   const toward = centroid([...obs.visibleEnemyBuildings, ...(obs.rememberedEnemyBuildings ?? [])]) ?? far;
-  const staging = base && toward ? { cellX: Math.round(base.cellX + (toward.cellX - base.cellX) * 0.4), cellY: Math.round(base.cellY + (toward.cellY - base.cellY) * 0.4) } : null;
+  const reach = on(opts, "turtle") && valueOf(army) < 4000 && obs.tick < 25 * 60 * 8 ? 0.12 : 0.4;
+  const staging = base && toward ? { cellX: Math.round(base.cellX + (toward.cellX - base.cellX) * reach), cellY: Math.round(base.cellY + (toward.cellY - base.cellY) * reach) } : null;
   const gatherFrom = base;
   const idle = army.filter((u) => u.idle);
-  const home = gatherFrom ? idle.filter((u) => sq(u, gatherFrom) <= 16 ** 2) : [];
-  const gathered = staging ? idle.filter((u) => !home.includes(u) && sq(u, staging) <= 10 ** 2) : [];
+  // At home: idle near the base and not already at the staging point (which can be close by).
+  const atStaging = (u) => staging && sq(u, staging) <= 10 ** 2;
+  const home = gatherFrom ? idle.filter((u) => sq(u, gatherFrom) <= 16 ** 2 && !atStaging(u)) : [];
+  const gathered = staging ? idle.filter((u) => !home.includes(u) && atStaging(u)) : [];
   return { army, targets, target, far, staging, idle, home, gathered };
 }
 
@@ -322,7 +337,7 @@ export function scriptedAnswers(obs, questions, opts = {}) {
   for (const q of questions) {
     const score = (o) => {
       if (q.name === "army") {
-        const f = armyFront(obs), forward = f.idle.filter((u) => !f.home.includes(u)), forwardValue = valueOf(forward);
+        const f = armyFront(obs, undefined, opts), forward = f.idle.filter((u) => !f.home.includes(u)), forwardValue = valueOf(forward);
         const atTarget = f.target ? forward.filter((u) => sq(u, f.target) <= 15 ** 2).length : 0;
         // Without "scouting", Defend ties Hold when the base is calm and wins the tie (it comes first).
         if (o.value === "defend") return t.level === "critical" || t.level === "high" ? 6 : on(opts, "scouting") ? 0.5 : 1;
@@ -342,7 +357,12 @@ export function scriptedAnswers(obs, questions, opts = {}) {
       }
       // A tower that shoots ground attackers when the enemy is at the base; anti-air, coast guns and support buildings
       // only with nothing better, since the opponents attack by land.
-      if (q.name === "defense") return o.role === "ground" && (t.level === "high" || t.level === "critical") && obs.cash > 1000 && o.cost <= 1500 ? 3 : -2;
+      if (q.name === "defense") {
+        // With "turtle", the first two ground towers from minute 1.5, the strongest affordable.
+        const towers = obs.buildings.filter((b) => info(b.kind).queue === "Support" && defenseKind(obs, b.kind) === "ground").length;
+        if (on(opts, "turtle") && o.role === "ground" && towers < 2 && minutes >= 1.5 && affordable) return 4 + Math.min(1.5, o.cost / 1000);
+        return o.role === "ground" && (t.level === "high" || t.level === "critical") && obs.cash > 1000 && o.cost <= 1500 ? 3 : -2;
+      }
       if (o.role === "more income") return obs.harvesterCount < desiredHarvesters(obs) && has("refinery") && (expand || obs.harvesterCount < 2) ? 6 : -2;
       if (o.role === "support unit") return -1.5;
       // Combat units: keep every factory busy with the strongest unit we can afford.

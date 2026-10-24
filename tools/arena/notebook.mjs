@@ -1,6 +1,7 @@
 // The AI Arena's experiment notebook (tools/arena/notebook.json) with its results counted from the games: for each
 // brain version an entry compares, the scripted brain's wins, draws and losses per opponent. Games from before brain
-// versions were recorded are matched by a time window (a version's `after` and `before`). Shared by the runner's
+// versions were recorded are matched by a time window (a version's `after` and `before`); a version's `map` keeps
+// only that map's games. Shared by the runner's
 // /notebook and the story films (story.mjs).
 import fs from "node:fs";
 import path from "node:path";
@@ -18,14 +19,15 @@ export function readNotebook(dir) {
   return entries.map((e) => ({
     ...e,
     results: (e.versions ?? []).map((v) => {
-      const mine = finished.filter((g) => (v.before ? !g.version && g.finishedAt >= v.after && g.finishedAt < v.before : g.version === v.version));
+      const mine = finished.filter((g) => (v.before ? !g.version && g.finishedAt >= v.after && g.finishedAt < v.before : g.version === v.version) && (!v.map || g.map === v.map));
       const byOpponent = {};
       for (const g of mine) { const c = (byOpponent[g.opponent] ??= { win: 0, draw: 0, loss: 0, minutes: [] }); c[g.result]++; c.minutes.push(Math.round(g.gameSeconds / 60)); }
       return { ...v, games: mine.length, byOpponent };
     }),
     story: films.has(`story-${e.id}.mp4`) ? `story-${e.id}.mp4` : null,
+    // A film is a game's (film.mjs: "<game id>-<shot>") or any other film by name (tour.mjs: "tour-arena").
     films: (e.films ?? []).map((f) => {
-      const name = `${f.game}-${f.shot ?? "fight"}`;
+      const name = f.name ?? `${f.game}-${f.shot ?? "fight"}`;
       return { ...f, file: `${name}.mp4`, poster: `${name}.jpg`, ready: films.has(`${name}.mp4`) };
     }),
   }));
