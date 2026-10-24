@@ -70,3 +70,5 @@
 
 /* Portalled themed pickers inherit the same tokens as the menu that opened them. */
 [data-slot="select-content"], [data-slot="combobox-content"], [data-slot="select-popup"], [data-slot="combobox-popup"] { background: #22272b; color: #f5efe4; border-color: #56616a; }
+[data-slot="select-item"][data-highlighted], [data-slot="combobox-item"][data-highlighted] { background: #49302c; color: #f5efe4; }
+[data-slot="select-item"][data-selected], [data-slot="combobox-item"][data-selected] { background: #e15a43; color: #151719; }
