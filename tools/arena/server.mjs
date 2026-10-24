@@ -14,6 +14,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import { runMatch, OPPONENTS, BRAINS } from "./match.mjs";
 import { PROVIDERS, PRICES, keyStore, localReady, layaReady } from "./providers.mjs";
 import { runBench, BENCH_BRAINS } from "./bench.mjs";
+import { BRAIN_VERSION } from "./brain.mjs";
 
 const repo = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 const PORT = Number(process.env.RTSAI_ARENA_PORT ?? 3463);
@@ -88,8 +89,13 @@ const today = () => new Date().toISOString().slice(0, 10);
 const saveBudget = () => fs.writeFileSync(budgetFile, JSON.stringify(budget, null, 1));
 const spentToday = () => budget.spent[today()] ?? 0;
 
-export const competitor = (g) => (g.brain === "decision" ? `decision:${g.provider}` : g.brain);
-const COMPETITOR_LABEL = (id) => id.startsWith("decision:") ? `Decision · ${PROVIDERS[id.slice(9)]?.label ?? id.slice(9)}` : id.startsWith("bot:") ? `${OPPONENTS[id.slice(4)]?.label ?? id.slice(4)} AI` : BRAINS[id]?.label ?? id;
+// A decision brain is one competitor per provider and brain version (games from before versions were recorded are
+// "earlier").
+export const competitor = (g) => (g.brain === "decision" ? `decision:${g.provider}@${g.version ?? "earlier"}` : g.brain);
+const COMPETITOR_LABEL = (id) => {
+  if (id.startsWith("decision:")) { const [provider, version] = id.slice(9).split("@"); return `Decision · ${PROVIDERS[provider]?.label ?? provider} (${version})`; }
+  return id.startsWith("bot:") ? `${OPPONENTS[id.slice(4)]?.label ?? id.slice(4)} AI` : BRAINS[id]?.label ?? id;
+};
 
 // ---------------------------------------------------------------------------------------------------------------
 // Queue
@@ -118,7 +124,7 @@ async function start(run, job) {
   const key = `${run.id}:${job.index}`;
   active.set(key, { run, job });
   const id = `${new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19)}-${crypto.randomBytes(3).toString("hex")}`;
-  const spec = { id, runId: run.id, brain: run.brain, provider: run.provider, opponent: job.opponent, ours: job.ours, theirs: job.theirs, map: run.map, seed: job.seed,
+  const spec = { id, runId: run.id, brain: run.brain, provider: run.provider, version: run.brain === "decision" ? BRAIN_VERSION : undefined, opponent: job.opponent, ours: job.ours, theirs: job.theirs, map: run.map, seed: job.seed,
     speed: run.speed, limit: run.limit, pauseWhileThinking: run.pauseWhileThinking, page: page && { release: page.release, page: page.page, runtime: page.runtime, data: page.data } };
   try {
     if (!(await pageUp)) throw new Error("The live game's twin page did not start.");

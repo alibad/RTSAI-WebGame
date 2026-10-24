@@ -59,7 +59,9 @@ adviser reads) into a few closed questions:
 - **Production, asked every 2 game seconds at most:** one question per idle line: building, defense, infantry,
   vehicle, aircraft, ship.
   - The options are the items buildable now, each described by role, cost and how many we have, plus Wait.
-  - Defenses are asked only under pressure or with credits to spare.
+  - Defenses are asked only when enemies are in sight or with credits to spare. A tower that shoots ground units is
+    chosen when the enemy is at the base; walls are never offered, and anti-air, coast guns and support buildings are
+    left alone.
 - **Army, every 5 game seconds:** attack, defend the base, gather at the front, scout (one scout every 45 s), sweep
   toward the far side while the enemy base is unknown, or hold. It fights like a player, not a stream:
   - New units gather at a staging point 40 % of the way to the enemy.
@@ -68,20 +70,8 @@ adviser reads) into a few closed questions:
   - Only idle units are ever given new orders, so a fight in progress is never interrupted.
   - Before 23 October every unit was re-sent every 5 seconds. Fresh units trickled into the enemy defences one by one;
     one game lost 53,200 worth of units with a 10× larger army and killed 5 buildings.
-- **Early defence (24 October), against an AI rush:** the Rush AI with 15,000 extra credits is at the base by minute
-  2–5.
-  - **Towers before the factory:** two ground-defence towers come before the war factory unless credits are
-    plentiful. Walls are never offered. Anti-air and coastal guns, and support buildings without weapons, are rarely
-    chosen.
-  - **Under pressure** (enemy at the base, or more enemy army in sight than ours):
-    - up to six towers;
-    - combat units before harvesters and technology;
-    - a second refinery only once the army is worth 2,000 or from minute 4.
-  - **The army stays home while weak:** the staging point is just in front of the base (12% of the way) until the army
-    is worth 6,000 and not under pressure, so a rush meets the whole army and the towers together.
-  - **Scouting:** one cheap scout, from minute 2.5.
-  - **Reading a game:** `node tools/arena/game-story.mjs <game id>` prints it minute by minute: what was built, what
-    the army did, and what each army turn saw.
+- **Reading a game:** `node tools/arena/game-story.mjs <game id>` prints it minute by minute: what was built, what the
+  army did, and what each army turn saw.
 
 The chosen options become the adviser's own command types, sent through `client.adviserExecute()` in groups of at most
 12 commands. They are synchronized player orders and go into the replay like clicks.
@@ -96,6 +86,34 @@ option:
 | Local LLM | OpenAI-compatible gateway (`OPENRA_AI_ROUTER_URL`, default :4000), JSON-schema enum per question | $0 |
 | OpenAI Decisions | `POST /v1/decisions`, `gpt-6-luna`, one `choice` question each | $0.10 / M ($0.01 cached) |
 | TypeSafe Jev | TypeSafe's `/v1/systemone` (`jev-latest`) with a TypeSafe key, or the same request through OpenRouter (`typesafe/jev-1.13`) with an OpenRouter key; OpenRouter returns the exact cost | $0.042 / M |
+
+## Early-defence experiments (24 October)
+
+Goal: survive and beat Brutal (the Rush AI with 15,000 extra credits, at the base by minute 2–5). Scripted brain,
+speed 8, `ra2-tournament-2B`, mirror factions. Each version is its own row on the ladder (`BRAIN_VERSION`).
+
+| Version | Normal | Rush | Hard | Brutal |
+|---|---|---|---|---|
+| 23 Oct strike (+ 24 Oct towers: no walls or anti-air), 18 games | 4 W | 1 W 3 D | 1 W 3 L | 6 L, at minute 6–7 |
+| 24 Oct defence: two towers before the factory, army home until worth 4,000, economy paused under pressure | 2 W | 1 D 1 L | 1 D 1 L | 6 L, at minute 7–22 |
+| 24 Oct adaptive / scouting: fast factory, towers on pressure, tanks first, scouts on a plain move | 2 L | 1 L | 2 L | not run |
+
+The defensive version made Brutal games last longer (about 11 minutes on average against 6.5) but never won, and it
+lost Rush and Hard games that the 23 October brain had won. The live brain is the 23 October one with towers only.
+
+What the game logs showed (`game-story.mjs`), to test one change at a time with at least four games per opponent:
+
+- **"Defend" chases far sightings.** It is offered for any enemy in sight and wins ties with Hold, so the home army
+  walks to whatever a scout sees, even at the enemy base. It is a bug, but it is also the brain's only push toward an
+  unknown enemy base: fixing it alone made the brain passive, and it lost to Normal.
+- **Scouts attack-move:** they stop to fight the first enemy they meet. One game sent 29 scouts and never found the
+  enemy base. A plain move needs the attack to change with it.
+- **Unit choice by price:** the brain prefers the dearest unit it can afford, so it trains anti-tank missile teams
+  against early infantry, and Lynx scout cars as if they were tanks. It should pick against what the enemy fields.
+- **Credits at minute 2:** a second refinery, a harvester, the factory and a tower started together leave 0 credits,
+  and the army stops growing just as a Hard or Brutal rush arrives.
+- **Where the army waits:** 40 % of the way out meets the first Brutal wave alone, without towers; at home it lasts
+  longer but lets the plain Rush AI grow to three times our army.
 
 ## Voice orders bench
 

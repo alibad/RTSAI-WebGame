@@ -1,7 +1,7 @@
 // node --test tools/arena/brain.test.mjs
 import test from "node:test";
 import assert from "node:assert/strict";
-import { plan, scriptedAnswers, describe, armyFront } from "./brain.mjs";
+import { plan, scriptedAnswers, describe } from "./brain.mjs";
 import { decide } from "./providers.mjs";
 
 const actor = (actorId, kind, cellX, cellY, extra = {}) => ({ actorId, kind, cellX, cellY, idle: true, canAttack: false, ...extra });
@@ -78,43 +78,13 @@ test("a building in sight gets an explicit attack order; units do not fire at pl
   assert.ok(attack.commands.every((c) => c.action === "attack" && c.target_actor_id === 99));
 });
 
-test("early defence: the war factory waits for the first two towers unless credits are plentiful", () => {
-  const obs = { ...base, tick: 25 * 80, cash: 1500, buildings: [actor(2, "gacnst", 20, 20), actor(3, "gapowr", 22, 20), actor(4, "garefn", 24, 20), actor(5, "gapile", 26, 20)],
-    availableProduction: ["gaweap", "gapill", "gapowr"] };
-  const { questions } = plan(obs);
-  const a = scriptedAnswers(obs, questions);
-  assert.notEqual(a.build.choice, "gaweap");
-  assert.equal(a.defense.choice, "gapill");
-  const rich = { ...obs, cash: 3000 };
-  assert.equal(scriptedAnswers(rich, plan(rich).questions).build.choice, "gaweap");
-});
-
-test("early defence: walls are never offered, and two real towers go up by minute 2", () => {
-  const obs = { ...base, tick: 25 * 150, cash: 2000, buildings: [actor(2, "gacnst", 20, 20), actor(3, "gapowr", 22, 20), actor(4, "garefn", 24, 20), actor(5, "gapile", 26, 20)],
-    availableProduction: ["gawall", "gapill", "gagap", "nasam"] };
+test("with the enemy at the base, the defense line offers no walls and picks a real tower", () => {
+  const raiders = Array.from({ length: 6 }, (_, i) => actor(50 + i, "e1", 22, 22, { canAttack: true }));
+  const obs = { ...base, cash: 2000, buildings: [actor(2, "gacnst", 20, 20), actor(3, "gapowr", 22, 20)], visibleEnemies: raiders,
+    availableProduction: ["gawall", "gapill", "nasam"] };
   const q = plan(obs).questions.find((x) => x.name === "defense");
-  assert.ok(q, "the defense line is asked once minute 2 has passed without towers");
   assert.ok(!q.options.some((o) => o.value === "gawall"));
   assert.equal(scriptedAnswers(obs, [q]).defense.choice, "gapill");
-});
-
-test("while weak, the army gathers just in front of the base; strong, it moves up", () => {
-  const few = Array.from({ length: 4 }, (_, i) => actor(10 + i, "e1", 21, 21, { canAttack: true }));
-  const weak = { ...base, buildings: [actor(2, "gacnst", 20, 20)], units: few, rememberedEnemyBuildings: [actor(99, "nacnst", 100, 100)] };
-  const tanks = Array.from({ length: 12 }, (_, i) => actor(10 + i, "mtnk", 21, 21, { canAttack: true }));
-  const strong = { ...weak, units: tanks };
-  assert.ok(armyFront(weak).staging.cellX < 35, "weak: staging near home");
-  assert.ok(armyFront(strong).staging.cellX > 45, "strong: staging 40% of the way");
-});
-
-test("under pressure, credits go to combat units, not a second harvester or technology", () => {
-  const raiders = Array.from({ length: 10 }, (_, i) => actor(50 + i, "htnk", 26, 26, { canAttack: true }));
-  const obs = { ...base, cash: 2500, harvesterCount: 1, buildings: [actor(2, "gacnst", 20, 20), actor(3, "gapowr", 22, 20), actor(4, "garefn", 24, 20), actor(5, "gaweap", 26, 20)],
-    units: [actor(10, "mtnk", 22, 22, { canAttack: true })], visibleEnemies: raiders, availableProduction: ["cmin", "mtnk", "gaairc", "garefn"] };
-  const { questions } = plan(obs);
-  const a = scriptedAnswers(obs, questions);
-  assert.notEqual(a.vehicle.choice, "cmin");
-  assert.notEqual(a.build.choice, "garefn");
 });
 
 test("the shared state names things and never exposes engine ids", async () => {
