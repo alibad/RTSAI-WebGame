@@ -48,9 +48,9 @@ export function CoachPanel({ game }: { game: Game }) {
             <div className="cv-chart">
               <span className="cv-chart-label">Army<b>{c.review?.army ?? frames.at(-1)?.army ?? 0}</b></span>
               <svg viewBox="0 0 400 74" preserveAspectRatio="none" role="img" aria-label="Recorded army size">
-                <defs><linearGradient id="cv-area" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stopColor="#f1d28b" stopOpacity=".35" /><stop offset="1" stopColor="#f1d28b" stopOpacity="0" /></linearGradient></defs>
+                <defs><linearGradient id="cv-area" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stopColor="var(--hud-accent)" stopOpacity=".35" /><stop offset="1" stopColor="var(--hud-accent)" stopOpacity="0" /></linearGradient></defs>
                 {frames.length > 1 && <polygon points={`0,74 ${pts} 400,74`} fill="url(#cv-area)" />}
-                <polyline fill="none" stroke="#f1d28b" strokeWidth="2" vectorEffect="non-scaling-stroke" points={pts} />
+                <polyline fill="none" stroke="var(--hud-accent)" strokeWidth="2" vectorEffect="non-scaling-stroke" points={pts} />
                 {c.events.filter((e) => e.tick >= first).map((e, i) => <line key={i} x1={((e.tick - first) / Math.max(1, last - first)) * 400} x2={((e.tick - first) / Math.max(1, last - first)) * 400} y1={0} y2={74} stroke="#ef5b3f" strokeOpacity=".55" strokeDasharray="3 3" vectorEffect="non-scaling-stroke" />)}
                 {c.review && <line x1={(fill / 100) * 400} x2={(fill / 100) * 400} y1={0} y2={74} stroke="#fff3d2" strokeWidth="2" vectorEffect="non-scaling-stroke" />}
               </svg>
@@ -72,7 +72,7 @@ export function CoachPanel({ game }: { game: Game }) {
             {[...c.events].reverse().map((e, i) => (
               <article key={i} className="cv-event">
                 <button type="button" className="cv-time" disabled={game.multiplayer || e.tick < first} onClick={() => { c.seek(e.tick); render((n) => n + 1); }} aria-label={`Review ${time(e.tick)}`}>{time(e.tick)}</button>
-                <span className="cv-event-kind inline-flex items-center gap-1.5 text-[var(--hud-gold)]">{KIND_ICONS[e.kind]}<span className="text-[#f2ecdc]">{KIND_NAMES[e.kind] ?? e.kind}</span></span>
+                <span className="cv-event-kind inline-flex items-center gap-1.5 text-[var(--hud-accent)]">{KIND_ICONS[e.kind]}<span className="text-[#f2ecdc]">{KIND_NAMES[e.kind] ?? e.kind}</span></span>
                 <p>{e.text}</p>
                 <a href={`?profile=public&mode=simulator&prompt=${encodeURIComponent(e.practice)}`} target="_blank" rel="noreferrer">Practice this<ArrowRight /></a>
               </article>

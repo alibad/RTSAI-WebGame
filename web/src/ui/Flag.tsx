@@ -8,7 +8,7 @@ const FLAGS = new Set(["america", "china", "cuba", "england", "france", "germany
 
 export function Flag({ id, className }: { id: string; className?: string }) {
   if (!FLAGS.has(id))
-    return <span className={cn("grid place-items-center bg-[#1b211a] text-[10px] font-black text-[var(--hud-gold-dim)]", className)}>?</span>;
+    return <span className={cn("grid place-items-center bg-[#1b211a] text-[10px] font-black text-[var(--hud-accent-dim)]", className)}>?</span>;
   return <img src={`flags/${id}.svg`} alt="" className={cn("object-cover", className)} draggable={false} />;
 }
 

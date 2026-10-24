@@ -24,8 +24,12 @@
   --hud-edge-hi: #56616a;
   --hud-gold: #d8b66c;
   --hud-gold-dim: #bda36d;
+  --hud-accent: #f18470;
+  --hud-accent-dim: #cf8c7e;
   --hud-red: #e15a43;
   --command-accent: #e15a43;
+  --command-accent-hi: #f18470;
+  --command-accent-rgb: 225 90 67;
 }
 
 .menu-root, .scr-root { background-color: #151719; }

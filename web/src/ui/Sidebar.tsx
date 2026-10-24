@@ -27,7 +27,7 @@ function SupportPowers({ game }: { game: Game }) {
       className="hud-inset flex w-[70px] flex-col items-center overflow-hidden text-[9px] disabled:opacity-60">
       {icons[`$power:${p.key}`] && <img src={icons[`$power:${p.key}`]!} alt="" className="h-[42px] w-full object-contain" />}
       <span className="w-full truncate px-1">{p.name}</span>
-      <span className="digits text-[var(--hud-gold)]">{p.ready ? "READY" : p.active ? formatTime(p.remaining) : "ON HOLD"}</span>
+      <span className="digits text-[var(--hud-accent)]">{p.ready ? "READY" : p.active ? formatTime(p.remaining) : "ON HOLD"}</span>
       <progress aria-label={`${p.name} charge`} value={Math.max(0, p.total - p.remaining)} max={Math.max(1, p.total)} className="h-1 w-full" />
     </button>)}
   </div>;
@@ -111,7 +111,7 @@ const Cameo = memo(function Cameo({ item, queue, icon, progress, count, paused, 
   return (
     <button
       type="button"
-      className={cn("cameo hud-inset group", placing && "ring-2 ring-[var(--hud-gold)]")}
+      className={cn("cameo hud-inset group", placing && "ring-2 ring-[var(--hud-accent)]")}
       data-disabled={!item.buildable && count === 0}
       onPointerDown={(e) => {
         e.preventDefault();
@@ -168,12 +168,12 @@ function Tabs() {
             onClick={() => set({ tab: q.type })}
             className={cn(
               "hud-inset relative grid h-[30px] place-items-center text-[var(--muted-foreground)] transition-colors disabled:opacity-30",
-              tab === q.type && enabled && "text-[var(--hud-gold)] shadow-[inset_0_0_0_1px_var(--hud-gold-dim),inset_0_0_10px_rgba(241,210,139,0.25)]",
+              tab === q.type && enabled && "text-[var(--hud-accent)] shadow-[inset_0_0_0_1px_var(--hud-accent-dim),inset_0_0_10px_rgba(225,90,67,0.25)]",
               enabled && tab !== q.type && "hover:text-[var(--foreground)]",
             )}
           >
             <Icon />
-            {ready && <span className="ready-pulse absolute right-[2px] top-[2px] size-[6px] rounded-full bg-[var(--hud-gold)]" />}
+            {ready && <span className="ready-pulse absolute right-[2px] top-[2px] size-[6px] rounded-full bg-[var(--hud-accent)]" />}
             {!ready && busy && <span className="absolute right-[2px] top-[2px] size-[6px] rounded-full bg-[var(--hud-green)]" />}
           </button>
         );
@@ -243,10 +243,10 @@ function ModeButton({ active, title, hotkey, onClick, children, disabled }: { ac
       disabled={disabled}
       onClick={onClick}
       className={cn("sb-mode hud-inset relative grid size-[30px] place-items-center text-[var(--muted-foreground)] hover:text-[var(--foreground)] disabled:opacity-35",
-        active && "text-[var(--hud-gold)] shadow-[inset_0_0_0_1px_var(--hud-gold),inset_0_0_10px_rgba(241,210,139,0.35)]")}
+        active && "text-[var(--hud-accent)] shadow-[inset_0_0_0_1px_var(--hud-accent),inset_0_0_10px_rgba(225,90,67,0.35)]")}
     >
       {children}
-      <span className="digits absolute bottom-0 right-[2px] text-[9px] text-[var(--hud-gold-dim)]">{hotkey}</span>
+      <span className="digits absolute bottom-0 right-[2px] text-[9px] text-[var(--hud-accent-dim)]">{hotkey}</span>
     </button>
   );
 }

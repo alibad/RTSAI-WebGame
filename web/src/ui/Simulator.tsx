@@ -56,7 +56,7 @@ function Seg<T extends string | number>({ value, options, onChange, label }: { v
       {options.map((o) => (
         <button key={String(o.value)} type="button" role="radio" aria-checked={value === o.value} aria-label={typeof o.label === 'string' ? undefined : o.title} title={o.title} onClick={() => onChange(o.value)}
           className={cn("grid h-[26px] flex-1 place-items-center rounded-[2px] px-2 text-[12px] text-[var(--muted-foreground)]",
-            value === o.value && "bg-[rgba(241,210,139,0.14)] text-[var(--hud-gold)] shadow-[inset_0_0_0_1px_var(--hud-gold-dim)]")}>
+            value === o.value && "bg-[rgba(225,90,67,0.14)] text-[var(--hud-accent)] shadow-[inset_0_0_0_1px_var(--hud-accent-dim)]")}>
           {o.label}
         </button>
       ))}
@@ -172,7 +172,7 @@ function EditPanel({ game, sandbox }: { game: Game; sandbox: Sandbox }) {
             onDragStart={(e) => { e.dataTransfer.setData("application/x-rtsai-unit", u.name); e.dataTransfer.effectAllowed = "copy"; }}
             onMouseEnter={() => setHover(u)}
             onClick={() => patch({ brush: st.brush === u.name ? null : u.name })}
-            className={cn("cameo sim-unit hud-inset", st.brush === u.name && "ring-2 ring-[var(--hud-gold)]")}>
+            className={cn("cameo sim-unit hud-inset", st.brush === u.name && "ring-2 ring-[var(--hud-accent)]")}>
             {icons[iconKey(u.name, faction)] ? <img src={icons[iconKey(u.name, faction)]!} alt="" draggable={false} /> : <div className="grid aspect-[60/48] w-full place-items-center px-1 text-center text-[9px] leading-tight text-[var(--muted-foreground)]">{u.label}</div>}
             <span className="sim-cost digits">{u.cost > 0 ? u.cost.toLocaleString() : "Free"}</span>
           </button>

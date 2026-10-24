@@ -12,7 +12,7 @@ import { SHORT_SCREEN, useMedia } from "./use-media";
 
 const THREAT = { calm: "var(--hud-green)", guarded: "var(--hud-yellow)", high: "#ff8a3d", critical: "var(--hud-red)" } as Record<string, string>;
 const IMPORTANCE = { routine: "#8f9886", important: "var(--hud-yellow)", critical: "var(--hud-red)" } as Record<string, string>;
-const STATE_COLOR = { offline: "#5b625a", ready: "var(--hud-green)", thinking: "var(--hud-gold)", listening: "var(--hud-red)", error: "var(--hud-red)" };
+const STATE_COLOR = { offline: "#5b625a", ready: "var(--hud-green)", thinking: "var(--hud-accent)", listening: "var(--hud-red)", error: "var(--hud-red)" };
 
 function Avatar({ state }: { state: keyof typeof STATE_COLOR }) {
   const color = STATE_COLOR[state];
