@@ -5,6 +5,7 @@ using System.Text.Json;
 using OpenRA;
 using OpenRA.Mods.Common.Traits;
 using OpenRA.Mods.RTSAI.Traits;
+using OpenRA.Traits;
 using OpenRA.WebSim;
 
 static class SaudiBraceTest
