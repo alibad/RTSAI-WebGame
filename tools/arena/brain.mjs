@@ -12,6 +12,19 @@ import tree from "../../web/src/adviser-tree.json" with { type: "json" };
  */
 export const BRAIN_VERSION = "24 Oct towers";
 
+/**
+ * Experiments: one rule change each, switched on per Arena run (a run's `experiment`, several joined with "+"), so a
+ * variant plays the same seeds and factions as the brain without it, and the ladder keeps its games apart
+ * ("24 Oct towers + counters"). Each answers one finding from the 24 Oct game logs (docs/AI-ARENA.md).
+ */
+export const EXPERIMENTS = {
+  counters: "Units are picked against what the enemy fields (riflemen against infantry, anti-tank against vehicles, tanks over scout cars and anti-air), not by price.",
+  scouting: "Scouts move without stopping to fight, and Defend answers only enemies near our base, not a scout's sighting across the map.",
+  budget: "The opening keeps credits for the army: the second refinery and extra harvesters wait for minute 3 or spare credits.",
+  hunt: "While the enemy base is unknown, sweeps and scouts work through points across the whole map, not only the mirror of our base.",
+};
+const on = (opts, name) => String(opts?.experiment ?? "").split("+").includes(name);
+
 export const QUEUES = { Building: "build", Support: "defense", Infantry: "infantry", Vehicle: "vehicle", Aircraft: "aircraft", Ship: "ship" };
 const BATCH = { Infantry: 3, Vehicle: 2, Aircraft: 1, Ship: 1 };
 const mcvTypes = new Set(["mcv", "amcv", "smcv"]);
@@ -56,6 +69,54 @@ export function defenseKind(obs, item) {
   return "support";
 }
 const DEFENSE_TEXT = { ground: "a tower that shoots ground attackers", air: "anti-air defense", coast: "coastal defense against ships", support: "support structure, no weapon" };
+
+/**
+ * What a unit is good against, from its catalog name (the "counters" experiment): "antiarmor", "antiinfantry",
+ * "tank" (good against both), "antiair", "artillery", "recon" (scouts, spotters, carriers: weak in a fight), or
+ * "general".
+ */
+export function unitClass(obs, item) {
+  const n = nameOf(obs, item);
+  if (/air defen[cs]e|air shield|anti-air|zu-23|\bAA\b|stinger/i.test(n)) return "antiair";
+  if (/recon|scout|spotter|observer|jtac|coordinator|operator|airlift|support (carrier|vehicle)/i.test(n)) return "recon";
+  if (/missile team|\bAT\b|anti-armor|anti-tank|ATGM|AT specialist|RPG|toophan|recoilless|tank destroyer|rocket soldier|bazooka/i.test(n)) return "antiarmor";
+  if (/artillery|howitzer|rocket battery|missile launcher/i.test(n)) return "artillery";
+  if (/battle tank|\btank\b/i.test(n)) return "tank";
+  if (/rifle|fighter|guard|basij|conscript|\bGI\b|machine gun|gun truck|technical|flame/i.test(n)) return "antiinfantry";
+  return "general";
+}
+const enemyAircraft = (obs) => obs.visibleEnemies.some((e) => info(e.kind).queue === "Aircraft" || /gunship|apache|aircraft|helicopter|\bjet\b|bomber/i.test(nameOf(obs, e.kind)));
+const CLASS_TEXT = { antiarmor: "good against vehicles", antiinfantry: "good against infantry", tank: "main battle tank", antiair: "anti-air", artillery: "long-range artillery", recon: "scout or spotter: weak in a fight", general: "combat unit" };
+
+/**
+ * Where to look next while the enemy base is unknown (the "hunt" experiment): the mirror of our base first, then a
+ * 3 × 3 grid of points across the map, nearest first, away from our own base. `key` keeps separate rotations for the
+ * army's sweep and the scouts. A point is done when half the group reaches it, or after `patience` game seconds (a
+ * scout is offered every 45, so each one goes somewhere new).
+ */
+function huntPoint(obs, memory, base, far, key, group, patience) {
+  const pts = (memory.huntPoints ??= [far, ...[0.15, 0.5, 0.85].flatMap((a) => [0.15, 0.5, 0.85].map((b) => ({ cellX: Math.round(obs.mapWidth * a), cellY: Math.round(obs.mapHeight * b) })))
+    .filter((p) => sq(p, base) > 25 ** 2 && sq(p, far) > 12 ** 2).sort((a, b) => sq(a, far) - sq(b, far))]);
+  const state = (memory[key] ??= { index: 0, since: obs.tick });
+  const here = pts[state.index % pts.length];
+  const arrived = group.length && group.filter((u) => sq(u, here) <= 12 ** 2).length * 2 >= group.length;
+  if (arrived || obs.tick - state.since > 25 * patience) { state.index++; state.since = obs.tick; }
+  return pts[state.index % pts.length];
+}
+
+/** The infantry share (by value) of the enemy army seen in the last two game minutes, kept in the brain's memory. */
+function noteEnemies(obs, memory) {
+  const seen = (memory.seenEnemies ??= new Map());
+  for (const e of obs.visibleEnemies) if (!isHarvester(e.kind, obs) && !isMcv(e.kind, obs)) seen.set(e.actorId, { infantry: info(e.kind).queue === "Infantry", value: info(e.kind).cost ?? 300, tick: obs.tick });
+  for (const [id, e] of seen) if (obs.tick - e.tick > 25 * 120) seen.delete(id);
+}
+function infantryShare(obs, memory) {
+  const seen = [...(memory?.seenEnemies?.values() ?? [])];
+  const total = seen.reduce((s, e) => s + e.value, 0);
+  // Before any sighting, expect infantry first: the engine's AI opens with it.
+  if (total < 600) return obs.tick / 25 / 60 < 6 ? 0.7 : 0.5;
+  return seen.filter((e) => e.infantry).reduce((s, e) => s + e.value, 0) / total;
+}
 
 const roleText = {
   power: "more power", refinery: "income: comes with a harvester", barracks: "trains infantry", factory: "builds vehicles",
@@ -118,8 +179,9 @@ export const RUBRIC = "You command one side in a real-time strategy match (Red A
  * What to do now: commands that need no choice (deploy the construction vehicle, place finished buildings) and the
  * questions worth asking. A question has 2+ options; each option knows the commands it stands for.
  */
-export function plan(obs, memory = {}) {
+export function plan(obs, memory = {}, opts = {}) {
   const auto = [], questions = [];
+  if (on(opts, "counters")) noteEnemies(obs, memory);
   const units = obs.units.filter((u) => !/husk/i.test(u.kind));
   const mcv = units.find((u) => isMcv(u.kind, obs));
   if (mcv && !obs.buildings.length) {
@@ -148,10 +210,12 @@ export function plan(obs, memory = {}) {
       const batch = BATCH[queue] ?? 1, n = isHarvester(item, obs) ? 1 : batch;
       const have = queue === "Building" || queue === "Support" ? owned((k) => baseType(k) === baseType(item)) : obs.units.filter((u) => baseType(u.kind) === baseType(item)).length;
       const what = queue === "Support" ? DEFENSE_TEXT[defenseKind(obs, item)] : queue === "Building" ? roleText[roleOf(item)] : isHarvester(item, obs) ? "more income" : support.test(nameOf(obs, item)) ? "support unit" : "combat unit";
+      // With "counters", a combat unit's description says what it is good against, for models as for the scorer.
+      const unit = what === "combat unit" && on(opts, "counters") ? unitClass(obs, item) : null;
       return {
         value: item, label: `${n > 1 ? `${n} × ` : ""}${nameOf(obs, item)}`,
-        description: `${nameOf(obs, item)}: ${what}; costs ${cost * n}; you have ${have}.`,
-        cost: cost * n, role: queue === "Support" ? defenseKind(obs, item) : queue === "Building" ? roleOf(item) : what, roles: queue === "Building" || queue === "Support" ? rolesOf(item) : [],
+        description: `${nameOf(obs, item)}: ${unit ? CLASS_TEXT[unit] : what}; costs ${cost * n}; you have ${have}.`,
+        cost: cost * n, have, unit, role: queue === "Support" ? defenseKind(obs, item) : queue === "Building" ? roleOf(item) : what, roles: queue === "Building" || queue === "Support" ? rolesOf(item) : [],
         commands: Array.from({ length: n }, () => ({ action: queue === "Building" || queue === "Support" ? "build" : "train", item_type: item })),
       };
     });
@@ -180,18 +244,26 @@ export function plan(obs, memory = {}) {
     if (obs.visibleEnemies.length && base) {
       const contact = [...obs.visibleEnemies].sort((a, b) => sq(a, base) - sq(b, base))[0];
       const near = army.filter((u) => sq(u, base) <= 30 ** 2 && (u.idle || !u.targetId));
-      if (near.length) options.push({ value: "defend", label: "Defend the base", description: `Send the ${near.length} units near the base at the closest enemy (${t.nearest ?? "?"} cells away).`,
+      // Without "scouting", any enemy in sight counts, even one a scout sees at the enemy base.
+      const atHome = !on(opts, "scouting") || sq(contact, base) <= 32 ** 2;
+      if (near.length && atHome) options.push({ value: "defend", label: "Defend the base", description: `Send the ${near.length} units near the base at the closest enemy (${t.nearest ?? "?"} cells away).`,
         commands: order(near, contact) });
     }
-    // One scout at a time: offered again 45 game seconds after the last one was sent.
+    // One scout at a time: offered again 45 game seconds after the last one was sent. With "scouting" it moves without
+    // stopping to fight; otherwise it attack-moves and fights the first enemy it meets.
+    // With "hunt", the scout and the sweep work through points across the map; otherwise both go to the mirror of our
+    // base, where the enemy started (on 24 Oct an army seven times the enemy's swept there for 26 minutes).
     if (!targets.length && front.far && tick - (memory.lastScoutTick ?? -1e9) >= 25 * 45) {
       const scout = [...army].sort((a, b) => (b.speed ?? 0) - (a.speed ?? 0))[0];
-      options.push({ value: "scout", label: "Scout for the enemy", description: `Send the fastest unit toward the far side of the map to find the enemy base (${Math.round(obs.exploredPercent)}% explored).`,
-        commands: order([scout], front.far) });
+      const to = on(opts, "hunt") ? huntPoint(obs, memory, base, front.far, "scoutRoute", [], 40) : front.far;
+      options.push({ value: "scout", label: "Scout for the enemy", description: `Send the fastest unit toward ${on(opts, "hunt") ? "the next unsearched part" : "the far side"} of the map to find the enemy base (${Math.round(obs.exploredPercent)}% explored).`,
+        commands: order([scout], to, on(opts, "scouting") ? "move" : "attack_move") });
     }
-    if (!targets.length && front.far && idle.length >= 8)
-      options.push({ value: "sweep", label: "Sweep toward the enemy side", description: `Move the ${idle.length} idle combat units together toward the far side of the map, fighting what they meet, to find the enemy base.`,
-        commands: order(idle, front.far) });
+    if (!targets.length && front.far && idle.length >= 8) {
+      const to = on(opts, "hunt") ? huntPoint(obs, memory, base, front.far, "sweepRoute", idle, 90) : front.far;
+      options.push({ value: "sweep", label: "Sweep toward the enemy side", description: `Move the ${idle.length} idle combat units together toward ${on(opts, "hunt") ? "the next unsearched part" : "the far side"} of the map, fighting what they meet, to find the enemy base.`,
+        commands: order(idle, to) });
+    }
     // Gathering is not a choice: whatever the army does, idle units at home walk to the staging point (unless the base
     // is under pressure), so new units always join the group instead of piling up at home.
     if (home.length && staging && !["high", "critical"].includes(t.level))
@@ -227,7 +299,7 @@ export function armyFront(obs, base = centroid(obs.buildings) ?? centroid(obs.un
  * The free scripted decision-maker: hand-written scores per option, turned into probabilities (softmax), so its
  * answers look exactly like a decision model's and its games set the bar a model has to beat.
  */
-export function scriptedAnswers(obs, questions) {
+export function scriptedAnswers(obs, questions, opts = {}) {
   const state = describe(obs), army = fighters(obs), t = threat(obs);
   const has = (role) => obs.buildings.some((b) => rolesOf(b.kind).includes(role));
   const queued = (role) => obs.production.some((p) => rolesOf(p.item).includes(role));
@@ -235,10 +307,13 @@ export function scriptedAnswers(obs, questions) {
   const sameType = (item) => obs.buildings.filter((b) => baseType(b.kind) === baseType(item)).length;
   const minutes = obs.tick / 25 / 60, spare = obs.powerProvided - obs.powerDrained;
   const enemyValue = state.enemySeen.unitValue, armyValue = state.army.value;
+  // With "budget", expansion waits for minute 3 or spare credits, so the opening's credits go to the army as a rush
+  // arrives (a second refinery, a harvester, the factory and a tower started together left 0 credits at minute 2).
+  const expand = !on(opts, "budget") || minutes > 3 || obs.cash > 2500;
   // What each structure role is worth now; a building is worth its best role.
   const need = {
     power: spare < 10 ? 6 : spare < 60 && obs.cash > 1500 ? 1.5 : -1,
-    refinery: !has("refinery") ? 6 : refineries < 2 && minutes > 2 ? 3.5 : refineries < 3 && minutes > 6 && obs.cash > 2500 ? 2 : -1,
+    refinery: !has("refinery") ? 6 : refineries < 2 && minutes > 2 && expand ? 3.5 : refineries < 3 && minutes > 6 && obs.cash > 2500 ? 2 : -1,
     barracks: !has("barracks") && !queued("barracks") ? 4.5 : -1, factory: !has("factory") && has("refinery") ? 5 : -1,
     radar: !has("radar") && has("factory") ? 3 : -1, airfield: !has("airfield") && has("radar") && obs.cash > 2500 ? 1 : -1,
     tech: has("radar") && obs.cash > 3000 ? 1.5 : -1, shipyard: -2,
@@ -249,7 +324,8 @@ export function scriptedAnswers(obs, questions) {
       if (q.name === "army") {
         const f = armyFront(obs), forward = f.idle.filter((u) => !f.home.includes(u)), forwardValue = valueOf(forward);
         const atTarget = f.target ? forward.filter((u) => sq(u, f.target) <= 15 ** 2).length : 0;
-        if (o.value === "defend") return t.level === "critical" || t.level === "high" ? 6 : 1;
+        // Without "scouting", Defend ties Hold when the base is calm and wins the tie (it comes first).
+        if (o.value === "defend") return t.level === "critical" || t.level === "high" ? 6 : on(opts, "scouting") ? 0.5 : 1;
         // Strike with a gathered group, and keep units already at the enemy base pushing on to the next building.
         if (o.value === "attack") return atTarget >= 2 ? 5.5 : forward.length >= 10 && forwardValue >= Math.max(3500, enemyValue * 1.2) ? 5.5 : forward.length >= 18 ? 5 : -1;
         if (o.value === "scout") return army.length >= 2 ? 3 : 0.5;
@@ -267,10 +343,23 @@ export function scriptedAnswers(obs, questions) {
       // A tower that shoots ground attackers when the enemy is at the base; anti-air, coast guns and support buildings
       // only with nothing better, since the opponents attack by land.
       if (q.name === "defense") return o.role === "ground" && (t.level === "high" || t.level === "critical") && obs.cash > 1000 && o.cost <= 1500 ? 3 : -2;
-      if (o.role === "more income") return obs.harvesterCount < desiredHarvesters(obs) && has("refinery") ? 6 : -2;
+      if (o.role === "more income") return obs.harvesterCount < desiredHarvesters(obs) && has("refinery") && (expand || obs.harvesterCount < 2) ? 6 : -2;
       if (o.role === "support unit") return -1.5;
       // Combat units: keep every factory busy with the strongest unit we can afford.
-      return affordable ? 2 + Math.min(3, o.cost / 700) : -3;
+      if (!affordable) return -3;
+      const strength = 2 + Math.min(3, o.cost / 700);
+      if (!o.unit) return strength;
+      // With "counters", what the enemy fields matters more than price.
+      const inf = infantryShare(obs, opts.memory), veh = 1 - inf;
+      switch (o.unit) {
+        case "antiarmor": return strength + (veh - 0.5) * 4;
+        case "antiinfantry": return strength + (inf - 0.5) * 4;
+        case "tank": return strength + 1;
+        case "antiair": return enemyAircraft(obs) ? strength + 2 : strength - 3;
+        case "artillery": return o.have >= 2 ? strength - 3 : strength - 0.5;
+        case "recon": return strength - 3;
+        default: return strength;
+      }
     };
     const scores = q.options.map(score);
     const max = Math.max(...scores), exp = scores.map((s) => Math.exp((s - max) * 1.5)), sum = exp.reduce((a, b) => a + b, 0);

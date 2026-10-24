@@ -14,7 +14,8 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import { runMatch, OPPONENTS, BRAINS } from "./match.mjs";
 import { PROVIDERS, PRICES, keyStore, localReady, layaReady } from "./providers.mjs";
 import { runBench, BENCH_BRAINS } from "./bench.mjs";
-import { BRAIN_VERSION } from "./brain.mjs";
+import { BRAIN_VERSION, EXPERIMENTS } from "./brain.mjs";
+import { readNotebook } from "./notebook.mjs";
 
 const repo = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 const PORT = Number(process.env.RTSAI_ARENA_PORT ?? 3463);
@@ -81,7 +82,13 @@ const gamesFile = path.join(dir, "games.jsonl"), runsFile = path.join(dir, "runs
 const readJson = (f, d) => { try { return JSON.parse(fs.readFileSync(f, "utf8")); } catch { return d; } };
 const games = fs.existsSync(gamesFile) ? fs.readFileSync(gamesFile, "utf8").split("\n").filter(Boolean).map((l) => JSON.parse(l)) : [];
 const runs = readJson(runsFile, []);
-for (const r of runs) if (["queued", "running"].includes(r.status)) { r.status = "stopped"; r.note = "The Arena runner restarted"; for (const j of r.jobs) if (j.state !== "done") j.state = "skipped"; }
+// After a restart the queue carries on: a game that was playing starts again from the beginning. A game the owner was
+// playing cannot be picked up, so that run stops.
+for (const r of runs) if (["queued", "running"].includes(r.status)) {
+  if (r.brain === "you") { r.status = "stopped"; r.note = "The Arena runner restarted"; for (const j of r.jobs) if (j.state !== "done") j.state = "skipped"; continue; }
+  r.status = "queued"; r.note = "Picked up again after the runner restarted";
+  for (const j of r.jobs) if (j.state === "running") j.state = "queued";
+}
 const saveRuns = () => fs.writeFileSync(runsFile, JSON.stringify(runs.slice(-100), null, 1));
 saveRuns();
 const budget = readJson(budgetFile, { dailyCapUsd: 5, maxParallel: 2, spent: {} });
@@ -124,7 +131,9 @@ async function start(run, job) {
   const key = `${run.id}:${job.index}`;
   active.set(key, { run, job });
   const id = `${new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19)}-${crypto.randomBytes(3).toString("hex")}`;
-  const spec = { id, runId: run.id, brain: run.brain, provider: run.provider, version: run.brain === "decision" ? BRAIN_VERSION : undefined, opponent: job.opponent, ours: job.ours, theirs: job.theirs, map: run.map, seed: job.seed,
+  // An experiment is part of the brain's version, so its games get their own ladder row.
+  const version = run.brain === "decision" ? `${BRAIN_VERSION}${run.experiment ? ` + ${run.experiment}` : ""}` : undefined;
+  const spec = { id, runId: run.id, brain: run.brain, provider: run.provider, version, experiment: run.experiment || undefined, opponent: job.opponent, ours: job.ours, theirs: job.theirs, map: run.map, seed: job.seed,
     speed: run.speed, limit: run.limit, pauseWhileThinking: run.pauseWhileThinking, page: page && { release: page.release, page: page.page, runtime: page.runtime, data: page.data } };
   try {
     if (!(await pageUp)) throw new Error("The live game's twin page did not start.");
@@ -166,10 +175,12 @@ function createRun(body) {
   if (PROVIDERS[provider]?.paid && !keys.get(provider)) throw new Error(`Add your ${PROVIDERS[provider].label} key first.`);
   const opponents = (body.opponents ?? []).filter((o) => OPPONENTS[o]);
   if (!opponents.length) throw new Error("Choose at least one opponent.");
+  const experiment = brain === "decision" && body.experiment ? String(body.experiment) : "";
+  if (experiment && !experiment.split("+").every((e) => EXPERIMENTS[e])) throw new Error(`Unknown experiment: ${experiment}`);
   const n = brain === "you" ? 1 : Math.max(1, Math.min(20, Number(body.games) || 2));
   const map = MAPS.includes(body.map) ? body.map : MAPS[0];
   const pick = (choice, i) => (choice && choice !== "rotate" && [...MODERN, "america", "russia"].includes(choice) ? choice : MODERN[i % MODERN.length]);
-  const run = { id: crypto.randomBytes(4).toString("hex"), createdAt: new Date().toISOString(), status: "queued", brain, provider, map,
+  const run = { id: crypto.randomBytes(4).toString("hex"), createdAt: new Date().toISOString(), status: "queued", brain, provider, experiment, map,
     speed: Math.max(1, Math.min(8, Number(body.speed) || 6)), limit: Math.max(300, Math.min(3600, Number(body.limit) || 2400)),
     capUsd: Math.max(0, Math.min(20, Number(body.capUsd) || 1)), spentUsd: 0, pauseWhileThinking: body.pauseWhileThinking !== false, jobs: [] };
   let index = 0;
@@ -221,7 +232,7 @@ async function status() {
   const providers = {};
   const [local, laya] = await Promise.all([localReady(), layaReady()]);
   for (const [id, p] of Object.entries(PROVIDERS)) providers[id] = { ...p, keyHint: p.paid ? keys.hint(id) : "", ready: p.paid ? !!keys.get(id) : id === "local" ? local : id === "laya" ? laya : true, price: PRICES[id] ?? null };
-  return { ready: !!page, page, pageUrl, providers, opponents: OPPONENTS, brains: BRAINS, factions: MODERN, maps: MAPS,
+  return { ready: !!page, page, pageUrl, providers, opponents: OPPONENTS, brains: BRAINS, factions: MODERN, maps: MAPS, brainVersion: BRAIN_VERSION, experiments: EXPERIMENTS,
     budget: { dailyCapUsd: budget.dailyCapUsd, spentToday: spentToday(), maxParallel: budget.maxParallel ?? 2 },
     runs: runs.slice(-20).reverse().map(({ jobs, ...r }) => ({ ...r, jobs: jobs.map(({ window, ...j }) => j) })) };
 }
@@ -285,7 +296,27 @@ const server = http.createServer(async (req, res) => {
   try {
     if (req.method === "GET" && url.pathname === "/status") return send(200, await status());
     if (req.method === "GET" && url.pathname === "/summary") return send(200, summary());
-    let m = /^\/games\/([\w-]+)\/decisions$/.exec(url.pathname);
+    if (req.method === "GET" && url.pathname === "/notebook") return send(200, { entries: readNotebook(dir) });
+    // Films (tools/arena/film.mjs, story.mjs): streamed with ranges, so a video can be scrubbed.
+    let m = /^\/films\/([\w.-]+\.(mp4|jpg|vtt))$/.exec(url.pathname);
+    if (req.method === "GET" && m) {
+      const f = path.join(dir, "films", m[1]);
+      // A game film's captions: its notebook caption (story films write their own, with timed cards).
+      if (m[2] === "vtt" && !fs.existsSync(f)) {
+        const film = readNotebook(dir).flatMap((e) => e.films).find((x) => x.file === m[1].replace(/\.vtt$/, ".mp4"));
+        res.writeHead(200, { "content-type": "text/vtt; charset=utf-8" }).end(`WEBVTT\n\n00:00:00.000 --> 10:00:00.000\n${film?.caption ?? "An AI Arena game, replayed. On screen: what the brain decided and saw."}\n`);
+        return;
+      }
+      if (!fs.existsSync(f)) return send(404, { error: "No such film" });
+      const size = fs.statSync(f).size, type = { mp4: "video/mp4", jpg: "image/jpeg", vtt: "text/vtt; charset=utf-8" }[m[2]];
+      const range = /bytes=(\d*)-(\d*)/.exec(req.headers.range ?? "");
+      if (!range) { res.writeHead(200, { "content-type": type, "content-length": size, "accept-ranges": "bytes" }); fs.createReadStream(f).pipe(res); return; }
+      const start = range[1] ? Number(range[1]) : size - Number(range[2]), end = range[1] && range[2] ? Math.min(Number(range[2]), size - 1) : size - 1;
+      res.writeHead(206, { "content-type": type, "content-length": end - start + 1, "content-range": `bytes ${start}-${end}/${size}`, "accept-ranges": "bytes" });
+      fs.createReadStream(f, { start, end }).pipe(res);
+      return;
+    }
+    m = /^\/games\/([\w-]+)\/decisions$/.exec(url.pathname);
     if (req.method === "GET" && m) { const f = path.join(dir, "decisions", `${m[1]}.json`); return fs.existsSync(f) ? send(200, JSON.parse(fs.readFileSync(f, "utf8"))) : send(404, { error: "No decision log" }); }
     if (req.method === "POST" && url.pathname === "/runs") { if (!page) return send(409, { error: "No live game page to test." }); return send(200, createRun(await body())); }
     if (req.method === "POST" && url.pathname === "/play") {
@@ -316,11 +347,13 @@ const server = http.createServer(async (req, res) => {
     if (req.method === "POST" && url.pathname === "/settings") {
       const b = await body();
       if (Number.isFinite(b.dailyCapUsd)) budget.dailyCapUsd = Math.max(0, Math.min(50, b.dailyCapUsd));
-      if (Number.isFinite(b.maxParallel)) budget.maxParallel = Math.max(1, Math.min(4, Math.round(b.maxParallel)));
+      if (Number.isFinite(b.maxParallel)) budget.maxParallel = Math.max(1, Math.min(6, Math.round(b.maxParallel)));
       saveBudget();
+      pump();
       return send(200, { ok: true });
     }
     send(404, { error: "Not found" });
   } catch (e) { send(400, { error: String(e.message ?? e) }); }
 });
 server.listen(PORT, "127.0.0.1", () => console.log(`AI Arena runner on http://127.0.0.1:${PORT}/ · game ${page ? `${page.page} (${page.release}) on ${pageUrl}` : "unavailable: no live release twin page"} · data ${dir}`));
+if (page) pump();

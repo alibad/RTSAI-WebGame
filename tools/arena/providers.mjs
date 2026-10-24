@@ -132,11 +132,14 @@ export async function askQuestions(provider, context, questions, credential = {}
   throw new Error(`unknown provider ${provider}`);
 }
 
-/** The game brain's turn: the scripted scorer, or a provider asked about the described battlefield. */
-export async function decide(provider, obs, questions, credential = {}) {
+/**
+ * The game brain's turn: the scripted scorer, or a provider asked about the described battlefield. `opts` carries the
+ * run's experiment and the brain's memory to the scorer (brain.mjs EXPERIMENTS).
+ */
+export async function decide(provider, obs, questions, credential = {}, opts = {}) {
   if (provider === "scripted") {
     const t0 = performance.now();
-    return { answers: scriptedAnswers(obs, questions), ms: Math.round(performance.now() - t0), inputTokens: 0, cachedTokens: 0, usd: 0 };
+    return { answers: scriptedAnswers(obs, questions, opts), ms: Math.round(performance.now() - t0), inputTokens: 0, cachedTokens: 0, usd: 0 };
   }
   return askQuestions(provider, { text: RUBRIC, json: describe(obs) }, questions, credential);
 }

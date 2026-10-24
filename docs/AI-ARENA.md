@@ -87,6 +87,37 @@ option:
 | OpenAI Decisions | `POST /v1/decisions`, `gpt-6-luna`, one `choice` question each | $0.10 / M ($0.01 cached) |
 | TypeSafe Jev | TypeSafe's `/v1/systemone` (`jev-latest`) with a TypeSafe key, or the same request through OpenRouter (`typesafe/jev-1.13`) with an OpenRouter key; OpenRouter returns the exact cost | $0.042 / M |
 
+## Experiments, films and the notebook
+
+- **Experiments are flags.** `EXPERIMENTS` in `brain.mjs` lists one rule change each. A run picks one or more
+  (`"experiment": "counters"` or `"counters+scouting"`, or the Rules menu on the page).
+  - A variant plays the same seeds and factions as the brain without it, so results pair up game by game.
+  - Its games are tagged `<BRAIN_VERSION> + <experiment>` and get their own ladder row.
+  - A run of the current brain on the same seeds repeats earlier games, which also shows how repeatable a result is.
+- **Films:** `node tools/arena/film.mjs <game id>` replays a finished game in the live game's own replay viewer and
+  records it, with captions of what the brain decided and saw as it happened (its decision log).
+  - **"map":** the whole battlefield, sped up. It also notes where the fighting is each second.
+  - **"fight":** a closer camera that follows that track.
+  - The explored-map option lifts the black shroud for the camera. Fog stays, so the replay plays out the same: the
+    tool prints the replay's ending next to the recorded result.
+  - Old replays (before 24 October) kept the Arena's settings instead of the game's scenario; the tool rebuilds the
+    scenario from them.
+  - Films are in `<arena>/films/`. The runner serves them at `/films/<name>`, with ranges so they can be scrubbed.
+- **Story films:** `node tools/arena/story.mjs <notebook entry>` turns a notebook entry into one short film:
+  - the question;
+  - the change;
+  - each game film, introduced by its caption;
+  - a results card (each version's wins, draws and losses, counted from the games now);
+  - the lesson.
+
+  It writes timed captions (`.vtt`) beside it.
+- **The notebook:** `tools/arena/notebook.json`, one entry per question asked of the brain. Each entry has the
+  question, the change, the brain versions it compares, the finding, the lesson, a tip, and its films. The runner
+  serves it with live results (`/notebook`). The Arena page shows it first: the story film, the game films, the
+  results table and the lesson.
+- **Restarts:** the runner picks its queue back up after a restart. A game that was playing starts again from the
+  beginning.
+
 ## Early-defence experiments (24 October)
 
 Goal: survive and beat Brutal (the Rush AI with 15,000 extra credits, at the base by minute 2–5). Scripted brain,

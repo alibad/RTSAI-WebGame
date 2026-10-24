@@ -1,0 +1,143 @@
+{
+  "about": "The AI Arena's experiment notebook: one entry per question we asked the brain, with the change, the results (counted live from the games of each brain version), the lesson, and films of the games (tools/arena/film.mjs, story.mjs). Shown on the admin's AI Arena page.",
+  "entries": [
+    {
+      "id": "voice-orders",
+      "date": "2026-10-23",
+      "kind": "explainer",
+      "status": "done",
+      "title": "Can a decision model replace the LLM for voice orders?",
+      "question": "Speech becomes text, and an LLM turns it into an order. OpenAI's Decisions API and TypeSafe's Jev answer closed questions instead of writing text. Are they faster, cheaper and as good?",
+      "change": "A bench of the companion's own 281 spoken and typed orders (slang, misheard words, refusals, questions). An adapter turns the order form into closed questions, so any decision model can fill it.",
+      "finding": "Every order through the model: gpt-4.1-mini 91.5 % right (807 ms, $0.46 per 1,000), Jev 91.1 % (595 ms, $0.12), OpenAI Decisions 85.1 % (330 ms, $0.23), local Laya 12.5 %. But the companion's hand-written rules alone read 97.5 % right in 4 ms; rules plus any model, 98.9 %.",
+      "lesson": "The boring rules did most of the work; the model is for the last 1.4 %.",
+      "tip": "Measure the dumb baseline first, then what the model adds on top of it, not instead of it.",
+      "versions": [],
+      "films": [],
+      "slides": [
+        { "kicker": "Chapter 1 · 23 October 2026", "title": "Can a decision model replace the LLM for voice orders?", "big": true, "body": "OpenAI's Decisions API and TypeSafe's Jev answer closed questions instead of writing text. Faster? Cheaper? As good?", "seconds": 6 },
+        { "kicker": "How a spoken order works", "diagram": "path", "boxes": [{ "title": "You speak", "sub": "\"tanks, hit their refinery\"" }, { "title": "Text", "sub": "speech to text" }, { "title": "Rules", "sub": "read most orders", "accent": true }, { "title": "Order card", "sub": "you confirm it" }], "branch": { "under": 2, "title": "Unclear? A model", "sub": "fills the form: closed questions", "to": 3 }, "seconds": 8 },
+        { "kicker": "The bench · 281 real orders, each read by the model", "diagram": "bars", "bars": [{ "label": "gpt-4.1-mini", "value": 91.5, "text": "91.5 % · 807 ms · $0.46" }, { "label": "Jev", "value": 91.1, "text": "91.1 % · 595 ms · $0.12", "accent": true }, { "label": "OpenAI Decisions", "value": 85.1, "text": "85.1 % · 330 ms · $0.23" }, { "label": "Laya (local)", "value": 12.5, "text": "12.5 % · 5.6 s · free" }], "body": "Right answers, median time, and cost per 1,000 orders. Jev matches the LLM at a quarter of the price.", "seconds": 9 },
+        { "kicker": "The twist", "title": "The rules alone read 97.5 % right, in 4 ms", "diagram": "bars", "bars": [{ "label": "Rules only", "value": 97.5, "text": "97.5 % · 4 ms · free", "accent": true }, { "label": "Rules + any model", "value": 98.9, "text": "98.9 %" }], "body": "The model only matters for the last 1.4 %.", "seconds": 7 },
+        { "kicker": "What we learned", "title": "Measure the boring baseline first", "body": "Then measure what the model adds on top of it, not instead of it. Latency and cost matter less than whether you call the model at all.", "seconds": 7 }
+      ]
+    },
+    {
+      "id": "how-arena-works",
+      "date": "2026-10-23",
+      "kind": "explainer",
+      "status": "done",
+      "title": "How the AI Arena works",
+      "question": "Can a brain command an army in the real game, beat the game's own AIs, and beat you? The Arena answers with games, not guesses.",
+      "change": "A runner on this machine plays the live released game in a headless browser. Each turn the brain gets what a player sees and a few closed questions; the answers become the same orders a player's clicks give. Every turn is logged and every game can be replayed and filmed.",
+      "finding": "Same seeds, one change at a time: each experiment is a flag with its own row on the ladder. Paid models run only with the owner's own keys under a cap; nothing is on the internet.",
+      "lesson": "Give the AI the player's interface, and keep everything it did.",
+      "tip": "A local, logged, replayable test bench turns 'is the AI good enough?' into numbers and films.",
+      "versions": [],
+      "films": [
+        { "game": "2026-10-23T19-44-39-7c9e0f", "shot": "fight", "clip": [0.4, 1], "caption": "On screen, as it happened: what the brain decided and what it saw. Its first win, over the Normal AI." }
+      ],
+      "slides": [
+        { "kicker": "AI Arena · How it works", "title": "A brain plays the real game, on this machine", "big": true, "body": "Against the game's own AIs, from Easy to Brutal, and against you. Every turn is logged; every game can be replayed and filmed.", "seconds": 6 },
+        { "kicker": "The loop · several times a second of game time", "diagram": "loop", "boxes": [{ "title": "The live game", "sub": "released page, headless" }, { "title": "What a player sees", "sub": "fog of war included" }, { "title": "Closed questions", "sub": "build? train? attack?", "accent": true }, { "title": "Who answers", "sub": "rules · Jev · OpenAI · local" }], "loopLabel": "The answers become the same orders a player's clicks give", "seconds": 8 },
+        { "kicker": "One real turn · 5:30 into a win over Hard", "title": "\"Which vehicle should we build next?\"", "diagram": "bars", "bars": [{ "label": "Karrar Battle Tank", "value": 53.1, "text": "53 %", "accent": true }, { "label": "Toufan Gunship", "value": 27.9, "text": "28 %" }, { "label": "Fajr Rocket Artillery", "value": 13.2, "text": "13 %" }, { "label": "Flak Track", "value": 2.6, "text": "3 %" }], "body": "Only what is possible right now, each with a probability. A decision model answers exactly this; so does a hand-written scorer, which sets the bar.", "seconds": 8 },
+        { "film": "2026-10-23T19-44-39-7c9e0f" },
+        { "kicker": "A fair test", "title": "Same seeds, one change at a time", "body": "Each experiment is a flag. A variant plays the same seeds and factions as the brain without it, and gets its own row on the ladder. Replays are checked: they must end the way the game did.", "seconds": 7 },
+        { "kicker": "Cost care", "title": "Nothing here is on the internet", "body": "Paid models run only with the owner's own keys, under a cap per run and per day. Players of the public game keep the free built-in adviser.", "seconds": 6 }
+      ]
+    },
+    {
+      "id": "first-wins",
+      "date": "2026-10-23",
+      "kind": "milestone",
+      "status": "done",
+      "title": "From 0 wins to the first wins",
+      "question": "The first brain won none of its 13 games against the engine's AIs. Why?",
+      "change": "Three changes: units attack buildings only when told (explicit attack orders); new units gather at a staging point and strike together instead of streaming in one by one; the enemy base is worn down from its nearest edge.",
+      "finding": "The brain went from 0 wins in 13 games to beating Normal twice, Rush once and Hard once in 8. Before, one game lost 53,200 worth of units with a 10× larger army and killed only 5 buildings.",
+      "lesson": "Most 'the AI is dumb' moments were plumbing: an order the engine needs and the brain never gave.",
+      "tip": "Give the AI the same interface a player has, and log every decision so a lost game can be read like a story.",
+      "versions": [
+        { "label": "First brain", "version": "earlier 23 Oct", "after": "2026-10-23T00:00", "before": "2026-10-23T19:40" },
+        { "label": "Gather and strike", "version": "23 Oct strike", "after": "2026-10-23T19:40", "before": "2026-10-23T20:05" }
+      ],
+      "films": [
+        { "game": "2026-10-23T19-44-39-7c9e0f", "shot": "fight", "clip": [0.4, 1], "caption": "The brain's first win: Normal, 8 minutes. The army gathers, then strikes together." },
+        { "game": "2026-10-23T19-47-44-b4b151", "shot": "map", "clip": [0.6, 1], "caption": "Beating the Rush AI in 13 minutes: the whole map, sped up, as the strike rolls up the enemy base." }
+      ]
+    },
+    {
+      "id": "early-defence",
+      "date": "2026-10-24",
+      "kind": "experiment",
+      "status": "done",
+      "title": "Teaching early defence (and why it failed)",
+      "question": "Brutal (the Rush AI with 15,000 extra credits) arrives at minute 2 to 5. Can the brain learn to hold?",
+      "change": "Several rules at once: two towers before the factory, the army kept home until it was worth 4,000, the economy paused under pressure; then a mix with a fast factory, tanks first, scouts that don't fight, and Defend only near the base.",
+      "finding": "Brutal games lasted longer (about 11 minutes against 6.5) but were never won, and the brain lost Rush, Hard and even Normal games it used to win. Reverted. The game logs showed why: one game sent 29 scouts that each stopped to fight and died; Defend chased any enemy a scout saw, which was the brain's only push toward an unknown enemy base.",
+      "lesson": "Changing five rules at once taught us nothing about which rule mattered, and a bug can be load-bearing.",
+      "tip": "One change per experiment, behind a flag, on the same seeds; read the game log before 'fixing'; keep the losing versions on the ladder.",
+      "versions": [
+        { "label": "Before", "version": "24 Oct towers" },
+        { "label": "Defence first", "version": "24 Oct defence" },
+        { "label": "Fast factory mix", "version": "24 Oct adaptive" },
+        { "label": "Mix + scouting", "version": "24 Oct scouting" }
+      ],
+      "films": [
+        { "game": "2026-10-23T22-50-24-e7897d", "shot": "map", "caption": "Defence first vs Rush: the army waits at home while the Rush AI grows to twice its size." },
+        { "game": "2026-10-23T23-48-49-971b1e", "shot": "fight", "caption": "29 scouts in one game: each stops to fight on the way and dies; the army never finds the enemy base." }
+      ]
+    },
+    {
+      "id": "counters",
+      "date": "2026-10-24",
+      "kind": "experiment",
+      "status": "running",
+      "title": "Pick units against what the enemy fields",
+      "question": "The brain buys the dearest unit it can afford: anti-tank missile teams against early infantry, scout cars as if they were tanks. Does picking against the enemy's army win more?",
+      "change": "One rule: riflemen against infantry, anti-tank teams against vehicles, tanks over scout cars and anti-air, judged from the enemy army seen in the last two minutes.",
+      "finding": "",
+      "lesson": "",
+      "tip": "",
+      "versions": [
+        { "label": "Before", "version": "24 Oct towers" },
+        { "label": "Counters", "version": "24 Oct towers + counters" }
+      ],
+      "films": []
+    },
+    {
+      "id": "scouting",
+      "date": "2026-10-24",
+      "kind": "experiment",
+      "status": "running",
+      "title": "Know where the enemy is",
+      "question": "Scouts attack-move, stop to fight and die before finding the enemy base, and Defend chases any enemy a scout sees across the map. What if scouts just look, and Defend stays home?",
+      "change": "Two coupled rules: the scout moves without stopping to fight, and Defend answers only enemies within 32 cells of our base.",
+      "finding": "",
+      "lesson": "",
+      "tip": "",
+      "versions": [
+        { "label": "Before", "version": "24 Oct towers" },
+        { "label": "Scouting", "version": "24 Oct towers + scouting" }
+      ],
+      "films": []
+    },
+    {
+      "id": "budget",
+      "date": "2026-10-24",
+      "kind": "experiment",
+      "status": "running",
+      "title": "Keep the opening's credits for the army",
+      "question": "At minute 2 the brain starts a second refinery, a harvester, the factory and sometimes a tower at once, and runs out of credits just as a Hard or Brutal rush arrives. Does waiting to expand hold the rush?",
+      "change": "One rule: the second refinery and extra harvesters wait for minute 3 or spare credits.",
+      "finding": "",
+      "lesson": "",
+      "tip": "",
+      "versions": [
+        { "label": "Before", "version": "24 Oct towers" },
+        { "label": "Budget", "version": "24 Oct towers + budget" }
+      ],
+      "films": []
+    }
+  ]
+}

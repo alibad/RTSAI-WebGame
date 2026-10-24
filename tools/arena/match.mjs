@@ -24,6 +24,17 @@ export const BRAINS = {
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const pct = (xs, p) => { if (!xs.length) return 0; const s = [...xs].sort((a, b) => a - b); return s[Math.min(s.length - 1, Math.floor(p * s.length))]; };
 
+/** The game's scenario for an Arena game: its map, seed and seats, on the page's default options (setup.options). */
+export function scenarioFor(spec, defaults) {
+  const opp = OPPONENTS[spec.opponent];
+  const assisted = spec.brain === "decision" || spec.brain === "adviser";
+  const options = { ...defaults, cheats: "False", crates: "False", "rtsai-cocommander": assisted ? "True" : "False" };
+  return { map: spec.map, seed: spec.seed, options, players: [
+    { slot: "Multi0", faction: spec.ours, color: "4F80FF", ...(spec.brain === "bot" ? { bot: "normal" } : {}) },
+    { slot: "Multi1", faction: spec.theirs, color: "FF4848", bot: opp.bot, handicap: opp.handicap, cash: opp.cash },
+  ] };
+}
+
 /**
  * spec: { id, brain, provider?, opponent, ours, theirs, map, seed, speed, limit (game seconds), pauseWhileThinking }
  * env:  { browser, url, key, charge(usd) -> bool (false: a cap is reached), stopped() -> bool, progress(info) }
@@ -35,18 +46,13 @@ export async function runMatch(spec, env) {
   const page = await env.browser.newPage({ viewport: spec.brain === "you" ? null : { width: 640, height: 360 } });
   page.on("pageerror", (e) => errors.push(`page: ${String(e).slice(0, 300)}`));
   page.on("crash", () => errors.push("page crashed"));
-  const opp = OPPONENTS[spec.opponent];
-  let stats = null, outcome = "error", stopReason = "";
+  let stats = null, outcome = "error", stopReason = "", scenario = null;
   try {
     await page.goto(`${env.url}?profile=public&mode=skirmish`);
     await page.waitForFunction(() => ["setup", "error"].includes(window.store?.getState().phase), null, { timeout: 300000, polling: 500 });
     const defaults = await page.evaluate(() => Object.fromEntries((window.store.getState().setup.options ?? []).map((o) => [o.id, o.default])));
     const assisted = spec.brain === "decision" || spec.brain === "adviser";
-    const options = { ...defaults, cheats: "False", crates: "False", "rtsai-cocommander": assisted ? "True" : "False" };
-    const scenario = { map: spec.map, seed: spec.seed, options, players: [
-      { slot: "Multi0", faction: spec.ours, color: "4F80FF", ...(spec.brain === "bot" ? { bot: "normal" } : {}) },
-      { slot: "Multi1", faction: spec.theirs, color: "FF4848", bot: opp.bot, handicap: opp.handicap, cash: opp.cash },
-    ] };
+    scenario = scenarioFor(spec, defaults);
     await page.evaluate(([on, auto]) => { const cc = window.game.cc; cc.setEnabled(on); cc.setMode("browser"); cc.setAuto(auto); }, [assisted, spec.brain === "adviser"]);
     await page.evaluate((s) => window.game.start(JSON.stringify(s)), scenario);
     await page.waitForFunction(() => ["playing", "error"].includes(window.store.getState().phase), null, { timeout: 300000, polling: 250 });
@@ -55,6 +61,7 @@ export async function runMatch(spec, env) {
     if (spec.brain !== "you") await page.evaluate((v) => window.game.client.send({ type: "speed", speed: v }), spec.speed);
 
     const memory = { lastArmyTick: -1e9, notBefore: 0 };
+    const brainOpts = { experiment: spec.experiment, memory };
     const seenAdvice = new Set();
     // The engine takes 1 to 12 commands per order: larger groups (the whole army) go as several orders.
     const execute = async (label, commands, tick) => {
@@ -98,7 +105,7 @@ export async function runMatch(spec, env) {
       if (obs.error) { await sleep(400); continue; }
       if (obs.done) { await sleep(400); continue; }
       if (obs.tick < memory.notBefore) { await sleep(150); continue; }
-      const { auto, questions, armyTurn } = plan(obs, memory);
+      const { auto, questions, armyTurn } = plan(obs, memory, brainOpts);
       // The army is looked at every 5 game seconds, whether or not it had a choice to make this time.
       if (armyTurn) memory.lastArmyTick = obs.tick;
       const entry = { tick: obs.tick, auto: [], questions: [], ms: 0, usd: 0, inputTokens: 0 };
@@ -109,11 +116,11 @@ export async function runMatch(spec, env) {
         const think = spec.pauseWhileThinking && PROVIDERS[spec.provider]?.label && spec.provider !== "scripted";
         if (think) await page.evaluate(() => window.game.client.send({ type: "pause", paused: true }));
         let result;
-        try { result = await decide(spec.provider, obs, questions, env.credential ?? {}); }
+        try { result = await decide(spec.provider, obs, questions, env.credential ?? {}, brainOpts); }
         catch (e) {
           // A failed call still has to move the game on: the scripted scorer answers this turn, flagged as a fallback.
           errors.push(`decide: ${String(e.message ?? e).slice(0, 300)}`);
-          result = { answers: scriptedAnswers(obs, questions), ms: 0, inputTokens: 0, usd: 0, fallback: true };
+          result = { answers: scriptedAnswers(obs, questions, brainOpts), ms: 0, inputTokens: 0, usd: 0, fallback: true };
         } finally { if (think) await page.evaluate(() => window.game.client.send({ type: "pause", paused: false })); }
         Object.assign(entry, { ms: result.ms, usd: result.usd, inputTokens: result.inputTokens, fallback: !!result.fallback });
         if (result.usd && !env.charge(result.usd)) { outcome = "stopped"; stopReason = "Spending cap reached"; decisions.push(entry); break; }
@@ -150,5 +157,6 @@ export async function runMatch(spec, env) {
     inputTokens: decisions.reduce((s, d) => s + (d.inputTokens ?? 0), 0), usd: decisions.reduce((s, d) => s + (d.usd ?? 0), 0),
     fallbacks: decisions.filter((d) => d.fallback).length, errors: errors.slice(0, 20), finishedAt: new Date().toISOString(),
   };
-  return { result, decisions, replay: replay ? { scenario: spec, log: replay.log, tick: replay.tick } : null };
+  // The game's own scenario and orders, as the web game's replay viewer takes them (tools/arena/film.mjs films it).
+  return { result, decisions, replay: replay ? { scenario, spec, log: replay.log, tick: replay.tick } : null };
 }
