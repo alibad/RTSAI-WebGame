@@ -190,20 +190,22 @@
       "id": "new-map",
       "date": "2026-10-24",
       "kind": "experiment",
-      "status": "running",
+      "status": "done",
       "title": "Does it hold on a map it has never seen?",
       "question": "Counters + hunt were found and tested on one map, Official Tournament Map B. Did we teach the brain to play, or to play that map?",
       "change": "No change: the adopted brain and the brain before it play the same seeds on Little Big Lake, a different Red Alert 2 map.",
-      "finding": "",
-      "lesson": "",
-      "tip": "",
+      "finding": "On Little Big Lake the new brain won 3 of 16 (Normal, Rush and Hard once each; Brutal none) against the old brain's 1 of 16. On Map B, where the rules were found, it had won 12 of 16. All three wins on the new map came as Iran, whose riflemen are the cheapest; with China, Turkey and Saudi it won nothing.",
+      "lesson": "The rules carry over, but much of the jump on Map B was Map B. One map is not a benchmark.",
+      "tip": "Before you believe a win rate, rerun it somewhere the idea was not born: another map, other seeds, other factions.",
       "versions": [
         {"label":"Before, on Map B","version":"24 Oct towers","map":"ra2-tournament-2B"},
         {"label":"Counters + hunt, on Map B","version":"24 Oct towers + counters+hunt","map":"ra2-tournament-2B"},
         {"label":"Before, Little Big Lake","version":"24 Oct towers","map":"ra2-little-big-lake"},
         {"label":"Adopted, Little Big Lake","version":"24 Oct counters+hunt","map":"ra2-little-big-lake"}
       ],
-      "films": []
+      "films": [
+        {"game":"2026-10-24T11-58-56-c294ef","shot":"map","clip":[0,1],"caption":"Little Big Lake, a map the brain never trained on: Iran beats Hard at minute 8. The only faction that won here."}
+      ]
     },
     {
       "id": "story-so-far",
@@ -218,7 +220,7 @@
       "tip": "",
       "versions": [],
       "films": [],
-      "chapters": ["voice-orders","how-arena-works","first-wins","early-defence","counters","scouting","budget","hunt","turtle"]
+      "chapters": ["voice-orders","how-arena-works","first-wins","early-defence","counters","scouting","budget","hunt","turtle","new-map"]
     }
   ]
 }

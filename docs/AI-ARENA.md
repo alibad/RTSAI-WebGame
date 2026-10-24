@@ -146,6 +146,11 @@ Scripted brain, 4 games per opponent on seeds 1000–1003 (China, Iran, Turkey, 
   to 1 win, 1 draw and 2 losses in the rerun. Read results over at least 4 games per opponent.
 - **turtle** (two towers from minute 1.5 beside the factory, army home until worth 4,000 or minute 8) held Brutal
   longer, up to a draw, but cost two Hard games. A slower brain is not a stronger one.
+- **A new map:** on Little Big Lake (same seeds, never used while tuning), the adopted brain won 3 of 16 and the brain
+  before it ("before") won 1 of 16.
+  - All three wins came as Iran; China, Turkey and Saudi won nothing there.
+  - The rules carry over, but much of the jump on Map B was the map.
+  - Check a change on a second map before trusting its win rate.
 
 ## Early-defence experiments (24 October, morning)
 
