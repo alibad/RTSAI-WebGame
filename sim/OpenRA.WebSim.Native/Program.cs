@@ -55,6 +55,7 @@ static class Program
 				"maplibrarytest" => MapLibraryTest.Run(opts),
 				"rosteraudit" => FactionRosterAudit.Run(opts),
 				"skirmishaudit" => SkirmishAudit.Run(opts),
+				"saudibracetest" => SaudiBraceTest.Run(opts),
 				"originalra2test" => OriginalRa2Test.Run(opts),
 				"originalgameplaytest" => OriginalRa2GameplayTest.Run(opts),
 				"ninegapstest" => OriginalRa2NineGapsTest.Run(opts),
