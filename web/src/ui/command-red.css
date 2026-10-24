@@ -69,6 +69,7 @@
 .account-gate-card, .scr-panel { background-color: #20262b; }
 
 /* Portalled themed pickers inherit the same tokens as the menu that opened them. */
+[data-slot="select-trigger"][aria-expanded="true"], .game-picker[aria-expanded="true"] { border-color: var(--hud-accent); background-color: var(--field); }
 [data-slot="select-content"], [data-slot="combobox-content"], [data-slot="select-popup"], [data-slot="combobox-popup"] { background: #22272b; color: #f5efe4; border-color: #56616a; }
 [data-slot="select-item"][data-highlighted], [data-slot="combobox-item"][data-highlighted] { background: #49302c; color: #f5efe4; }
 [data-slot="select-item"][data-selected], [data-slot="combobox-item"][data-selected] { --accent-foreground: #151719; --muted-foreground: #151719; background: #e15a43; color: #151719; }
