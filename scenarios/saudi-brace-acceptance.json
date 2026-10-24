@@ -1,0 +1,12 @@
+{
+  "map": "web-arena", "seed": 4242, "bare": true,
+  "players": [
+    { "slot": "Multi0", "faction": "saudi", "bot": "normal", "color": "2A6FDB" },
+    { "slot": "Multi1", "faction": "iran", "color": "D83A2E" }
+  ],
+  "spawns": [
+    { "type": "r2sang", "player": 0, "x": 40, "y": 50, "order": "engage" },
+    { "type": "nacnst", "player": 1, "x": 45, "y": 50 }
+  ],
+  "options": { "shortgame": "False", "fog": "False", "explored": "True", "crates": "False" }
+}
