@@ -45,13 +45,17 @@ async function signIn(p, i) {
 
 try {
   await Promise.all([host, guest].map(signIn));
-  // The web build's main menu leads to the website's studio, and offers no top-down view any more.
-  await host.getByRole('button', { name: /Map studio/ }).waitFor();
-  assert.equal(await host.getByRole('button', { name: 'Classic / top-down', exact: true }).count(), 1);
-  receipt.checks.menu = true; console.log('PASS menu: Map studio link, isometric only');
+  // The game's main menu (ui/MainMenu.tsx) opens in the Red Alert 2 game with its own map editor card; saved Earth maps
+  // for Firestore are built in the website's Earth studio (RTSAI-Web app/studio), which hands one to the game at
+  // play/?saved=<id> (App.tsx).
+  await host.getByRole('button', { name: /^Map editor/ }).waitFor();
+  assert.equal(await host.evaluate(() => window.store.getState().profile), 'public');
+  const classicTile = host.locator('button.view-tile').filter({ has: host.locator('b', { hasText: /^Classic$/ }) });
+  if (await classicTile.count()) assert.equal(await classicTile.getAttribute('aria-pressed'), 'false');
+  receipt.checks.menu = true; console.log('PASS menu: Map editor card, Red Alert 2 selected');
 
-  // Build a battlefield in the studio (signed in through the game: one session on the shared origin).
-  await host.getByRole('button', { name: /Map studio/ }).click();
+  // Build a battlefield in the website's studio (signed in through the game: one session on the shared origin).
+  await host.goto(new URL('studio', base).href);
   await host.waitForURL(/\/studio/);
   const build = host.getByRole('button', { name: 'Build battlefield' });
   await build.and(host.locator(':enabled')).waitFor();

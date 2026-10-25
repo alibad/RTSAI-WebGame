@@ -10,6 +10,12 @@ const url = process.argv[2];
 assert.ok(url && ["127.0.0.1", "localhost"].includes(new URL(url).hostname), "Use a local test server");
 const out = path.resolve(process.argv[3] ?? "artifacts/cross-browser");
 fs.mkdirSync(out, { recursive: true });
+// The test is local. Never send analytics, feedback or account traffic to a public service. A page built for the public
+// CDN (tools/release-play.mjs) loads its engine and content from there: RTSAI_TEST_ALLOW_HOSTS names those hosts
+// (comma-separated; default: the game's content CDN). Everything else off this machine is refused.
+const allowedHosts = ["127.0.0.1", "localhost", ...(process.env.RTSAI_TEST_ALLOW_HOSTS ?? "rtsai-play-cdn.pages.dev").split(",").map(h => h.trim()).filter(Boolean)];
+// A main-menu game tile (web/src/ui/MainMenu.tsx): its title is the <b> of its label; its text and "Selected" badge follow.
+const modeTile = (page, title) => page.locator("button.view-tile").filter({ has: page.locator("b", { hasText: new RegExp(`^${title}$`) }) });
 const runs = [];
 for (const [name, browserType, options, contextOptions] of [
   ["chromium", chromium, { executablePath: browserExecutable(), args: browserArgs() }, {}],
@@ -23,10 +29,9 @@ for (const [name, browserType, options, contextOptions] of [
   try {
     browser = await browserType.launch({ headless: true, ...options });
     const context = await browser.newContext({ viewport: { width: 1400, height: 900 }, ...contextOptions });
-    // The test is local. Never send analytics, feedback or account traffic to a public service.
     await context.route("**/*", route => {
       const u = new URL(route.request().url());
-      return ["127.0.0.1", "localhost"].includes(u.hostname) || ["blob:", "data:"].includes(u.protocol) ? route.continue() : route.abort();
+      return allowedHosts.includes(u.hostname) || ["blob:", "data:"].includes(u.protocol) ? route.continue() : route.abort();
     });
     const page = await context.newPage();
     page.on("pageerror", error => row.errors.push(error.message));
@@ -46,10 +51,11 @@ for (const [name, browserType, options, contextOptions] of [
         const response = await page.request.get(new URL(await link.getAttribute("href"), page.url()).href);
         assert.equal(response.status(), 200);
         assert.match(await response.text(), /audio-credits\.json/);
-        // Both modes must be reachable from the menu, in either direction, without knowing a query-string URL.
-        await page.getByRole("button", { name: "Classic / top-down", exact: true }).click();
+        // Both games must be reachable from the main menu's game tiles ("Red Alert 2" / "Classic"), in either direction,
+        // without knowing a query-string URL: a tile reloads the page into its profile.
+        await modeTile(page, "Classic").click();
         await page.waitForFunction(() => window.store?.getState().phase === "setup" && window.store.getState().profile === "public-classic", null, { timeout: 120000 });
-        await page.getByRole("button", { name: "Isometric", exact: true }).click();
+        await modeTile(page, "Red Alert 2").click();
         await page.waitForFunction(() => window.store?.getState().phase === "setup" && window.store.getState().profile === "public", null, { timeout: 120000 });
       }
       const scenario = JSON.parse(fs.readFileSync(new URL(`../scenarios/${scenarioFile}.json`, import.meta.url), "utf8"));

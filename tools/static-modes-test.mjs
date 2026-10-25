@@ -9,6 +9,15 @@ const out = path.resolve(process.env.RTSAI_TEST_OUT || 'artifacts/static-modes')
 fs.mkdirSync(out, { recursive: true });
 const browser = await chromium.launch({ executablePath: browserExecutable(), headless: true, args: browserArgs() });
 const receipt = { modes: [], deniedLocalRoutes: [], scope: 'Fresh local static production artifact; no external publication or analytics' };
+// A main-menu game tile (web/src/ui/MainMenu.tsx): its title is the <b> of its label; its text and "Selected" badge follow.
+const modeTile = (page, title) => page.locator('button.view-tile').filter({ has: page.locator('b', { hasText: new RegExp(`^${title}$`) }) });
+// A real world in each game: the campaign's first mission where the game has one (Red Alert 2), else a skirmish against
+// one AI on the first two-player map (Classic's campaigns are in the desktop game).
+const startScenario = () => { const s = window.store.getState().setup, m = s.missions[0];
+  if (m) return { map: m.id, mission: m.id, seed: 2026, players: [{ slot: m.slot, faction: m.faction, color: '2A6FDB' }], options: { difficulty: 'normal' } };
+  const map = s.maps.find(x => x.slots.length >= 2), f = s.factions.filter(x => !x.random);
+  return { map: map.id, seed: 2026, players: [{ slot: map.slots[0], faction: f[0].id, color: '2A6FDB' }, { slot: map.slots[1], faction: f[1].id, bot: s.bots[0].type, color: 'D83A2E' }], options: { explored: 'True', fog: 'False', crates: 'False' } }; };
+const startWorld = target => target.evaluate(`window.game.start(JSON.stringify((${startScenario})()))`);
 try {
   receipt.noticeFile = (await (await fetch(new URL('NOTICE', base))).text()).split(/\r?\n/).find(l => l.includes('EA has not endorsed')); assert.ok(receipt.noticeFile, 'static NOTICE lacks EA notice');
   for (const endpoint of ['api/companion/status', 'api/companion/start', 'api/maps/library', 'api/multiplayer', 'companion/api/v1/state', 'private/ra2-all.pack']) {
@@ -21,21 +30,26 @@ try {
     await page.goto(`${base}?profile=${profile}&runtime=aot&private=0`);
     await page.waitForFunction(() => ['setup', 'error'].includes(window.store?.getState().phase), null, { timeout: 240000 });
     const setup = await page.evaluate(() => ({ phase: window.store.getState().phase, error: window.store.getState().error, isolated: crossOriginIsolated, ccAvailable: window.store.getState().ccAvailable, factions: window.store.getState().setup?.factions.filter(f => !f.random).length, missions: window.store.getState().setup?.missions.length }));
-    assert.equal(setup.phase, 'setup', setup.error); assert.equal(setup.isolated, true); assert.equal(setup.ccAvailable, true); assert.equal(setup.factions, 16); assert.equal(setup.missions, 6);
+    // What each game ships: Red Alert 2 with its 16 nations and the Lines of Hope campaign; Classic with 12 nations and no campaign.
+    const content = mode === 'isometric' ? { factions: 16, missions: 13 } : { factions: 12, missions: 0 };
+    assert.equal(setup.phase, 'setup', setup.error); assert.equal(setup.isolated, true); assert.equal(setup.ccAvailable, true); assert.equal(setup.factions, content.factions); assert.equal(setup.missions, content.missions);
     // EA's notice for the original art: on the first screen of both modes and in the static root's NOTICE.
     setup.notice = await page.getByTestId('ea-notice').first().textContent({ timeout: 30000 }); assert.ok(setup.notice.includes('EA has not endorsed and does not support this product.'), setup.notice);
-    // The map editor and battle simulator are in the game itself (no local map service).
-    if (mode === 'isometric') assert.equal(await page.getByRole('button', { name: /Map editor/ }).count(), 1);
+    // The map editor and battle simulator are in the game itself (no local map service), in both games.
+    assert.equal(await page.getByRole('button', { name: /^Map editor/ }).count(), 1);
+    assert.equal(await page.getByRole('button', { name: /^Battle simulator/ }).count(), 1);
     assert.equal(await page.getByRole('button', { name: 'Private multiplayer', exact: true }).count(), 0);
     assert.ok(await page.getByRole('button', { name: 'Multiplayer', exact:true }).count());
-    // Every shipped mode offers the other mode through the same menu.
-    const alternateName = mode === 'isometric' ? 'Classic / top-down' : 'Isometric';
+    // Every shipped game offers the other through the main menu's game tiles ("Red Alert 2" / "Classic"): the chosen tile reloads the page into its profile.
+    const [title, alternateTitle] = mode === 'isometric' ? ['Red Alert 2', 'Classic'] : ['Classic', 'Red Alert 2'];
     const alternateProfile = mode === 'isometric' ? 'public-classic' : 'public';
-    await page.getByRole('button', { name: alternateName, exact: true }).click();
+    assert.equal(await modeTile(page, title).getAttribute('aria-pressed'), 'true');
+    await modeTile(page, alternateTitle).click();
     await page.waitForFunction(expected => window.store?.getState().phase === 'setup' && window.store.getState().profile === expected, alternateProfile, { timeout: 240000 });
+    assert.equal(await modeTile(page, alternateTitle).getAttribute('aria-pressed'), 'true');
     await page.goto(`${base}?profile=${profile}&runtime=aot&private=0`);
     await page.waitForFunction(expected => window.store?.getState().phase === 'setup' && window.store.getState().profile === expected, profile, { timeout: 240000 });
-    await page.evaluate(() => { const m = window.store.getState().setup.missions[0]; window.game.start(JSON.stringify({ map: m.id, mission: m.id, seed: 2026, players: [{ slot: m.slot, faction: m.faction, color: '2A6FDB' }], options: { difficulty: 'normal' } })); });
+    await startWorld(page);
     await page.waitForFunction(() => window.store.getState().phase === 'playing' && window.store.getState().ui?.tick > 20, null, { timeout: 180000 });
     assert.equal(await page.evaluate(() => window.store.getState().info.gridType), grid);
     const adviser=await page.evaluate(()=>window.game.client.adviserObserve());assert.ok(adviser.tick>0);assert.ok(adviser.units.length+adviser.buildings.length>0);
@@ -46,7 +60,7 @@ try {
   await page.route('**/embed-qa.html', route => route.fulfill({ status: 200, headers: { 'content-type': 'text/html', 'Cross-Origin-Opener-Policy': 'same-origin', 'Cross-Origin-Embedder-Policy': 'require-corp' }, body: '<script>window.starts=[];addEventListener("message",e=>{if(e.origin===location.origin&&e.data?.type==="rtsai:world-started")window.starts.push(e.data)})</script><iframe src="/?profile=public-classic&runtime=aot"></iframe>' }));
   await page.goto(new URL('embed-qa.html', base).href); const frame = page.frames().find(f => f !== page.mainFrame());
   await frame.waitForFunction(() => window.store?.getState().phase === 'setup', null, { timeout: 240000 }); assert.deepEqual(await page.evaluate(() => window.starts), []);
-  await frame.evaluate(() => { const m = window.store.getState().setup.missions[0]; window.game.start(JSON.stringify({ map: m.id, mission: m.id, players: [{ slot: m.slot, faction: m.faction }], options: { difficulty: 'normal' } })); });
+  await startWorld(frame);
   await frame.waitForFunction(() => window.store.getState().phase === 'playing', null, { timeout: 180000 }); await page.waitForFunction(() => window.starts.length === 1);
   receipt.sameOriginEmbed = await page.evaluate(() => window.starts); assert.deepEqual(receipt.sameOriginEmbed, [{ type: 'rtsai:world-started', version: 1, event: 'world-started', mode: 'classic', transport: 'singleplayer' }]); await context.close();
   receipt.passed = true; console.log('PASS static mode selector, actual worlds, local service denial and same-origin accepted-start event');
