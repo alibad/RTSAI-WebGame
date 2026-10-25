@@ -80,6 +80,7 @@ try {
     await page.getByRole('option', { name: 'English', exact: true }).waitFor();
     await capture('06-voice-picker-expanded');
     await page.keyboard.press('Escape');
+    await page.getByRole('tab', { name: 'Adviser', exact: true }).click(); // the adviser setting has its own tab
     const orders = page.getByRole('radiogroup', { name: 'Adviser orders', exact: true });
     await orders.scrollIntoViewIfNeeded();
     for (const label of ['Off', 'Suggest orders', 'Apply automatically']) await orders.getByRole('radio', { name: label, exact: true }).click();

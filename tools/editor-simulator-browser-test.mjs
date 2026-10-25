@@ -13,10 +13,13 @@ import { chromium } from '../web/node_modules/playwright-core/index.mjs';
 
 const base = process.env.RTSAI_TEST_URL || 'http://127.0.0.1:3490/';
 const query = ['profile=public', process.env.RTSAI_TEST_QUERY].filter(Boolean).join('&');
-const out = 'artifacts/editor-simulator';
+const out = process.env.RTSAI_TEST_OUT || 'artifacts/editor-simulator';
 fs.mkdirSync(out, { recursive: true });
 const browser = await chromium.launch({ executablePath: browserExecutable(), headless: process.env.RTSAI_TEST_HEADED !== '1', args: browserArgs() });
 const page = await (await browser.newContext({ viewport: { width: 1600, height: 900 } })).newPage();
+// The mouse lock (on by default) replays clicks where its own drawn cursor is, which follows mouse deltas; this test
+// drives absolute coordinates, so it plays with the lock off, as a player can from Settings.
+await page.addInitScript(() => { try { localStorage.setItem('rtsai.mouseLock', '0'); } catch { /* no storage */ } });
 page.setDefaultTimeout(180000);
 const errors = [];
 page.on('pageerror', (e) => errors.push(String(e)));
@@ -63,8 +66,10 @@ try {
   await page.click('[data-testid="ed-save"]');
   await page.waitForFunction(() => !!window.store.getState().editor.saved, null, { timeout: 60000 });
   const saved = (await editor()).saved;
+  // The map lists refresh a moment after the save is acknowledged: wait for the entry rather than read it at once.
+  await page.waitForFunction((id) => window.store.getState().setup.maps.some((m) => m.id === id && m.library && m.players === 2), saved, { timeout: 30000 })
+    .catch(() => assert.fail('the saved map is in the map lists with its two start positions'));
   const listed = await page.evaluate((id) => window.store.getState().setup.maps.find((m) => m.id === id), saved);
-  assert.ok(listed?.library && listed.players === 2, 'the saved map is in the map lists with its two start positions');
   await page.click('[data-testid="ed-test"]');
   await page.waitForFunction((id) => window.store.getState().sandbox?.map === id && window.store.getState().phase === 'playing', saved, { timeout: 120000 });
 
