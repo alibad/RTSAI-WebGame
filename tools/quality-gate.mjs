@@ -69,17 +69,20 @@ function record(step, status, note = "", extra = {}) {
 async function freePort() { return new Promise((ok) => { const s = net.createServer(); s.listen(0, "127.0.0.1", () => { const p = s.address().port; s.close(() => ok(p)); }); }); }
 const sleep = (ms) => new Promise((ok) => setTimeout(ok, ms));
 
-/** Runs the scripts of one list (unit or browser) in order; returns their results. */
-function runList(list, kind, envFor) {
+/** Runs the scripts of one list (unit or browser) in order; returns their results. In a script's env and args,
+ * "{url}" is the served page and "{out}" its output folder under the receipt. */
+function runList(list, kind, vars = {}) {
   const results = [];
   for (const t of list) {
     const name = t.file.replace(/\.(mjs|py)$/, "");
     const out = path.join(dir, kind, name);
     fs.mkdirSync(out, { recursive: true });
-    const env = { RTSAI_TEST_OUT: out, CHAPTERS_SHOTS: out, PYTHON: python, ...envFor(t) };
+    const sub = (v) => v.replace("{url}", vars.url ?? "").replace("{out}", out);
+    const env = { RTSAI_TEST_OUT: out, CHAPTERS_SHOTS: out, PYTHON: python, ...Object.fromEntries(Object.entries(t.env ?? {}).map(([k, v]) => [k, sub(v)])) };
+    const args = [path.join(repo, "tools", t.file), ...(t.args ?? []).map(sub)];
     const r = t.runner === "python"
-      ? check(name, python, ["-B", path.join(repo, "tools", t.file)], { timeoutSeconds: timeouts[kind], env })
-      : check(name, process.execPath, [path.join(repo, "tools", t.file)], { timeoutSeconds: timeouts[kind], env });
+      ? check(name, python, ["-B", ...args], { timeoutSeconds: timeouts[kind], env })
+      : check(name, process.execPath, args, { timeoutSeconds: timeouts[kind], env });
     results.push({ file: t.file, status: r.status, note: r.note, ms: r.ms, log: r.log });
     say(`  ${r.status === "pass" ? "pass" : "FAIL"}  ${t.file.padEnd(34)} ${sec(r.ms).padStart(7)}${r.note ? `  ${r.note}` : ""}`);
   }
@@ -122,7 +125,7 @@ if (only.includes("typecheck")) {
 // -- unit -----------------------------------------------------------------------------------------------------------
 if (only.includes("unit")) {
   say(`\n== unit (${config.unit.length} scripts)`);
-  summarize("unit", runList(config.unit, "unit", (t) => t.env ?? {}));
+  summarize("unit", runList(config.unit, "unit"));
 }
 
 // -- release (dry run, or the real prepare) --------------------------------------------------------------------------
@@ -151,6 +154,16 @@ if (only.includes("browser")) {
   let server = null;
   const pageDir = build ? path.join(build.dir, "smoke-page") : null;
   if (!url && pageDir && fs.existsSync(pageDir)) {
+    // A page-only release keeps the live NOTICE (the preview reuses every live file by SHA); the smoke page has none
+    // unless the release carries data. The tests check it, so the served copy gets the one the release would keep.
+    if (!fs.existsSync(path.join(pageDir, "NOTICE"))) {
+      const fromPage = path.join(build.dir, "page", "NOTICE");
+      if (fs.existsSync(fromPage)) fs.copyFileSync(fromPage, path.join(pageDir, "NOTICE"));
+      else {
+        const live = await fetch("https://rtsai.net/play/NOTICE").then((x) => (x.ok ? x.text() : null)).catch(() => null);
+        if (live) { fs.writeFileSync(path.join(pageDir, "NOTICE"), live); say("  NOTICE: the live page's, which a page-only release keeps"); }
+      }
+    }
     const port = await freePort();
     server = spawn(process.execPath, [path.join(repo, "tools", "static-serve.mjs"), "--dir", pageDir, "--port", String(port)], { stdio: "ignore" });
     url = `http://127.0.0.1:${port}/`;
@@ -159,7 +172,7 @@ if (only.includes("browser")) {
   }
   if (!url) record("browser", "skip", "no page: run the release step first, or pass --page-url");
   else try {
-    const results = runList(config.browser, "browser", (t) => Object.fromEntries(Object.entries(t.env ?? {}).map(([k, v]) => [k, v.replace("{url}", url)])));
+    const results = runList(config.browser, "browser", { url });
     summarize("browser", results);
     receipt.steps[receipt.steps.length - 1].url = url;
   } finally { server?.kill(); }

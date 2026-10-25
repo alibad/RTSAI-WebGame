@@ -33,7 +33,8 @@
     { "file": "modes-browser-test.mjs", "env": { "RTSAI_TEST_URL": "{url}" } },
     { "file": "map-modes-browser-test.mjs", "env": { "RTSAI_TEST_URL": "{url}" } },
     { "file": "editor-simulator-browser-test.mjs", "env": { "RTSAI_TEST_URL": "{url}" } },
-    { "file": "campaign-story-test.mjs", "env": { "CAMPAIGN_TEST_URL": "{url}?mode=missions&profile=public" } }
+    { "file": "campaign-story-test.mjs", "env": { "CAMPAIGN_TEST_URL": "{url}?mode=missions&profile=public" } },
+    { "file": "cross-browser-test.mjs", "args": ["{url}", "{out}"] }
   ],
   "timeoutSeconds": { "unit": 300, "browser": 900, "release": 2700, "gameplay": 1800 }
 }
