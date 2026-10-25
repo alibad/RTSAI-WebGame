@@ -9,7 +9,9 @@ import { nextAdvice, assessThreat, desiredHarvesterCount } from '../web/src/advi
 
 const repo = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const companion = path.join(process.env.OPENRA_AI_ROOT ?? path.resolve(repo, '../OpenRA-AI'), 'services/companion/src');
-const parity = JSON.parse(execFileSync(process.env.PYTHON ?? 'python3', ['-c', String.raw`
+// PYTHON picks the interpreter; otherwise python3, or python where python3 is only the Windows Store stub.
+const python = process.env.PYTHON ?? (() => { try { execFileSync('python3', ['--version'], { stdio: 'ignore' }); return 'python3'; } catch { return 'python'; } })();
+const parity = JSON.parse(execFileSync(python, ['-c', String.raw`
 import json, sys
 from dataclasses import asdict
 sys.path.insert(0, sys.argv[1])
