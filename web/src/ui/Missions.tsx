@@ -71,7 +71,9 @@ export function Missions({ game }: { game: Game }) {
   const filmId = part ? part.id : mission?.id;
   useEffect(() => { setShowFilm(playOnOpen.current); playOnOpen.current = false; setFilmError(false); setFilmPlain(false); setDeployAfterFilm(false); }, [filmId]);
   const briefing = filmId ? briefings[filmId] : undefined;
-  const filmSrc = useWholeFile(showFilm && briefing ? briefing.video : null);
+  // After a failed film the download is asked for again on the next play (and its memory copy is released), so the
+  // "Play briefing & deploy" retry does not reuse the attempt that failed, which would also leave the film paused.
+  const filmSrc = useWholeFile(showFilm && briefing && !filmError ? briefing.video : null);
   // The film starts by itself once downloaded. Safari (and iOS) allow that only right after a tap, which the download
   // outlasts: play() is refused, and a clear "Play film" button over the poster takes the tap instead.
   const video = useRef<HTMLVideoElement>(null);
