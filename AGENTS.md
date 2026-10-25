@@ -21,7 +21,9 @@ live without a fix that was already on main. These rules prevent that.
 ## Releasing rtsai.net/play: only with tools/release-play.mjs
 
 Deploying needs the owner's approval. When you have it, use the release command; never assemble pages, runtimes or
-the Cloudflare folder by hand.
+the Cloudflare folder by hand. Before `prepare`, run the quality gate on the latest main and keep its receipt id for
+the release record: `node tools/quality-gate.mjs` (docs/QUALITY-GATE.md). It runs typecheck, the unit tests, the dry
+run with its smoke test and the player-path browser tests, and leaves a dated receipt in `D:/rtsai-play-release/gate`.
 
 ```sh
 node tools/release-play.mjs status          # what is live, what main would change, who holds the release lock

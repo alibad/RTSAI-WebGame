@@ -1,0 +1,39 @@
+{
+  "unit": [
+    { "file": "actor-names-unit-test.mjs" },
+    { "file": "adviser-test.mjs" },
+    { "file": "ai-lab-unit-test.mjs" },
+    { "file": "audio-context-test.mjs" },
+    { "file": "battle-plan-unit-test.mjs" },
+    { "file": "companion-relay-test.mjs" },
+    { "file": "ea-gate.test.mjs" },
+    { "file": "earth-sites-test.mjs" },
+    { "file": "earth-terrain-test.mjs" },
+    { "file": "editor-pointer-test.mjs" },
+    { "file": "editor-touch-test.mjs" },
+    { "file": "lazyfs.test.mjs" },
+    { "file": "local-ai-readiness-test.mjs" },
+    { "file": "map-names-unit-test.mjs" },
+    { "file": "mission-adviser-test.mjs" },
+    { "file": "overpass-relay-test.mjs" },
+    { "file": "peer-unit-test.mjs" },
+    { "file": "place-search-test.mjs" },
+    { "file": "public-sprite-inputs.test.mjs" },
+    { "file": "save-compatibility-test.mjs" },
+    { "file": "soundtrack-test.mjs" },
+    { "file": "telemetry-unit-test.mjs" },
+    { "file": "test-ea-art.py", "runner": "python" },
+    { "file": "test-effect-anchors.py", "runner": "python" },
+    { "file": "test-map-release.py", "runner": "python" },
+    { "file": "test-public-inputs.py", "runner": "python" }
+  ],
+  "browser": [
+    { "file": "menu-ux-browser-test.mjs", "env": { "RTSAI_TEST_URL": "{url}" } },
+    { "file": "static-modes-test.mjs", "env": { "RTSAI_TEST_URL": "{url}" } },
+    { "file": "modes-browser-test.mjs", "env": { "RTSAI_TEST_URL": "{url}" } },
+    { "file": "map-modes-browser-test.mjs", "env": { "RTSAI_TEST_URL": "{url}" } },
+    { "file": "editor-simulator-browser-test.mjs", "env": { "RTSAI_TEST_URL": "{url}" } },
+    { "file": "campaign-story-test.mjs", "env": { "CAMPAIGN_TEST_URL": "{url}?mode=missions&profile=public" } }
+  ],
+  "timeoutSeconds": { "unit": 300, "browser": 900, "release": 2700, "gameplay": 1800 }
+}

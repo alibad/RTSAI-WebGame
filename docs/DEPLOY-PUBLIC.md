@@ -16,6 +16,9 @@ releases were assembled by hand from scripts kept in each session's own folders.
 stale worktree shipped without a fix that was already on main. Pages built from branches would have dropped other
 sessions' shipped work.
 
+Before `prepare`, run the quality gate on the same main: `node tools/quality-gate.mjs` (docs/QUALITY-GATE.md), and
+put its receipt id in the release record.
+
 ```sh
 node tools/release-play.mjs status
 node tools/release-play.mjs prepare --update "<what players get>" [--data <build-public output>] [--runtime rebuild] [--dry]
