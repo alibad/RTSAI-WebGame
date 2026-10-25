@@ -19,7 +19,7 @@
 .gbtn:focus-visible { outline: 2px solid var(--hud-accent); outline-offset: 2px; }
 
 /* Dialogs: a dim, blurred battlefield behind; one bevelled panel that pops in. */
-.gd-overlay { position: fixed; inset: 0; z-index: 60; display: grid; place-items: center; padding: 20px; background: rgba(3, 5, 3, .76); backdrop-filter: blur(6px); animation: settings-fade .16s ease-out; }
+.gd-overlay { position: fixed; inset: 0; z-index: 60; display: grid; grid-template-columns: minmax(0, 1fr); place-items: center; padding: 20px; background: rgba(3, 5, 3, .76); backdrop-filter: blur(6px); animation: settings-fade .16s ease-out; }
 .gd-panel { display: flex; flex-direction: column; width: min(560px, 100%); max-height: calc(100dvh - 40px); border: 1px solid var(--hud-edge-hi); border-radius: 12px; background: linear-gradient(180deg, #22272b, #181d20); box-shadow: 0 30px 80px rgba(0, 0, 0, .6), inset 0 1px 0 rgba(255, 255, 255, .05); animation: settings-pop .2s cubic-bezier(.2, .8, .2, 1); }
 .gd-sm { width: min(420px, 100%); }
 .gd-lg { width: min(760px, 100%); }
