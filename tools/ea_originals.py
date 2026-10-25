@@ -1102,6 +1102,10 @@ class Generator:
                     v = f.value
                     if v.startswith(EA_PREFIX) or v == BLANK or v.lower() in self.bits:
                         continue
+                    # A project RGBA sheet (ra2|...png) carries its own colours: no palette applies to it, so an
+                    # original image may draw it (the ships' wake, standalone/effects/wake1.png, since 26 Oct).
+                    if v.startswith('ra2|') and v.lower().endswith('.png'):
+                        continue
                     raise GenerationError(f'{n.key}.{s.key}: project file {v} would be drawn with original palettes')
         audit = self.audit()
         failures = {f: a for f, a in audit['countries'].items() if a['missing'] or a['replacements'] or a['extensions']}
