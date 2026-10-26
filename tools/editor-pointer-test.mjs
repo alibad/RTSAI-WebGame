@@ -21,4 +21,30 @@ const reset = new EditorPointerStream(async p => { sentAfterReset.push(p); await
 reset.push(input('down', 10)); reset.push(input('move', 11)); reset.reset(); unlock();
 await new Promise(resolve => setTimeout(resolve, 0));
 assert.equal(sentAfterReset.length, 1, 'Closing a map discards queued input');
-console.log('Editor pointer ordering, stroke edges, captured buttons, modifier changes, hover and reset passed.');
+
+let finishOldPointer;
+const oldPointer = new Promise(resolve => { finishOldPointer = resolve; });
+const ordered = [];
+const controls = new EditorPointerStream(async p => { ordered.push(`pointer:${p.x}`); if (ordered.length === 1) await oldPointer; }, error => failures.push(error));
+controls.push(input('move', 20));
+controls.push(input('move', 21));
+const changed = controls.command(async () => { ordered.push('brush'); return 42; });
+controls.push(input('move', 22));
+finishOldPointer();
+assert.equal(await changed, 42, 'worker commands keep their result');
+await controls.settled();
+assert.deepEqual(ordered, ['pointer:20', 'pointer:21', 'brush', 'pointer:22'], 'moves cannot merge across a brush change');
+
+let releaseClosingPointer;
+const closingPointer = new Promise(resolve => { releaseClosingPointer = resolve; });
+let staleCommandRan = false;
+const closing = new EditorPointerStream(async () => { await closingPointer; }, error => failures.push(error));
+closing.push(input('down', 30));
+const cancelled = closing.command(async () => { staleCommandRan = true; });
+closing.reset();
+await assert.rejects(cancelled, { name: 'AbortError' }, 'closing a map settles queued commands instead of leaving them pending');
+releaseClosingPointer();
+await closing.settled();
+assert.equal(staleCommandRan, false, 'a queued command cannot change the next map');
+assert.deepEqual(failures, []);
+console.log('Editor pointer/command ordering, stroke edges, captured buttons, modifier changes, hover and reset passed.');

@@ -10,6 +10,7 @@
     { "file": "earth-sites-test.mjs" },
     { "file": "earth-terrain-test.mjs" },
     { "file": "editor-pointer-test.mjs" },
+    { "file": "editor-command-order-test.mjs" },
     { "file": "editor-touch-test.mjs" },
     { "file": "lazyfs.test.mjs" },
     { "file": "local-ai-readiness-test.mjs" },

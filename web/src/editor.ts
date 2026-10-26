@@ -226,12 +226,18 @@ export class EditorController {
     this.patch({ catalog: { ...this.state.catalog, owners: catalog.owners }, owner });
   }
   private afterPointers(op: Record<string, unknown>, edited = false) {
-    void this.pointers.settled().then(() => this.call(op)).then(async h => {
+    const map = this.state.map;
+    void this.pointers.command(async () => {
+      if (!this.active || this.state.map !== map) return;
+      const h = await this.call(op);
+      if (!this.active || this.state.map !== map) return;
       this.history(h);
       if (edited && !h.error) this.patch({ dirty: true, placement: null });
       if (edited && !h.error) await this.refreshOwners();
       if (op.op === "brush" && !this.game.canvas.matches(":hover")) this.hideFieldPreview();
-    }).catch(error => this.fail(error instanceof Error ? error.message : String(error)));
+    }).catch(error => {
+      if (this.active && this.state.map === map) this.fail(error instanceof Error ? error.message : String(error));
+    });
   }
 
   setTool(tool: EditorTool) {
