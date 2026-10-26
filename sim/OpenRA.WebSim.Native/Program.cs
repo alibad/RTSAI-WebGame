@@ -60,6 +60,7 @@ static class Program
 				"originalgameplaytest" => OriginalRa2GameplayTest.Run(opts),
 				"ninegapstest" => OriginalRa2NineGapsTest.Run(opts),
 				"originaleconomytest" => OriginalRa2EconomyTest.Run(opts),
+				"repairpowertest" => RepairPowerBalanceTest.Run(opts),
 				"editorresourcetest" => EditorResourcesTest.Run(opts),
 				"editorbridgetest" => EditorBridgesTest.Run(opts),
 				"editortestterrain" => EditorTerrainTest.Run(opts),

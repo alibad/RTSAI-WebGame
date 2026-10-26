@@ -63,7 +63,13 @@ namespace OpenRA.WebSim
         {
             var copy = (RepairsUnitsInfo)MemberwiseClone();
             if (OriginalRa2Rules.Country(init.Self.Owner))
+            {
                 OriginalRa2Rules.Set(copy, nameof(ValuePercentage), OriginalPercent);
+                // Owner balance choice: 20 HP each second at depots, each 0.2 s
+                // at hospitals. Resupply counts the interval plus its repair tick.
+                OriginalRa2Rules.Set(copy, nameof(HpPerStep), 20);
+                OriginalRa2Rules.Set(copy, nameof(Interval), init.Self.Info.Name == "cahosp" ? 4 : 24);
+            }
             return new RepairsUnits(copy);
         }
     }

@@ -3,10 +3,16 @@
 import argparse
 import hashlib
 import json
+import os
 from pathlib import Path
 import re
 import subprocess
 import sys
+
+# Validation tools import other modules from the frozen source. Python caches
+# would otherwise mutate that source immediately after its manifest was made.
+sys.dont_write_bytecode = True
+os.environ["PYTHONDONTWRITEBYTECODE"] = "1"
 
 ROOT = Path(__file__).resolve().parents[1]
 
