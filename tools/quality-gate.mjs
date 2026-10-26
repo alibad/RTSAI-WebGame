@@ -135,6 +135,7 @@ if (only.includes("release")) {
   say(`\n== release (${prepare ? "prepare: Vercel preview, no promote" : "dry run: page build + smoke, deploys nothing"})`);
   const args = [path.join(repo, "tools", "release-play.mjs"), "prepare", ...(prepare ? ["--update", prepare] : ["--dry", "--update", `quality gate ${id}`])];
   for (const k of ["data", "inputs", "engine", "runtime"]) if (opt(k)) args.push(`--${k}`, opt(k));
+  if (argv.includes("--published-site")) args.push("--published-site");
   const r = check("release", process.execPath, args, { timeoutSeconds: timeouts.release });
   const buildLine = r.stdout.split("\n").find((l) => /^Dry run passed; nothing was deployed\. Build: /.test(l));
   let buildDir = buildLine ? buildLine.replace(/^.*Build: /, "").trim() : null;

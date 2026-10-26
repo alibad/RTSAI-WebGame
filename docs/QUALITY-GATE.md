@@ -10,6 +10,7 @@ node tools/quality-gate.mjs --only unit          # one step while iterating
 node tools/quality-gate.mjs --only browser --page-url http://127.0.0.1:3493/   # the browser step on a page you serve
 node tools/quality-gate.mjs --pack <data>/public/web-bundle.pack               # also the gameplay check (new data root)
 node tools/quality-gate.mjs --prepare "<what players get>"                     # the real prepare instead of the dry run
+node tools/quality-gate.mjs --published-site                                  # preserve unpublished website work; test the verified live-site dependency
 ```
 
 | Step | What passes | Where it comes from |
