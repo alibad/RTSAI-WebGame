@@ -41,7 +41,8 @@
       "data-a3b0d296fd95/",
       "data-b80ffa239e04/",
       "data-b1abd205626b/",
-      "data-bad1fbdfc616/"
+      "data-bad1fbdfc616/",
+      "data-be9e0c106ea1/"
     ]
   },
   "vercel": {
@@ -70,13 +71,18 @@
       "assetHost": "https://06a5cd0d.rtsai-play-cdn.pages.dev/",
       "rtRoot": "rt-7824bd8bb601/",
       "dataRoot": "data-b1abd205626b/",
-      "profiles": ["public"]
+      "profiles": [
+        "public"
+      ]
     },
     {
       "assetHost": "https://b10de5d5.rtsai-play-cdn.pages.dev/",
       "rtRoot": "rt-738104198cd2/",
       "dataRoot": "data-6d6e5f05c328/",
-      "profiles": ["public", "public-classic"]
+      "profiles": [
+        "public",
+        "public-classic"
+      ]
     },
     {
       "assetHost": "https://7a7ac7e2.rtsai-play-cdn.pages.dev/",
@@ -113,11 +119,22 @@
         "public",
         "public-classic"
       ]
+    },
+    {
+      "assetHost": "https://eb05532d.rtsai-play-cdn.pages.dev/",
+      "rtRoot": "rt-d1f73f3a2364/",
+      "dataRoot": "data-be9e0c106ea1/",
+      "profiles": [
+        "public"
+      ]
     }
   ],
   "$saveArchives": "Never delete immutable asset deployments referenced by save-versions.json. Every release carries the complete existing catalog forward; retiring an alias root does not retire a saved battle's deployment.",
   "$saveClientRefresh": "Presentation-only soundtrack repair: archived saves must also exclude retired Final Push. Native identities, original asset packs, replay validation and prior frozen files stay intact; the worker wire format is unchanged.",
-  "saveClientRefresh": ["saved-clients/50d68da85d0c/", "saved-clients/9090e056628b/"],
+  "saveClientRefresh": [
+    "saved-clients/50d68da85d0c/",
+    "saved-clients/9090e056628b/"
+  ],
   "knownRuntimes": {
     "rt-a628db97b644/": {
       "$comment": "Built on 14 Oct 2026 before runtime provenance existed (RELEASE-20261014.md sixth update).",

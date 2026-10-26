@@ -140,11 +140,17 @@ if (only.includes("release")) {
   const buildLine = r.stdout.split("\n").find((l) => /^Dry run passed; nothing was deployed\. Build: /.test(l));
   let buildDir = buildLine ? buildLine.replace(/^.*Build: /, "").trim() : null;
   if (!buildDir && prepare && fs.existsSync(path.join(work, "release.json"))) buildDir = JSON.parse(fs.readFileSync(path.join(work, "release.json"), "utf8")).dir;
-  const rel = buildDir && fs.existsSync(path.join(buildDir, "receipt.json")) ? JSON.parse(fs.readFileSync(path.join(buildDir, "receipt.json"), "utf8")) : null;
+  // Real prepare keeps its verified state in the release lock until promotion;
+  // receipt.json is written immediately only by a dry run. Both must feed the
+  // same smoke-page/browser checks, rather than silently skipping a real page.
+  const prepared = prepare && fs.existsSync(path.join(work, "release.json")) ? JSON.parse(fs.readFileSync(path.join(work, "release.json"), "utf8")) : null;
+  const rel = buildDir && fs.existsSync(path.join(buildDir, "receipt.json")) ? JSON.parse(fs.readFileSync(path.join(buildDir, "receipt.json"), "utf8"))
+    : prepared?.stage === "prepared" && prepared.dir === buildDir ? prepared : null;
   build = rel && { dir: buildDir, commit: rel.commit, base: rel.base, roots: rel.roots, smoke: rel.smoke, blockers: rel.blockers ?? [], stage: rel.stage };
   const smoke = build?.smoke?.matches ? build.smoke.matches.map((m) => `${m.profile}/${m.scenario}: ${(m.startMs / 1000).toFixed(1)} s to start, ${m.ticks} ticks, WASM ${m.wasmMB} MB, textures ${m.textures} -> ${m.texturesAfterQuit}`) : [];
   const wouldRefuse = build?.blockers?.length ? `; a real prepare would refuse: ${build.blockers.join(" | ")}` : "";
-  record("release", r.status, r.status === "pass" ? `${build?.smoke?.matches?.length ?? "?"} smoke matches, ${sec(r.ms)}${wouldRefuse}` : r.note,
+  const releaseStatus = r.status === "pass" && !build ? "fail" : r.status;
+  record("release", releaseStatus, releaseStatus === "pass" ? `${build.smoke?.matches?.length ?? "?"} smoke matches, ${sec(r.ms)}${wouldRefuse}` : (r.note || "release returned no verifiable build state"),
     { log: r.log, update: prepare ?? null, build: build && { dir: build.dir, commit: build.commit, base: build.base, roots: build.roots, blockers: build.blockers, smoke } });
 }
 
@@ -171,7 +177,7 @@ if (only.includes("browser")) {
     for (let i = 0; i < 60 && !(await fetch(url).then((x) => x.ok).catch(() => false)); i++) await sleep(250);
     say(`  serving ${pageDir} at ${url}`);
   }
-  if (!url) record("browser", "skip", "no page: run the release step first, or pass --page-url");
+  if (!url) record("browser", "fail", "no page: run the release step first, or pass --page-url");
   else try {
     const results = runList(config.browser, "browser", { url });
     summarize("browser", results);
