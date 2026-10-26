@@ -1,9 +1,11 @@
-param([string]$BackupDirectory)
+param([string]$BackupDirectory, [switch]$Public)
 $ErrorActionPreference = 'Stop'
 $repository = Split-Path $PSScriptRoot -Parent
 $launcher = Join-Path $PSScriptRoot 'launch-web-game.ps1'
-& node (Join-Path $PSScriptRoot 'local-game.mjs') verify
-if ($LASTEXITCODE -ne 0) { throw 'Register and verify the accepted web game before installing its shortcut.' }
+if (!$Public) {
+    & node (Join-Path $PSScriptRoot 'local-game.mjs') verify
+    if ($LASTEXITCODE -ne 0) { throw 'Register and verify the accepted web game before installing its shortcut.' }
+}
 $shell = New-Object -ComObject WScript.Shell
 $destinations = @(
     (Join-Path ([Environment]::GetFolderPath('Desktop')) 'RTS AI Web Game.lnk'),
@@ -19,8 +21,9 @@ foreach ($destination in $destinations) {
     $shortcut = $shell.CreateShortcut($destination)
     $shortcut.TargetPath = Join-Path $env:SystemRoot 'System32/WindowsPowerShell/v1.0/powershell.exe'
     $shortcut.Arguments = "-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$launcher`""
+    if ($Public) { $shortcut.Arguments += ' -Public' }
     $shortcut.WorkingDirectory = $repository
-    $shortcut.Description = 'Open the checksum-verified local web game; refuse missing or mismatched builds.'
+    $shortcut.Description = if ($Public) { 'Open the latest published RTS AI web game in its own app window.' } else { 'Open the checksum-verified local web game; refuse missing or mismatched builds.' }
     $shortcut.IconLocation = (Join-Path $repository 'web/public/favicon.ico') + ',0'
     $shortcut.Save()
     Write-Output "Installed $destination"
