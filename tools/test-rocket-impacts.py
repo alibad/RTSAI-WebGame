@@ -37,9 +37,10 @@ class RocketImpacts(unittest.TestCase):
         record = json.loads((Path(__file__).parent / 'data/project-effect-anchors.json').read_text())['effects']['s_clsn58.shp']
         data = (MOD / 'mods/rtsai/standalone/effects/s_clsn58.shp').read_bytes()
         self.assertEqual(hashlib.sha256(data).hexdigest(), record['sha256'], 'Audit a changed sprite before reusing its pivot')
-        x, y, _ = map(float, effect.val('Offset').split(','))
+        x, y, z = map(float, effect.val('Offset').split(','))
         self.assertEqual(x, 0)
         self.assertEqual((y + record['groundY']) * scale, 0, 'Scale both pixels and pivot so contact stays exactly at the hit')
+        self.assertGreaterEqual(z * scale, 30, 'Keep the original blast depth after scaling: the hit flash must draw on the hull')
         self.assertLessEqual(record['canvas'][0] * scale, 48, 'Fixed canvas fits within one normal tank footprint')
         patches = anchor_patches(SimpleNamespace(curseq=self.sequences, mod_root=MOD), E)
         self.assertNotIn('rtsai-atgm-impact', [p.key for p in patches], 'The generic browser anchor must not apply twice')
