@@ -49,6 +49,12 @@ def main():
             updated[name] = {'from': sha, 'to': new_sha}
             reviewed['overlays'][name] = new_sha
             continue
+        mine = core.get(name, art.get(name))
+        if mine is not None and hashlib.sha256(mine).hexdigest() != sha:
+            # The mod changed a reviewed overlay since the base was reviewed: restoring the base drops that change.
+            print(f'WARNING: the mod changed reviewed overlay {name}; the base copy is shipped. '
+                  f'If the change is wanted (for example the 26 Oct rock fix in editor-world/sequences.yaml), '
+                  f'rerun with --accept-overlay {name}')
         art.pop(name, None)
         core[name] = data
         retained[name] = sha
