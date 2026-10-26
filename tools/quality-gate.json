@@ -24,6 +24,7 @@
     { "file": "telemetry-unit-test.mjs" },
     { "file": "test-ea-art.py", "runner": "python" },
     { "file": "test-effect-anchors.py", "runner": "python" },
+    { "file": "test-rocket-impacts.py", "runner": "python" },
     { "file": "test-map-release.py", "runner": "python" },
     { "file": "test-public-inputs.py", "runner": "python" }
   ],
