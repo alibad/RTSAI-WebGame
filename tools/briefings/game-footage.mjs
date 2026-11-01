@@ -1,7 +1,7 @@
 // Real in-engine footage of a campaign mission for its briefing film: the actual map, units, objectives and fighting,
 // recorded HUD-free (a "clean plate": only the game canvas) at 1920x1080, constant 30 fps, H.264 CRF 16.
 //
-//   node tools/briefings/game-footage.mjs <mission> [--out D:/rtsai-campaign/footage-out] [--url http://127.0.0.1:3977/]
+//   node tools/briefings/game-footage.mjs <mission> [--out D:/Videos/RTSAI/campaign-footage] [--url http://127.0.0.1:3977/]
 //        [--map-yaml content/maps/<mission>/map.yaml] [--difficulty hard] [--speed 4] [--cuts 3] [--cut-seconds 13]
 //        [--only establishing,objectives,battle] [--keep-frames]
 //
@@ -46,7 +46,7 @@ const opt = (k, d) => { const i = argv.indexOf(`--${k}`); return i >= 0 ? argv[i
 const flag = (k) => argv.includes(`--${k}`);
 const mission = argv.find((a, i) => !a.startsWith("--") && (i === 0 || !argv[i - 1].startsWith("--")));
 if (!mission) { console.error("usage: node tools/briefings/game-footage.mjs <mission> [--out dir] [--url page]"); process.exit(2); }
-const outRoot = path.resolve(opt("out", "D:/rtsai-campaign/footage-out"));
+const outRoot = path.resolve(opt("out", "D:/Videos/RTSAI/campaign-footage"));
 const url = opt("url", "http://127.0.0.1:3977/");
 const mapYaml = opt("map-yaml", path.join(repo, "content", "maps", mission, "map.yaml"));
 const difficulty = opt("difficulty", "hard");

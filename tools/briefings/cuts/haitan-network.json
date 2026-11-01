@@ -13,7 +13,7 @@
       "poster": true
     },
     {
-      "src": "D:/rtsai-campaign/footage-out/haitan-network/establishing.mp4",
+      "src": "D:/Videos/RTSAI/campaign-footage/haitan-network/establishing.mp4",
       "kind": "game",
       "voice": "C:/Users/Admin/Code/hq/montage/out/reels/films/story-mv77pk3h/n02.wav",
       "line": "Obsidian Directorate holds the approaches. The water gate is the only way in for your amphibious vehicles.",
@@ -32,7 +32,7 @@
       "line": "Reconnaissance first. Then missiles, aircraft and ships, together."
     },
     {
-      "src": "D:/rtsai-campaign/footage-out/haitan-network/objective-1.mp4",
+      "src": "D:/Videos/RTSAI/campaign-footage/haitan-network/objective-1.mp4",
       "kind": "game",
       "dur": 4.2,
       "zoom": 1.1,
@@ -42,7 +42,7 @@
       }
     },
     {
-      "src": "D:/rtsai-campaign/footage-out/haitan-network/objective-2.mp4",
+      "src": "D:/Videos/RTSAI/campaign-footage/haitan-network/objective-2.mp4",
       "kind": "game",
       "dur": 4.2,
       "zoom": 1.1,
@@ -52,7 +52,7 @@
       }
     },
     {
-      "src": "D:/rtsai-campaign/footage-out/haitan-network/objective-3.mp4",
+      "src": "D:/Videos/RTSAI/campaign-footage/haitan-network/objective-3.mp4",
       "kind": "game",
       "dur": 4.2,
       "zoom": 1.1,
@@ -62,7 +62,7 @@
       }
     },
     {
-      "src": "D:/rtsai-campaign/footage-out/haitan-network/objective-4.mp4",
+      "src": "D:/Videos/RTSAI/campaign-footage/haitan-network/objective-4.mp4",
       "kind": "game",
       "dur": 4.2,
       "zoom": 1.1,
@@ -78,7 +78,7 @@
       "line": "Send the amphibious vehicles through the gate under covering fire."
     },
     {
-      "src": "D:/rtsai-campaign/footage-out/haitan-network/battle.mp4",
+      "src": "D:/Videos/RTSAI/campaign-footage/haitan-network/battle.mp4",
       "kind": "game",
       "in": 1.5,
       "dur": 10,

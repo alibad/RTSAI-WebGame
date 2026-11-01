@@ -13,7 +13,7 @@
       "poster": true
     },
     {
-      "src": "D:/rtsai-campaign/footage-out/glass-island/establishing.mp4",
+      "src": "D:/Videos/RTSAI/campaign-footage/glass-island/establishing.mp4",
       "kind": "game",
       "dur": 6.5,
       "zoom": 1.1,
@@ -35,7 +35,7 @@
       "line": "Commander Lin Haoran watches from the ship. Nothing on that island can be allowed to see them."
     },
     {
-      "src": "D:/rtsai-campaign/footage-out/glass-island/objective-1.mp4",
+      "src": "D:/Videos/RTSAI/campaign-footage/glass-island/objective-1.mp4",
       "kind": "game",
       "dur": 4.2,
       "zoom": 1.1,
@@ -45,7 +45,7 @@
       }
     },
     {
-      "src": "D:/rtsai-campaign/footage-out/glass-island/objective-2.mp4",
+      "src": "D:/Videos/RTSAI/campaign-footage/glass-island/objective-2.mp4",
       "kind": "game",
       "dur": 4.2,
       "zoom": 1.1,
@@ -55,7 +55,7 @@
       }
     },
     {
-      "src": "D:/rtsai-campaign/footage-out/glass-island/objective-3.mp4",
+      "src": "D:/Videos/RTSAI/campaign-footage/glass-island/objective-3.mp4",
       "kind": "game",
       "dur": 4.2,
       "zoom": 1.1,
@@ -65,7 +65,7 @@
       }
     },
     {
-      "src": "D:/rtsai-campaign/footage-out/glass-island/objective-4.mp4",
+      "src": "D:/Videos/RTSAI/campaign-footage/glass-island/objective-4.mp4",
       "kind": "game",
       "dur": 4.2,
       "zoom": 1.1,
@@ -81,7 +81,7 @@
       "line": "The masts sweep in turns. Move only in the dark between them."
     },
     {
-      "src": "D:/rtsai-campaign/footage-out/glass-island/battle.mp4",
+      "src": "D:/Videos/RTSAI/campaign-footage/glass-island/battle.mp4",
       "kind": "game",
       "in": 1.5,
       "dur": 10,

@@ -13,7 +13,7 @@
       "poster": true
     },
     {
-      "src": "D:/rtsai-campaign/footage-out/hodeidah-lifeline/establishing.mp4",
+      "src": "D:/Videos/RTSAI/campaign-footage/hodeidah-lifeline/establishing.mp4",
       "kind": "game",
       "voice": "C:/Users/Admin/Code/hq/montage/out/reels/films/story-mv77pjgg/n02.wav",
       "line": "A surveillance sweep is closing on the corridor. Anything still inside the zone when it arrives will be found.",
@@ -32,7 +32,7 @@
       "line": "Commander. Protect the deliveries, then bring the evacuation convoy home."
     },
     {
-      "src": "D:/rtsai-campaign/footage-out/hodeidah-lifeline/objective-1.mp4",
+      "src": "D:/Videos/RTSAI/campaign-footage/hodeidah-lifeline/objective-1.mp4",
       "kind": "game",
       "dur": 4.2,
       "zoom": 1.1,
@@ -42,7 +42,7 @@
       }
     },
     {
-      "src": "D:/rtsai-campaign/footage-out/hodeidah-lifeline/objective-2.mp4",
+      "src": "D:/Videos/RTSAI/campaign-footage/hodeidah-lifeline/objective-2.mp4",
       "kind": "game",
       "dur": 4.2,
       "zoom": 1.1,
@@ -52,7 +52,7 @@
       }
     },
     {
-      "src": "D:/rtsai-campaign/footage-out/hodeidah-lifeline/objective-3.mp4",
+      "src": "D:/Videos/RTSAI/campaign-footage/hodeidah-lifeline/objective-3.mp4",
       "kind": "game",
       "dur": 4.2,
       "zoom": 1.1,
@@ -62,7 +62,7 @@
       }
     },
     {
-      "src": "D:/rtsai-campaign/footage-out/hodeidah-lifeline/objective-4.mp4",
+      "src": "D:/Videos/RTSAI/campaign-footage/hodeidah-lifeline/objective-4.mp4",
       "kind": "game",
       "dur": 4.2,
       "zoom": 1.1,
@@ -78,7 +78,7 @@
       "line": "Every vehicle that comes back is a family that made it out."
     },
     {
-      "src": "D:/rtsai-campaign/footage-out/hodeidah-lifeline/battle.mp4",
+      "src": "D:/Videos/RTSAI/campaign-footage/hodeidah-lifeline/battle.mp4",
       "kind": "game",
       "in": 1.5,
       "dur": 10,

@@ -13,7 +13,7 @@
       "poster": true
     },
     {
-      "src": "D:/rtsai-campaign/footage-out/jizan-corridor/establishing.mp4",
+      "src": "D:/Videos/RTSAI/campaign-footage/jizan-corridor/establishing.mp4",
       "kind": "game",
       "voice": "C:/Users/Admin/Code/hq/montage/out/reels/films/story-mv74pb65/n02.wav",
       "line": "Without it, nobody can see the corridor. Relief trucks are waiting on the coast road, and no one can promise them a safe way to the port.",
@@ -32,7 +32,7 @@
       "line": "Commander, your orders. Retake the radar. Remove both launchers. Then bring the convoy through."
     },
     {
-      "src": "D:/rtsai-campaign/footage-out/jizan-corridor/objective-1.mp4",
+      "src": "D:/Videos/RTSAI/campaign-footage/jizan-corridor/objective-1.mp4",
       "kind": "game",
       "dur": 4.2,
       "zoom": 1.1,
@@ -42,7 +42,7 @@
       }
     },
     {
-      "src": "D:/rtsai-campaign/footage-out/jizan-corridor/objective-2.mp4",
+      "src": "D:/Videos/RTSAI/campaign-footage/jizan-corridor/objective-2.mp4",
       "kind": "game",
       "dur": 4.2,
       "zoom": 1.1,
@@ -52,7 +52,7 @@
       }
     },
     {
-      "src": "D:/rtsai-campaign/footage-out/jizan-corridor/objective-3.mp4",
+      "src": "D:/Videos/RTSAI/campaign-footage/jizan-corridor/objective-3.mp4",
       "kind": "game",
       "dur": 4.2,
       "zoom": 1.1,
@@ -62,7 +62,7 @@
       }
     },
     {
-      "src": "D:/rtsai-campaign/footage-out/jizan-corridor/objective-4.mp4",
+      "src": "D:/Videos/RTSAI/campaign-footage/jizan-corridor/objective-4.mp4",
       "kind": "game",
       "dur": 4.2,
       "zoom": 1.1,
@@ -78,7 +78,7 @@
       "line": "A destroyed enemy base is not the measure of success."
     },
     {
-      "src": "D:/rtsai-campaign/footage-out/jizan-corridor/battle.mp4",
+      "src": "D:/Videos/RTSAI/campaign-footage/jizan-corridor/battle.mp4",
       "kind": "game",
       "in": 1.5,
       "dur": 10,

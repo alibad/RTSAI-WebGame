@@ -13,7 +13,7 @@
       "poster": true
     },
     {
-      "src": "D:/rtsai-campaign/footage-out/black-platform/establishing.mp4",
+      "src": "D:/Videos/RTSAI/campaign-footage/black-platform/establishing.mp4",
       "kind": "game",
       "dur": 6.5,
       "zoom": 1.1,
@@ -35,7 +35,7 @@
       "line": "Commander Turki Al-Zahrani leads the boarding team himself. There are no reinforcements."
     },
     {
-      "src": "D:/rtsai-campaign/footage-out/black-platform/objective-1.mp4",
+      "src": "D:/Videos/RTSAI/campaign-footage/black-platform/objective-1.mp4",
       "kind": "game",
       "dur": 4.2,
       "zoom": 1.1,
@@ -45,7 +45,7 @@
       }
     },
     {
-      "src": "D:/rtsai-campaign/footage-out/black-platform/objective-2.mp4",
+      "src": "D:/Videos/RTSAI/campaign-footage/black-platform/objective-2.mp4",
       "kind": "game",
       "dur": 4.2,
       "zoom": 1.1,
@@ -55,7 +55,7 @@
       }
     },
     {
-      "src": "D:/rtsai-campaign/footage-out/black-platform/objective-4.mp4",
+      "src": "D:/Videos/RTSAI/campaign-footage/black-platform/objective-4.mp4",
       "kind": "game",
       "dur": 4.2,
       "zoom": 1.1,
@@ -65,7 +65,7 @@
       }
     },
     {
-      "src": "D:/rtsai-campaign/footage-out/black-platform/objective-5.mp4",
+      "src": "D:/Videos/RTSAI/campaign-footage/black-platform/objective-5.mp4",
       "kind": "game",
       "dur": 4.2,
       "zoom": 1.1,
@@ -81,7 +81,7 @@
       "line": "Take the control room first. Then a charge on every generator."
     },
     {
-      "src": "D:/rtsai-campaign/footage-out/black-platform/battle.mp4",
+      "src": "D:/Videos/RTSAI/campaign-footage/black-platform/battle.mp4",
       "kind": "game",
       "in": 1.5,
       "dur": 10,

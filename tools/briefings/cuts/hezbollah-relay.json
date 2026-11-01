@@ -13,7 +13,7 @@
       "poster": true
     },
     {
-      "src": "D:/rtsai-campaign/footage-out/hezbollah-relay/establishing.mp4",
+      "src": "D:/Videos/RTSAI/campaign-footage/hezbollah-relay/establishing.mp4",
       "kind": "game",
       "voice": "C:/Users/Admin/Code/hq/montage/out/reels/films/story-mv7ezo2e/n02.wav",
       "line": "In this exercise, the attacks arrive before your workshop is secure.",
@@ -32,7 +32,7 @@
       "line": "Hold the line. Keep the signal alive."
     },
     {
-      "src": "D:/rtsai-campaign/footage-out/hezbollah-relay/objective-1.mp4",
+      "src": "D:/Videos/RTSAI/campaign-footage/hezbollah-relay/objective-1.mp4",
       "kind": "game",
       "dur": 4.2,
       "zoom": 1.1,
@@ -42,7 +42,7 @@
       }
     },
     {
-      "src": "D:/rtsai-campaign/footage-out/hezbollah-relay/objective-2.mp4",
+      "src": "D:/Videos/RTSAI/campaign-footage/hezbollah-relay/objective-2.mp4",
       "kind": "game",
       "dur": 4.2,
       "zoom": 1.1,
@@ -52,7 +52,7 @@
       }
     },
     {
-      "src": "D:/rtsai-campaign/footage-out/hezbollah-relay/objective-3.mp4",
+      "src": "D:/Videos/RTSAI/campaign-footage/hezbollah-relay/objective-3.mp4",
       "kind": "game",
       "dur": 4.2,
       "zoom": 1.1,
@@ -68,7 +68,7 @@
       "line": "Mix anti-tank teams with reconnaissance, and keep a reserve at the base."
     },
     {
-      "src": "D:/rtsai-campaign/footage-out/hezbollah-relay/battle.mp4",
+      "src": "D:/Videos/RTSAI/campaign-footage/hezbollah-relay/battle.mp4",
       "kind": "game",
       "in": 1.5,
       "dur": 10,

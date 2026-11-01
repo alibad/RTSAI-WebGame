@@ -13,7 +13,7 @@
       "poster": true
     },
     {
-      "src": "D:/rtsai-campaign/footage-out/every-light-on/establishing.mp4",
+      "src": "D:/Videos/RTSAI/campaign-footage/every-light-on/establishing.mp4",
       "kind": "game",
       "dur": 6.5,
       "zoom": 1.1,
@@ -35,7 +35,7 @@
       "line": "Colonel Badr Al-Shammari, who first saw the radar go silent, leads the assault."
     },
     {
-      "src": "D:/rtsai-campaign/footage-out/every-light-on/objective-1.mp4",
+      "src": "D:/Videos/RTSAI/campaign-footage/every-light-on/objective-1.mp4",
       "kind": "game",
       "dur": 4.2,
       "zoom": 1.1,
@@ -45,7 +45,7 @@
       }
     },
     {
-      "src": "D:/rtsai-campaign/footage-out/every-light-on/objective-2.mp4",
+      "src": "D:/Videos/RTSAI/campaign-footage/every-light-on/objective-2.mp4",
       "kind": "game",
       "dur": 4.2,
       "zoom": 1.1,
@@ -55,7 +55,7 @@
       }
     },
     {
-      "src": "D:/rtsai-campaign/footage-out/every-light-on/objective-3.mp4",
+      "src": "D:/Videos/RTSAI/campaign-footage/every-light-on/objective-3.mp4",
       "kind": "game",
       "dur": 4.2,
       "zoom": 1.1,
@@ -71,7 +71,7 @@
       "line": "Four commanders hold four fronts. The final strike waits until the towns are clear."
     },
     {
-      "src": "D:/rtsai-campaign/footage-out/every-light-on/battle.mp4",
+      "src": "D:/Videos/RTSAI/campaign-footage/every-light-on/battle.mp4",
       "kind": "game",
       "in": 1.5,
       "dur": 10,

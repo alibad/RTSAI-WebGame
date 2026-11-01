@@ -13,7 +13,7 @@
       "poster": true
     },
     {
-      "src": "D:/rtsai-campaign/footage-out/straits-shield/establishing.mp4",
+      "src": "D:/Videos/RTSAI/campaign-footage/straits-shield/establishing.mp4",
       "kind": "game",
       "voice": "C:/Users/Admin/Code/hq/montage/out/reels/films/story-mv77pjvz/n02.wav",
       "line": "Three drone uplinks watch the crossing, and a harbour relay ties them together.",
@@ -32,7 +32,7 @@
       "line": "Recon above. Armour ashore. Ships along the crossing. Then we go."
     },
     {
-      "src": "D:/rtsai-campaign/footage-out/straits-shield/objective-1.mp4",
+      "src": "D:/Videos/RTSAI/campaign-footage/straits-shield/objective-1.mp4",
       "kind": "game",
       "dur": 4.2,
       "zoom": 1.1,
@@ -42,7 +42,7 @@
       }
     },
     {
-      "src": "D:/rtsai-campaign/footage-out/straits-shield/objective-2.mp4",
+      "src": "D:/Videos/RTSAI/campaign-footage/straits-shield/objective-2.mp4",
       "kind": "game",
       "dur": 4.2,
       "zoom": 1.1,
@@ -52,7 +52,7 @@
       }
     },
     {
-      "src": "D:/rtsai-campaign/footage-out/straits-shield/objective-3.mp4",
+      "src": "D:/Videos/RTSAI/campaign-footage/straits-shield/objective-3.mp4",
       "kind": "game",
       "dur": 4.2,
       "zoom": 1.1,
@@ -62,7 +62,7 @@
       }
     },
     {
-      "src": "D:/rtsai-campaign/footage-out/straits-shield/objective-4.mp4",
+      "src": "D:/Videos/RTSAI/campaign-footage/straits-shield/objective-4.mp4",
       "kind": "game",
       "dur": 4.2,
       "zoom": 1.1,
@@ -78,7 +78,7 @@
       "line": "This operation is a lesson in making the whole army matter."
     },
     {
-      "src": "D:/rtsai-campaign/footage-out/straits-shield/battle.mp4",
+      "src": "D:/Videos/RTSAI/campaign-footage/straits-shield/battle.mp4",
       "kind": "game",
       "in": 1.5,
       "dur": 10,

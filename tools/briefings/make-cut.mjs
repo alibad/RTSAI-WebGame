@@ -4,7 +4,7 @@
 //   opening shot → the real battlefield (the briefing-table line over the establishing glide) → ... → the commander →
 //   every objective on the real map, with its card → live battle → the remaining shots → the last shot and the title.
 // A mission with no footage yet keeps its cinematic shots only.
-//   node tools/briefings/make-cut.mjs <mission> [--footage D:/rtsai-campaign/footage-out] [--montage http://127.0.0.1:8018]
+//   node tools/briefings/make-cut.mjs <mission> [--footage D:/Videos/RTSAI/campaign-footage] [--montage http://127.0.0.1:8018]
 //        [--films C:/Users/Admin/Code/hq/montage/out/reels] [--battle 10] [--zoom 1.25]
 //        [--clips <shot id -> mp4 json> --music <score>]   (clips straight from the video queue instead of Montage)
 import fs from "node:fs";
@@ -15,7 +15,7 @@ const mission = argv[0];
 const opt = (k, d) => { const i = argv.indexOf(`--${k}`); return i >= 0 ? argv[i + 1] : d; };
 const here = path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Z]:)/, "$1"));
 const spec = JSON.parse(fs.readFileSync(path.join(here, `${mission}.json`), "utf8"));
-const footageDir = path.join(opt("footage", "D:/rtsai-campaign/footage-out"), mission);
+const footageDir = path.join(opt("footage", "D:/Videos/RTSAI/campaign-footage"), mission);
 const reels = opt("films", "C:/Users/Admin/Code/hq/montage/out/reels");
 const battleSeconds = Number(opt("battle", 10));
 const zoom = Number(opt("zoom", 1.25));

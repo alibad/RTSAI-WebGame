@@ -13,7 +13,7 @@
       "poster": true
     },
     {
-      "src": "D:/rtsai-campaign/footage-out/ghosts-on-the-glass/establishing.mp4",
+      "src": "D:/Videos/RTSAI/campaign-footage/ghosts-on-the-glass/establishing.mp4",
       "kind": "game",
       "dur": 6.5,
       "zoom": 1.1,
@@ -41,7 +41,7 @@
       "line": "Lieutenant Colonel Maya Ronen trusts nothing she has not seen twice."
     },
     {
-      "src": "D:/rtsai-campaign/footage-out/ghosts-on-the-glass/objective-1.mp4",
+      "src": "D:/Videos/RTSAI/campaign-footage/ghosts-on-the-glass/objective-1.mp4",
       "kind": "game",
       "dur": 4.2,
       "zoom": 1.1,
@@ -51,7 +51,7 @@
       }
     },
     {
-      "src": "D:/rtsai-campaign/footage-out/ghosts-on-the-glass/objective-2.mp4",
+      "src": "D:/Videos/RTSAI/campaign-footage/ghosts-on-the-glass/objective-2.mp4",
       "kind": "game",
       "dur": 4.2,
       "zoom": 1.1,
@@ -61,7 +61,7 @@
       }
     },
     {
-      "src": "D:/rtsai-campaign/footage-out/ghosts-on-the-glass/objective-4.mp4",
+      "src": "D:/Videos/RTSAI/campaign-footage/ghosts-on-the-glass/objective-4.mp4",
       "kind": "game",
       "dur": 4.2,
       "zoom": 1.1,
@@ -71,7 +71,7 @@
       }
     },
     {
-      "src": "D:/rtsai-campaign/footage-out/ghosts-on-the-glass/objective-5.mp4",
+      "src": "D:/Videos/RTSAI/campaign-footage/ghosts-on-the-glass/objective-5.mp4",
       "kind": "game",
       "dur": 4.2,
       "zoom": 1.1,
@@ -81,7 +81,7 @@
       }
     },
     {
-      "src": "D:/rtsai-campaign/footage-out/ghosts-on-the-glass/battle.mp4",
+      "src": "D:/Videos/RTSAI/campaign-footage/ghosts-on-the-glass/battle.mp4",
       "kind": "game",
       "in": 1.5,
       "dur": 10,

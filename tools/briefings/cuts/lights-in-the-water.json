@@ -13,7 +13,7 @@
       "poster": true
     },
     {
-      "src": "D:/rtsai-campaign/footage-out/lights-in-the-water/establishing.mp4",
+      "src": "D:/Videos/RTSAI/campaign-footage/lights-in-the-water/establishing.mp4",
       "kind": "game",
       "dur": 6.5,
       "zoom": 1.1,
@@ -35,7 +35,7 @@
       "line": "Captain Nabil Haidar takes a small team. No base, no noise."
     },
     {
-      "src": "D:/rtsai-campaign/footage-out/lights-in-the-water/objective-1.mp4",
+      "src": "D:/Videos/RTSAI/campaign-footage/lights-in-the-water/objective-1.mp4",
       "kind": "game",
       "dur": 4.2,
       "zoom": 1.1,
@@ -45,7 +45,7 @@
       }
     },
     {
-      "src": "D:/rtsai-campaign/footage-out/lights-in-the-water/objective-2.mp4",
+      "src": "D:/Videos/RTSAI/campaign-footage/lights-in-the-water/objective-2.mp4",
       "kind": "game",
       "dur": 4.2,
       "zoom": 1.1,
@@ -55,7 +55,7 @@
       }
     },
     {
-      "src": "D:/rtsai-campaign/footage-out/lights-in-the-water/objective-3.mp4",
+      "src": "D:/Videos/RTSAI/campaign-footage/lights-in-the-water/objective-3.mp4",
       "kind": "game",
       "dur": 4.2,
       "zoom": 1.1,
@@ -65,7 +65,7 @@
       }
     },
     {
-      "src": "D:/rtsai-campaign/footage-out/lights-in-the-water/objective-5.mp4",
+      "src": "D:/Videos/RTSAI/campaign-footage/lights-in-the-water/objective-5.mp4",
       "kind": "game",
       "dur": 4.2,
       "zoom": 1.1,
@@ -75,7 +75,7 @@
       }
     },
     {
-      "src": "D:/rtsai-campaign/footage-out/lights-in-the-water/battle.mp4",
+      "src": "D:/Videos/RTSAI/campaign-footage/lights-in-the-water/battle.mp4",
       "kind": "game",
       "in": 1.5,
       "dur": 10,
