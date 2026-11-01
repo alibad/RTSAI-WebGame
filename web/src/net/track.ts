@@ -1,17 +1,18 @@
 // Game events, by the names the website defines (RTSAI-Web lib/event-registry.ts). Every event goes to Google Analytics
-// (the same GA4 property as rtsai.net) once the player has allowed it; the ones the website counts or emails also go to
+// (the same GA4 property as rtsai.net) unless the player turned it off; the ones the website counts or emails also go to
 // its POST /api/event as the signed-in player, whatever the choice (first-party, as /privacy says). Fire and forget:
 // analytics never blocks or breaks the game.
 import { accountsConfigured, currentUser, firebaseApp, siteApi } from "./account";
 
-/** The player's analytics choice, written on this origin by the website's banner, footer or account page (RTSAI-Web
- * lib/consent.ts): { "analytics": "granted" | "denied", "at": ISO time }. No choice yet means no Google Analytics. */
+/** The player's analytics choice, written on this origin by the website's account page (RTSAI-Web lib/consent.ts):
+ * { "analytics": "granted" | "denied", "at": ISO time }. Google Analytics is on unless it says "denied" (owner, 1 Nov
+ * 2026: no banner). */
 export const CONSENT_KEY = "rtsai.consent.v1";
 export function analyticsAllowed(raw: string | null | undefined) {
-  try { return (JSON.parse(raw ?? "null") as { analytics?: unknown } | null)?.analytics === "granted"; } catch { return false; }
+  try { return (JSON.parse(raw ?? "null") as { analytics?: unknown } | null)?.analytics !== "denied"; } catch { return true; }
 }
 function storedChoiceAllows() {
-  try { return analyticsAllowed(globalThis.localStorage?.getItem(CONSENT_KEY)); } catch { return false; }
+  try { return analyticsAllowed(globalThis.localStorage?.getItem(CONSENT_KEY)); } catch { return true; }
 }
 
 export type GameEvent = "game_loaded" | "match_started" | "match_ended" | "multiplayer_created" | "multiplayer_joined"
@@ -24,8 +25,8 @@ export const SERVER_EVENTS = new Set<GameEvent>(["game_loaded", "match_started",
   "multiplayer_started", "ai_assist", "game_error"]);
 
 let analytics: Promise<((name: string, props: Props) => void) | null> | null = null;
-/** Google Analytics, loaded on the first event after the player allowed it (never before). Consent mode as on the
- * website: analytics storage only, no ads storage or signals; a later "No thanks" in another tab stops collection. */
+/** Google Analytics, loaded on the first event unless the player turned it off. Consent mode as on the website:
+ * analytics storage only, no ads storage or signals; turning it off on the account page (another tab) stops collection. */
 function ga() {
   return analytics ??= (async () => {
     if (!import.meta.env.VITE_FIREBASE_MEASUREMENT_ID) return null;
