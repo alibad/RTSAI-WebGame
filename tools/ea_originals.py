@@ -698,9 +698,33 @@ class Generator:
 
     # -- the plan
 
+    def _stand_in_facings(self, ri, ci):
+        """Record the facing count (ISpriteSequence.Facings: InterpolatedFacings, else |Facings|) of each stand-in
+        sequence with more than one facing. WithSpriteTurret and WithSpriteBarrel quantize the actor's Turreted to
+        their sequence's facings when they are constructed, even while the ea-art condition disables them, so an alias
+        must report the same count (see generate)."""
+        node = self.curseq[ci]
+        defaults = node.get('Defaults')
+        known = self.facings.setdefault(ri, {})
+        for s in node.children:
+            if s.key == 'Defaults':
+                continue
+            value = None
+            for key in ('InterpolatedFacings', 'Facings'):
+                value = s.val(key) or (defaults.val(key) if defaults is not None else None)
+                if value:
+                    break
+            facings = abs(int(value)) if value else 1
+            if facings <= 1:
+                continue
+            if known.get(s.key, facings) != facings:
+                raise GenerationError(f'ea-{ri}.{s.key}: the stand-in images disagree on facings ({known[s.key]}, {facings})')
+            known[s.key] = facings
+
     def plan(self):
         self.actors = {}       # actor -> facts
         self.images = {}       # reference image -> names the EA twin must provide
+        self.facings = {}      # reference image -> {stand-in sequence name: facings} (more than one facing only)
         self.models = set()    # reference voxel images used
         for name in sorted(self.skirmish):
             if not self.skirmish[name] & set(COUNTRIES) or name not in self.cur or name not in self.ref:
@@ -725,6 +749,7 @@ class Generator:
                     ci = render_image(cur, k)
                     if ci in self.curseq:
                         self.images[ri].update(c.key for c in self.curseq[ci].children if c.key != 'Defaults')
+                        self._stand_in_facings(ri, ci)
                 facts['images'] = images
             elif cur.get('RenderSprites') is not None or ref.get('RenderSprites') is not None:
                 raise GenerationError(f'{name}: RenderSprites differs between the reference and the current game')
@@ -788,6 +813,12 @@ class Generator:
                     continue  # RenderSprites falls back to the undamaged sequence
                 alias = self._alias(needed, own, mind_seq).clone()
                 alias.key = needed
+                facings = self.facings.get(ri, {}).get(needed, 1)
+                if alias.val('Filename') == BLANK and facings > 1:
+                    # The transparent frame keeps the stand-in's facing count: a disabled stand-in sprite turret still
+                    # quantizes the shared Turreted to it, and one facing locked the original countries' voxel turret,
+                    # muzzle flash and shell origin facing north (the Grizzly, 1 November 2026).
+                    alias.children.append(Node('InterpolatedFacings', str(facings)))
                 seqs[needed] = alias
                 self.aliases.setdefault('ea-' + ri, []).append(needed)
             seq_nodes.append(Node('ea-' + ri, None, list(seqs.values())))

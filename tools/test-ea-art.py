@@ -228,6 +228,15 @@ class Generated(unittest.TestCase):
         types = self.rules['dog'].get('WithDeathAnimation@ea-normal').get('DeathTypes')
         self.assertIsNotNone(types.get('FlameDeath'))
 
+    def test_original_turrets_keep_the_stand_in_facings(self):
+        # A stand-in WithSpriteTurret, disabled for the original countries, still quantizes the shared Turreted to its
+        # sequence's facings: a one-facing blank locked the Grizzly's voxel turret, muzzle flash and shells facing north
+        # (1 November 2026). The transparent alias reports the stand-in's 32 facings instead.
+        for image in ('ea-mtnk', 'ea-htnk', 'ea-fv', 'ea-ttnk', 'ea-apoc', 'ea-sref'):
+            turret = self.seqs[image].get('turret')
+            self.assertEqual(turret.val('Filename'), E.BLANK, image)
+            self.assertEqual(turret.val('InterpolatedFacings'), '32', image)
+
     def test_suicide_damage_uses_restored_weapon_not_just_targeting_armament(self):
         weapons = {n.key: n for n in E.parse((self.content / 'ea-retail-weapons.yaml').read_text(encoding='utf-8'))}
         for actor, name, damage in [('terror', 'ea-retail-terrorbomb', '225'), ('dtruck', 'ea-retail-demobomb', '300')]:
