@@ -714,6 +714,7 @@ export class Game {
     // Outside a match the canvas is hidden behind the menus (App.tsx): drawing it there was full-screen work every frame.
     const replay = playing ? (this.coach.review ? [this.coach.review.snapshot, null] as const : this.sandbox?.replayFrame()) : null;
     if (playing && this.shouldDraw(now, cur, !!replay)) {
+      this.renderer.editorWorld = !!this.editor?.active;
       if (replay) this.renderer.render(replay[0], replay[1], this.cam, this.overlay, replay[0].receivedAt + 40);
       else this.renderer.render(cur, this.client.prev, this.cam, this.overlay, performance.now());
       this.frames++;

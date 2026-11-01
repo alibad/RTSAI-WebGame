@@ -112,6 +112,8 @@ export class Renderer {
   onMissingTexture: (id: number) => void = () => {};
   /** Debug filter (?only=r2): draw only actors whose type passes, no terrain or effects. */
   actorFilter: ((actorType: number) => boolean) | null = null;
+  /** The map editor's world (WorldType.Editor): drawn whole, as the desktop editor shows it, not clipped to the bounds. */
+  editorWorld = false;
   /** Set to request a pixel readback right after the next frame (verification without screenshots). */
   pixelProbe: ((stats: { nonBackground: number; colors: number; meanRGB: number[] }) => void) | null = null;
   /**
@@ -372,6 +374,35 @@ export class Renderer {
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
     this.shroudSize = [W, H];
     this.version++;
+  }
+
+  /**
+   * Clips the world to the map's playable bounds, as the desktop's WorldRenderer.Draw does (Viewport.GetScissorBounds:
+   * the corner cells' centres, out by half a cell and half a tile): terrain, actors and shroud, not what is drawn above
+   * the shroud. The cells outside the bounds still have terrain, and in the isometric games a raised one draws up to
+   * MaximumTerrainHeight levels above its row: past the top of the shroud's quad (random maps keep 17 rows of hills
+   * above their bounds). Isometric rows alternate by half a tile; the side edges take the outer one. The map editor's
+   * world is not clipped (GetScissorBounds(false)). Returns whether the scissor test is on.
+   */
+  private clipToBounds(cam: Camera, bw: number, bh: number): boolean {
+    const info = this.info;
+    if (!info || this.editorWorld || this.actorFilter) return false;
+    const iso = info.gridType !== "Rectangular";
+    const [tw, th] = info.tileSize;
+    const [hw, hh] = iso ? [tw / 2, th / 2] : [tw, th];
+    const [ox, oy] = info.cellOrigin;
+    const [l, t, r, b] = info.mapBounds;
+    const dx = (tw * 512) / info.tileScale + tw / 2, dy = (th * 512) / info.tileScale + th / 2;
+    const [W, H] = Renderer.viewSize(this.canvas, cam.zoom);
+    const kx = bw / W, ky = bh / H, sx = cam.x - W / 2, sy = cam.y - H / 2;
+    const x0 = Math.max(0, Math.floor((ox + (iso ? 2 * l : l) * hw - dx - sx) * kx));
+    const x1 = Math.min(bw, Math.ceil((ox + (iso ? 2 * r - 1 : r - 1) * hw + dx - sx) * kx));
+    const y0 = Math.max(0, Math.floor((oy + t * hh - dy - sy) * ky));
+    const y1 = Math.min(bh, Math.ceil((oy + (b - 1) * hh + dy - sy) * ky));
+    if (x0 <= 0 && y0 <= 0 && x1 >= bw && y1 >= bh) return false;
+    this.gl.enable(this.gl.SCISSOR_TEST);
+    this.gl.scissor(x0, bh - y1, Math.max(0, x1 - x0), Math.max(0, y1 - y0));
+    return true;
   }
 
   private drawShroud(cam: Camera) {
@@ -714,6 +745,7 @@ export class Renderer {
     gl.activeTexture(gl.TEXTURE8);
     gl.bindTexture(gl.TEXTURE_2D, this.palette.tex);
 
+    const clipped = this.clipToBounds(cam, bw, bh);
     // Terrain
     if (this.terrainVao && !this.actorFilter) {
       gl.useProgram(this.terrainProg);
@@ -740,6 +772,7 @@ export class Renderer {
     if (cur) this.drawCaptured(cur, cam);
     if (depthOn) gl.disable(gl.DEPTH_TEST);
     this.drawShroud(cam);
+    if (clipped) gl.disable(gl.SCISSOR_TEST);
     if (cur) this.drawCaptured(cur, cam, false, true); // above the shroud: always-visible range circles (sensor zones)
     if (cur) this.drawSprites(cur, prev, cam, now, true); // above the shroud: placement previews, rally points
     if (cur) this.drawOverlay(cur, prev, cam, overlay, now);
