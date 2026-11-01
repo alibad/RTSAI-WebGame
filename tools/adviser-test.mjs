@@ -8,7 +8,7 @@ import { execFileSync } from 'node:child_process';
 import { nextAdvice, assessThreat, desiredHarvesterCount } from '../web/src/adviser.ts';
 
 const repo = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const companion = path.join(process.env.OPENRA_AI_ROOT ?? path.resolve(repo, '../OpenRA-AI'), 'services/companion/src');
+const companion = path.join(process.env.OPENRA_AI_ROOT ?? path.resolve(repo, '../RTSAI-Mod/companion'), 'services/companion/src');
 // PYTHON picks the interpreter; otherwise python3, or python where python3 is only the Windows Store stub.
 const python = process.env.PYTHON ?? (() => { try { execFileSync('python3', ['--version'], { stdio: 'ignore' }); return 'python3'; } catch { return 'python'; } })();
 const parity = JSON.parse(execFileSync(python, ['-c', String.raw`

@@ -1,4 +1,4 @@
-// The AI co-commander for the browser game, local mode. The companion (OpenRA-AI services/companion, Python)
+// The AI co-commander for the browser game, local mode. The companion (RTSAI-Mod/companion/services/companion, Python)
 // expects to reach the game over gRPC (rl_bridge.proto); in the browser the game runs in a Web Worker, so this
 // module bridges the two:
 //
@@ -23,7 +23,7 @@ import { probeLocalAI } from "./local-ai-readiness.mjs";
 export const GRPC_PORT = Number(process.env.RTSAI_WEB_COMPANION_GRPC ?? 9988);
 export const CONTROL_PORT = Number(process.env.RTSAI_WEB_COMPANION_PORT ?? 8797);
 const MOCK_PORT = Number(process.env.RTSAI_WEB_MOCK_AI_PORT ?? 4010);
-// The product's local AI stack (OpenRA-AI ai/: llama.cpp + Qwen3-VL 2B, whisper.cpp base.en, Kokoro), served by its
+// The product's local AI stack (RTSAI-Mod/companion/ai/: llama.cpp + Qwen3-VL 2B, whisper.cpp base.en, Kokoro), served by its
 // own gateway (openra_ai_companion.local_runtime) on ports apart from the desktop game's 4000-4002.
 const LOCAL_GATEWAY_PORT = Number(process.env.RTSAI_WEB_LOCAL_AI_PORT ?? 4020);
 // Optional: an already running OpenAI-compatible gateway for local mode (e.g. the machine's GPU models) instead of
@@ -237,7 +237,7 @@ export function createCompanion({ repo, appData, log = console.log }) {
 
   // ---------------------------------------------------------------- the companion process
 
-  const openraAi = process.env.RTSAI_OPENRA_AI ?? path.resolve(repo, "..", "OpenRA-AI");
+  const openraAi = process.env.RTSAI_OPENRA_AI ?? path.resolve(repo, "..", "RTSAI-Mod", "companion");
   const python = process.env.RTSAI_COMPANION_PYTHON ?? path.join(openraAi, ".venv", process.platform === "win32" ? "Scripts/python.exe" : "bin/python");
   let proc = null, mode = "", mock = null, runtime = null;
   let startGeneration = 0, starting = null, startingMode = "";

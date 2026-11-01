@@ -9,7 +9,8 @@ import shutil
 import subprocess
 
 WORKSPACE = Path(__file__).resolve().parents[2]
-REPOS = ['OpenRA', 'OpenRA-AI', 'OpenRA-RL', 'RTSAI-Art', 'RTSAI-Film', 'RTSAI-Mod', 'RTSAI-Web', 'RTSAI-WebGame']
+# OpenRA-AI (now RTSAI-Mod/companion), OpenRA-RL and RTSAI-Film (now RTSAI-Art/film) were archived on 1 Nov 2026.
+REPOS = ['OpenRA', 'RTSAI-Art', 'RTSAI-Mod', 'RTSAI-Web', 'RTSAI-WebGame']
 
 def git(repo, *args, check=True):
     return subprocess.run(['git', '-C', str(repo), *args], capture_output=True, check=check).stdout
@@ -78,7 +79,7 @@ def main():
     out.mkdir(parents=True)
     with concurrent.futures.ThreadPoolExecutor(max_workers=2) as pool:
         reports = list(pool.map(lambda name: snapshot(name, out), REPOS))
-    for parent in ['OpenRA-AI', 'OpenRA-RL']:
+    for parent in []:  # no repository carries a nested engine checkout any more
         modules = git(WORKSPACE / parent, 'config', '--file', '.gitmodules', '--get-regexp', r'^submodule\..*\.path$', check=False).decode().splitlines()
         for index, module in enumerate(modules):
             nested = WORKSPACE / parent / module.split(' ', 1)[1]

@@ -226,7 +226,7 @@ async function main() {
     process.env.RTSAI_MAP_MOD_ROOT = path.join(repo, '.inputs/mod');
     process.env.RTSAI_MAP_OUTPUT_ROOT = path.join(repo, 'build/local-maps');
     process.env.RTSAI_SITE_PUBLIC = path.resolve(repo, '../RTSAI-Web/public');
-    process.env.RTSAI_OPENRA_AI = path.resolve(repo, '../OpenRA-AI');
+    process.env.RTSAI_OPENRA_AI = path.resolve(repo, '../RTSAI-Mod/companion');
     await import(pathToFileURL(path.join(config.serverRoot ?? repo, 'server/serve.mjs')).href);
     return;
   }

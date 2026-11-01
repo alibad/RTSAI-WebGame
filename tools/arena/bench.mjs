@@ -1,4 +1,4 @@
-// Voice-orders bench: the OpenRA-AI companion's own 281 spoken/typed order cases (evals/nl_orders), interpreted with
+// Voice-orders bench: the companion's own (RTSAI-Mod/companion) 281 spoken/typed order cases (evals/nl_orders), interpreted with
 // the chosen brain behind the order-adapter, graded by the benchmark's own grader. Writes one record per run.
 //   node tools/arena/bench.mjs --orders llm|openai|jev|laya|offline [--path model|pipeline] [--only <ids, fixtures, ...>]
 // path "pipeline" is the product: the companion's rules answer what they can and the model gets the rest. path "model"
@@ -12,7 +12,7 @@ import { startAdapter } from "./order-adapter.mjs";
 import { keyStore } from "./providers.mjs";
 
 const GAMES = path.resolve(import.meta.dirname, "..", "..", "..");
-const COMPANION = path.join(GAMES, "OpenRA-AI");
+const COMPANION = path.join(GAMES, "RTSAI-Mod", "companion");
 const PYTHON = path.join(COMPANION, ".venv", "Scripts", "python.exe");
 const RUN_EVAL = path.join(COMPANION, "services", "companion", "evals", "nl_orders", "run_eval.py");
 export const BENCH_BRAINS = {
@@ -49,7 +49,7 @@ print("\\n".join(c["id"] for c in cases() if not w or w & {c["id"], c["fixture"]
 /** Runs one bench; resolves to its record. progress(line) gets the benchmark's per-case lines. */
 export async function runBench({ orders, only = "", pathMode = "model", dir, keys, progress = () => {}, stopped = () => false }) {
   if (!BENCH_BRAINS[orders]) throw new Error(`unknown bench brain ${orders}`);
-  if (!fs.existsSync(PYTHON) || !fs.existsSync(RUN_EVAL)) throw new Error("The OpenRA-AI companion checkout (and its .venv) is needed for the bench.");
+  if (!fs.existsSync(PYTHON) || !fs.existsSync(RUN_EVAL)) throw new Error("The companion (RTSAI-Mod/companion and its .venv) is needed for the bench.");
   if (orders !== "offline" && !keys.get("openai")) throw new Error("The bench needs an OpenAI key for the chat model (questions are answered by gpt-4.1-mini).");
   const modelOnly = pathMode === "model" && orders !== "offline";
   const id = `${new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19)}-${orders}-${modelOnly ? "model" : "pipeline"}-${crypto.randomBytes(2).toString("hex")}`;

@@ -14,10 +14,10 @@ export const PRICES = {
 };
 
 const GAMES = path.resolve(import.meta.dirname, "..", "..", "..");
-/** Where existing keys live on this machine (git-ignored files): OpenRA-AI's own .env (OPENAI_API_KEY, which the
+/** Where existing keys live on this machine (git-ignored files): the companion's own .env (RTSAI-Mod/companion/.env: OPENAI_API_KEY, which the
  * companion's research tools read) and the BeTenshi console's .env (OPENROUTER_API_KEY, which its Decision Lab uses for
  * Jev). */
-const KEY_FILES = [path.join(GAMES, "OpenRA-AI", ".env"), path.join(GAMES, "..", "..", "AI", "betenshi-console", ".env")];
+const KEY_FILES = [path.join(GAMES, "RTSAI-Mod", "companion", ".env"), path.join(GAMES, "..", "..", "AI", "betenshi-console", ".env")];
 
 export const PROVIDERS = {
   scripted: { label: "Scripted scorer", paid: false },

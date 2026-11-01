@@ -44,7 +44,7 @@ def main():
     ap.add_argument('--out', type=Path, required=True)
     ap.add_argument('--mod', type=Path, default=ROOT.parent/'RTSAI-Mod')
     ap.add_argument('--engine-repo', type=Path, default=ROOT.parent/'OpenRA')
-    ap.add_argument('--missions', type=Path, default=ROOT.parent/'OpenRA-AI')
+    ap.add_argument('--missions', type=Path, default=ROOT.parent/'RTSAI-Mod')
     ap.add_argument('--committed', action='store_true', help='Freeze committed main sources only; leave concurrent working changes untouched')
     args=ap.parse_args(); dest=args.out.absolute()
     if dest.exists(): raise ValueError(f'Refusing existing input directory: {dest}')
