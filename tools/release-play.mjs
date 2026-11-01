@@ -14,7 +14,7 @@
 //   node tools/release-play.mjs abort                   gives up the prepared release (and the lock)
 // The release in progress is <work>/release.json; it is also the lock: one release at a time on this machine.
 // Receipts of finished releases are in <work>/releases/.
-import { execFileSync, execSync, spawn } from "node:child_process";
+import { execFileSync, execSync, spawn, spawnSync } from "node:child_process";
 import crypto from "node:crypto";
 import fs from "node:fs";
 import net from "node:net";
@@ -127,6 +127,26 @@ function runtimeOf(build) {
   if (build.runtimeSource) return build.runtimeSource;
   const known = config.knownRuntimes[build.rtRoot];
   return known && { webgame: git("rev-parse", known.webgame), hash: runtimeSourceHash(known.webgame), engine: known.engine, mod: known.mod };
+}
+
+/**
+ * The usage report the workspace rules ask for before a production deployment. Vercel counts billing periods in Los
+ * Angeles time and answers "Costs not found (404)" for a period with no costs recorded yet, so for the first hours of a
+ * new period this reports the previous one instead (and says so). Any other failure still refuses.
+ */
+function vercelUsage(team) {
+  const run = (extra) => spawnSync(`vercel usage --scope ${team}${extra}`, { shell: true, encoding: "utf8" });
+  const r = run("");
+  if (r.status === 0) { process.stdout.write(r.stdout); return; }
+  const text = `${r.stdout}${r.stderr}`;
+  if (!/Costs not found \(404\)/.test(text)) { process.stdout.write(text); refuse("vercel usage failed"); }
+  const la = new Date(new Date().toLocaleString("en-US", { timeZone: "America/Los_Angeles" }));
+  const first = new Date(la.getFullYear(), la.getMonth() - 1, 1), last = new Date(la.getFullYear(), la.getMonth(), 0);
+  const day = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  say(`  the current billing period has no costs recorded yet (Vercel: Costs not found); the previous period ${day(first)}..${day(last)}:`);
+  const prev = run(` --from ${day(first)} --to ${day(last)}`);
+  process.stdout.write(`${prev.stdout}${prev.stderr}`);
+  if (prev.status !== 0) refuse("vercel usage failed for the previous billing period too");
 }
 
 function readLock() {
@@ -804,7 +824,7 @@ async function promote() {
   const project = await vercel(`/v9/projects/${config.vercel.project}`);
   if (project.resourceConfig?.buildMachineType !== "standard") refuse(`${config.vercel.project} uses the ${project.resourceConfig?.buildMachineType} build machine, not standard`);
   step(`vercel usage --scope ${config.vercel.team}`);
-  execSync(`vercel usage --scope ${config.vercel.team}`, { stdio: "inherit" });
+  vercelUsage(config.vercel.team);
   step(`promote ${state.preview.id}`);
   execSync(`vercel promote ${state.preview.url} --scope ${config.vercel.team} --yes`, { stdio: "inherit", cwd: path.join(work, "vercel-link") });
   try {
