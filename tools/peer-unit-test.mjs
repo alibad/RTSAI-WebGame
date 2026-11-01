@@ -6,7 +6,7 @@ import { pathToFileURL } from 'node:url';
 const out = path.resolve('artifacts/peer-unit');
 fs.mkdirSync(out, { recursive: true });
 execFileSync(process.execPath, ['web/node_modules/typescript/bin/tsc', 'web/src/peer.ts', '--target', 'ES2022', '--module', 'ESNext', '--skipLibCheck', '--outDir', out]);
-const { PeerLockstep, DirectPeer, peerOptions, peerColors, validatePeerScenario, checkSdp } = await import(pathToFileURL(path.join(out, 'peer.js')));
+const { PeerLockstep, DirectPeer, peerOptions, peerColors, validatePeerScenario, checkSdp, routeSummary } = await import(pathToFileURL(path.join(out, 'peer.js')));
 
 // ---- lockstep: two players
 const order = frame => ({ kind: 'orders', frame, data: 'AAAA' });
@@ -81,5 +81,21 @@ await assert.rejects(answered.answer(sdp), /answering again/);
 await assert.rejects(answered.accept(sdp), /already answered/);
 answered.close();
 
+// ---- what a failed join reports about each side's routes (multiplayer.ts joinFailed): kinds and NAT, never addresses
+const candidate = (kind, address, port, protocol = 'udp') => `a=candidate:1 1 ${protocol} 1686052607 ${address} ${port} typ ${kind}${kind === 'srflx' ? ' raddr 0.0.0.0 rport 0' : ''} generation 0`;
+const description = (...lines) => ['v=0', 'm=application 9 UDP/DTLS/SCTP webrtc-datachannel', ...lines].join('\r\n');
+const home = routeSummary(description(candidate('host', 'a1b2.local', 50000), candidate('host', 'a1b2.local', 9, 'tcp'), candidate('srflx', '203.0.113.5', 60474)));
+assert.deepEqual(home, { routes: 'host,srflx', nat: 'keeps one port' });
+const carrier = routeSummary(description(candidate('host', 'c3d4.local', 50001), candidate('srflx', '198.51.100.7', 31001), candidate('srflx', '198.51.100.7', 31877)));
+assert.deepEqual(carrier, { routes: 'host,srflx', nat: 'new port per server' });
+// The game's offer has audio, video and data sections, each on its own socket: three public ports, one per socket.
+const sections = (...per) => ['v=0', ...per.flatMap((lines, i) => [`m=${['audio', 'video', 'application'][i]} 9 UDP/TLS/RTP/SAVPF 111`, ...lines])].join('\r\n');
+assert.equal(routeSummary(sections(...[40001, 40002, 40003].map((p, i) => [candidate('host', 'a1b2.local', 50000 + i), candidate('srflx', '203.0.113.5', p)]))).nat, 'keeps one port');
+// Two network interfaces in one section: two sockets, two public ports, still one port per socket.
+assert.equal(routeSummary(description(candidate('host', 'a1b2.local', 50000), candidate('host', 'f9e8.local', 50001), candidate('srflx', '203.0.113.5', 40001), candidate('srflx', '203.0.113.5', 40002))).nat, 'keeps one port');
+assert.deepEqual(routeSummary(description(candidate('host', 'e5f6.local', 50002))), { routes: 'host', nat: 'no public route' });
+assert.deepEqual(routeSummary(null), { routes: 'none', nat: 'no public route' });
+assert(!JSON.stringify([home, carrier]).match(/\d+\.\d+\.\d+\.\d+|\.local/), 'no address leaves the summary');
+
 // Matchmaking itself is Firestore; its access rules are tested in RTSAI-Web (tools/firestore-rules-test.mjs).
-console.log('PASS N-player lockstep, scenarios with AI, and connection hygiene.');
+console.log('PASS N-player lockstep, scenarios with AI, connection hygiene, and failed-join route summaries.');

@@ -47,6 +47,34 @@ export function checkSdp(value: unknown): string {
 }
 
 /**
+ * What one side's connection description offered, without its addresses: the kinds of route (host: same network,
+ * srflx: a public address found through STUN, relay) and how its NAT maps ports. A NAT that gives each STUN server a
+ * different public port ("symmetric", common on mobile carriers) can't take a direct line from most other networks.
+ */
+export function routeSummary(sdp: string | null | undefined) {
+  const kinds = new Set<string>();
+  let publicRoute = false, perServer = false;
+  // Each section (audio, video, data) gathers on its own sockets, one per network interface (its host candidates):
+  // a NAT that keeps one port gives each socket one public port; a symmetric one gives it a new port per server.
+  for (const section of (sdp ?? '').split(/\r?\nm=/)) {
+    let sockets = 0;
+    const ports = new Map<string, Set<string>>();
+    for (const line of section.split(/\r?\n/)) {
+      const m = /^a=candidate:\S+ \d+ (\S+) \d+ (\S+) (\d+) typ (\S+)/i.exec(line);
+      if (!m) continue;
+      const [, protocol, address, port, kind] = m;
+      kinds.add(kind);
+      if (protocol.toLowerCase() !== 'udp') continue;
+      if (kind === 'host') sockets++;
+      if (kind === 'srflx') { publicRoute = true; ports.set(address, (ports.get(address) ?? new Set()).add(port)); }
+    }
+    if ([...ports.values()].some(p => p.size > Math.max(1, sockets))) perServer = true;
+  }
+  const nat = !publicRoute ? 'no public route' : perServer ? 'new port per server' : 'keeps one port';
+  return { routes: [...kinds].sort().join(',') || 'none', nat };
+}
+
+/**
  * Lockstep barrier for clients 1..count. A frame is released once every client's orders for it have arrived and the
  * previous frame's synchronization reports all agree. Any malformed, conflicting or mismatching input stops it for good.
  */

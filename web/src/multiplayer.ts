@@ -7,7 +7,7 @@ import { buildIdentity } from './sim/build-identity';
 import { answerJoin, closeMatch, createMatch, joinMatch, removeJoin, watchJoins } from './net/matchmaker';
 import { track } from './net/track';
 import { savedMap } from './net/saved-maps';
-import { DirectPeer, MAX_TEAM, PeerLockstep, peerColors, peerMap, peerOptions, validatePeerScenario, type PeerEvent, type PeerScenario } from './peer';
+import { DirectPeer, MAX_TEAM, PeerLockstep, peerColors, peerMap, peerOptions, routeSummary, validatePeerScenario, type PeerEvent, type PeerScenario } from './peer';
 
 export type Seat = { faction: string; team: number; ready: boolean };
 export type AiSeat = { faction: string; bot: string; team: number };
@@ -42,6 +42,9 @@ export type SessionView = {
 
 const idle: SessionView = { stage: 'idle', host: false, room: '', you: 0, lobby: null, chat: [], status: '', error: '', frame: 0, camera: false, remote: [], mapLoading: false };
 const ANSWER_WAIT_MS = 45000, OPEN_WAIT_MS = 20000, HELLO_WAIT_MS = 20000;
+/** The network steps of a guest's join, as the failure report names them. */
+const JOIN_STEPS = { route: 'no connection route found', answer: 'the host never answered', direct: 'the direct line never opened' };
+type JoinStep = keyof typeof JOIN_STEPS;
 
 /** Accepts an invite link (…?join=CODE) or the bare code. */
 export function inviteCode(input: string) {
@@ -285,26 +288,57 @@ export class MultiplayerSession {
     try { room = inviteCode(input); } catch (e) { return this.set({ stage: 'idle', error: message(e) }); }
     const turn = this.reset();
     this.set({ stage: 'connecting', host: false, room, status: 'Contacting your host…' });
+    // The network steps of the join: a failure in one of them is reported once (joinFailed); the matchmaker's own
+    // answers (expired invite, other version) and a guest who gives up are not network failures.
+    let peer: DirectPeer | null = null, step: JoinStep | null = null, since = Date.now();
+    const failed = (shown: string) => { if (peer && step) this.joinFailed(peer, step, since, shown); step = null; };
     try {
       this.setup;
       this.version = await this.fingerprint(); this.guard(turn);
-      const peer = new DirectPeer(); this.hostPeer = peer;
+      const direct = peer = new DirectPeer(); this.hostPeer = direct;
       let opened: () => void = () => {};
       const open = new Promise<void>(resolve => { opened = resolve; });
-      peer.onOpen = () => { opened(); if (this.media) void peer.share(this.media); };
-      peer.onClose = reason => { if (turn === this.generation) this.fail(this.view.stage === 'connecting' ? "Couldn't connect to your host." : `Lost connection to the host. ${reason}`); };
-      peer.onMessage = m => { try { this.fromHost(m); } catch (e) { this.stop(message(e)); } };
-      peer.onMedia = () => this.refreshMedia();
-      const offer = await peer.offer(); this.guard(turn);
+      direct.onOpen = () => { opened(); if (this.media) void direct.share(this.media); };
+      direct.onClose = reason => {
+        if (turn !== this.generation) return;
+        const shown = this.view.stage === 'connecting' ? "Couldn't connect to your host." : `Lost connection to the host. ${reason}`;
+        failed(shown); this.fail(shown);
+      };
+      direct.onMessage = m => { try { this.fromHost(m); } catch (e) { this.stop(message(e)); } };
+      direct.onMedia = () => this.refreshMedia();
+      step = 'route'; since = Date.now();
+      const offer = await direct.offer(); this.guard(turn);
+      step = null;
       const joined = await joinMatch(room, this.version, offer); this.pendingJoin = joined; this.guard(turn);
       this.set({ status: 'Waiting for your host to answer…' });
+      step = 'answer'; since = Date.now();
       const answer = await joined.answer(ANSWER_WAIT_MS); this.guard(turn);
       this.set({ status: 'Connecting directly…' });
-      await peer.accept(answer);
+      step = 'direct'; since = Date.now();
+      await direct.accept(answer);
       const timeout = sleep(OPEN_WAIT_MS).then(() => { throw Error("Couldn't connect directly to your host. Some networks block direct connections; try another network, such as a phone hotspot."); });
       await Promise.race([open, timeout]); this.guard(turn);
-      peer.send({ kind: 'hello', version: this.version });
-    } catch (e) { if (!(e instanceof Cancelled)) this.fail(message(e)); }
+      step = null;
+      direct.send({ kind: 'hello', version: this.version });
+    } catch (e) {
+      // Left or failed meanwhile (a newer generation): a late timeout is neither shown nor reported.
+      if (e instanceof Cancelled || turn !== this.generation) return;
+      failed(message(e)); this.fail(message(e));
+    }
+  }
+
+  /**
+   * A guest's join that failed on the network, for the owner's event log (game_error, grouped under "network" in the
+   * weekly digest): which step, the guest's connection type, and the routes each side offered, without addresses.
+   */
+  private joinFailed(peer: DirectPeer, step: JoinStep, since: number, shown: string) {
+    const connection = (navigator as Navigator & { connection?: { type?: string; effectiveType?: string } }).connection;
+    const yours = routeSummary(peer.pc.localDescription?.sdp), host = routeSummary(peer.pc.remoteDescription?.sdp);
+    track('game_error', {
+      where: 'network', message: `Multiplayer join failed: ${JOIN_STEPS[step]}`, side: 'guest', shown: shown.slice(0, 160),
+      network: connection?.type ?? 'unknown', speed: connection?.effectiveType ?? 'unknown', seconds: Math.round((Date.now() - since) / 1000),
+      your_routes: yours.routes, your_nat: yours.nat, ...(step === 'direct' ? { host_routes: host.routes, host_nat: host.nat, ice: peer.pc.iceConnectionState } : {}),
+    });
   }
 
   private fromHost(m: Record<string, unknown>) {

@@ -51,11 +51,28 @@ in-match chat (Enter) and an optional camera and microphone are included.
   15 seconds stops the match for everyone with the reason on screen. There is no reconnection.
 - **Networks.** Public STUN servers (Google, Cloudflare) find routes. There is no TURN relay. Some strict networks
   cannot connect directly, and the game then suggests trying another network.
+- **Failed joins are reported** (since 1 Nov 2026), so we learn how many players a relay would help. A guest whose
+  join fails on the network sends one `game_error` event: `where: network`, which the weekly digest groups under
+  network errors. Its message names the step:
+  - "no connection route found";
+  - "the host never answered";
+  - "the direct line never opened".
+
+  Its props carry:
+  - what the player saw;
+  - the guest's connection type (`wifi` or `cellular` where the browser says so);
+  - the kinds of route each side offered (`host`, `srflx`, `relay`);
+  - whether each side's NAT keeps one public port or gives each STUN server a new one ("symmetric", which needs a
+    relay with most partners). `routeSummary` in `peer.ts` computes this in the browser, and no address is sent.
+
+  A guest who gives up, an expired invite or a different game version is not a network failure, and is not
+  reported.
 
 ## Checks
 
 ```powershell
 node tools/peer-unit-test.mjs
+node tools/join-failure-browser-test.mjs   # failed joins: real WebRTC in Chromium, the matchmaker stubbed
 # Browser test: Firebase emulators (RTSAI-Web: firebase emulators:start --only auth,firestore --project demo-rtsai),
 # the website on the emulators, and a game build with VITE_FIREBASE_EMULATORS=1 VITE_REQUIRE_SIGNIN=1 on one origin.
 $env:RTSAI_TEST_URL = 'http://127.0.0.1:3520/'
