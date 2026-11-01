@@ -1,7 +1,18 @@
 // Game events, by the names the website defines (RTSAI-Web lib/event-registry.ts). Every event goes to Google Analytics
-// (the same GA4 property as rtsai.net); the ones the website counts or emails also go to its POST /api/event as the
-// signed-in player. Fire and forget: analytics never blocks or breaks the game.
+// (the same GA4 property as rtsai.net) once the player has allowed it; the ones the website counts or emails also go to
+// its POST /api/event as the signed-in player, whatever the choice (first-party, as /privacy says). Fire and forget:
+// analytics never blocks or breaks the game.
 import { accountsConfigured, currentUser, firebaseApp, siteApi } from "./account";
+
+/** The player's analytics choice, written on this origin by the website's banner, footer or account page (RTSAI-Web
+ * lib/consent.ts): { "analytics": "granted" | "denied", "at": ISO time }. No choice yet means no Google Analytics. */
+export const CONSENT_KEY = "rtsai.consent.v1";
+export function analyticsAllowed(raw: string | null | undefined) {
+  try { return (JSON.parse(raw ?? "null") as { analytics?: unknown } | null)?.analytics === "granted"; } catch { return false; }
+}
+function storedChoiceAllows() {
+  try { return analyticsAllowed(globalThis.localStorage?.getItem(CONSENT_KEY)); } catch { return false; }
+}
 
 export type GameEvent = "game_loaded" | "match_started" | "match_ended" | "multiplayer_created" | "multiplayer_joined"
   | "multiplayer_started" | "ai_assist" | "game_error" | "feedback_sent";
@@ -13,14 +24,25 @@ export const SERVER_EVENTS = new Set<GameEvent>(["game_loaded", "match_started",
   "multiplayer_started", "ai_assist", "game_error"]);
 
 let analytics: Promise<((name: string, props: Props) => void) | null> | null = null;
+/** Google Analytics, loaded on the first event after the player allowed it (never before). Consent mode as on the
+ * website: analytics storage only, no ads storage or signals; a later "No thanks" in another tab stops collection. */
 function ga() {
   return analytics ??= (async () => {
     if (!import.meta.env.VITE_FIREBASE_MEASUREMENT_ID) return null;
     try {
       const [{ app }, A, user] = await Promise.all([firebaseApp(), import("firebase/analytics"), currentUser()]);
-      if (!(await A.isSupported())) return null;
+      if (!(await A.isSupported()) || !storedChoiceAllows()) return null;
+      const consent = (granted: boolean) => A.setConsent({ analytics_storage: granted ? "granted" : "denied", ad_storage: "denied",
+        ad_user_data: "denied", ad_personalization: "denied" });
+      consent(true);
       const instance = A.getAnalytics(app);
       if (user) { A.setUserId(instance, user.uid); A.setUserProperties(instance, { account_type: "registered" }); }
+      globalThis.addEventListener?.("storage", (event: StorageEvent) => {
+        if (event.key !== CONSENT_KEY && event.key !== null) return;
+        const allowed = storedChoiceAllows();
+        A.setAnalyticsCollectionEnabled(instance, allowed);
+        consent(allowed);
+      });
       return (name: string, props: Props) => A.logEvent(instance, name, Object.fromEntries(Object.entries(props).filter(([, v]) => v !== undefined)));
     } catch { return null; }
   })();
@@ -29,7 +51,7 @@ function ga() {
 export function track(name: GameEvent, props: Props = {}) {
   if (!accountsConfigured) return;
   try {
-    void ga().then(log => log?.(name, props)).catch(() => { /* analytics never breaks the game */ });
+    if (storedChoiceAllows()) void ga().then(log => log?.(name, props)).catch(() => { /* analytics never breaks the game */ });
     // Only a signed-in player sends (siteApi returns without a user); a failed call is dropped.
     if (SERVER_EVENTS.has(name)) void siteApi("/api/event", { name, props }, true).catch(() => null);
   } catch { /* analytics never breaks the game */ }

@@ -2,6 +2,7 @@
 //  - game_loaded, match_started, match_ended, multiplayer_created, multiplayer_joined, multiplayer_started, ai_assist and
 //    game_error go to the site's POST /api/event (its weekly digest rolls them up); feedback goes through /api/feedback;
 //  - match_ended carries the same map and faction as match_started (a mission's id, else the map);
+//  - Google Analytics loads only after the player's Allow on rtsai.net (localStorage rtsai.consent.v1), never ads signals;
 //  - nothing is sent without a configured account, and a failing analytics call never throws into the game.
 //   node tools/telemetry-unit-test.mjs
 import fs from 'node:fs';
@@ -39,6 +40,44 @@ globalThis.__account.failing = true;
 assert.doesNotThrow(() => track('match_ended', { kind: 'skirmish' }));
 await settle();
 globalThis.__account.failing = false;
+
+// Google Analytics waits for the player's Allow, stored on this origin by the website (RTSAI-Web lib/consent.ts);
+// the first-party /api/event counting does not.
+const { analyticsAllowed, CONSENT_KEY } = await import(trackUrl);
+assert.equal(CONSENT_KEY, 'rtsai.consent.v1');
+assert.equal(analyticsAllowed(JSON.stringify({ analytics: 'granted', at: '2026-11-01T12:00:00.000Z' })), true);
+for (const raw of [null, undefined, '', 'not json', 'null', '{}', JSON.stringify({ analytics: 'denied' }), JSON.stringify({ analytics: true })])
+  assert.equal(analyticsAllowed(raw), false, `${raw} is not an Allow`);
+const gaLog = [], stored = new Map();
+let onStorage = null;
+globalThis.__A = { isSupported: async () => true, getAnalytics: () => { gaLog.push('load'); return {}; }, setConsent: (c) => gaLog.push(['consent', c]),
+  setUserId() {}, setUserProperties() {}, logEvent: (_, name) => gaLog.push(['event', name]), setAnalyticsCollectionEnabled: (_, on) => gaLog.push(['collect', on]) };
+globalThis.localStorage = { getItem: (key) => stored.get(key) ?? null };
+globalThis.addEventListener = (type, f) => { if (type === 'storage') onStorage = f; };
+const { track: gaTrack } = await import(moduleUrl('web/src/net/track.ts', (s) => s
+  .replace(/import \{[^}]*\} from "\.\/account";/, `const accountsConfigured = true;
+const currentUser = async () => null, firebaseApp = async () => ({});
+const siteApi = (path, body) => { globalThis.__site.push({ path, ...body }); return Promise.resolve(null); }; // with GA`)
+  .replace('import("firebase/analytics")', 'Promise.resolve(globalThis.__A)')
+  .replaceAll('import.meta.env', '({ VITE_FIREBASE_MEASUREMENT_ID: "G-TEST" })')));
+const flush = async () => { for (let i = 0; i < 4; i++) await settle(); };
+globalThis.__site.length = 0;
+gaTrack('match_started', { kind: 'skirmish' }); await flush();
+assert.deepEqual(gaLog, [], 'no choice yet: Google Analytics is not even loaded');
+assert.equal(globalThis.__site.length, 1, 'first-party counting goes on without the choice');
+stored.set(CONSENT_KEY, JSON.stringify({ analytics: 'denied' }));
+gaTrack('match_ended', { kind: 'skirmish' }); await flush();
+assert.deepEqual(gaLog, [], '"No thanks": still not loaded');
+stored.set(CONSENT_KEY, JSON.stringify({ analytics: 'granted' }));
+gaTrack('match_ended', { kind: 'skirmish' }); await flush();
+assert.deepEqual(gaLog, [['consent', { analytics_storage: 'granted', ad_storage: 'denied', ad_user_data: 'denied', ad_personalization: 'denied' }], 'load', ['event', 'match_ended']],
+  'Allow: analytics storage only, no ads signals, then the event');
+stored.set(CONSENT_KEY, JSON.stringify({ analytics: 'denied' }));
+onStorage({ key: CONSENT_KEY });
+gaTrack('match_ended', { kind: 'skirmish' }); await flush();
+assert.deepEqual(gaLog.slice(3), [['collect', false], ['consent', { analytics_storage: 'denied', ad_storage: 'denied', ad_user_data: 'denied', ad_personalization: 'denied' }]],
+  '"No thanks" in another tab stops collection, and no further event is logged');
+delete globalThis.localStorage; delete globalThis.addEventListener;
 
 // telemetry.ts: match_ended repeats match_started's map and faction.
 const calls = [];
@@ -96,4 +135,4 @@ const siteApi = (path, body) => { globalThis.__site.push({ path, ...body }); ret
 offline('match_ended', { kind: 'skirmish' });
 await settle();
 assert.equal(globalThis.__site.length, 0);
-console.log('Telemetry checks passed: the digest\'s game events go to /api/event, match_ended carries map and faction, failures stay silent.');
+console.log('Telemetry checks passed: the digest\'s game events go to /api/event, match_ended carries map and faction, GA waits for Allow, failures stay silent.');
