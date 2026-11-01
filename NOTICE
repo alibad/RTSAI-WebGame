@@ -1,0 +1,73 @@
+RTS AI web game (RTSAI-WebGame)
+https://rtsai.net/play
+
+Copyright (c) The OpenRA Developers and Contributors, and the RTS AI contributors.
+
+This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public
+License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later
+version. See LICENSE. Unless a file or folder below says otherwise, everything in this repository is under LICENSE.
+
+EA has not endorsed and does not support this product.
+
+
+Source of a running build
+-------------------------
+The game's menu links "Source code" to the commit of this repository it was built from. Each release also publishes
+BUILD.json beside the page, naming every source it was built from:
+
+- this repository (the page and the browser runtime)  frontendSourceCommit, runtimeSource.webgame
+- the OpenRA engine (fork github.com/alibad/OpenRA)   runtimeSource.engine
+- the RTS AI mod (github.com/alibad/RTSAI-Mod)         runtimeSource.mod, inputs
+- the RTS AI website (RTSAI-Web), whose unit cards,   release.site
+  Earth compiler and UI kit (web/src/components/ui)
+  are compiled into the page
+
+
+Built on
+--------
+OpenRA            GPL-3.0-or-later  https://github.com/OpenRA/OpenRA (contributors: its AUTHORS file)
+RTS AI mod        GPL-3.0           https://github.com/alibad/RTSAI-Mod
+
+The engine's own libraries (Eluant, FuzzyLogicLibrary, Mono.Nat, MP3Sharp, TagLib#, NVorbis, SharpZipLib, BeaconLib,
+DiscordRichPresence, Pfim, Linguini, Microsoft.Extensions.DependencyModel) are listed with their licences in OpenRA's
+AUTHORS file. All are GPL-3.0 compatible (MIT, Apache-2.0, BSD, LGPL, GPL).
+
+
+Third-party code in the browser build
+-------------------------------------
+Runtime (WebAssembly, sim/):
+  .NET runtime for WebAssembly   MIT (its THIRD-PARTY-NOTICES.TXT applies)
+  Google.Protobuf                BSD-3-Clause
+  Grpc.Core.Api                  Apache-2.0
+
+Page (JavaScript, web/; versions in web/package-lock.json):
+  React, React DOM               MIT
+  Firebase JavaScript SDK        Apache-2.0
+  MapLibre GL JS                 BSD-3-Clause
+  protobuf.js                    BSD-3-Clause
+  Base UI, cmdk, clsx, zustand,  MIT
+  tailwind-merge, tw-animate-css,
+  modern-screenshot
+  class-variance-authority       Apache-2.0
+  Lucide icons (lucide-react)    ISC
+  tslib                          0BSD
+
+Every package the page ships is under MIT, Apache-2.0, ISC, BSD-2-Clause, BSD-3-Clause, BlueOak-1.0.0 or 0BSD.
+Build tools that are not shipped add MPL-2.0 (lightningcss) and CC-BY-4.0 (caniuse-lite data).
+
+
+Data and media with their own terms
+-----------------------------------
+web/public/flags/            flag-icons, MIT (LICENSE.txt there); hezbollah.svg from the RTS AI website (SOURCES.md)
+web/public/earth-terrain/    (c) OpenStreetMap contributors, ODbL 1.0 (https://www.openstreetmap.org/copyright)
+web/public/earth-sites/      names and links from OpenStreetMap (ODbL 1.0) and Wikipedia
+web/public/audio-credits.json  the project voices and their speech models (Kokoro-82M, Chatterbox, MOSS-TTS-Nano):
+                             see RTSAI-Mod docs/audio-provenance.md
+web/public/portraits/, menu/, campaign-video/, icons
+                             made by the RTS AI project (RTSAI-Mod docs/art-provenance.md)
+
+Original Command & Conquer content is not in this repository and must never be committed (.gitignore blocks its
+archives). The live game's isometric mode loads original Red Alert 2 art, unit voices and sounds from a separate
+package, under EA's free, non-commercial Command & Conquer modding guidelines; no C&C music is used. Two things here
+refer to that content and remain EA's property: tools/data/ra2-retail.json (unit values and names read from Red
+Alert 2's rules.ini and art.ini) and the gameplay screenshots in evals/.
