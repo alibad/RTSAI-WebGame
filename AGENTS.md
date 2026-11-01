@@ -4,6 +4,23 @@ Several sessions change this game at the same time. On 14 October 2026 that cost
 branch would have dropped work other sessions had already shipped, and a runtime built from a stale worktree went
 live without a fix that was already on main. These rules prevent that.
 
+## Where things live (owner, 1 Nov 2026)
+
+| Repository | Holds | GitHub |
+|---|---|---|
+| `OpenRA` | The engine: our fork of OpenRA/OpenRA (`fork/main`) | public |
+| `RTSAI-Mod` | The desktop game, plus the faction catalog master (`catalog/`), the AI companion (`companion/`), the older missions (`missions/`) and the roadmap (`docs/roadmap.md`) | public |
+| `RTSAI-WebGame` | The web game at rtsai.net/play, plus its release tool | public |
+| `RTSAI-Web` | rtsai.net, plus the Faction Studio (the one review desk) and the Sound Desk | private |
+| `RTSAI-Art` | The forge: the look (`bible/`), art sources, the sound tools (`tools/sound`) and the trailers (`film/`) | private |
+
+- **Archived on GitHub (read-only), so don't work in them:**
+  - `OpenRA-AI`, now `RTSAI-Mod/companion`, `missions` and `docs/roadmap.md`
+  - `RTSAI-Film`, now `RTSAI-Art/film`
+  - `OpenRA-RL`
+- **Drafts made with AI** (art, sound, film) stay outside git in `D:\Generated\RTSAI\<faction>\<kind>` until the Faction Studio approves them. Approved files go into git.
+- **One look:** names come from the catalog (`RTSAI-Mod/catalog/factions.json`), and colours and style come from the bible (`RTSAI-Art/bible`). Read them; never hand-write a faction's name or palette. `RTSAI-Art/film` still has its own palette, which is still to be fixed.
+
 ## Branches: commit on main, always from the latest main
 
 - `main` is the only long-lived branch and `origin/main` is the truth. Commit on main.
