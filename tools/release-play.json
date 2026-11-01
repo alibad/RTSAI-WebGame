@@ -42,7 +42,8 @@
       "data-b80ffa239e04/",
       "data-b1abd205626b/",
       "data-bad1fbdfc616/",
-      "data-be9e0c106ea1/"
+      "data-be9e0c106ea1/",
+      "data-d6eab40ee94c/"
     ]
   },
   "vercel": {
@@ -124,6 +125,14 @@
       "assetHost": "https://eb05532d.rtsai-play-cdn.pages.dev/",
       "rtRoot": "rt-d1f73f3a2364/",
       "dataRoot": "data-be9e0c106ea1/",
+      "profiles": [
+        "public"
+      ]
+    },
+    {
+      "assetHost": "https://7b3a5f32.rtsai-play-cdn.pages.dev/",
+      "rtRoot": "rt-35a4e258c802/",
+      "dataRoot": "data-d6eab40ee94c/",
       "profiles": [
         "public"
       ]
