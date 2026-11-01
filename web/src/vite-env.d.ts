@@ -26,4 +26,6 @@ interface ImportMetaEnv {
   readonly VITE_REQUIRE_SIGNIN?: string;
   /** The website that owns sign-in, /api/event and /api/feedback; "" = this origin (rtsai.net/play). */
   readonly VITE_SITE_ORIGIN?: string;
+  /** This repository's commit the page was built from (vite.config.ts); "" when Git is not available. */
+  readonly VITE_GAME_COMMIT?: string;
 }

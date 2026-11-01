@@ -6,3 +6,7 @@
  */
 export const EA_NOTICE =
   "Original Command & Conquer art, unit voices and sounds are used under EA's free, non-commercial modding guidelines. EA has not endorsed and does not support this product.";
+
+/** The GPL source of this exact build: the commit of RTSAI-WebGame it was built from. NOTICE names the other sources. */
+const commit = import.meta.env.VITE_GAME_COMMIT;
+export const SOURCE_URL = `https://github.com/alibad/RTSAI-WebGame${commit ? `/tree/${commit}` : ""}`;

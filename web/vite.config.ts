@@ -34,6 +34,13 @@ function websiteSource(): Plugin {
   };
 }
 
+/** This repository's commit, for the menu's "Source code" link (the GPL source of exactly this build). A release builds
+ *  the page from a clean main checkout, so HEAD is the commit its BUILD.json names. RTSAI_GAME_COMMIT: Git-free builds. */
+function gameCommit() {
+  if (process.env.RTSAI_GAME_COMMIT) return process.env.RTSAI_GAME_COMMIT;
+  try { return execFileSync("git", ["rev-parse", "HEAD"], { cwd: __dirname }).toString().trim(); } catch { return ""; }
+}
+
 // Built to web/dist and served by server/serve.mjs on 127.0.0.1:3490 (which adds COOP/COEP and the runtime/data
 // routes). `base` is relative so the same build also works behind the local app's /play proxy.
 export default defineConfig({
@@ -41,6 +48,7 @@ export default defineConfig({
   root: __dirname,
   base: "./",
   plugins: [websiteSource(), react(), tailwindcss()],
+  define: { "import.meta.env.VITE_GAME_COMMIT": JSON.stringify(gameCommit()) },
   // One React for the game and the website's components.
   resolve: { alias: { "@site": site }, dedupe: ["react", "react-dom", "lucide-react"] },
   server: { fs: { allow: [__dirname, site] } },

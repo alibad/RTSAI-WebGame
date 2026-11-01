@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from "react";
 import { BookOpen, ChevronRight, Crosshair, Map as MapIcon, MonitorX, Swords, X } from "lucide-react";
-import { EA_NOTICE } from "../legal";
+import { EA_NOTICE, SOURCE_URL } from "../legal";
 import { gpuInfo } from "../gpu";
 import { useStore } from '../store';
 import { ContentStatus } from './ContentStatus';
@@ -77,7 +77,7 @@ export function MainMenu({ onSkirmish, onCampaign, onSimulator, onEditor }: { on
           <MenuCard wide title="Map editor" text="Open, paint and build maps, make random ones, or turn any real place into a battlefield." icon={<MapIcon size={20} />} onClick={onEditor} />
         </div>
         <p data-testid="ea-notice" className="menu-notice">{EA_NOTICE}</p>
-        <div className="menu-notice"><ContentStatus /><a href="credits.html" target="_blank" rel="noopener">Credits &amp; licenses</a></div>
+        <div className="menu-notice"><ContentStatus /><a href="credits.html" target="_blank" rel="noopener">Credits &amp; licenses</a> · <a href={SOURCE_URL} target="_blank" rel="noopener">Source code</a></div>
       </main>
     </div>
   );
