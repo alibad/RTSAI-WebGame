@@ -45,7 +45,7 @@ print(f'Story: {source}')
 if opt.text_only:
     print('Canonical story synchronized.'); raise SystemExit(0)
 os.environ['HF_HUB_OFFLINE'] = '1'; os.environ['TRANSFORMERS_OFFLINE'] = '1'
-os.environ.setdefault('HF_HOME', 'D:/AI Models/huggingface')
+os.environ.setdefault('HF_HOME', 'F:/AI Models/huggingface')
 import numpy as np, soundfile as sf, torch
 from kokoro import KModel, KPipeline
 from PIL import Image, ImageDraw, ImageFont

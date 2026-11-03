@@ -44,7 +44,7 @@ REEL = 'highpass=f=220,lowpass=f=3200,aphaser=type=t:speed=0.25:decay=0.25,acomp
 CHAINS = {'orlov': BROKER, 'einstein': REEL}
 
 os.environ['HF_HUB_OFFLINE'] = '1'
-os.environ.setdefault('HF_HOME', 'D:/AI Models/huggingface')
+os.environ.setdefault('HF_HOME', 'F:/AI Models/huggingface')
 import numpy as np, soundfile as sf, torch
 from kokoro import KModel, KPipeline
 

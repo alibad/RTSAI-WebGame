@@ -67,7 +67,7 @@ def say(line):
     script = work / 'kokoro_say.py'
     script.write_text(
         "import os,sys,pathlib,numpy as np,soundfile as sf,torch\n"
-        "os.environ['HF_HUB_OFFLINE']='1';os.environ.setdefault('HF_HOME','D:/AI Models/huggingface')\n"
+        "os.environ['HF_HUB_OFFLINE']='1';os.environ.setdefault('HF_HOME','F:/AI Models/huggingface')\n"
         "from kokoro import KModel,KPipeline\n"
         "snap=next(p for p in (pathlib.Path(os.environ['HF_HOME'])/'hub/models--hexgrad--Kokoro-82M/snapshots').iterdir() if (p/'kokoro-v1_0.pth').exists())\n"
         "m=KModel(repo_id='hexgrad/Kokoro-82M',config=str(snap/'config.json'),model=str(snap/'kokoro-v1_0.pth')).to('cpu').eval()\n"

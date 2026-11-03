@@ -6,7 +6,7 @@ import subprocess
 import shutil
 os.environ['HF_HUB_OFFLINE'] = '1'
 os.environ['TRANSFORMERS_OFFLINE'] = '1'
-os.environ.setdefault('HF_HOME', 'D:/AI Models/huggingface')
+os.environ.setdefault('HF_HOME', 'F:/AI Models/huggingface')
 import numpy as np
 import soundfile as sf
 import torch

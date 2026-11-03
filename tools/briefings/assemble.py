@@ -24,7 +24,7 @@ ffmpeg, ffprobe = shutil.which('ffmpeg'), shutil.which('ffprobe'); assert ffmpeg
 W, H, FPS, FADE = 1280, 720, 30, 0.8
 
 # 1. Narration, one line per shot (Kokoro, cached Hugging Face files only).
-os.environ['HF_HUB_OFFLINE'] = '1'; os.environ.setdefault('HF_HOME', 'D:/AI Models/huggingface')
+os.environ['HF_HUB_OFFLINE'] = '1'; os.environ.setdefault('HF_HOME', 'F:/AI Models/huggingface')
 import numpy as np, soundfile as sf, torch
 from kokoro import KModel, KPipeline
 snap = next(p for p in (pathlib.Path(os.environ['HF_HOME']) / 'hub/models--hexgrad--Kokoro-82M/snapshots').iterdir() if (p / 'kokoro-v1_0.pth').exists())
