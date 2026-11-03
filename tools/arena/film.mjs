@@ -3,7 +3,7 @@
 // Two passes over the same replay, since a snapshot only carries the actors in view:
 //   1. "map": the whole battlefield as a timelapse. It also notes where the fighting is, second by second;
 //   2. "fight": a closer camera that follows that track.
-//   node tools/arena/film.mjs <game id> [--dir <arena data>] [--shots map,fight] [--speed 8] [--to <game s>]
+//   node tools/arena/film.mjs <game id> [--dir <arena data>] [--shots map,fight] [--speed 8] [--to <game s>] [--runner <url>]
 // Films go to <arena data>/films/<game id>-<shot>.mp4, with a .jpg poster and <game id>-track.json. Needs the Arena
 // runner (it serves the live game's twin page) and ffmpeg.
 import fs from "node:fs";
@@ -21,6 +21,8 @@ const id = argv[0];
 const shots = opt("shots", "map,fight").split(",");
 const speed = Number(opt("speed", 8));
 const to = opt("to") ? Number(opt("to")) : null;
+// The runner whose twin page plays the replay: the main one, or a second runner beside it (RTSAI_ARENA_PORT).
+const runner = opt("runner", "http://127.0.0.1:3463");
 const TPS = 25;
 
 const games = fs.readFileSync(path.join(dir, "games.jsonl"), "utf8").split("\n").filter(Boolean).map((l) => JSON.parse(l));
@@ -32,7 +34,7 @@ const decisions = JSON.parse(fs.readFileSync(path.join(dir, "decisions", `${id}.
 const spec = replay.spec ?? replay.scenario;
 const endTick = Math.min(replay.tick, to !== null ? to * TPS : Infinity);
 
-const status = await fetch("http://127.0.0.1:3463/status").then((r) => r.json()).catch(() => null);
+const status = await fetch(`${runner}/status`).then((r) => r.json()).catch(() => null);
 if (!status?.ready) throw new Error("Start the Arena runner first (node tools/arena/server.mjs): it serves the live game's twin page.");
 if (game.page?.release && status.page?.release && game.page.release !== status.page.release)
   console.warn(`warning: the game was played on release ${game.page.release}; the runner serves ${status.page.release}. The replay may drift.`);
