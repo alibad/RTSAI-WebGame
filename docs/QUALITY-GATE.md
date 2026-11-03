@@ -22,7 +22,7 @@ node tools/quality-gate.mjs --published-site                                  # 
 | browser | the player's path on that same sign-in-free page, served locally: every script in "browser" exits 0 (menus and modes, the map editor and battle simulator, the campaign screen with its films and a mission launch) | the existing browser tests |
 | gameplay | with `--pack`: `tools/gameplay-check.mjs` (deaths and impacts drawn for every unit, web and desktop ship the same units, the catalog copies match). Without it: skipped when the data root is unchanged, failed when the release would ship a new data root | the gameplay check |
 
-The receipt is `D:\rtsai-play-release\gate\<id>\`: `receipt.json`, `GATE.md` (the table above with results), one log per
+The receipt is `D:\Builds\RTSAI\play-release\gate\<id>\`: `receipt.json`, `GATE.md` (the table above with results), one log per
 check, and the browser tests' screenshots. `gate\latest.json` points at the last run. A copy of `GATE.md` lands in
 `hq/games/artifacts/quality-gate-<date>/` so the owner can open it from the artifacts folder.
 
