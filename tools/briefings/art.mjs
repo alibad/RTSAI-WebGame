@@ -3,7 +3,7 @@
 // "reference": "map" is an edit of the mission's own map preview, so the briefing table shows the real battlefield;
 // "reference": "<mission>/<shot id>" is an edit of an earlier still, so a returning commander keeps the same face.
 // Images are cached by prompt: a shot is drawn again only when its prompt, reference or seed changes.
-//   node tools/briefings/art.mjs <mission> [--out D:/rtsai-ea-build/briefings] [--force]
+//   node tools/briefings/art.mjs <mission> [--out D:/Builds/RTSAI/ea-build/briefings] [--force]
 // Needs ComfyUI running on :8188 (betenshi service "comfyui"); check AI\logs\gpu-claim.txt first.
 import { createHash } from "node:crypto";
 import fs from "node:fs";
@@ -14,7 +14,7 @@ const mission = argv[0];
 const opt = (k, d) => { const i = argv.indexOf(`--${k}`); return i >= 0 ? argv[i + 1] : d; };
 const force = argv.includes("--force");
 const comfy = opt("comfy", "http://127.0.0.1:8188");
-const outDir = path.join(opt("out", "D:/rtsai-ea-build/briefings"), mission);
+const outDir = path.join(opt("out", "D:/Builds/RTSAI/ea-build/briefings"), mission);
 const here = path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Z]:)/, "$1"));
 const spec = JSON.parse(fs.readFileSync(path.join(here, `${mission}.json`), "utf8"));
 const mapPreview = path.resolve(here, "../../../RTSAI-Mod/mods/rtsai/campaigns/maps", mission, "map.png");

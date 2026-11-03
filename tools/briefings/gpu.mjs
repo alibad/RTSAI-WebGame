@@ -1,7 +1,7 @@
 // Local GPU jobs through the BeTenshi console's own HTTP API (the same calls its MCP server makes), for when the MCP
 // connection is down: start/stop a service, animate a shot list's stills with the video queue, generate a score.
 //   node tools/briefings/gpu.mjs service start|stop <id>
-//   node tools/briefings/gpu.mjs clips <mission> [--stills D:/rtsai-ea-build/briefings] [--seconds 7] [--out <json>]
+//   node tools/briefings/gpu.mjs clips <mission> [--stills D:/Builds/RTSAI/ea-build/briefings] [--seconds 7] [--out <json>]
 //        [--only <shot,shot>]
 //        queues one i2v clip per shot (camera sentence + scene + action, as commission.mjs words them), waits, and
 //        writes {shot id: mp4} to --out (default D:/rtsai-campaign/p2-clips-<mission>.json); --only redoes those shots
@@ -70,7 +70,7 @@ if (cmd === "service") {
 } else if (cmd === "clips") {
   const mission = rest[0];
   const spec = JSON.parse(fs.readFileSync(path.join(here, `${mission}.json`), "utf8"));
-  const stills = path.join(opt("stills", "D:/rtsai-ea-build/briefings"), mission);
+  const stills = path.join(opt("stills", "D:/Builds/RTSAI/ea-build/briefings"), mission);
   const out = opt("out", `D:/rtsai-campaign/p2-clips-${mission}.json`);
   const jobs = {};
   const only = opt("only")?.split(",");

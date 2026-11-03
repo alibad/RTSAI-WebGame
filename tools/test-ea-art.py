@@ -12,7 +12,7 @@ Generated-content checks (with --content <generated content dir> [--ea-art <veri
   * voices: the rules overlay touches voice traits and voice-only conditions only, granted to original countries only
     (the dog: its original voice for everyone, no condition); every original clip a voice set or the dog's bite names
     is listed in EA-INPUTS.json's audio, which lists exactly the clips the content plays.
-  python tools/test-ea-art.py [--content D:/build/public-iso/content --ea-art D:/rtsai-ea-build/ea-art]
+  python tools/test-ea-art.py [--content D:/build/public-iso/content --ea-art D:/Builds/RTSAI/ea-build/ea-art]
 """
 import argparse
 import importlib.util

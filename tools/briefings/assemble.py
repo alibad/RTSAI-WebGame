@@ -10,11 +10,11 @@ needs; shots cross-fade; the last one carries the chapter title. Narration is th
 sits under it and ducks while the narrator speaks. Writes <mission>.mp4 (1280x720, H.264/AAC), <mission>.vtt
 captions and a poster. Everything is local; nothing is downloaded.
 
-  C:/Users/Admin/Code/AI/chatterbox/.venv/Scripts/python.exe tools/briefings/assemble.py jizan-corridor [--dir D:/rtsai-ea-build/briefings]
+  C:/Users/Admin/Code/AI/chatterbox/.venv/Scripts/python.exe tools/briefings/assemble.py jizan-corridor [--dir D:/Builds/RTSAI/ea-build/briefings]
 """
 import argparse, json, os, pathlib, shutil, subprocess
 
-ap = argparse.ArgumentParser(); ap.add_argument('mission'); ap.add_argument('--dir', default='D:/rtsai-ea-build/briefings')
+ap = argparse.ArgumentParser(); ap.add_argument('mission'); ap.add_argument('--dir', default='D:/Builds/RTSAI/ea-build/briefings')
 ap.add_argument('--voice', default='am_michael'); ap.add_argument('--speed', type=float, default=0.95)
 opt = ap.parse_args()
 HERE = pathlib.Path(__file__).resolve().parent

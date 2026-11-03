@@ -5,7 +5,7 @@
 // (and that was not rejected). Nothing is deployed.
 //
 //   node tools/briefings/from-montage.mjs <mission> [--montage http://127.0.0.1:8018] [--montage-dir C:/Users/Admin/Code/hq/montage]
-//        [--out D:/rtsai-ea-build/play-cdn/campaign] [--crf 26] [--max-rate 700] [--force]
+//        [--out D:/Builds/RTSAI/ea-build/play-cdn/campaign] [--crf 26] [--max-rate 700] [--force]
 //
 // The cap: the forge's clips are full of texture, and plain CRF 26 came to ~15 MB a minute on the pilot (SSIM 0.965
 // against the 720p master); capped at 700 kbit/s it is ~5 MB a minute (SSIM 0.918: grass and camouflage soften, faces and
@@ -28,7 +28,7 @@ if (!mission) {
 }
 const montageUrls = [opt("montage", "http://127.0.0.1:8018"), "http://127.0.0.1:8017"].map((u) => u.replace(/\/$/, ""));
 const montageDir = opt("montage-dir", "C:/Users/Admin/Code/hq/montage");
-const outDir = path.join(opt("out", "D:/rtsai-ea-build/play-cdn/campaign"), mission);
+const outDir = path.join(opt("out", "D:/Builds/RTSAI/ea-build/play-cdn/campaign"), mission);
 const crf = Number(opt("crf", 26));
 const maxRate = Number(opt("max-rate", 700)); // kbit/s; 0 = plain CRF
 const mb = (n) => `${(n / 1048576).toFixed(2)} MB`;

@@ -9,7 +9,7 @@
 // with tools/briefings/from-montage.mjs. Commissioning a mission again replaces its earlier commission
 // (Montage keeps the old film, marked superseded).
 //
-//   node tools/briefings/commission.mjs <mission> [--forge http://127.0.0.1:8003] [--stills D:/rtsai-ea-build/briefings]
+//   node tools/briefings/commission.mjs <mission> [--forge http://127.0.0.1:8003] [--stills D:/Builds/RTSAI/ea-build/briefings]
 //        [--video wan14b|wan5b|wan14b-full] [--narrator chatterbox|clone-ali-b|kokoro-am_michael|kokoro-<voice>] [--dry-run]
 //
 // Shot list fields used: mission, chapter (the eyebrow), title, style (the look), music.caption, an optional logline and
@@ -29,7 +29,7 @@ if (!mission) {
   process.exit(2);
 }
 const forge = opt("forge", "http://127.0.0.1:8003").replace(/\/$/, "");
-const stillsDir = path.join(opt("stills", "D:/rtsai-ea-build/briefings"), mission);
+const stillsDir = path.join(opt("stills", "D:/Builds/RTSAI/ea-build/briefings"), mission);
 const here = path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Z]:)/, "$1"));
 const specFile = path.join(here, `${mission}.json`);
 if (!fs.existsSync(specFile)) {
