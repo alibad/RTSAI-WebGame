@@ -2,7 +2,7 @@
 // seat by the engine's own AI at the chosen skill. Orders go through the same native co-commander path the public
 // game's adviser uses (adviserObserve / adviserExecute), so they are ordinary synchronized player orders.
 import { plan, scriptedAnswers, describe } from "./brain.mjs";
-import { decide, PROVIDERS } from "./providers.mjs";
+import { decide, PROVIDERS, LOCAL_MODEL } from "./providers.mjs";
 
 /** The opponent skills of the game's Battle simulator (web/src/sandbox.ts AI_SKILLS), as skirmish seats. Veteran
  * rank there applies to pre-placed units only; a skirmish has none, so Brutal here is the Rush AI with 15,000 extra. */
@@ -149,7 +149,7 @@ export async function runMatch(spec, env) {
   const ms = decisions.filter((d) => d.questions.length && !d.fallback).map((d) => d.ms);
   const side = (p) => p && ({ killsCost: p.killsCost, deathsCost: p.deathsCost, unitsKilled: p.unitsKilled, buildingsKilled: p.buildingsKilled, earned: p.earned, armyPeak: Math.max(0, ...(p.army ?? [0])) });
   const result = {
-    ...spec, result: outcome, stopReason,
+    ...spec, ...(spec.provider === "local" ? { model: LOCAL_MODEL } : {}), result: outcome, stopReason,
     gameSeconds: stats ? Math.round((stats.tick * stats.timestep) / 1000) : 0, wallSeconds: Math.round((Date.now() - t0) / 1000),
     us: side(stats?.players?.[0]), them: side(stats?.players?.[1]),
     decisionCount: decisions.length, questionCount: decisions.reduce((s, d) => s + d.questions.length, 0),

@@ -89,7 +89,7 @@ option:
 |---|---|---|
 | Scripted scorer | Hand-written scores, softmax. It is the bar a model has to beat. | $0 |
 | Laya | The BeTenshi console's local decision service (`:8040/decide`; ModernBERT, Apache-2.0, on the CPU), one question per call, a turn's questions in parallel. | $0 |
-| Local LLM | OpenAI-compatible gateway (`OPENRA_AI_ROUTER_URL`, default :4000), JSON-schema enum per question | $0 |
+| Local LLM | OpenAI-compatible gateway (`OPENRA_AI_ROUTER_URL`, default :4000; Ollama's :11434 works too), model `OPENRA_AI_TEXT_MODEL`, JSON-schema enum per question. Ollama's gemma4 and qwen3 think first and return nothing within the token limit: set `OPENRA_AI_REASONING=none`. Games record the model. | $0 |
 | OpenAI Decisions | `POST /v1/decisions`, `gpt-6-luna`, one `choice` question each | $0.10 / M ($0.01 cached) |
 | TypeSafe Jev | TypeSafe's `/v1/systemone` (`jev-latest`) with a TypeSafe key, or the same request through OpenRouter (`typesafe/jev-1.13`) with an OpenRouter key; OpenRouter returns the exact cost | $0.042 / M |
 

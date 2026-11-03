@@ -58,6 +58,10 @@ export function keyStore(dir) {
 }
 
 const LOCAL_ROUTER = process.env.OPENRA_AI_ROUTER_URL ?? "http://127.0.0.1:4000";
+/** The local model, and its reasoning setting. Ollama's gemma4 and qwen3 think before answering by default and spend the
+ * whole token budget on it, so every turn came back empty; OPENRA_AI_REASONING=none turns that off. */
+export const LOCAL_MODEL = process.env.OPENRA_AI_TEXT_MODEL ?? "local-coder";
+const LOCAL_REASONING = process.env.OPENRA_AI_REASONING ?? "";
 const LAYA = process.env.RTSAI_LAYA_URL ?? "http://127.0.0.1:8040";
 export async function localReady() {
   try { const r = await fetch(`${LOCAL_ROUTER}/v1/models`, { signal: AbortSignal.timeout(1500) }); return r.ok; } catch { return false; }
@@ -122,7 +126,7 @@ export async function askQuestions(provider, context, questions, credential = {}
     const schema = { type: "object", additionalProperties: false, required: questions.map((q) => q.name),
       properties: Object.fromEntries(questions.map((q) => [q.name, { type: "string", enum: q.options.map((o) => o.value), description: q.instructions }])) };
     const prompt = `${context.text}\n\n${context.json ? `State: ${JSON.stringify(context.json)}\n\n` : ""}${questions.map((q) => `${q.name}: ${q.instructions}\n${q.options.map((o) => `  - ${o.value}: ${o.description}`).join("\n")}`).join("\n\n")}`;
-    const r = await post(`${LOCAL_ROUTER}/v1/chat/completions`, "", { model: process.env.OPENRA_AI_TEXT_MODEL ?? "local-coder", temperature: 0, max_tokens: 200,
+    const r = await post(`${LOCAL_ROUTER}/v1/chat/completions`, "", { model: LOCAL_MODEL, ...(LOCAL_REASONING ? { reasoning_effort: LOCAL_REASONING } : {}), temperature: 0, max_tokens: 200,
       messages: [{ role: "user", content: prompt }], response_format: { type: "json_schema", json_schema: { name: "decisions", strict: true, schema } } });
     let picked = {};
     try { picked = JSON.parse(r.choices?.[0]?.message?.content ?? "{}"); } catch { /* answered below as unanswered */ }
