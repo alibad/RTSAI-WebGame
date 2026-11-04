@@ -108,6 +108,8 @@ option:
     tool prints the replay's ending next to the recorded result.
   - Old replays (before 24 October) kept the Arena's settings instead of the game's scenario; the tool rebuilds the
     scenario from them.
+  - Beside each film, `<id>-<shot>-clock.json` records which game tick each film second shows, because the viewer's
+    real speed varies. Use it to put several films side by side with their clocks in step.
   - Films are in `<arena>/films/`. The runner serves them at `/films/<name>`, with ranges so they can be scrubbed.
 - **Story films:** `node tools/arena/story.mjs <notebook entry>` turns a notebook entry into one short film:
   - the question;
