@@ -4,8 +4,9 @@
 //   1. "map": the whole battlefield as a timelapse. It also notes where the fighting is, second by second;
 //   2. "fight": a closer camera that follows that track.
 //   node tools/arena/film.mjs <game id> [--dir <arena data>] [--shots map,fight] [--speed 8] [--to <game s>] [--runner <url>]
-// Films go to <arena data>/films/<game id>-<shot>.mp4, with a .jpg poster and <game id>-track.json. Needs the Arena
-// runner (it serves the live game's twin page) and ffmpeg.
+// Films go to <arena data>/films/<game id>-<shot>.mp4, with a .jpg poster, <game id>-<shot>-clock.json (which game tick
+// each film second shows) and <game id>-track.json. Needs the Arena runner (it serves the live game's twin page) and
+// ffmpeg.
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -152,10 +153,13 @@ async function film(shot, track) {
   await page.locator("button", { hasText: new RegExp(`^${speed}\\s*[x×]$`) }).first().click({ timeout: 10000 }).catch(() => page.evaluate((v) => window.game.client.send({ type: "speed", speed: v }), speed));
   await page.evaluate(() => window.game.setPaused(false));
   const startedMs = Date.now() - t0;
+  // [film second, game tick] every half second: the replay's real speed varies, so this is what lines films up.
+  const clock = [[0, 0]];
   let tick = 0, stuck = 0, lastTick = -1;
   while (tick < endTick + TPS * 3) {
     await new Promise((r) => setTimeout(r, 500));
     tick = await page.evaluate(() => window.__tick ?? 0).catch(() => tick);
+    clock.push([(Date.now() - t0 - startedMs) / 1000, tick]);
     stuck = tick === lastTick ? stuck + 1 : 0; lastTick = tick;
     if (stuck > 40) { console.warn(`${shot}: the replay stopped at tick ${tick} of ${endTick}`); break; }
   }
@@ -170,6 +174,7 @@ async function film(shot, track) {
   execFileSync("ffmpeg", ["-y", "-loglevel", "error", "-ss", String(startedMs / 1000), "-i", webm, "-c:v", "libx264", "-preset", "veryfast", "-crf", "23", "-pix_fmt", "yuv420p", "-movflags", "+faststart", mp4]);
   const duration = Number(execFileSync("ffprobe", ["-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", mp4]).toString().trim());
   execFileSync("ffmpeg", ["-y", "-loglevel", "error", "-ss", String(Math.max(0, duration * 0.6)), "-i", mp4, "-frames:v", "1", "-q:v", "3", mp4.replace(/\.mp4$/, ".jpg")]);
+  fs.writeFileSync(mp4.replace(/\.mp4$/, "-clock.json"), JSON.stringify({ tps: TPS, endTick, clock }));
   fs.rmSync(tmp, { recursive: true, force: true });
   console.log(`${shot}: ${mp4} (${Math.round(duration)} s)`);
   return result;
