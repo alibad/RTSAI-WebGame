@@ -4,7 +4,7 @@
 // Paid providers run only on this machine, with the owner's own keys, inside the run's and the day's caps (server.mjs).
 import fs from "node:fs";
 import path from "node:path";
-import { RUBRIC, describe, scriptedAnswers } from "./brain.mjs";
+import { RUBRIC, PROMPTS, describe, scriptedAnswers } from "./brain.mjs";
 
 /** List prices, US dollars per million input tokens (output is free). Sources: OpenAI Decisions GA post (22 Oct 2026),
  * TypeSafe's pricing ($42 per billion input tokens; through OpenRouter the reply carries the exact cost). */
@@ -138,14 +138,15 @@ export async function askQuestions(provider, context, questions, credential = {}
 
 /**
  * The game brain's turn: the scripted scorer, or a provider asked about the described battlefield. `opts` carries the
- * run's experiment and the brain's memory to the scorer (brain.mjs EXPERIMENTS).
+ * run's experiment and the brain's memory to the scorer (brain.mjs EXPERIMENTS), and the run's prompt to a model
+ * (brain.mjs PROMPTS; RUBRIC without one).
  */
 export async function decide(provider, obs, questions, credential = {}, opts = {}) {
   if (provider === "scripted") {
     const t0 = performance.now();
     return { answers: scriptedAnswers(obs, questions, opts), ms: Math.round(performance.now() - t0), inputTokens: 0, cachedTokens: 0, usd: 0 };
   }
-  return askQuestions(provider, { text: RUBRIC, json: describe(obs) }, questions, credential);
+  return askQuestions(provider, { text: PROMPTS[opts.prompt] ?? RUBRIC, json: describe(obs) }, questions, credential);
 }
 
 export async function post(url, key, body, headers = {}) {

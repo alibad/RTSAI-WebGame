@@ -185,6 +185,24 @@ export const RUBRIC = "You command one side in a real-time strategy match (Red A
   + "Answer each question for the state given.";
 
 /**
+ * Prompts a run can give the models instead of RUBRIC (a run's `prompt`), so the same games show what the words change.
+ * "coached" is the scripted scorer's own rules written as advice (5 Nov 2026: until then the models had only read
+ * RUBRIC, and they kept its "Economy first": a second refinery at 1:13 and credits left in the bank).
+ */
+export const PROMPTS = {
+  coached: "You command one side in a real-time strategy match (Red Alert 2 style) against a computer opponent that attacks early. "
+    + "Win by destroying every enemy building. Advice from a strong player: "
+    + "1. Build power, a refinery, barracks, a war factory, then radar. More power when spare power is under 10. "
+    + "2. No second refinery before 2:00. Harvesters up to what the map supports. "
+    + "3. Spend: keep every barracks and factory training the strongest combat unit you can afford. Wait only under 300 credits. "
+    + "4. No towers or base defenses unless enemies are at the base (threat high or critical). No engineers, spies, dogs or scouts in the army. "
+    + "5. Counter what the enemy fields: anti-tank against vehicles, anti-infantry against infantry. "
+    + "6. Scout early. Defend when the threat is high or critical. Attack only with 10 or more gathered units worth at least 3,500 "
+    + "and more than the enemy army seen; once at the enemy base, keep attacking. "
+    + "Answer each question for the state given.",
+};
+
+/**
  * What to do now: commands that need no choice (deploy the construction vehicle, place finished buildings) and the
  * questions worth asking. A question has 2+ options; each option knows the commands it stands for.
  */

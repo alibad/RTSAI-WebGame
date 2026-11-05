@@ -36,7 +36,7 @@ export function scenarioFor(spec, defaults) {
 }
 
 /**
- * spec: { id, brain, provider?, opponent, ours, theirs, map, seed, speed, limit (game seconds), pauseWhileThinking }
+ * spec: { id, brain, provider?, prompt?, opponent, ours, theirs, map, seed, speed, limit (game seconds), pauseWhileThinking }
  * env:  { browser, url, key, charge(usd) -> bool (false: a cap is reached), stopped() -> bool, progress(info) }
  */
 export async function runMatch(spec, env) {
@@ -61,7 +61,7 @@ export async function runMatch(spec, env) {
     if (spec.brain !== "you") await page.evaluate((v) => window.game.client.send({ type: "speed", speed: v }), spec.speed);
 
     const memory = { lastArmyTick: -1e9, notBefore: 0 };
-    const brainOpts = { experiment: spec.experiment, memory };
+    const brainOpts = { experiment: spec.experiment, prompt: spec.prompt, memory };
     const seenAdvice = new Set();
     // The engine takes 1 to 12 commands per order: larger groups (the whole army) go as several orders.
     const execute = async (label, commands, tick) => {

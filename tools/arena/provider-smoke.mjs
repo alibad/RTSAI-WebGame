@@ -1,6 +1,6 @@
 // One real turn per provider on a small fixed battlefield: proves the request format, prints the choices, the time,
 // the tokens and the cost. Never prints a key.
-//   node tools/arena/provider-smoke.mjs [openai|jev|local|laya ...]
+//   node tools/arena/provider-smoke.mjs [openai|jev|local|laya ...] [--prompt coached]
 import os from "node:os";
 import path from "node:path";
 import { plan } from "./brain.mjs";
@@ -16,11 +16,13 @@ const obs = {
 };
 const keys = keyStore(path.join(process.env.LOCALAPPDATA ?? os.homedir(), "RTSAI-WebGame", "arena"));
 const { questions } = plan(obs, {});
-for (const provider of process.argv.slice(2).length ? process.argv.slice(2) : ["openai"]) {
+const args = process.argv.slice(2), at = args.indexOf("--prompt");
+const prompt = at >= 0 ? args.splice(at, 2)[1] : undefined;
+for (const provider of args.length ? args : ["openai"]) {
   const credential = PROVIDERS[provider]?.paid ? keys.credential(provider) : {};
   if (PROVIDERS[provider]?.paid && !credential.key) { console.log(`${provider}: no key`); continue; }
   try {
-    const r = await decide(provider, obs, questions, credential);
+    const r = await decide(provider, obs, questions, credential, { prompt });
     console.log(`${provider}: ${r.ms} ms, ${r.inputTokens} input tokens (${r.cachedTokens ?? 0} cached), $${r.usd.toFixed(6)}`);
     for (const q of questions) {
       const a = r.answers[q.name];

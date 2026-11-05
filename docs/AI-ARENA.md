@@ -100,6 +100,12 @@ option:
   - A variant plays the same seeds and factions as the brain without it, so results pair up game by game.
   - Its games are tagged `<BRAIN_VERSION> + <experiment>` and get their own ladder row.
   - A run of the current brain on the same seeds repeats earlier games, which also shows how repeatable a result is.
+- **Prompts are flags too.** The models read `RUBRIC` (`brain.mjs`) before every turn's battlefield. A run of a model
+  can read one of `PROMPTS` instead (`"prompt": "coached"`, through the runner's `/runs`), and its games are tagged
+  `<BRAIN_VERSION> · coached prompt`.
+  - "coached" (5 Nov 2026) is the scripted scorer's rules written as advice: the build order, no second refinery
+    before 2:00, spend on the army, no towers unless the base is attacked, counters, when to attack.
+  - `node tools/arena/provider-smoke.mjs jev --prompt coached` asks one turn with it.
 - **Films:** `node tools/arena/film.mjs <game id>` replays a finished game in the live game's own replay viewer and
   records it, with captions of what the brain decided and saw as it happened (its decision log).
   - **"map":** the whole battlefield, sped up. It also notes where the fighting is each second.
