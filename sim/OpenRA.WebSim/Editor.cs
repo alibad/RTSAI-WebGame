@@ -383,25 +383,7 @@ namespace OpenRA.WebSim
 				var cell = new MPos((bounds.Left + bounds.Right) / 2, (bounds.Top + bounds.Bottom) / 2).ToCPos(world.Map);
 				var reference = new ActorReference(name, new TypeDictionary { new LocationInit(cell) });
 				var preview = new EditorActorPreview(wr, "palette", reference, owner);
-				var origin = wr.ScreenPxPosition(preview.CenterPosition);
-				var parts = new List<object>();
-				foreach (var renderable in preview.Render())
-				{
-					if (renderable is not SpriteRenderable sr || sr.IsDecoration || sr.Sprite.Bounds.Width == 0)
-						continue;
-					var s = sr.Sprite;
-					var half = 0.5f * sr.Scale * s.Size;
-					var screen = wr.Screen3DPosition(sr.Origin);
-					var off = wr.ScreenPxOffset(sr.Offset);
-					var tex = Snapshot.TextureId(s.Sheet);
-					Snapshot.MarkTexture(tex);
-					parts.Add(new { x = screen.X + off.X - (int)half.X + sr.Scale * s.Offset.X - origin.X,
-						y = screen.Y + off.Y - (int)half.Y + sr.Scale * s.Offset.Y - origin.Y,
-						tex, channel = (int)s.Channel, uv = new[] { s.Left, s.Top, s.Right, s.Bottom },
-						w = s.Bounds.Width, h = s.Bounds.Height, pal = sr.Palette?.TextureIndex ?? 0,
-						scale = sr.Scale, alpha = sr.Alpha });
-				}
-				result[name] = parts;
+				result[name] = SandboxPlacement.SpriteParts(wr, preview.Render(), preview.CenterPosition);
 			}
 			return JsonSerializer.Serialize(result);
 		}

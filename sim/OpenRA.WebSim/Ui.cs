@@ -347,6 +347,8 @@ namespace OpenRA.WebSim
 			GuardOrderGenerator => "guard",
 			BeaconOrderGenerator => "beacon",
 			UnitOrderGenerator => "",
+			// The simulator's placement brush: the page keeps its state (sandbox.ts), as with no mode.
+			SandboxPlacement.Brush => "",
 			null => "",
 			_ => og.GetType().Name,
 		};
@@ -531,21 +533,18 @@ namespace OpenRA.WebSim
 					var type = Str("type");
 					var players = SimHost.PlayablePlayers();
 					var side = Math.Clamp(Int("player"), 0, players.Count - 1);
-					if (type == null || !world.Map.Rules.Actors.ContainsKey(type))
+					if (type == null || !world.Map.Rules.Actors.TryGetValue(type, out var actorInfo))
 						return "{\"error\":\"unknown actor\"}";
 
-					var center = r.TryGetProperty("u", out _) ? new MPos(Int("u"), Int("v")).ToCPos(world.Map) : SimHost.CellAtWorldPx(new int2(Int("x"), Int("y")));
-					var buildingInfo = world.Map.Rules.Actors[type].TraitInfoOrDefault<BuildingInfo>();
-					if (buildingInfo != null)
-						center -= new CVec(buildingInfo.Dimensions.X / 2, buildingInfo.Dimensions.Y / 2);
-					var count = buildingInfo != null ? 1 : Math.Clamp(Int("count", 1), 1, 50);
-					var columns = Math.Max(1, (int)Math.Ceiling(Math.Sqrt(count)));
+					// The simulator's placement rule (SandboxPlacement.Where), the one its preview shows: a building only
+					// where it can stand, units on cells they can enter (the nearest free ones around the click).
+					var at = r.TryGetProperty("u", out _) ? new MPos(Int("u"), Int("v")).ToCPos(world.Map) : SimHost.CellAtWorldPx(new int2(Int("x"), Int("y")));
+					var building = actorInfo.HasTraitInfo<BuildingInfo>();
+					var plan = SandboxPlacement.Where(world, actorInfo, at, Int("count", 1));
+					var cells = building ? (plan.Blocked == null ? [plan.TopLeft] : []) : plan.Spots.Where(s => s.Ok).Select(s => s.Cell).ToList();
 					var created = 0;
-					for (var i = 0; i < count; i++)
+					foreach (var cell in cells)
 					{
-						var cell = center + new CVec(i % columns - columns / 2, i / columns - columns / 2);
-						if (!world.Map.Contains(cell))
-							continue;
 						var init = new TypeDictionary
 						{
 							new OwnerInit(players[side]),
@@ -564,7 +563,36 @@ namespace OpenRA.WebSim
 						created++;
 					}
 
-					return $"{{\"created\":{created}}}";
+					(world.OrderGenerator as SandboxPlacement.Brush)?.Invalidate();
+					var centre = world.Map.CenterOfCell(building ? plan.TopLeft : at);
+					var px = SimHost.WorldRenderer.ScreenPxPosition(building ? centre + actorInfo.TraitInfo<BuildingInfo>().CenterOffset(world) : centre);
+					return $"{{\"created\":{created},\"x\":{px.X},\"y\":{px.Y}" + (created == 0 ? $",\"blocked\":{J(plan.Blocked ?? "Can't place it here")}" : "") + "}";
+				}
+
+				case "preview":
+				{
+					// An actor as the battlefield draws it, for the page to compose (the simulator's card for buildings).
+					var players = SimHost.PlayablePlayers();
+					var side = Math.Clamp(Int("player"), 0, players.Count - 1);
+					if (Str("type") is not string previewType || !world.Map.Rules.Actors.TryGetValue(previewType, out var previewInfo))
+						return "[]";
+
+					var wr = SimHost.WorldRenderer;
+					var center = world.Map.CenterOfCell(new MPos(world.Map.Bounds.Left + world.Map.Bounds.Width / 2, world.Map.Bounds.Top + world.Map.Bounds.Height / 2).ToCPos(world.Map));
+					var previews = SandboxPlacement.Previews(wr, previewInfo, players[side], new WAngle(side == 0 ? 768 : 256), out _);
+					return JsonSerializer.Serialize(SandboxPlacement.SpriteParts(wr, previews.SelectMany(p => p.Render(wr, center)), center));
+				}
+
+				case "brush":
+				{
+					// The simulator's placement brush at the cursor (SandboxPlacement.Brush); no type: back to selecting.
+					var type = Str("type");
+					var players = SimHost.PlayablePlayers();
+					var side = Math.Clamp(Int("player"), 0, players.Count - 1);
+					world.OrderGenerator = type != null && world.Map.Rules.Actors.TryGetValue(type, out var brushInfo)
+						? new SandboxPlacement.Brush(world, SimHost.WorldRenderer, brushInfo, players[side], Int("count", 1), new WAngle(side == 0 ? 768 : 256))
+						: new UnitOrderGenerator(world);
+					return "{}";
 				}
 
 				case "remove":

@@ -12,23 +12,36 @@ const HOVER_SFX = ".menu-card, .view-tile, [data-sfx-hover]";
 
 let audio: AudioContext | null = null;
 
-function tone(kind: "hover" | "press") {
+// [from Hz, to Hz, peak, seconds, wave, delay]: hover a light tick, press a click, place a low "set down" thud with a
+// soft second knock, deny two short buzzes.
+const TONES: Record<"hover" | "press" | "place" | "deny", [number, number, number, number, OscillatorType, number][]> = {
+  hover: [[1650, 1250, 0.018, 0.045, "sine", 0]],
+  press: [[520, 170, 0.07, 0.11, "triangle", 0]],
+  place: [[240, 90, 0.11, 0.16, "triangle", 0], [620, 380, 0.035, 0.07, "sine", 0.05]],
+  deny: [[160, 140, 0.05, 0.07, "square", 0], [150, 130, 0.05, 0.08, "square", 0.1]],
+};
+
+function tone(kind: keyof typeof TONES) {
   const volume = preferences.master * preferences.effects;
   if (volume <= 0 || !audio || audio.state !== "running") return;
-  const t = audio.currentTime;
-  const osc = audio.createOscillator();
-  const gain = audio.createGain();
-  const [from, to, peak, length] = kind === "hover" ? [1650, 1250, 0.018, 0.045] : [520, 170, 0.07, 0.11];
-  osc.type = kind === "hover" ? "sine" : "triangle";
-  osc.frequency.setValueAtTime(from, t);
-  osc.frequency.exponentialRampToValueAtTime(to, t + length);
-  gain.gain.setValueAtTime(0.0001, t);
-  gain.gain.exponentialRampToValueAtTime(peak * volume, t + 0.006);
-  gain.gain.exponentialRampToValueAtTime(0.0001, t + length);
-  osc.connect(gain).connect(audio.destination);
-  osc.start(t);
-  osc.stop(t + length + 0.02);
+  for (const [from, to, peak, length, wave, delay] of TONES[kind]) {
+    const t = audio.currentTime + delay;
+    const osc = audio.createOscillator();
+    const gain = audio.createGain();
+    osc.type = wave;
+    osc.frequency.setValueAtTime(from, t);
+    osc.frequency.exponentialRampToValueAtTime(to, t + length);
+    gain.gain.setValueAtTime(0.0001, t);
+    gain.gain.exponentialRampToValueAtTime(peak * volume, t + 0.006);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t + length);
+    osc.connect(gain).connect(audio.destination);
+    osc.start(t);
+    osc.stop(t + length + 0.02);
+  }
 }
+
+/** A sound for something the player just did outside a menu (the simulator placing a unit or refusing to). */
+export function uiTone(kind: "place" | "deny") { tone(kind); }
 
 /** Installs the cursors and sounds once for the page; returns the uninstaller. */
 export function installUiFeel(): () => void {
@@ -58,8 +71,8 @@ export function installUiFeel(): () => void {
     const target = (e.target as Element | null)?.closest<HTMLElement>(CLICKABLE) ?? null;
     if (target === hovered) return;
     stop();
+    if (target?.matches(HOVER_SFX)) tone("hover");
     if (!target || target.closest('canvas, [draggable="true"]')) return;
-    if (target.matches(HOVER_SFX)) tone("hover");
     if (!modCursor("select")) return;
     hovered = target;
     const t0 = performance.now();

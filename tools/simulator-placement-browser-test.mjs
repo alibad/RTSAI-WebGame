@@ -32,7 +32,11 @@ try {
   await page.getByRole('textbox',{name:'Search this category'}).fill('');
   await page.getByRole('tab',{name:'Buildings',exact:true}).click();
   await page.locator('[data-unit="gapowr"]').click();
+  // The lake refuses a building and says why (its preview there is red); open ground takes it.
   await page.locator('canvas.stage').click({position:{x:520,y:400}});
+  await page.getByTestId('sim-mark').getByText('Not on water',{exact:true}).waitFor();
+  assert.equal(await page.evaluate(async()=>(await window.game.command({cmd:'placements'})).spawns.filter(a=>a.type==='gapowr').length),0,'no building on the water');
+  await page.locator('canvas.stage').click({position:{x:300,y:650}});
   await page.waitForFunction(()=>window.game.client.cur.actors.some(a=>window.game.client.str(a.type)==='gapowr'));
   const placed=await page.evaluate(async()=>{
    const c=window.game.client,actor=c.cur.actors.find(a=>c.str(a.type)==='gapowr');
@@ -58,7 +62,7 @@ try {
   await page.waitForFunction(()=>window.store.getState().sandbox?.mode==='edit'&&window.store.getState().phase==='playing'&&window.game.client.cur?.actors.some(a=>window.game.client.str(a.type)==='gapowr'),null,{timeout:120000});
   const restored=await page.evaluate(()=>{const c=window.game.client,a=c.cur.actors.find(a=>c.str(a.type)==='gapowr');return c.str(a.sequence);});
   assert.notEqual(restored,'make'); assert.deepEqual(errors,[]);
-  receipt.modes.push({profile,completed:placed,run,restored,checks:['movement categories','category-scoped search','stale placement cleared','completed paused building','same footprint after Fight','completed after Edit']});
+  receipt.modes.push({profile,completed:placed,run,restored,checks:['movement categories','category-scoped search','stale placement cleared','no building on water','completed paused building','same footprint after Fight','completed after Edit']});
   await page.close();
  }
  receipt.passed=true; console.log('PASS simulator categories, scoped search, completed buildings and edit/run/edit preservation in both modes');

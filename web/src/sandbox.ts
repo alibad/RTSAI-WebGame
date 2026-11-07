@@ -5,7 +5,8 @@
 
 import type { Game } from "./game";
 import type { Snapshot } from "./sim/protocol";
-import { store } from "./store";
+import { store, useStore } from "./store";
+import { uiTone } from "./ui/feel";
 import { ENGINE_SIDE_COLORS } from "./sides";
 import type { Operation } from "./mission";
 
@@ -87,6 +88,8 @@ export interface SandboxState {
   pickDestination: 0 | 1 | null;
   /** A mission from a real place (mission.ts): its objectives, briefing and radio run with the battle. */
   operation: Operation | null;
+  /** The last click with the brush: where (world px), how many it placed, or why it placed nothing. */
+  placed: { x: number; y: number; created: number; blocked: string; at: number } | null;
 }
 
 function b64urlDecode(s: string) {
@@ -157,8 +160,20 @@ export class Sandbox {
           { order: cfg.order ?? "engage", destination: null, level: cfg.level },
         ],
         fa: cfg.fa, fb: cfg.fb, units: [], rosters: {}, map: cfg.map ?? ARENA, skill: cfg.skill ?? "normal", money: cfg.money ?? 0, fog: cfg.fog ?? false,
-        recordLen: 0, replay: null, playing: false, speed: 1, paused: false, pickDestination: null, operation: null,
+        recordLen: 0, replay: null, playing: false, speed: 1, paused: false, pickDestination: null, operation: null, placed: null,
       },
+    });
+    // The engine draws the armed brush at the cursor (sim SandboxPlacement): a building's green and red footprint and
+    // its picture, units on their cells. Sent again whenever the brush, the side, the count or the editing world changes.
+    let sent = "", world: unknown = null;
+    useStore.subscribe((s) => {
+      if (this.game.sandbox !== this) return;
+      const st = s.sandbox;
+      const key = st && st.mode === "edit" && s.phase === "playing" ? `${st.brush ?? ""}|${st.side}|${st.count}` : "";
+      if (key === sent && s.info === world) return;
+      sent = key;
+      world = s.info;
+      if (key) void this.game.command({ cmd: "brush", type: st!.brush, player: st!.side, count: st!.count }).then(() => this.game.client.send({ type: "refresh" }));
     });
   }
 
@@ -295,10 +310,38 @@ export class Sandbox {
     if (this.recording.length % 5 === 0 || this.recording.length < 5) this.patch({ recordLen: this.recording.length });
   }
 
+  /** Places the brush at a world pixel. It answers with a sound and a mark where it landed, or why it couldn't. */
   async spawn(type: string, wx: number, wy: number, side: 0 | 1 = this.state.side) {
     const st = this.state;
-    await this.game.command({ cmd: "spawn", type, player: side, x: Math.round(wx), y: Math.round(wy), count: st.count, level: st.sides[side].level });
+    const r = await this.game.command<{ created?: number; blocked?: string; x?: number; y?: number }>({ cmd: "spawn", type, player: side, x: Math.round(wx), y: Math.round(wy), count: st.count, level: st.sides[side].level });
+    const created = r.created ?? 0;
+    this.patch({ placed: { x: r.x ?? wx, y: r.y ?? wy, created, blocked: created ? "" : r.blocked ?? "Can't place it here", at: performance.now() } });
+    uiTone(created ? "place" : "deny");
     this.game.client.send({ type: "refresh" });
+  }
+
+  /** Disarms the brush (right-click on open ground, Escape). */
+  disarm() { if (this.state.brush) this.patch({ brush: null }); }
+
+  private pictures = new Map<string, Promise<string>>();
+  /**
+   * An actor as the battlefield draws it, composed from its sprites (sim "preview"): the card's picture for buildings,
+   * whose art is sprites rather than a 3D model. "" when it has none (voxel units).
+   */
+  picture(type: string, side: 0 | 1): Promise<string> {
+    const key = `${type}|${side}|${side === 0 ? this.state.fa : this.state.fb}`;
+    let p = this.pictures.get(key);
+    if (!p) {
+      p = this.game.command<Parameters<Game["renderer"]["renderTiles"]>[0]>({ cmd: "preview", type, player: side }).then((parts) => new Promise<string>((resolve) => {
+        if (!Array.isArray(parts) || !parts.length) return resolve("");
+        // Sheets may still be on their way to the GPU: try again shortly.
+        let tries = 0;
+        const draw = () => { const url = this.game.renderer.renderTiles(parts, true); if (url !== null || ++tries > 40) resolve(url ?? ""); else setTimeout(draw, 120); };
+        draw();
+      }));
+      this.pictures.set(key, p);
+    }
+    return p;
   }
 
   /** The map cell (MPos) under a world pixel, from the engine (terrain height included). */

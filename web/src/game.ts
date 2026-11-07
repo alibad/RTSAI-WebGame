@@ -775,6 +775,12 @@ export class Game {
     return [this.cam.x + (clientX - r.left - r.width / 2) / this.cam.zoom, this.cam.y + (clientY - r.top - r.height / 2) / this.cam.zoom];
   }
 
+  /** A world pixel's place on the page (client px): marks drawn over the battlefield (the simulator's placements). */
+  toClient(wx: number, wy: number): [number, number] {
+    const r = this.canvas.getBoundingClientRect();
+    return [r.left + r.width / 2 + (wx - this.cam.x) * this.cam.zoom, r.top + r.height / 2 + (wy - this.cam.y) * this.cam.zoom];
+  }
+
   /** The visible world rectangle (x0, y0, x1, y1) for the minimap frame. */
   viewRect(): [number, number, number, number] {
     const [W, H] = Renderer.viewSize(this.canvas, this.cam.zoom);
@@ -1135,9 +1141,11 @@ export class Game {
       return true;
     }
     if (e.button === 2) {
+      // Right-click removes a placed unit; on open ground it puts the brush down, as in a match's placement.
       const s = this.client.cur;
       const a = s && this.actorAt(wx, wy, s);
       if (a && s.players[a.owner] && s.players[a.owner].flags & 4) sb.remove(a.id);
+      else sb.disarm();
       return true;
     }
     return false;
@@ -1316,6 +1324,7 @@ export class Game {
       if (st.keysOpen) store.set({ keysOpen: false });
       else if (st.menuOpen) store.set({ menuOpen: false });
       else if (this.ui?.mode) this.command({ cmd: "mode", mode: "none" });
+      else if (this.sandbox?.state.mode === "edit" && this.sandbox.state.brush) this.sandbox.disarm(); // the simulator's placement brush
       else store.set({ menuOpen: true }); // the options menu (MenuButton OPTIONS_BUTTON, Key: escape)
       return done();
     }

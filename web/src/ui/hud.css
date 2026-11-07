@@ -710,9 +710,29 @@
 .sim-kinds button span { display: none; }
 .sim-kinds button:hover { color: #eef0e6; background: rgba(255, 255, 255, .05); }
 .sim-kinds button[aria-selected="true"] { color: var(--hud-accent); background: rgb(var(--command-accent-rgb) / .12); box-shadow: inset 0 -2px 0 var(--hud-accent); }
-.sim-unit.cameo { display: flex; flex-direction: column; min-width: 0; aspect-ratio: auto; cursor: grab; }
-.sim-unit.cameo:active { cursor: grabbing; }
-.sim-unit.cameo img { flex: none; }
+/* Palette cards lift and brighten under the pointer, press in when clicked, and the armed one glows until the brush is
+   put down (a right-click on open ground, or Esc). */
+.sim-unit.cameo { display: flex; flex-direction: column; min-width: 0; aspect-ratio: auto; cursor: grab; outline: none;
+  transition: transform .12s ease-out, box-shadow .15s, filter .15s; }
+.sim-unit.cameo img { flex: none; transition: transform .18s ease-out; }
+.sim-unit.cameo:hover { z-index: 1; transform: translateY(-2px); filter: brightness(1.12); box-shadow: 0 6px 14px rgba(0, 0, 0, .45), inset 0 0 0 1px var(--hud-accent); }
+.sim-unit.cameo:hover img { transform: scale(1.05); }
+.sim-unit.cameo:active { cursor: grabbing; transform: scale(.95); filter: brightness(.95); transition-duration: .05s; }
+.sim-unit.cameo:focus-visible { box-shadow: inset 0 0 0 2px var(--hud-accent); }
+.sim-unit.cameo[aria-pressed="true"] { box-shadow: inset 0 0 0 2px var(--hud-accent), 0 0 14px rgb(var(--command-accent-rgb) / .45); animation: sim-armed 1.6s ease-in-out infinite; }
+.sim-unit.cameo[aria-pressed="true"] .sim-cost { color: #241703; background: var(--hud-accent); }
+@keyframes sim-armed { 50% { box-shadow: inset 0 0 0 2px var(--hud-accent), 0 0 22px rgb(var(--command-accent-rgb) / .7); } }
+/* Where a click put the brush down: a ring that settles on the spot, or a red shake with the reason. */
+.sim-mark { position: fixed; z-index: 25; pointer-events: none; transform: translate(-50%, -50%); }
+.sim-mark i { display: block; width: 72px; height: 36px; border: 2px solid; border-radius: 50%; opacity: 0; }
+.sim-mark.is-placed i { border-color: #9cf28a; box-shadow: 0 0 14px #9cf28a, inset 0 0 10px #9cf28a; animation: sim-mark-ring .6s ease-out; }
+.sim-mark.is-blocked i { border-color: #ff5a4e; box-shadow: 0 0 14px #ff5a4e, inset 0 0 10px #ff5a4e; animation: sim-mark-deny .6s ease-out; }
+.sim-mark span { position: absolute; top: calc(100% + 8px); left: 50%; padding: 4px 9px; border-radius: 6px; white-space: nowrap; font-size: 12px; font-weight: 600;
+  color: #ffe6e3; background: rgba(40, 8, 6, .88); box-shadow: inset 0 0 0 1px rgba(255, 90, 78, .55), 0 6px 14px rgba(0, 0, 0, .4); transform: translateX(-50%); opacity: 0; animation: sim-mark-text 1.8s ease-out; }
+@keyframes sim-mark-ring { from { opacity: 1; transform: scale(.35); } to { opacity: 0; transform: scale(1.7); } }
+@keyframes sim-mark-deny { 0% { opacity: 1; transform: scale(.9); } 20% { transform: translateX(-5px); } 40% { transform: translateX(5px); } 60% { opacity: 1; transform: translateX(-3px); } 100% { opacity: 0; transform: scale(1.1); } }
+@keyframes sim-mark-text { 0%, 75% { opacity: 1; } 100% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .sim-unit.cameo, .sim-unit.cameo img { transition: none; } .sim-unit.cameo:hover { transform: none; } .sim-unit.cameo[aria-pressed="true"] { animation: none; } }
 .sim-cost { display: block; width: 100%; min-height: 16px; padding: 1px 3px; font-size: 10px; line-height: 14px; text-align: right; color: var(--hud-accent); background: #10150e; }
 .sim-fog { display: grid; width: 34px; place-items: center; color: var(--muted-foreground); }
 .sim-fog.is-on { color: var(--hud-accent); box-shadow: inset 0 0 0 1px var(--hud-accent-dim); }
@@ -723,6 +743,8 @@
 .sim-card { position: fixed; right: 352px; top: 64px; z-index: 30; display: flex; width: 330px; flex-direction: column; overflow: hidden; border-radius: 10px; box-shadow: 0 18px 40px rgba(0, 0, 0, .55), inset 0 -3px 0 var(--side); animation: menu-rise .18s ease-out; pointer-events: none; }
 .sim-card-art { position: relative; display: grid; height: 170px; place-items: center; overflow: hidden; background: radial-gradient(120% 90% at 50% 25%, color-mix(in srgb, var(--side) 28%, #11150e), #090b08); }
 .sim-card-art img { max-width: 92%; max-height: 92%; object-fit: contain; filter: drop-shadow(0 10px 14px rgba(0, 0, 0, .6)); }
+/* A building as the battlefield draws it, filling the stage (a cameo-sized fallback stays at its own size). */
+.sim-card-art[data-picture="sprite"] img { width: auto; height: 82%; image-rendering: auto; }
 .sim-card-art canvas { width: 100%; height: 100%; }
 .sim-card-blank { width: 60px; height: 60px; border-radius: 50%; background: rgba(255, 255, 255, .05); }
 .sim-card-body { display: flex; flex-direction: column; gap: 6px; padding: 10px 12px 12px; }

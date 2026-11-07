@@ -42,14 +42,23 @@ export function UnitCard({ game, unit, faction, side, pinned = false }: { game: 
   const icons = useStore((s) => s.icons);
   const [info, setInfo] = useState<UnitInfo | null>(null);
   useEffect(() => { let live = true; setInfo(null); void unitInfo(game, unit.name).then((i) => { if (live) setInfo(i); }); return () => { live = false; }; }, [game, unit.name]);
+  // Buildings have no 3D model on the stage: show them as the battlefield draws them, big, not as a stamp-sized cameo.
+  const [picture, setPicture] = useState("");
+  const sprite = unit.kind === "building" || unit.kind === "defense";
+  useEffect(() => {
+    let live = true;
+    setPicture("");
+    if (sprite) void game.sandbox?.picture(unit.name, side).then((url) => { if (live) setPicture(url); });
+    return () => { live = false; };
+  }, [game, unit.name, side, sprite]);
   const story = stories[unit.name];
   const portrait = (portraits as Record<string, { file: string }>)[unit.name]?.file;
   const weapons = info?.weapons.filter((w) => w.damage > 0) ?? [];
   // Over the battlefield, beside the panel it was picked in (a portal: the panel clips what overflows it).
   return createPortal(
     <div className={pinned ? "sim-card hud-panel is-pinned" : "sim-card hud-panel"} style={{ "--side": SIDE_COLORS[side] } as CSSProperties} data-testid="sim-card">
-      <div className="sim-card-art">
-        <FactionViewerStage unit={unit.name} faction={faction} color={ENGINE_SIDE_COLORS[side]} interactive={pinned} fallback={portrait ? `portraits/${portrait}` : icons[iconKey(unit.name, faction)] ?? null} />
+      <div className="sim-card-art" data-picture={picture ? "sprite" : undefined}>
+        <FactionViewerStage unit={unit.name} faction={faction} color={ENGINE_SIDE_COLORS[side]} interactive={pinned} fallback={picture || (portrait ? `portraits/${portrait}` : icons[iconKey(unit.name, faction)] ?? null)} />
       </div>
       <div className="sim-card-body">
         <span className="menu-eyebrow">{story?.role ?? KIND[unit.kind] ?? unit.kind}</span>

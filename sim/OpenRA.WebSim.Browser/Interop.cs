@@ -393,7 +393,16 @@ namespace OpenRA.WebSim.Browser
 			SimHost.Click(new int2(x, y), (MouseButton)button, (Modifiers)modifiers);
 
 		[JSExport]
-		public static string Cursor(int x, int y, int modifiers) => SimHost.Cursor(new int2(x, y), (Modifiers)(modifiers & 0xFFFF), (modifiers & 0x10000) != 0);
+		public static string Cursor(int x, int y, int modifiers)
+		{
+			var cursor = SimHost.Cursor(new int2(x, y), (Modifiers)(modifiers & 0xFFFF), (modifiers & 0x10000) != 0);
+
+			// The battle simulator's placement preview follows the cursor in its paused world: redraw when it moved a cell.
+			if (SandboxPlacement.TakeMoved())
+				Refresh();
+
+			return cursor;
+		}
 
 		[JSExport]
 		public static byte[] CursorSet() => Ui.CursorSet();

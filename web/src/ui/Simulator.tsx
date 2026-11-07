@@ -4,6 +4,7 @@
 // engine's bot plays the enemy. A timeline records the battle for scrubbing; Edit goes back to the setup.
 
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
+import { createPortal } from "react-dom";
 import { Anchor, ArrowLeft, Building2, Castle, Diamond, Eraser, EyeOff, Map as MapIcon, MousePointerClick, Pause, Plane, Play, Radio, RotateCcw, Shield, ShieldCheck, SkipBack, Sparkles, StepForward, Swords, Target, Trash2, Truck, Undo2, Users, X } from "lucide-react";
 import type { Game } from "../game";
 import { AI_SKILLS, type AiSkill, type Sandbox, type SandboxOrder, type SimUnit } from "../sandbox";
@@ -168,11 +169,11 @@ function EditPanel({ game, sandbox }: { game: Game; sandbox: Sandbox }) {
       <div className="sim-roster no-scrollbar grid min-h-0 flex-1 auto-rows-max content-start grid-cols-3 gap-[3px] overflow-y-auto" onMouseLeave={() => setHover(null)}>
         {units.length === 0 && <p className="col-span-3 p-3 text-sm text-[var(--muted-foreground)]" role="status">No {category} match your search.</p>}
         {units.map((u) => (
-          <button key={u.name} type="button" title={u.label} draggable data-unit={u.name}
+          <button key={u.name} type="button" title={u.label} draggable data-unit={u.name} data-sfx-hover aria-pressed={st.brush === u.name}
             onDragStart={(e) => { e.dataTransfer.setData("application/x-rtsai-unit", u.name); e.dataTransfer.effectAllowed = "copy"; }}
             onMouseEnter={() => setHover(u)}
-            onClick={() => patch({ brush: st.brush === u.name ? null : u.name })}
-            className={cn("cameo sim-unit hud-inset", st.brush === u.name && "ring-2 ring-[var(--hud-accent)]")}>
+            onClick={() => patch({ brush: st.brush === u.name ? null : u.name, placed: null })}
+            className="cameo sim-unit hud-inset">
             {icons[iconKey(u.name, faction)] ? <img src={icons[iconKey(u.name, faction)]!} alt="" draggable={false} /> : <div className="grid aspect-[60/48] w-full place-items-center px-1 text-center text-[9px] leading-tight text-[var(--muted-foreground)]">{u.label}</div>}
             <span className="sim-cost digits">{u.cost > 0 ? u.cost.toLocaleString() : "Free"}</span>
           </button>
@@ -271,10 +272,24 @@ function Timeline({ game, sandbox }: { game: Game; sandbox: Sandbox }) {
   );
 }
 
+/** Where the last click put the brush down: a ring that settles on the spot, or a red mark with the reason. */
+function PlacementMark({ game }: { game: Game }) {
+  const placed = useStore((s) => s.sandbox?.placed);
+  if (!placed) return null;
+  const [x, y] = game.toClient(placed.x, placed.y);
+  return createPortal(
+    <div key={placed.at} className={cn("sim-mark", placed.created ? "is-placed" : "is-blocked")} style={{ left: x, top: y }} role="status" aria-live="polite" data-testid="sim-mark">
+      <i aria-hidden="true" />{!placed.created && <span>{placed.blocked}</span>}
+    </div>,
+    document.body,
+  );
+}
+
 export function Simulator({ game, exit }: { game: Game; exit: () => void }) {
   const st = useStore((s) => s.sandbox);
   const sandbox = game.sandbox;
   if (!st || !sandbox) return null;
+  const armed = st.brush ? st.units.find((u) => u.name === st.brush)?.label ?? st.brush : null;
   if (st.mode === "run") return (
     <>
       <Hud game={game} />
@@ -289,9 +304,10 @@ export function Simulator({ game, exit }: { game: Game; exit: () => void }) {
         <FeedbackSlot kind="hud" />
       </nav>
       <div className="sb-hint"><div className="hud-card">
-        <MousePointerClick />{st.pickDestination !== null ? "Click the battlefield to set the destination" : st.brush ? "Click to place · right-click a unit to remove" : "Drag anything onto the battlefield · right-click removes"}
+        <MousePointerClick />{st.pickDestination !== null ? "Click the battlefield to set the destination" : armed ? <span>Click to place <b>{armed}</b> · right-click or Esc stops</span> : "Pick something, then click the battlefield · or drag it there · right-click removes"}
       </div></div>
-      <aside className="hud-panel sb-side sim-panel" style={{ width: "var(--sidebar-w)" }} onContextMenu={(e) => e.preventDefault()}>
+      <PlacementMark game={game} />
+      <aside className="hud-panel sb-side sim-panel" style={{ width: "var(--sidebar-w)" }} onContextMenu={(e) => e.preventDefault()} data-ui-sfx>
         <div className="sb-side-head">
           <b>Battle simulator</b>
           {developerTools && <span className="menu-eyebrow"><Shield size={11} /> Real engine</span>}

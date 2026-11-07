@@ -56,6 +56,13 @@ The campaign's objective code runs it in the engine (`Missions.StartOperation`);
   (`web/src/battle-plan.ts`).
 - Fight starts a bare scenario: no starting units, the placed actors, starting money. You command your side with
   the full HUD (production, power, selection, orders); the AI commands the other. Edit returns to the layout.
+- Placing: a card picked from the palette arms a brush (`sandbox.ts` sends `brush`; sim `SandboxPlacement.cs`). The
+  engine draws it at the cursor as a match draws placement: a building's green and red footprint with the building
+  see-through (red where it can't stand), units see-through on the cells they would take. One rule
+  (`SandboxPlacement.Where`) decides the preview and the click (`spawn`): no building on water, cliffs, slopes or
+  other actors; units on cells their locomotor can enter, moved to the nearest free ones. A click answers with a ring
+  and a sound where it landed, or a red mark with the reason ("Not on water"). Right-click on open ground or Esc puts
+  the brush down. Building cards show the building as the battlefield draws it (`preview`), not the cameo.
 
 ## Data and building
 
