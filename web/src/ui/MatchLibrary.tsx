@@ -144,7 +144,7 @@ function exportRecord(record: MatchRecord) {
 
 /** The game a save belongs to, as players know it (the profile is the engine's name for it). */
 export function gameName(profile: string) {
-  return profile === "public-classic" ? "Classic" : profile === "public" ? "Red Alert 2" : "";
+  return profile === "public-classic" ? "Classic" : profile === "public" ? "Isometric" : "";
 }
 
 /**

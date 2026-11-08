@@ -40,8 +40,8 @@ try {
     assert.equal(await page.getByRole('button', { name: /^Battle simulator/ }).count(), 1);
     assert.equal(await page.getByRole('button', { name: 'Private multiplayer', exact: true }).count(), 0);
     assert.ok(await page.getByRole('button', { name: 'Multiplayer', exact:true }).count());
-    // Every shipped game offers the other through the main menu's game tiles ("Red Alert 2" / "Classic"): the chosen tile reloads the page into its profile.
-    const [title, alternateTitle] = mode === 'isometric' ? ['Red Alert 2', 'Classic'] : ['Classic', 'Red Alert 2'];
+    // Every shipped game offers the other through the main menu's game tiles ("Isometric" / "Classic"): the chosen tile reloads the page into its profile.
+    const [title, alternateTitle] = mode === 'isometric' ? ['Isometric', 'Classic'] : ['Classic', 'Isometric'];
     const alternateProfile = mode === 'isometric' ? 'public-classic' : 'public';
     assert.equal(await modeTile(page, title).getAttribute('aria-pressed'), 'true');
     await modeTile(page, alternateTitle).click();

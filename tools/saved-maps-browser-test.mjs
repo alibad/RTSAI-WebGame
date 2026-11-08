@@ -52,7 +52,7 @@ try {
   assert.equal(await host.evaluate(() => window.store.getState().profile), 'public');
   const classicTile = host.locator('button.view-tile').filter({ has: host.locator('b', { hasText: /^Classic$/ }) });
   if (await classicTile.count()) assert.equal(await classicTile.getAttribute('aria-pressed'), 'false');
-  receipt.checks.menu = true; console.log('PASS menu: Map editor card, Red Alert 2 selected');
+  receipt.checks.menu = true; console.log('PASS menu: Map editor card, Isometric selected');
 
   // Build a battlefield in the website's studio (signed in through the game: one session on the shared origin).
   await host.goto(new URL('studio', base).href);

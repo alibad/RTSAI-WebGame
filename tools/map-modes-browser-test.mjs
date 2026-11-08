@@ -13,7 +13,7 @@ const base = process.env.RTSAI_TEST_URL || 'http://127.0.0.1:3507/';
 const out = path.resolve(process.env.RTSAI_TEST_OUT || 'artifacts/map-modes');
 fs.mkdirSync(out, { recursive: true });
 /** The games as players know them (MatchLibrary.tsx gameName) and their `game` query value (MainMenu.tsx chooseMode). */
-const GAME = { public: { name: 'Red Alert 2', query: 'isometric' }, 'public-classic': { name: 'Classic', query: 'classic' } };
+const GAME = { public: { name: 'Isometric', query: 'isometric' }, 'public-classic': { name: 'Classic', query: 'classic' } };
 const browser = await chromium.launch({ executablePath: browserExecutable(), headless: true, args: browserArgs() });
 const receipt = { source: "The engine's own map generator in the page (no map service); saves in this browser's localStorage", modes: [] };
 try {
