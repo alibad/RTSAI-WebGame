@@ -24,7 +24,8 @@ node tools/quality-gate.mjs --published-site                                  # 
 
 The receipt is `D:\Builds\RTSAI\play-release\gate\<id>\`: `receipt.json`, `GATE.md` (the table above with results), one log per
 check, and the browser tests' screenshots. `gate\latest.json` points at the last run. A copy of `GATE.md` lands in
-`hq/games/artifacts/quality-gate-<date>/` so the owner can open it from the artifacts folder.
+`D:\Generated\RTSAI\quality-gate-<date>\` so the owner can open it with the other kept results (owner, 3 Nov 2026:
+new results no longer go in `hq/games/artifacts`; older gate copies there stay where they are).
 
 What it does not prove: that the game is fun or that a new player understands it (the owner's ten minutes of play
 after each release), that it works on a real phone or in Safari (emulated only), or multiplayer across networks.

@@ -12,7 +12,7 @@
 // --only runs a subset (the browser step then needs --page-url, or a release step before it).
 // --prepare runs the real prepare (Vercel preview, new roots to Cloudflare) instead of the dry run; promote stays manual.
 // Receipt: <work>/gate/<id>/ (receipt.json, GATE.md, one log per check) and a copy of GATE.md in
-// hq/games/artifacts/quality-gate-<date>/. Exit code 1 on any failure. Hosted CI is not used (owner rule): run it here.
+// D:/Generated/RTSAI/quality-gate-<date>/ (owner, 3 Nov 2026). Exit code 1 on any failure. Hosted CI is not used (owner rule): run it here.
 import { spawn, spawnSync } from "node:child_process";
 import fs from "node:fs";
 import net from "node:net";
@@ -215,7 +215,8 @@ for (const name of ["unit", "browser"]) {
 }
 md.push("", `Logs and screenshots: ${dir}`, "");
 fs.writeFileSync(path.join(dir, "GATE.md"), md.join("\n"));
-const artifacts = path.resolve(repo, "..", "artifacts", `quality-gate-${id.slice(0, 10).replace(/-/g, "")}`);
-try { fs.mkdirSync(artifacts, { recursive: true }); fs.copyFileSync(path.join(dir, "GATE.md"), path.join(artifacts, `${id}.md`)); } catch { /* the hq artifacts folder is optional */ }
+// Kept results live in D:/Generated/<project>/<topic>-<date>/ (owner, 3 Nov 2026), not hq/games/artifacts.
+const artifacts = path.join("D:/Generated/RTSAI", `quality-gate-${id.slice(0, 10).replace(/-/g, "")}`);
+try { fs.mkdirSync(artifacts, { recursive: true }); fs.copyFileSync(path.join(dir, "GATE.md"), path.join(artifacts, `${id}.md`)); } catch { /* the copy is optional */ }
 say(`\n${receipt.passed ? "GATE PASSED" : "GATE FAILED"}: ${path.join(dir, "GATE.md")}`);
 process.exit(receipt.passed ? 0 : 1);
