@@ -5,6 +5,8 @@ import { chromium } from '../web/node_modules/playwright-core/index.mjs';
 import { browserExecutable, browserArgs } from './browser-launch.mjs';
 const base = process.env.RTSAI_TEST_URL ?? 'http://127.0.0.1:38669/';
 const out = process.env.RTSAI_TEST_OUT ?? 'artifacts/earth-editor';
+// RTSAI_TEST_ASSET_ORIGIN: the CDN host of a static page's runtime and data, when they are not served beside it.
+const assets = process.env.RTSAI_TEST_ASSET_ORIGIN ? new URL(process.env.RTSAI_TEST_ASSET_ORIGIN).hostname : '';
 fs.mkdirSync(out, { recursive: true });
 const browser = await chromium.launch({ executablePath: browserExecutable(), args: browserArgs(), headless: true });
 const receipt = { base, cases: [], passed: false };
@@ -17,7 +19,7 @@ try {
     await page.route('**/*', route => {
       const u = new URL(route.request().url());
       if (u.pathname.endsWith('/api/overpass')) return route.fulfill({status:200,contentType:'application/json',body:'{"elements":[]}'});
-      if (['127.0.0.1','localhost','server.arcgisonline.com','tile.openstreetmap.org'].includes(u.hostname) || ['blob:','data:'].includes(u.protocol)) return route.continue();
+      if (['127.0.0.1','localhost','server.arcgisonline.com','tile.openstreetmap.org',assets].includes(u.hostname) || ['blob:','data:'].includes(u.protocol)) return route.continue();
       return route.abort();
     });
     await page.goto(`${base}?profile=public&mode=editor`);

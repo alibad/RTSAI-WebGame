@@ -122,6 +122,8 @@ export function EarthStudio({ game, editor, close, mission, play }: { game: Game
   const [error, setError] = useState("");
   const [terrain, setTerrain] = useState<TerrainResult | null>(null);
   const [built, setBuilt] = useState<{ id: string; title: string; coastal: boolean; points: { u: number; v: number }[] } | null>(null);
+  // What the build is for: a map to shape in the editor, or a mission at this place (set up on this screen).
+  const [goal, setGoal] = useState<"edit" | "mission">("edit");
   const nations = playableNations(setup);
   const [fa, setFa] = useState("saudi");
   const [fb, setFb] = useState("iran");
@@ -129,6 +131,8 @@ export function EarthStudio({ game, editor, close, mission, play }: { game: Game
   const [forces, setForces] = useState<{ defender: Force; attacker: Force } | null>(null);
   const nationOptions: Option[] = nations.map((f) => ({ value: f.id, label: f.name, group: nationGroup(f), leading: <Flag id={f.id} className="h-[12px] w-[18px] rounded-[1px]" /> }));
   const fp = FOOTPRINTS[footprint];
+  // The quick mission is a land attack: not on the regional coastline maps (Hormuz).
+  const missionHere = !!place && !regionalGeography(place.lat, place.lon, fp.radius);
   const say = (s: string) => setLog((l) => [...l, s]);
 
   // The globe stays still until the player explores it. Imagery is fetched only for the visible view.
@@ -259,8 +263,10 @@ export function EarthStudio({ game, editor, close, mission, play }: { game: Game
     research.current?.abort(); building.current?.abort(); sidesEdited.current = false;
     setPlace(p); setStage("place"); setLog([]); setSites([]); setSite(null); setError(""); setBuilt(null); setForces(null);
     say("Battlefield location selected");
-    const next = p.name === "Strait of Hormuz" ? FOOTPRINTS[5] : fp;
-    if (p.name === "Strait of Hormuz") setFootprint(5);
+    // A regional size (60 or 120 km) only exists around Hormuz: elsewhere the area goes back to 5 km.
+    const size = p.name === "Strait of Hormuz" ? 5 : fp.radius > 10000 && !regionalGeography(p.lat, p.lon, fp.radius) ? 1 : footprint;
+    const next = FOOTPRINTS[size];
+    if (size !== footprint) setFootprint(size);
     drawFootprint(p, next); fitArea(p, next);
     marker.current?.setLngLat([p.lon, p.lat]).addTo(m);
     if (m.getLayer("built")) m.removeLayer("built");
@@ -342,8 +348,9 @@ export function EarthStudio({ game, editor, close, mission, play }: { game: Game
   };
 
   /** The place's roads, water, land cover and buildings, compiled into a map by the website's Earth compiler. */
-  const build = async (refresh = false) => {
+  const build = async (refresh = false, then: "edit" | "mission" = goal) => {
     if (!place || !map.current) return;
+    setGoal(then);
     const controller = new AbortController(); building.current?.abort(); building.current = controller;
     const current = () => !controller.signal.aborted && building.current === controller;
     setStage("building"); setError(""); setTerrain(null); setLog([]);
@@ -405,6 +412,8 @@ export function EarthStudio({ game, editor, close, mission, play }: { game: Game
       m.easeTo({ pitch: 55, bearing: 45, zoom: m.getZoom() + 0.2, duration: 2400 });
       setBuilt({ id, title: bf.title, coastal: !!base, points: spawnCells(new TextDecoder().decode(files["map.yaml"])) });
       setStage("built");
+      // A mission is set up here (defend or attack, the two sides); a map to shape opens in the editor.
+      if (then === "mission") return;
       await editor.open({ map: id });
       if (editor.state.error) throw Error(editor.state.error);
       close();
@@ -438,7 +447,7 @@ export function EarthStudio({ game, editor, close, mission, play }: { game: Game
       <header className="es-editorbar hud-panel">
         <button type="button" className="hud-tool" aria-label="Back to map editor" onClick={close}><ArrowLeft /></button>
         <div><b>Map editor</b><span>Real-world area</span></div>
-        <ol aria-label="Map creation steps"><li aria-current="step">1 · Choose area</li><li>2 · Edit terrain & forces</li></ol>
+        <ol aria-label="Map creation steps"><li aria-current={stage === "built" ? undefined : "step"}>1 · Choose area</li><li aria-current={stage === "built" ? "step" : undefined}>{stage === "built" ? "2 · Set up the mission" : "2 · Edit terrain & forces"}</li></ol>
       </header>
       <div className="es-map-controls">
       <div className="es-basemap" role="group" aria-label="Map appearance">
@@ -546,27 +555,34 @@ export function EarthStudio({ game, editor, close, mission, play }: { game: Game
             </div>
             {error && <p className="ed-error" role="alert">{error}</p>}
             <footer>
-              {stage === "place" && <><GameButton variant="primary" size="lg" icon={<Pencil size={16} />} onClick={() => void build()} data-testid="es-build">Create & edit map</GameButton><small className="es-play-note">Opens this area in the map editor. Add forces, change terrain, then test your map.</small></>}
+              {stage === "place" && <>
+                <GameButton variant="primary" size="lg" icon={<Pencil size={16} />} onClick={() => void build(false, "edit")} data-testid="es-build">Create & edit map</GameButton>
+                {missionHere
+                  ? <><GameButton icon={<Swords size={16} />} onClick={() => void build(false, "mission")} data-testid="es-build-mission">Create a mission here</GameButton>
+                    <small className="es-play-note">Edit: shape the terrain and forces yourself. Mission: a ready battle for {site?.name ?? place.name.split(",")[0]}.</small></>
+                  : <small className="es-play-note">Opens this area in the map editor. Add forces, change terrain, then test your map.</small>}
+              </>}
               {stage === "building" && <div className="es-scanning"><LoaderCircle className="menu-spin" size={16} />Building the battlefield…</div>}
               {stage === "built" && built && (
                 <div className="es-actions">
-                  <div className="es-sides">
-                    <label><span>You</span><SearchSelect size="sm" value={fa} onValueChange={value => { sidesEdited.current = true; setFa(value); }} options={nationOptions} aria-label="Your nation" /></label>
-                    <label><span>Enemy AI</span><SearchSelect size="sm" value={fb} onValueChange={value => { sidesEdited.current = true; setFb(value); }} options={nationOptions} aria-label="Enemy nation" /></label>
-                  </div>
-                  <GameButton variant="primary" size="lg" icon={<Swords size={16} />} onClick={() => play(built.id, fa, fb)} data-testid="es-play">Play skirmish</GameButton>
-                  <small className="es-play-note">Start now against the AI. This map is also saved in your browser’s map library.</small>
-                  {!built.coastal && <details className="es-mission-extra"><summary>Or create a mission at this place</summary><div className="es-mission">
+                  {!built.coastal && <div className="es-mission">
                     <span className="menu-eyebrow"><Swords size={12} /> Mission at {site?.name ?? place.name}</span>
                     <div className="es-role" role="radiogroup" aria-label="Your role">
                       <button type="button" role="radio" aria-checked={youDefend} onClick={() => switchRole(true)}><Shield size={13} />You defend it</button>
                       <button type="button" role="radio" aria-checked={!youDefend} onClick={() => switchRole(false)}><Swords size={13} />You attack it</button>
                     </div>
+                    <div className="es-sides">
+                      <label><span>You</span><SearchSelect size="sm" value={fa} onValueChange={value => { sidesEdited.current = true; setFa(value); }} options={nationOptions} aria-label="Your nation" /></label>
+                      <label><span>Enemy AI</span><SearchSelect size="sm" value={fb} onValueChange={value => { sidesEdited.current = true; setFb(value); }} options={nationOptions} aria-label="Enemy nation" /></label>
+                    </div>
                     {forces && forces.defender.id === (youDefend ? fa : fb) && forces.attacker.id === (youDefend ? fb : fa) && <p className="es-why">{forceName(forces.defender.id)} holds it: {forces.defender.why}. {forceName(forces.attacker.id)} attacks: {forces.attacker.why}.</p>}
                     <GameButton variant="primary" size="lg" icon={<Swords size={16} />} onClick={startMission} data-testid="es-mission">Start mission</GameButton>
-                  </div></details>}
+                  </div>}
                   {built.coastal && <p className="ed-tip">Regional terrain is ready. Open the editor to place forces and plan your scenario. The quick land-attack mission does not support this coastal map.</p>}
-                  <GameButton variant={built.coastal ? "primary" : "secondary"} icon={<Pencil size={14} />} onClick={() => void editor.open({ map: built.id })} data-testid="es-edit">Edit this map</GameButton>
+                  <div className="es-other">
+                    {!built.coastal && <GameButton icon={<Swords size={14} />} onClick={() => play(built.id, fa, fb)} data-testid="es-play">Play skirmish</GameButton>}
+                    <GameButton variant={built.coastal ? "primary" : "secondary"} icon={<Pencil size={14} />} onClick={() => void editor.open({ map: built.id })} data-testid="es-edit">Edit this map</GameButton>
+                  </div>
                 </div>
               )}
             </footer>

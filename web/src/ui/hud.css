@@ -981,7 +981,10 @@
 .es-root[data-stage="world"] .es-basemap { top: 14px; }
 .es-basemap button { min-height: 40px; padding: 8px 12px; border-radius: 6px; font-size: 13px; }
 .es-basemap button[aria-pressed="true"] { color: #171b10; background: var(--hud-accent); }
-.es-mission-extra summary { cursor: pointer; min-height: 40px; padding-block: 10px; color: #b9c6d3; font-size: 12px; }
+/* The mission step: the mission leads, skirmish and the editor sit side by side under it, and the panel gives it room. */
+.es-other { display: grid; grid-template-columns: repeat(auto-fit, minmax(0, 1fr)); gap: 8px; }
+.es-mission .menu-eyebrow { display: flex; align-items: center; gap: 6px; }
+.es-root[data-stage="built"] .es-intel footer { max-height: 70%; }
 .es-play-note { color: #aab6c3; font-size: 12px; line-height: 1.4; }
 .es-site-storage { display: flex; flex-direction: column; gap: 6px; margin: 8px 14px; padding: 12px; border: 1px solid var(--hud-edge); border-radius: 9px; color: #b9c6d3; }
 .es-site-storage b { color: #5fe0cb; font-size: 13px; }
@@ -1067,6 +1070,11 @@
   .es-intel, .es-root[data-stage="built"] .es-intel { inset-block: calc(52% + 72px) 8px; inset-inline: 8px; width: auto; height: auto; }
   .es-root .maplibregl-ctrl-bottom-left, .es-root:not([data-stage="world"]) .maplibregl-ctrl-bottom-left, .es-root[data-stage="built"] .maplibregl-ctrl-bottom-left { bottom: 8px; }
   .es-intel footer { padding: 10px 12px; max-height: 50%; }
+  .es-intel footer .es-play-note { display: none; }
+  /* The mission step on a phone: a shorter map, so the whole mission fits without scrolling. */
+  .es-root[data-stage="built"] > .es-map { inset-block: 64px 62%; }
+  .es-root[data-stage="built"] .es-place { inset-block-start: 38%; }
+  .es-root[data-stage="built"] .es-intel { inset-block: calc(38% + 72px) 8px; }
   .es-map-state { top: 134px; inset-inline: 12px; max-width: none; }
 }
 

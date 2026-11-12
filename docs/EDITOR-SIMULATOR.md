@@ -22,8 +22,11 @@ selecting and deleting behave as in the desktop editor. Changed terrain rows go 
   and works out the militaries there (`web/src/forces.ts`: forces the sources name, else the country's; the attacker
   is the defender's named or regional rival). They prefill the mission's sides, with the reason shown; any two
   nations can be picked.
-  Build runs the website's Earth compiler (imported from RTSAI-Web via the `@site` alias) and opens the map in the
-  editor. **Start mission** turns a scanned site into a battle between any two nations (`web/src/mission.ts`): the
+  Build runs the website's Earth compiler (imported from RTSAI-Web via the `@site` alias). **Create & edit map** opens
+  the map in the editor. **Create a mission here** (land areas; not the regional coastline maps) builds the same map
+  and stays on the screen for the mission step: defend or attack, the two sides, then Start mission, with Play
+  skirmish and Edit this map beside it (`tools/earth-mission-browser-test.mjs`).
+  **Start mission** turns a scanned site into a battle between any two nations (`web/src/mission.ts`): the
   defender's base on the site from its own roster, armies even in strength (`web/src/strength.ts`: health and
   weapons from the rules, `Ui.AppendCombat`; Lanchester's square law, so an older army gets more units), air defence
   for the defender when the attack brings aircraft (or no aircraft), and the attack from the farthest start position.
