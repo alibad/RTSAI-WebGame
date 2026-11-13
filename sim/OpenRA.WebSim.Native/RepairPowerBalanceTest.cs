@@ -34,7 +34,7 @@ static class RepairPowerBalanceTest
             SimHost.EndGame(); return 0;
         }
         string[] originals = ["america", "germany", "england", "france", "korea", "cuba", "libya", "iraq", "russia"];
-        string[] modern = ["china", "iran", "turkey", "saudi", "israel", "yemen", "hezbollah"];
+        string[] modern = ["china", "iran", "turkey", "saudi", "israel", "yemen", "lebanon"];
         foreach (var country in options.TryGetValue("faction", out var f) ? [f] : originals.Concat(modern))
         {
             var original = originals.Contains(country);

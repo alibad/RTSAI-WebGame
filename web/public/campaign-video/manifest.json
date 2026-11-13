@@ -46,11 +46,11 @@
       "mapSource": "mods\\rtsai\\campaigns\\maps\\haitan-network\\map.png"
     },
     {
-      "id": "hezbollah-relay",
+      "id": "lebanon-relay",
       "seconds": 24.593343,
       "bytes": 486115,
       "sha256": "c8e14bb6ba40d9019bb47549f8b1a0115ab2092323ad07c8c63076b98e00659f",
-      "mapSource": "mods\\rtsai\\campaigns\\maps\\hezbollah-relay\\map.png"
+      "mapSource": "mods\\rtsai\\campaigns\\maps\\lebanon-relay\\map.png"
     }
   ]
 }

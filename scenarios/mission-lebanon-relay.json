@@ -1,11 +1,11 @@
 {
-  "map": "hezbollah-relay",
-  "mission": "hezbollah-relay",
+  "map": "lebanon-relay",
+  "mission": "lebanon-relay",
   "seed": 2026,
   "players": [
     {
-      "slot": "Hezbollah",
-      "faction": "hezbollah",
+      "slot": "Lebanon",
+      "faction": "lebanon",
       "color": "2A6FDB"
     }
   ],

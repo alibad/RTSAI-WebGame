@@ -42,7 +42,7 @@ const story: CampaignStory = {
       "missions": [
         "straits-shield",
         "haitan-network",
-        "hezbollah-relay"
+        "lebanon-relay"
       ]
     },
     {
@@ -120,7 +120,7 @@ const story: CampaignStory = {
       "victory": "The network is restored and the islands are connected. The links show where the region's traffic was going: to one island no chart names, sending a time code seventy-three years old.",
       "defeat": "The network is still fragmented. Secure the water gate and rebuild supporting forces before sending another isolated group forward."
     },
-    "hezbollah-relay": {
+    "lebanon-relay": {
       "title": "Keep the Signal Alive",
       "location": "Fictional relay training ground",
       "status": "playable",
@@ -465,12 +465,12 @@ const story: CampaignStory = {
         "audio": "haitan-network/radio-5.mp3"
       }
     ],
-    "hezbollah-relay": [
+    "lebanon-relay": [
       {
         "when": "start",
         "speaker": "signals-chief",
         "line": "Exercise begins. Economy first, then the workshop. Keep the signal alive.",
-        "audio": "hezbollah-relay/radio-1.mp3"
+        "audio": "lebanon-relay/radio-1.mp3"
       },
       {
         "when": {
@@ -478,19 +478,19 @@ const story: CampaignStory = {
         },
         "speaker": "signals-chief",
         "line": "The relay held. Turn the defence into an assault.",
-        "audio": "hezbollah-relay/radio-2.mp3"
+        "audio": "lebanon-relay/radio-2.mp3"
       },
       {
         "when": "victory",
         "speaker": "signals-chief",
         "line": "Exercise complete.",
-        "audio": "hezbollah-relay/radio-3.mp3"
+        "audio": "lebanon-relay/radio-3.mp3"
       },
       {
         "when": "defeat",
         "speaker": "signals-chief",
         "line": "Exercise failed. Reset and go again.",
-        "audio": "hezbollah-relay/radio-4.mp3"
+        "audio": "lebanon-relay/radio-4.mp3"
       }
     ],
     "lights-in-the-water": [

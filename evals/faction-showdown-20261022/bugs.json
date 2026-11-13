@@ -23,7 +23,7 @@
     "where": "RTSAI-Mod mods/rtsai/rules/player.yaml (PlayerResources), RTSAI-WebGame web/src/ui/Setup.tsx",
     "what": "With $2,500 starting cash, no side can ever afford a refinery after the power plant it requires, so nobody earns money all game. With no starting units, nothing happens at all.",
     "evidence": [
-      "Trial AI-vs-AI match, Israel vs Hezbollah, no starting units, $2,500: Israel built one power plant, Hezbollah a power plant and a barracks, then both sat idle for 40 minutes.",
+      "Trial AI-vs-AI match, Israel vs Lebanon, no starting units, $2,500: Israel built one power plant, Lebanon a power plant and a barracks, then both sat idle for 40 minutes.",
       "Live rules: Ore Refinery $2,000 requires a power plant; the cheapest power plant is $600 (Tesla Reactor), $800 for the Allies. $2,600 > $2,500.",
       "No starting-units preset includes a harvester or refinery, so starting units do not help; the engine offers $2,500 by default because the mod never set its own choices."
     ],

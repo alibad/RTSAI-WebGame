@@ -25,7 +25,7 @@ for (const actor of fs.readdirSync(art).filter((name) => name.startsWith("r2")).
     throw new Error(`${actor}: original portrait does not match the installed cameo`);
   copy(actor, source);
 }
-for (const faction of ["china", "iran", "turkey", "saudi", "israel", "yemen", "hezbollah"])
+for (const faction of ["china", "iran", "turkey", "saudi", "israel", "yemen", "lebanon"])
   copy(`dog-${faction}`, path.join(art, `kit-dog/candidates/kit-v2/dog-${faction}icon-nolabel.png`));
 fs.writeFileSync(process.env.RTSAI_PORTRAITS_MANIFEST ?? path.join(repo, "web/src/portraits.json"), JSON.stringify(manifest, null, 2) + "\n");
 console.log(`Copied ${Object.keys(manifest).length} original project portraits.`);

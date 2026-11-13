@@ -25,7 +25,7 @@ The pages are self-contained except for video. To play the videos, download the 
 
 | | Score |
 | --- | --- |
-| Hezbollah, Iran | 86% |
+| Lebanon, Iran | 86% |
 | Saudi Arabia | 84% |
 | Türkiye, China | 82% |
 | Yemen | 78% |

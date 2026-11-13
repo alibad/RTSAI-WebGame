@@ -331,14 +331,14 @@
     "adaptation": "Adapted from the original Red Alert mission for RTS AI units and project terrain."
   },
   {
-    "id": "hezbollah-relay",
+    "id": "lebanon-relay",
     "title": "Relay Under Siege",
-    "faction": "hezbollah",
+    "faction": "lebanon",
     "campaign": "Combined Arms",
-    "slot": "Hezbollah",
+    "slot": "Lebanon",
     "enemy": "Opposition",
     "protect": [
-      "HezbollahConyard"
+      "LebanonConyard"
     ],
     "briefing": "A fictional training exercise: establish a relay and field workshop, defend your supply base through repeated attacks, then destroy the opposing command post. Use rifle teams, anti-tank specialists, mobile launchers and reconnaissance drones together. Expand the economy before the main assault. No real operation or force disposition is represented.",
     "adaptation": "An original RTS AI mission using project units, art and terrain.",

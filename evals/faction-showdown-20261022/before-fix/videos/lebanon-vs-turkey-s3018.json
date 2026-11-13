@@ -1,13 +1,13 @@
 {
- "a": "hezbollah",
+ "a": "lebanon",
  "b": "turkey",
  "map": "ra2-tournament-2B",
  "seed": 3018,
  "bot": "normal",
- "winner": "hezbollah",
+ "winner": "lebanon",
  "gameSeconds": 1069,
  "wallSeconds": 215,
- "video": "C:\\Users\\Admin\\Code\\hq\\games\\artifacts\\faction-showdown-20261021\\runs\\units-and-money\\videos\\hezbollah-vs-turkey-s3018.mp4",
+ "video": "C:\\Users\\Admin\\Code\\hq\\games\\artifacts\\faction-showdown-20261021\\runs\\units-and-money\\videos\\lebanon-vs-turkey-s3018.mp4",
  "videoSeconds": 97,
  "longestFrameGapMs": 49,
  "timeline": [

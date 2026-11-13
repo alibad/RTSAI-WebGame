@@ -122,7 +122,7 @@ assert.ok(!noAA.some((p) => p.id === 'heli') && noAA.filter((p) => p.id === 'kar
 
 // Forces at a place: a foreign force named at a host nation's base holds it; the attacker is its rival, named or not.
 const forces = await import(moduleUrl('web/src/forces.ts', (s) => s.replace('import { geocode } from "./place-search";', 'const geocode = async () => null; // countryAt is not under test')));
-const all = ['america', 'england', 'russia', 'saudi', 'iran', 'israel', 'hezbollah', 'yemen', 'china', 'turkey'];
+const all = ['america', 'england', 'russia', 'saudi', 'iran', 'israel', 'lebanon', 'yemen', 'china', 'turkey'];
 const udeid = forces.inferForces('qa', [{ text: 'Al Udeid Air Base. It is the largest US military base in the Middle East.', from: 'Wikipedia: Al Udeid Air Base' }], all);
 assert.deepEqual([udeid.defender.id, udeid.attacker.id], ['america', 'iran']);
 assert.match(udeid.defender.why, /US military/);

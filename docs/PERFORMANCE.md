@@ -63,7 +63,7 @@ the tileset's tile cache (`TerrainRenderer`) and 79 MB to load every voxel model
 Measured on the same build, six 15-second skirmishes in a row: WebAssembly memory 331 → 397 MB, then flat (it was
 331 → 397 → 476 MB, then flat). From the second match on, world creation allocates nothing and takes about 30 ms
 instead of about 900 ms; Start to playing went from 2.2 s to 0.4 s. SyncHash is unchanged on battle-50,
-hezbollah-swarm and battle-originals at 1500 ticks, and random-map ids are the same.
+lebanon-swarm and battle-originals at 1500 ticks, and random-map ids are the same.
 
 The rest is the garbage collector's normal working size: with `soft-heap-limit=200m` (`worker.ts`), the heap may
 grow to about 200 MB of objects between full collections during play, and long runs of 200-unit battles still reach

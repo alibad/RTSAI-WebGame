@@ -73,9 +73,7 @@ for (const r of results) for (const f of [r.a, r.b]) { const s = (score[f] ??= {
 const table = Object.entries(score).map(([f, s]) => ({ f, rate: s.p / s.n, n: s.n })).sort((p, q) => q.rate - p.rate);
 
 // Title and closing cards, drawn as pages and held for a few seconds.
-const flag = (f) => f === "hezbollah"
-  ? `<span class="mono">HZB</span>` // never the Hezbollah flag in a video (owner rule)
-  : `<img src="data:image/svg+xml;base64,${fs.readFileSync(path.join(root, "page", "flags", `${f}.svg`)).toString("base64")}">`;
+const flag = (f) => `<img src="data:image/svg+xml;base64,${fs.readFileSync(path.join(root, "page", "flags", `${f}.svg`)).toString("base64")}">`;
 const css = `body{margin:0;width:1920px;height:1080px;background:radial-gradient(1400px 800px at 50% 30%,#1d251a,#090b09);color:#eeeadd;font-family:"Segoe UI",sans-serif;display:grid;place-items:center}
   h1{font-size:120px;letter-spacing:.14em;color:#f1d28b;margin:0;text-transform:uppercase;font-weight:800}
   p{font-size:34px;color:#a2a695;letter-spacing:.06em;margin:18px 0 0}

@@ -649,9 +649,9 @@
     "source": "units/kit-dog/candidates/kit-v2/dog-yemenicon-nolabel.png",
     "sha256": "438370fba5300c8b1cdd2867f726b64cb4378180582089e6726725e7e87f2fbb"
   },
-  "dog-hezbollah": {
-    "file": "dog-hezbollah.png",
-    "source": "units/kit-dog/candidates/kit-v2/dog-hezbollahicon-nolabel.png",
+  "dog-lebanon": {
+    "file": "dog-lebanon.png",
+    "source": "units/kit-dog/candidates/kit-v2/dog-lebanonicon-nolabel.png",
     "sha256": "438370fba5300c8b1cdd2867f726b64cb4378180582089e6726725e7e87f2fbb"
   }
 }

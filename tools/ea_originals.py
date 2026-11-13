@@ -27,7 +27,7 @@ import ea_retail
 import effect_anchors
 
 COUNTRIES = ('america', 'germany', 'england', 'france', 'korea', 'cuba', 'libya', 'iraq', 'russia')
-MODERN = ('china', 'iran', 'turkey', 'saudi', 'israel', 'yemen', 'hezbollah')
+MODERN = ('china', 'iran', 'turkey', 'saudi', 'israel', 'yemen', 'lebanon')
 # Original isometric foundations replace the kit geometry when original-country content is enabled.
 RESTORED_FOUNDATIONS = ('napowr', 'nahand', 'nadept', 'natech', 'nanrct')
 RESTORED_PRODUCTION = ('gaorep', 'gagap', 'gaspysat', 'gaweat', 'napsis', 'naclon', 'namisl')

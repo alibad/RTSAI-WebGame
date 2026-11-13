@@ -988,7 +988,7 @@
       "license": "Apache-2.0"
     },
     {
-      "filename": "modern-factions/audio/eva/hezbollah/001.wav",
+      "filename": "modern-factions/audio/eva/lebanon/001.wav",
       "category": "announcers",
       "sha256": "551854db36c2fb2154fd36c88f56e5cd5bd61da8b534793e158849ff7df6f359",
       "source": "rtsai-voices-1",
@@ -996,7 +996,7 @@
       "license": "Apache-2.0"
     },
     {
-      "filename": "modern-factions/audio/eva/hezbollah/002.wav",
+      "filename": "modern-factions/audio/eva/lebanon/002.wav",
       "category": "announcers",
       "sha256": "39af2fdb7d0df2cfceacd1443c15dc92f9f631b332b95c5143b8c5dd3b592971",
       "source": "rtsai-voices-1",
@@ -1004,7 +1004,7 @@
       "license": "Apache-2.0"
     },
     {
-      "filename": "modern-factions/audio/eva/hezbollah/003.wav",
+      "filename": "modern-factions/audio/eva/lebanon/003.wav",
       "category": "announcers",
       "sha256": "1d99bbd6710e73bf81957b9ff079daaf635949b3b525ab63816f8b1bed51724a",
       "source": "rtsai-voices-1",
@@ -1012,7 +1012,7 @@
       "license": "Apache-2.0"
     },
     {
-      "filename": "modern-factions/audio/eva/hezbollah/004.wav",
+      "filename": "modern-factions/audio/eva/lebanon/004.wav",
       "category": "announcers",
       "sha256": "b695690dd8627d96502c0960219a3ce65105566e625c4d9e67af41b487a35c4f",
       "source": "rtsai-voices-1",
@@ -1020,7 +1020,7 @@
       "license": "Apache-2.0"
     },
     {
-      "filename": "modern-factions/audio/eva/hezbollah/005.wav",
+      "filename": "modern-factions/audio/eva/lebanon/005.wav",
       "category": "announcers",
       "sha256": "a9a099523bfeb89d9790aa6bfad8f205b0049fca885168d5f05d28ad1f80d923",
       "source": "rtsai-voices-1",
@@ -1028,7 +1028,7 @@
       "license": "Apache-2.0"
     },
     {
-      "filename": "modern-factions/audio/eva/hezbollah/006.wav",
+      "filename": "modern-factions/audio/eva/lebanon/006.wav",
       "category": "announcers",
       "sha256": "6fd30bc8b6ff3d793d71fee9b94eec0a541b8012d2e803a7582d53c7609bdd9d",
       "source": "rtsai-voices-1",
@@ -1036,7 +1036,7 @@
       "license": "Apache-2.0"
     },
     {
-      "filename": "modern-factions/audio/eva/hezbollah/007.wav",
+      "filename": "modern-factions/audio/eva/lebanon/007.wav",
       "category": "announcers",
       "sha256": "d9b46661c9e2f31ea3b2949f4216acede33cd7ccea98c0d08e90596add337cbd",
       "source": "rtsai-voices-1",
@@ -1044,7 +1044,7 @@
       "license": "Apache-2.0"
     },
     {
-      "filename": "modern-factions/audio/eva/hezbollah/008.wav",
+      "filename": "modern-factions/audio/eva/lebanon/008.wav",
       "category": "announcers",
       "sha256": "acea830c959344027966ac8690c98bc2afc16a94a322ed2e2bac1d75ea317b01",
       "source": "rtsai-voices-1",
@@ -1052,7 +1052,7 @@
       "license": "Apache-2.0"
     },
     {
-      "filename": "modern-factions/audio/eva/hezbollah/009.wav",
+      "filename": "modern-factions/audio/eva/lebanon/009.wav",
       "category": "announcers",
       "sha256": "182f1ae1ec0876b7d25291bb00241b280f9f02b91eff42accefe6f420b67868e",
       "source": "rtsai-voices-1",
@@ -1060,7 +1060,7 @@
       "license": "Apache-2.0"
     },
     {
-      "filename": "modern-factions/audio/eva/hezbollah/010.wav",
+      "filename": "modern-factions/audio/eva/lebanon/010.wav",
       "category": "announcers",
       "sha256": "e62dc4ae60114db9281c2429739fd634fbbf395306c59b93a58c01b6d91a1307",
       "source": "rtsai-voices-1",
@@ -1068,7 +1068,7 @@
       "license": "Apache-2.0"
     },
     {
-      "filename": "modern-factions/audio/eva/hezbollah/011.wav",
+      "filename": "modern-factions/audio/eva/lebanon/011.wav",
       "category": "announcers",
       "sha256": "f21d67f64ad0575d5a8659bafefc9a6af326b912b2c4dd844d414945fc025e3b",
       "source": "rtsai-voices-1",
@@ -1076,7 +1076,7 @@
       "license": "Apache-2.0"
     },
     {
-      "filename": "modern-factions/audio/eva/hezbollah/012.wav",
+      "filename": "modern-factions/audio/eva/lebanon/012.wav",
       "category": "announcers",
       "sha256": "ef50948d8f99a7934615e97f04a26d79b499070230e1c1026b45c2c0af8228e7",
       "source": "rtsai-voices-1",
@@ -1084,7 +1084,7 @@
       "license": "Apache-2.0"
     },
     {
-      "filename": "modern-factions/audio/eva/hezbollah/013.wav",
+      "filename": "modern-factions/audio/eva/lebanon/013.wav",
       "category": "announcers",
       "sha256": "5c448b0aee74c175ab542189f13968e1bfbf836f30b53dabb5f026ccbb334004",
       "source": "rtsai-voices-1",
@@ -1092,7 +1092,7 @@
       "license": "Apache-2.0"
     },
     {
-      "filename": "modern-factions/audio/eva/hezbollah/014.wav",
+      "filename": "modern-factions/audio/eva/lebanon/014.wav",
       "category": "announcers",
       "sha256": "80d1b97d9b062052a772e364467e0d4b51889ce2f0f92bc2449cf4fb48f36ac5",
       "source": "rtsai-voices-1",
@@ -1100,7 +1100,7 @@
       "license": "Apache-2.0"
     },
     {
-      "filename": "modern-factions/audio/eva/hezbollah/015.wav",
+      "filename": "modern-factions/audio/eva/lebanon/015.wav",
       "category": "announcers",
       "sha256": "f6ff194e9ac2203a267be48d4a862599fb522faefff6fdcd14e637e351bd5f80",
       "source": "rtsai-voices-1",
@@ -1108,7 +1108,7 @@
       "license": "Apache-2.0"
     },
     {
-      "filename": "modern-factions/audio/eva/hezbollah/016.wav",
+      "filename": "modern-factions/audio/eva/lebanon/016.wav",
       "category": "announcers",
       "sha256": "604a6c7853546ca7c47d48931d1d91079204d0acc8f7bf48b68db4566915d48d",
       "source": "rtsai-voices-1",
@@ -1116,7 +1116,7 @@
       "license": "Apache-2.0"
     },
     {
-      "filename": "modern-factions/audio/eva/hezbollah/017.wav",
+      "filename": "modern-factions/audio/eva/lebanon/017.wav",
       "category": "announcers",
       "sha256": "3e793e93917fb8abb41f719b4863477ebfb9efc1aa80a696c860f400676f188d",
       "source": "rtsai-voices-1",
@@ -1124,7 +1124,7 @@
       "license": "Apache-2.0"
     },
     {
-      "filename": "modern-factions/audio/eva/hezbollah/018.wav",
+      "filename": "modern-factions/audio/eva/lebanon/018.wav",
       "category": "announcers",
       "sha256": "fef33a4664cf816f1347f9d4a3225a8254bda1c02afb140b4e8325ccf5d263cd",
       "source": "rtsai-voices-1",
@@ -1132,7 +1132,7 @@
       "license": "Apache-2.0"
     },
     {
-      "filename": "modern-factions/audio/eva/hezbollah/019.wav",
+      "filename": "modern-factions/audio/eva/lebanon/019.wav",
       "category": "announcers",
       "sha256": "5f4ef0cdc256b6fe0432c19ba2be8c642bcf147e4102e84e622955214a5ca2cc",
       "source": "rtsai-voices-1",
@@ -1140,7 +1140,7 @@
       "license": "Apache-2.0"
     },
     {
-      "filename": "modern-factions/audio/eva/hezbollah/020.wav",
+      "filename": "modern-factions/audio/eva/lebanon/020.wav",
       "category": "announcers",
       "sha256": "febaa602b5a0bdc3cf7d6ec69100bdd4f35c031f2acb8d3a620b7c00c5fdc40d",
       "source": "rtsai-voices-1",
@@ -1148,7 +1148,7 @@
       "license": "Apache-2.0"
     },
     {
-      "filename": "modern-factions/audio/eva/hezbollah/021.wav",
+      "filename": "modern-factions/audio/eva/lebanon/021.wav",
       "category": "announcers",
       "sha256": "de2e1c4717dbe1bf4d8a2dcd084f93a2385e89bc67e73bb4e94377ee2691b289",
       "source": "rtsai-voices-1",
@@ -1156,7 +1156,7 @@
       "license": "Apache-2.0"
     },
     {
-      "filename": "modern-factions/audio/eva/hezbollah/022.wav",
+      "filename": "modern-factions/audio/eva/lebanon/022.wav",
       "category": "announcers",
       "sha256": "f4b8b35f8e46ed6284468a415cc328bc3f3dad8b366084a63bbb47897aa1b7c3",
       "source": "rtsai-voices-1",
@@ -1164,7 +1164,7 @@
       "license": "Apache-2.0"
     },
     {
-      "filename": "modern-factions/audio/eva/hezbollah/023.wav",
+      "filename": "modern-factions/audio/eva/lebanon/023.wav",
       "category": "announcers",
       "sha256": "418c1b4af92c7377307f03b4f09a9cdab478857a887d85ac3c83b4c0ca342fed",
       "source": "rtsai-voices-1",
@@ -1172,7 +1172,7 @@
       "license": "Apache-2.0"
     },
     {
-      "filename": "modern-factions/audio/eva/hezbollah/024.wav",
+      "filename": "modern-factions/audio/eva/lebanon/024.wav",
       "category": "announcers",
       "sha256": "589981a22b345f07f8673d66bdc055579291fc483623464c16b893d183300ef1",
       "source": "rtsai-voices-1",
@@ -1180,7 +1180,7 @@
       "license": "Apache-2.0"
     },
     {
-      "filename": "modern-factions/audio/eva/hezbollah/025.wav",
+      "filename": "modern-factions/audio/eva/lebanon/025.wav",
       "category": "announcers",
       "sha256": "4cefae8f8f431d17ccb34cb3c6fc80ef2cf4db229d3f60f38c347ded1bd0fa07",
       "source": "rtsai-voices-1",
@@ -1188,7 +1188,7 @@
       "license": "Apache-2.0"
     },
     {
-      "filename": "modern-factions/audio/eva/hezbollah/026.wav",
+      "filename": "modern-factions/audio/eva/lebanon/026.wav",
       "category": "announcers",
       "sha256": "965bea7134d80ebfb9ac5f0c5b712395bc9087a8c008053b569fc8eb2463db45",
       "source": "rtsai-voices-1",
@@ -1196,7 +1196,7 @@
       "license": "Apache-2.0"
     },
     {
-      "filename": "modern-factions/audio/eva/hezbollah/027.wav",
+      "filename": "modern-factions/audio/eva/lebanon/027.wav",
       "category": "announcers",
       "sha256": "c80422025ec8c334ec20bbcc59248d8b5e03f51e440ce3923c2fba9aa7fb0fed",
       "source": "rtsai-voices-1",
@@ -1204,7 +1204,7 @@
       "license": "Apache-2.0"
     },
     {
-      "filename": "modern-factions/audio/eva/hezbollah/028.wav",
+      "filename": "modern-factions/audio/eva/lebanon/028.wav",
       "category": "announcers",
       "sha256": "4bbc787cefbe9be7aa63de3ed051fb278d25d80a3d6ee88495e408d9d330ab1c",
       "source": "rtsai-voices-1",
@@ -1212,7 +1212,7 @@
       "license": "Apache-2.0"
     },
     {
-      "filename": "modern-factions/audio/eva/hezbollah/029.wav",
+      "filename": "modern-factions/audio/eva/lebanon/029.wav",
       "category": "announcers",
       "sha256": "d814c9614425ad18d272ba597734284e537c8dff00f327c1b6c0567297107d4f",
       "source": "rtsai-voices-1",
@@ -1220,7 +1220,7 @@
       "license": "Apache-2.0"
     },
     {
-      "filename": "modern-factions/audio/eva/hezbollah/030.wav",
+      "filename": "modern-factions/audio/eva/lebanon/030.wav",
       "category": "announcers",
       "sha256": "f8ac91a27f8071ae4091e52a2500651c2d365b5a7a0e28dd87519ecfb380fd70",
       "source": "rtsai-voices-1",
@@ -1228,7 +1228,7 @@
       "license": "Apache-2.0"
     },
     {
-      "filename": "modern-factions/audio/eva/hezbollah/031.wav",
+      "filename": "modern-factions/audio/eva/lebanon/031.wav",
       "category": "announcers",
       "sha256": "50ad5d918f83fddc7e73b9b22bcf2a4c72bfea55562b03a5b43318bc9bf64a04",
       "source": "rtsai-voices-1",
@@ -1236,7 +1236,7 @@
       "license": "Apache-2.0"
     },
     {
-      "filename": "modern-factions/audio/eva/hezbollah/032.wav",
+      "filename": "modern-factions/audio/eva/lebanon/032.wav",
       "category": "announcers",
       "sha256": "7b0c8a95054b320b60cfdda66193542f06f222f92716c7a0562d69dcd321c247",
       "source": "rtsai-voices-1",
@@ -1244,7 +1244,7 @@
       "license": "Apache-2.0"
     },
     {
-      "filename": "modern-factions/audio/eva/hezbollah/033.wav",
+      "filename": "modern-factions/audio/eva/lebanon/033.wav",
       "category": "announcers",
       "sha256": "cf817f82cb9b2949fddd38545f4c662e73c89f88eb777b72ee6c41cd95bd52e0",
       "source": "rtsai-voices-1",
@@ -1252,7 +1252,7 @@
       "license": "Apache-2.0"
     },
     {
-      "filename": "modern-factions/audio/eva/hezbollah/035.wav",
+      "filename": "modern-factions/audio/eva/lebanon/035.wav",
       "category": "announcers",
       "sha256": "f91f1f56b3f9d47243f79ad1864648ac91125ff1fd67fabfb34285a9ff81dff9",
       "source": "rtsai-voices-1",
@@ -1260,7 +1260,7 @@
       "license": "Apache-2.0"
     },
     {
-      "filename": "modern-factions/audio/eva/hezbollah/036.wav",
+      "filename": "modern-factions/audio/eva/lebanon/036.wav",
       "category": "announcers",
       "sha256": "17f67991712b86e7b20139fe34527a499449a415764a8055c2938234b4830399",
       "source": "rtsai-voices-1",
@@ -1268,7 +1268,7 @@
       "license": "Apache-2.0"
     },
     {
-      "filename": "modern-factions/audio/eva/hezbollah/037.wav",
+      "filename": "modern-factions/audio/eva/lebanon/037.wav",
       "category": "announcers",
       "sha256": "d8cad3084fa685807943ea2b6b926972924443096375af7f0b33dbb63e4a37ca",
       "source": "rtsai-voices-1",
@@ -1276,7 +1276,7 @@
       "license": "Apache-2.0"
     },
     {
-      "filename": "modern-factions/audio/eva/hezbollah/038.wav",
+      "filename": "modern-factions/audio/eva/lebanon/038.wav",
       "category": "announcers",
       "sha256": "4bb2d2a38e73364f58b5fa73783062c4950e4518cacfc51960e053739dffb00a",
       "source": "rtsai-voices-1",
@@ -1284,7 +1284,7 @@
       "license": "Apache-2.0"
     },
     {
-      "filename": "modern-factions/audio/eva/hezbollah/039.wav",
+      "filename": "modern-factions/audio/eva/lebanon/039.wav",
       "category": "announcers",
       "sha256": "f57c654e5f1ac0029188e7ee1d8ab02069aec335a0911451b54feef22bf1e137",
       "source": "rtsai-voices-1",
@@ -1292,7 +1292,7 @@
       "license": "Apache-2.0"
     },
     {
-      "filename": "modern-factions/audio/eva/hezbollah/040.wav",
+      "filename": "modern-factions/audio/eva/lebanon/040.wav",
       "category": "announcers",
       "sha256": "88160cb925d0a16acd55d1d50e47eb9be8cbcf926e4ad0abcc813a8549ec59b7",
       "source": "rtsai-voices-1",
@@ -1300,7 +1300,7 @@
       "license": "Apache-2.0"
     },
     {
-      "filename": "modern-factions/audio/eva/hezbollah/041.wav",
+      "filename": "modern-factions/audio/eva/lebanon/041.wav",
       "category": "announcers",
       "sha256": "eb7e998ab59af1cbf41ed27430fa08a1c66e01474c3fe3f9d7d658d0da2a1f07",
       "source": "rtsai-voices-1",
@@ -1308,7 +1308,7 @@
       "license": "Apache-2.0"
     },
     {
-      "filename": "modern-factions/audio/eva/hezbollah/042.wav",
+      "filename": "modern-factions/audio/eva/lebanon/042.wav",
       "category": "announcers",
       "sha256": "8dad41dc342301c4a152330c32ee3b0ccac5d33e746a494030855ec447358b45",
       "source": "rtsai-voices-1",
@@ -1316,7 +1316,7 @@
       "license": "Apache-2.0"
     },
     {
-      "filename": "modern-factions/audio/eva/hezbollah/043.wav",
+      "filename": "modern-factions/audio/eva/lebanon/043.wav",
       "category": "announcers",
       "sha256": "dda5638a8908cb6da37079713f8d0e5dd6c71775836f3938451cd3449e4bc892",
       "source": "rtsai-voices-1",
@@ -1324,7 +1324,7 @@
       "license": "Apache-2.0"
     },
     {
-      "filename": "modern-factions/audio/eva/hezbollah/044.wav",
+      "filename": "modern-factions/audio/eva/lebanon/044.wav",
       "category": "announcers",
       "sha256": "f7aaf10ebf403fa855a2e85e715660719ceb0958945734bb30aa76a943e45929",
       "source": "rtsai-voices-1",
@@ -1332,7 +1332,7 @@
       "license": "Apache-2.0"
     },
     {
-      "filename": "modern-factions/audio/eva/hezbollah/045.wav",
+      "filename": "modern-factions/audio/eva/lebanon/045.wav",
       "category": "announcers",
       "sha256": "a4bed918e9a23b1cb3995d2a00db0b0cf8d70b6553a0613ee78791ecd1b8c148",
       "source": "rtsai-voices-1",
@@ -1340,7 +1340,7 @@
       "license": "Apache-2.0"
     },
     {
-      "filename": "modern-factions/audio/eva/hezbollah/046.wav",
+      "filename": "modern-factions/audio/eva/lebanon/046.wav",
       "category": "announcers",
       "sha256": "ff21767d517822f206c62906a719cdd677496c92f7fdef847040637b8e6f0b4a",
       "source": "rtsai-voices-1",
@@ -1348,7 +1348,7 @@
       "license": "Apache-2.0"
     },
     {
-      "filename": "modern-factions/audio/eva/hezbollah/047.wav",
+      "filename": "modern-factions/audio/eva/lebanon/047.wav",
       "category": "announcers",
       "sha256": "b548b7d54789464b876d90444925b41ee24eca85bd7afa9c9a080a2de6b0e667",
       "source": "rtsai-voices-1",
@@ -1356,7 +1356,7 @@
       "license": "Apache-2.0"
     },
     {
-      "filename": "modern-factions/audio/eva/hezbollah/048.wav",
+      "filename": "modern-factions/audio/eva/lebanon/048.wav",
       "category": "announcers",
       "sha256": "87ccd60b86af5c217ab364cc75df1ad36cbf7abbe8471e4a018969c41f44ea38",
       "source": "rtsai-voices-1",
@@ -1364,7 +1364,7 @@
       "license": "Apache-2.0"
     },
     {
-      "filename": "modern-factions/audio/eva/hezbollah/049.wav",
+      "filename": "modern-factions/audio/eva/lebanon/049.wav",
       "category": "announcers",
       "sha256": "663472fc0a5ba099a317f93a6440e120ebda13fb4b23c4b79269a820223c8c7c",
       "source": "rtsai-voices-1",
@@ -1372,7 +1372,7 @@
       "license": "Apache-2.0"
     },
     {
-      "filename": "modern-factions/audio/eva/hezbollah/050.wav",
+      "filename": "modern-factions/audio/eva/lebanon/050.wav",
       "category": "announcers",
       "sha256": "bb82ad4f597c6f698e81845b462d55fe5453651eac7f8530df45ac71931159a0",
       "source": "rtsai-voices-1",
@@ -1380,7 +1380,7 @@
       "license": "Apache-2.0"
     },
     {
-      "filename": "modern-factions/audio/eva/hezbollah/051.wav",
+      "filename": "modern-factions/audio/eva/lebanon/051.wav",
       "category": "announcers",
       "sha256": "d2c090ef8c1c405625f7a6bdec22c67c6d1b19790bf974d2b2c5af0deb26a6a1",
       "source": "rtsai-voices-1",
@@ -1388,7 +1388,7 @@
       "license": "Apache-2.0"
     },
     {
-      "filename": "modern-factions/audio/eva/hezbollah/052.wav",
+      "filename": "modern-factions/audio/eva/lebanon/052.wav",
       "category": "announcers",
       "sha256": "91e5e9f4f005dc6ed5aa35e489aac1a75a5cc175b23be0801c84384abc71db3c",
       "source": "rtsai-voices-1",
@@ -1396,7 +1396,7 @@
       "license": "Apache-2.0"
     },
     {
-      "filename": "modern-factions/audio/eva/hezbollah/053.wav",
+      "filename": "modern-factions/audio/eva/lebanon/053.wav",
       "category": "announcers",
       "sha256": "49fcac6a726b5fae00082ed96dcad4e96200ed41bee140f12b7b68f1a95e0527",
       "source": "rtsai-voices-1",
@@ -1404,7 +1404,7 @@
       "license": "Apache-2.0"
     },
     {
-      "filename": "modern-factions/audio/eva/hezbollah/054.wav",
+      "filename": "modern-factions/audio/eva/lebanon/054.wav",
       "category": "announcers",
       "sha256": "e69be876059b1d900631fc4e44154febbd38a0086e264955d227cbb1b580f790",
       "source": "rtsai-voices-1",
@@ -1412,7 +1412,7 @@
       "license": "Apache-2.0"
     },
     {
-      "filename": "modern-factions/audio/eva/hezbollah/055.wav",
+      "filename": "modern-factions/audio/eva/lebanon/055.wav",
       "category": "announcers",
       "sha256": "7a5f6b226a7bd8ef96e30e71fc5716328f1bafbdaaac3726b070f2c08f22ffdd",
       "source": "rtsai-voices-1",
@@ -1420,7 +1420,7 @@
       "license": "Apache-2.0"
     },
     {
-      "filename": "modern-factions/audio/eva/hezbollah/056.wav",
+      "filename": "modern-factions/audio/eva/lebanon/056.wav",
       "category": "announcers",
       "sha256": "3a451c0c441d12faa2b4ffce21ab132f60f2956b9fd8f991fb303169fd9e7a82",
       "source": "rtsai-voices-1",
@@ -1428,7 +1428,7 @@
       "license": "Apache-2.0"
     },
     {
-      "filename": "modern-factions/audio/eva/hezbollah/057.wav",
+      "filename": "modern-factions/audio/eva/lebanon/057.wav",
       "category": "announcers",
       "sha256": "59ce043320c608a48ed7afc3e75dcffa068f7c4d59b279aefce98d0de42a6d69",
       "source": "rtsai-voices-1",
@@ -1436,7 +1436,7 @@
       "license": "Apache-2.0"
     },
     {
-      "filename": "modern-factions/audio/eva/hezbollah/058.wav",
+      "filename": "modern-factions/audio/eva/lebanon/058.wav",
       "category": "announcers",
       "sha256": "00c298242b5ac825b2969c34c7c62c74669843f756c5d1cec0283326511f4678",
       "source": "rtsai-voices-1",
@@ -1444,7 +1444,7 @@
       "license": "Apache-2.0"
     },
     {
-      "filename": "modern-factions/audio/eva/hezbollah/059.wav",
+      "filename": "modern-factions/audio/eva/lebanon/059.wav",
       "category": "announcers",
       "sha256": "922514e61827d768bc61ebd8502c2248395f5f2b4a3477d82476526317264eee",
       "source": "rtsai-voices-1",
@@ -1452,7 +1452,7 @@
       "license": "Apache-2.0"
     },
     {
-      "filename": "modern-factions/audio/eva/hezbollah/060.wav",
+      "filename": "modern-factions/audio/eva/lebanon/060.wav",
       "category": "announcers",
       "sha256": "90a49f682d1bf534ba5d3325f6fc88e5ca7150999f7080360ddc9738aa5d41a2",
       "source": "rtsai-voices-1",
@@ -1460,7 +1460,7 @@
       "license": "Apache-2.0"
     },
     {
-      "filename": "modern-factions/audio/eva/hezbollah/061.wav",
+      "filename": "modern-factions/audio/eva/lebanon/061.wav",
       "category": "announcers",
       "sha256": "4fb97123aebf67d49a958bbfea2ee944c18546aefcf261387245b200af15b434",
       "source": "rtsai-voices-1",
@@ -1468,7 +1468,7 @@
       "license": "Apache-2.0"
     },
     {
-      "filename": "modern-factions/audio/eva/hezbollah/062.wav",
+      "filename": "modern-factions/audio/eva/lebanon/062.wav",
       "category": "announcers",
       "sha256": "a5ecbe8f76aaa04506d4b3c8841718ce6a9e9f3048aa2444482c83883f0029e7",
       "source": "rtsai-voices-1",
@@ -1476,7 +1476,7 @@
       "license": "Apache-2.0"
     },
     {
-      "filename": "modern-factions/audio/eva/hezbollah/063.wav",
+      "filename": "modern-factions/audio/eva/lebanon/063.wav",
       "category": "announcers",
       "sha256": "051338c979761c4ba2e8ebb5df98f4516cf666cec3c33c5ab87028bb3e87f921",
       "source": "rtsai-voices-1",
@@ -1484,7 +1484,7 @@
       "license": "Apache-2.0"
     },
     {
-      "filename": "modern-factions/audio/eva/hezbollah/064.wav",
+      "filename": "modern-factions/audio/eva/lebanon/064.wav",
       "category": "announcers",
       "sha256": "b3495c0453731067fe51c911e4215808ddfd43ba701ddcc55c425f2fef7c31dc",
       "source": "rtsai-voices-1",
@@ -1492,7 +1492,7 @@
       "license": "Apache-2.0"
     },
     {
-      "filename": "modern-factions/audio/eva/hezbollah/065.wav",
+      "filename": "modern-factions/audio/eva/lebanon/065.wav",
       "category": "announcers",
       "sha256": "0d073d6cda9a9a9223a169e7740fae5af89f42251119507f4ae397d8bccc93b7",
       "source": "rtsai-voices-1",
@@ -1500,7 +1500,7 @@
       "license": "Apache-2.0"
     },
     {
-      "filename": "modern-factions/audio/eva/hezbollah/066.wav",
+      "filename": "modern-factions/audio/eva/lebanon/066.wav",
       "category": "announcers",
       "sha256": "00d116b574f47b850c7c74141700256d8f89ea63554bdb7c6f183e70ec21f079",
       "source": "rtsai-voices-1",
@@ -1508,7 +1508,7 @@
       "license": "Apache-2.0"
     },
     {
-      "filename": "modern-factions/audio/eva/hezbollah/067.wav",
+      "filename": "modern-factions/audio/eva/lebanon/067.wav",
       "category": "announcers",
       "sha256": "a0774dd4ef60a8c5a3ed05936521d8e08867a588ba945f8313539b19fa35a925",
       "source": "rtsai-voices-1",
@@ -1516,7 +1516,7 @@
       "license": "Apache-2.0"
     },
     {
-      "filename": "modern-factions/audio/eva/hezbollah/068.wav",
+      "filename": "modern-factions/audio/eva/lebanon/068.wav",
       "category": "announcers",
       "sha256": "3a4c0cc64b3df7de3cee31e7f917f659e4b89ad07038195127f3c99a4f5206c0",
       "source": "rtsai-voices-1",
@@ -1524,7 +1524,7 @@
       "license": "Apache-2.0"
     },
     {
-      "filename": "modern-factions/audio/eva/hezbollah/069.wav",
+      "filename": "modern-factions/audio/eva/lebanon/069.wav",
       "category": "announcers",
       "sha256": "7e7a3aad1e4fc6ad86fde7a310a365311d7d7f2b99acacdefd21ec840a08680c",
       "source": "rtsai-voices-1",
@@ -1532,7 +1532,7 @@
       "license": "Apache-2.0"
     },
     {
-      "filename": "modern-factions/audio/eva/hezbollah/070.wav",
+      "filename": "modern-factions/audio/eva/lebanon/070.wav",
       "category": "announcers",
       "sha256": "227491f8fd88105d0c81daafbd1be093e6e55402096f05a06afad166892353dc",
       "source": "rtsai-voices-1",
@@ -1540,7 +1540,7 @@
       "license": "Apache-2.0"
     },
     {
-      "filename": "modern-factions/audio/eva/hezbollah/071.wav",
+      "filename": "modern-factions/audio/eva/lebanon/071.wav",
       "category": "announcers",
       "sha256": "b4f670c10fdf2afd6e4ee9903d1c805c4657b46352226ebe5f11fde7226beb43",
       "source": "rtsai-voices-1",
@@ -1548,7 +1548,7 @@
       "license": "Apache-2.0"
     },
     {
-      "filename": "modern-factions/audio/eva/hezbollah/072.wav",
+      "filename": "modern-factions/audio/eva/lebanon/072.wav",
       "category": "announcers",
       "sha256": "41ae4d18baf71af41aa4d09725f9bbf9cc60a994463e670405fc5ca82b6710ea",
       "source": "rtsai-voices-1",
@@ -1556,7 +1556,7 @@
       "license": "Apache-2.0"
     },
     {
-      "filename": "modern-factions/audio/eva/hezbollah/073.wav",
+      "filename": "modern-factions/audio/eva/lebanon/073.wav",
       "category": "announcers",
       "sha256": "cb0ae411b5b29b5a9821915e212577813f5d3092031184a05aaf1c7c8ae476f1",
       "source": "rtsai-voices-1",
@@ -1564,7 +1564,7 @@
       "license": "Apache-2.0"
     },
     {
-      "filename": "modern-factions/audio/eva/hezbollah/074.wav",
+      "filename": "modern-factions/audio/eva/lebanon/074.wav",
       "category": "announcers",
       "sha256": "b28d5628fa9cf6f3ed9ab9632bfbfa4cea1743dabc186c84e79e4d68d2867c24",
       "source": "rtsai-voices-1",
@@ -1572,7 +1572,7 @@
       "license": "Apache-2.0"
     },
     {
-      "filename": "modern-factions/audio/eva/hezbollah/075.wav",
+      "filename": "modern-factions/audio/eva/lebanon/075.wav",
       "category": "announcers",
       "sha256": "679850e01992c5c6f07e66c898e7a1658ca993caaf78c172ec24b129a79a057e",
       "source": "rtsai-voices-1",
@@ -1580,7 +1580,7 @@
       "license": "Apache-2.0"
     },
     {
-      "filename": "modern-factions/audio/eva/hezbollah/076.wav",
+      "filename": "modern-factions/audio/eva/lebanon/076.wav",
       "category": "announcers",
       "sha256": "069b6231275cc95d880157e6c4842631342f3e5690155e7800798e0d4bf07870",
       "source": "rtsai-voices-1",
@@ -1588,7 +1588,7 @@
       "license": "Apache-2.0"
     },
     {
-      "filename": "modern-factions/audio/eva/hezbollah/077.wav",
+      "filename": "modern-factions/audio/eva/lebanon/077.wav",
       "category": "announcers",
       "sha256": "74addfe83e4323ff241f97758869e2cf0ee800c7ef8554acca7bf56a28d0f6e0",
       "source": "rtsai-voices-1",
@@ -1596,7 +1596,7 @@
       "license": "Apache-2.0"
     },
     {
-      "filename": "modern-factions/audio/eva/hezbollah/078.wav",
+      "filename": "modern-factions/audio/eva/lebanon/078.wav",
       "category": "announcers",
       "sha256": "260d0bcc256b0ea0937ed65861f56621afdb8b203b7aa2da7f1f27c1d7ae64e9",
       "source": "rtsai-voices-1",
@@ -1604,7 +1604,7 @@
       "license": "Apache-2.0"
     },
     {
-      "filename": "modern-factions/audio/eva/hezbollah/079.wav",
+      "filename": "modern-factions/audio/eva/lebanon/079.wav",
       "category": "announcers",
       "sha256": "baf4fd1ba1374906ed690e10230c4aa713d54afc56c4ea3b4f84168bd343358e",
       "source": "rtsai-voices-1",
@@ -1612,7 +1612,7 @@
       "license": "Apache-2.0"
     },
     {
-      "filename": "modern-factions/audio/eva/hezbollah/080.wav",
+      "filename": "modern-factions/audio/eva/lebanon/080.wav",
       "category": "announcers",
       "sha256": "734cfdf706e9d8568eefdffcae453ef9f71339fa7e91ab09a647bc5f45d06a75",
       "source": "rtsai-voices-1",
@@ -1620,7 +1620,7 @@
       "license": "Apache-2.0"
     },
     {
-      "filename": "modern-factions/audio/eva/hezbollah/081.wav",
+      "filename": "modern-factions/audio/eva/lebanon/081.wav",
       "category": "announcers",
       "sha256": "ddf26d7f9daabac61a3544b8e8afe3a1e41ba8df9c5240185ba175b0eb97adb6",
       "source": "rtsai-voices-1",
@@ -1628,7 +1628,7 @@
       "license": "Apache-2.0"
     },
     {
-      "filename": "modern-factions/audio/eva/hezbollah/082.wav",
+      "filename": "modern-factions/audio/eva/lebanon/082.wav",
       "category": "announcers",
       "sha256": "5f7afeffc54c8252c747f972d94f2b49d590c3d08a2165b27574790841355c13",
       "source": "rtsai-voices-1",
@@ -1636,7 +1636,7 @@
       "license": "Apache-2.0"
     },
     {
-      "filename": "modern-factions/audio/eva/hezbollah/083.wav",
+      "filename": "modern-factions/audio/eva/lebanon/083.wav",
       "category": "announcers",
       "sha256": "7d65f0cc23c0c234f1daef4598d375c95512d9d2ec9747c08634fb4dc29a0386",
       "source": "rtsai-voices-1",
@@ -1644,7 +1644,7 @@
       "license": "Apache-2.0"
     },
     {
-      "filename": "modern-factions/audio/eva/hezbollah/084.wav",
+      "filename": "modern-factions/audio/eva/lebanon/084.wav",
       "category": "announcers",
       "sha256": "e7bbbbb2f079e0f78bc8035da41468c6ad8703d3c6655204548d57f68ffd8183",
       "source": "rtsai-voices-1",
@@ -1652,7 +1652,7 @@
       "license": "Apache-2.0"
     },
     {
-      "filename": "modern-factions/audio/eva/hezbollah/085.wav",
+      "filename": "modern-factions/audio/eva/lebanon/085.wav",
       "category": "announcers",
       "sha256": "8f53f27db9ec01ddd6898c8ad46c6eec215fdb953123603c36b0aab2149c901d",
       "source": "rtsai-voices-1",
@@ -1660,7 +1660,7 @@
       "license": "Apache-2.0"
     },
     {
-      "filename": "modern-factions/audio/eva/hezbollah/086.wav",
+      "filename": "modern-factions/audio/eva/lebanon/086.wav",
       "category": "announcers",
       "sha256": "f7aae541081b418978700c569c26ad62e7dc233f14e21a99705ddd0a5b62e4f7",
       "source": "rtsai-voices-1",
@@ -1668,7 +1668,7 @@
       "license": "Apache-2.0"
     },
     {
-      "filename": "modern-factions/audio/eva/hezbollah/087.wav",
+      "filename": "modern-factions/audio/eva/lebanon/087.wav",
       "category": "announcers",
       "sha256": "043d3cd3d909cbfef0624e5d00e47bd4cd609d53ad4254f3c6a38a95ad7f9cf4",
       "source": "rtsai-voices-1",
@@ -1676,7 +1676,7 @@
       "license": "Apache-2.0"
     },
     {
-      "filename": "modern-factions/audio/eva/hezbollah/088.wav",
+      "filename": "modern-factions/audio/eva/lebanon/088.wav",
       "category": "announcers",
       "sha256": "4d16f82fe7e45d838d71f4b03e5222aa2a0c5b150557eade471ddb35319830f6",
       "source": "rtsai-voices-1",
@@ -1684,7 +1684,7 @@
       "license": "Apache-2.0"
     },
     {
-      "filename": "modern-factions/audio/eva/hezbollah/089.wav",
+      "filename": "modern-factions/audio/eva/lebanon/089.wav",
       "category": "announcers",
       "sha256": "2c2bc2a4f8d2cc9a91e9a89445570a2bf06993e5d507af677754fd7b66261f9d",
       "source": "rtsai-voices-1",
@@ -1692,7 +1692,7 @@
       "license": "Apache-2.0"
     },
     {
-      "filename": "modern-factions/audio/eva/hezbollah/090.wav",
+      "filename": "modern-factions/audio/eva/lebanon/090.wav",
       "category": "announcers",
       "sha256": "a438ba5d3f8ffd42247872d0a537a814c3790c79549925c2b2a63675e8d9f583",
       "source": "rtsai-voices-1",
@@ -1700,7 +1700,7 @@
       "license": "Apache-2.0"
     },
     {
-      "filename": "modern-factions/audio/eva/hezbollah/091.wav",
+      "filename": "modern-factions/audio/eva/lebanon/091.wav",
       "category": "announcers",
       "sha256": "67158ad2a0c66cd7a784c6783acb2654f84c641d11358b39f6676a08b49924fc",
       "source": "rtsai-voices-1",
@@ -1708,7 +1708,7 @@
       "license": "Apache-2.0"
     },
     {
-      "filename": "modern-factions/audio/eva/hezbollah/092.wav",
+      "filename": "modern-factions/audio/eva/lebanon/092.wav",
       "category": "announcers",
       "sha256": "faa3f580f5bb3e83cb5926371718662cac4431740ebd59319365db7927979ef1",
       "source": "rtsai-voices-1",
@@ -1716,7 +1716,7 @@
       "license": "Apache-2.0"
     },
     {
-      "filename": "modern-factions/audio/eva/hezbollah/093.wav",
+      "filename": "modern-factions/audio/eva/lebanon/093.wav",
       "category": "announcers",
       "sha256": "87da45b7ba9a118622ac5927322e3c744595f9884462ba6586fec7e5973da757",
       "source": "rtsai-voices-1",
@@ -1724,7 +1724,7 @@
       "license": "Apache-2.0"
     },
     {
-      "filename": "modern-factions/audio/eva/hezbollah/094.wav",
+      "filename": "modern-factions/audio/eva/lebanon/094.wav",
       "category": "announcers",
       "sha256": "6bfb630ee748246645f203085beee112423485776729d7aa04bc5627029f31c3",
       "source": "rtsai-voices-1",
@@ -1732,7 +1732,7 @@
       "license": "Apache-2.0"
     },
     {
-      "filename": "modern-factions/audio/eva/hezbollah/095.wav",
+      "filename": "modern-factions/audio/eva/lebanon/095.wav",
       "category": "announcers",
       "sha256": "dc334823295f82dd3b7f44e43ef7fca9f2aeeac82edc8fb7927d6c1c04c65eb8",
       "source": "rtsai-voices-1",
@@ -1740,7 +1740,7 @@
       "license": "Apache-2.0"
     },
     {
-      "filename": "modern-factions/audio/eva/hezbollah/096.wav",
+      "filename": "modern-factions/audio/eva/lebanon/096.wav",
       "category": "announcers",
       "sha256": "eac012812fffa50ee3551e609cb18ed25442532704089ca857fb51c06d9b9c73",
       "source": "rtsai-voices-1",
@@ -1748,7 +1748,7 @@
       "license": "Apache-2.0"
     },
     {
-      "filename": "modern-factions/audio/eva/hezbollah/097.wav",
+      "filename": "modern-factions/audio/eva/lebanon/097.wav",
       "category": "announcers",
       "sha256": "585718da6f81c1b037cffba59d6901bd593e3a8ca94631db27b9930cfd1a4b34",
       "source": "rtsai-voices-1",
@@ -1756,7 +1756,7 @@
       "license": "Apache-2.0"
     },
     {
-      "filename": "modern-factions/audio/eva/hezbollah/098.wav",
+      "filename": "modern-factions/audio/eva/lebanon/098.wav",
       "category": "announcers",
       "sha256": "0700b311055c2536d6fb091a95206b66f934dab73deb99192ac41bdca85d8842",
       "source": "rtsai-voices-1",
@@ -1764,7 +1764,7 @@
       "license": "Apache-2.0"
     },
     {
-      "filename": "modern-factions/audio/eva/hezbollah/099.wav",
+      "filename": "modern-factions/audio/eva/lebanon/099.wav",
       "category": "announcers",
       "sha256": "8c0beaaa92b29372e869503b7bd0cf856f4ea1de6261585b26fd70beaf93a9bf",
       "source": "rtsai-voices-1",
@@ -1772,7 +1772,7 @@
       "license": "Apache-2.0"
     },
     {
-      "filename": "modern-factions/audio/eva/hezbollah/100.wav",
+      "filename": "modern-factions/audio/eva/lebanon/100.wav",
       "category": "announcers",
       "sha256": "a414db4c3efa3e28588490ca6c0c53efa0570ef9ab4fba4153fbdf92e93df6fb",
       "source": "rtsai-voices-1",
@@ -1780,7 +1780,7 @@
       "license": "Apache-2.0"
     },
     {
-      "filename": "modern-factions/audio/eva/hezbollah/101.wav",
+      "filename": "modern-factions/audio/eva/lebanon/101.wav",
       "category": "announcers",
       "sha256": "82b6791b5d012726b2a9ca6e8e51f73b4fbac727d452502243a6bcf94d1c7c41",
       "source": "rtsai-voices-1",
@@ -1788,7 +1788,7 @@
       "license": "Apache-2.0"
     },
     {
-      "filename": "modern-factions/audio/eva/hezbollah/102.wav",
+      "filename": "modern-factions/audio/eva/lebanon/102.wav",
       "category": "announcers",
       "sha256": "fe2630bded524a61c291547b6f069c0ad7a28ebc518fef38e8af8d56a9a8b55f",
       "source": "rtsai-voices-1",
@@ -1796,7 +1796,7 @@
       "license": "Apache-2.0"
     },
     {
-      "filename": "modern-factions/audio/eva/hezbollah/103.wav",
+      "filename": "modern-factions/audio/eva/lebanon/103.wav",
       "category": "announcers",
       "sha256": "f0852734d7a3af9369d4fb271cb3399d4dc150756f618b09651d416c1b81ae78",
       "source": "rtsai-voices-1",
@@ -1804,7 +1804,7 @@
       "license": "Apache-2.0"
     },
     {
-      "filename": "modern-factions/audio/eva/hezbollah/104.wav",
+      "filename": "modern-factions/audio/eva/lebanon/104.wav",
       "category": "announcers",
       "sha256": "27716738431b8a16c928e30b55c3613a280bf848673feef5b3efa724e9ceb852",
       "source": "rtsai-voices-1",
@@ -1812,7 +1812,7 @@
       "license": "Apache-2.0"
     },
     {
-      "filename": "modern-factions/audio/eva/hezbollah/105.wav",
+      "filename": "modern-factions/audio/eva/lebanon/105.wav",
       "category": "announcers",
       "sha256": "2a202e13eef98af99a184afb71cce4b8843f60d0ecd93a50190ed13ecf7ff698",
       "source": "rtsai-voices-1",
@@ -1820,7 +1820,7 @@
       "license": "Apache-2.0"
     },
     {
-      "filename": "modern-factions/audio/eva/hezbollah/106.wav",
+      "filename": "modern-factions/audio/eva/lebanon/106.wav",
       "category": "announcers",
       "sha256": "112f1d8b0df536a359863e769769e02c6977210d2e72bdfd34000ecbaa0fd353",
       "source": "rtsai-voices-1",
@@ -1828,7 +1828,7 @@
       "license": "Apache-2.0"
     },
     {
-      "filename": "modern-factions/audio/eva/hezbollah/107.wav",
+      "filename": "modern-factions/audio/eva/lebanon/107.wav",
       "category": "announcers",
       "sha256": "77a32dc9cfacd7881a701628cca1b1b26dfb612e04df12604296593b3c1c27c6",
       "source": "rtsai-voices-1",
@@ -1836,7 +1836,7 @@
       "license": "Apache-2.0"
     },
     {
-      "filename": "modern-factions/audio/eva/hezbollah/108.wav",
+      "filename": "modern-factions/audio/eva/lebanon/108.wav",
       "category": "announcers",
       "sha256": "0371a1cc8dd368385c785d572e12d00ae290b6797aec0e8d9482d9b45aa69dec",
       "source": "rtsai-voices-1",
@@ -1844,7 +1844,7 @@
       "license": "Apache-2.0"
     },
     {
-      "filename": "modern-factions/audio/eva/hezbollah/109.wav",
+      "filename": "modern-factions/audio/eva/lebanon/109.wav",
       "category": "announcers",
       "sha256": "e0dd5d32da9980f87050c2ec0817b655988b5e6c8e47e02f371b982bf8c48e04",
       "source": "rtsai-voices-1",
@@ -1852,7 +1852,7 @@
       "license": "Apache-2.0"
     },
     {
-      "filename": "modern-factions/audio/eva/hezbollah/120.wav",
+      "filename": "modern-factions/audio/eva/lebanon/120.wav",
       "category": "announcers",
       "sha256": "a0f623ffb52501d469a8fc5a9cd23a09f24a711f5cb1b19494903b1003fdb987",
       "source": "rtsai-voices-1",
@@ -1860,7 +1860,7 @@
       "license": "Apache-2.0"
     },
     {
-      "filename": "modern-factions/audio/eva/hezbollah/121.wav",
+      "filename": "modern-factions/audio/eva/lebanon/121.wav",
       "category": "announcers",
       "sha256": "c961ea79b24e85263e97615ae46f0d3a89bbea407ccbc724494fcb4f8dac3b6e",
       "source": "rtsai-voices-1",
@@ -1868,7 +1868,7 @@
       "license": "Apache-2.0"
     },
     {
-      "filename": "modern-factions/audio/eva/hezbollah/122.wav",
+      "filename": "modern-factions/audio/eva/lebanon/122.wav",
       "category": "announcers",
       "sha256": "af33aba3972ef5886d119fcb9f5f1720c7c611845b5e95d3c69a9a89090b47c4",
       "source": "rtsai-voices-1",

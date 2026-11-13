@@ -39,7 +39,7 @@ static class OriginalRa2EconomyTest
             SimHost.EndGame(); return 0;
         }
         string[] countries = ["america", "germany", "england", "france", "korea", "cuba", "libya", "iraq", "russia"];
-        string[] modern = ["china", "iran", "turkey", "saudi", "israel", "yemen", "hezbollah"];
+        string[] modern = ["china", "iran", "turkey", "saudi", "israel", "yemen", "lebanon"];
         foreach (var country in opts.TryGetValue("faction", out var f) ? [f] : countries.Concat(modern))
         {
             var retail = countries.Contains(country);

@@ -11,7 +11,7 @@ export const ENGINE_SIDE_COLORS: readonly [string, string] = [PLAYER_COLORS[0], 
 export const SIDE_COLORS = ENGINE_SIDE_COLORS.map((c) => `#${c}`) as [string, string];
 
 /** The modern nations (the mod's modern-factions); the rest are the classic countries. */
-export const MODERN_NATIONS = new Set(["saudi", "iran", "china", "turkey", "israel", "yemen", "hezbollah"]);
+export const MODERN_NATIONS = new Set(["saudi", "iran", "china", "turkey", "israel", "yemen", "lebanon"]);
 
 /** What the classic sides are called in the game's own random picks ("Random Coalition Country"). */
 export const SIDE_NAME: Record<string, string> = { Allies: "Coalition", Soviets: "Union" };

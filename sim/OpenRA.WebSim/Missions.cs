@@ -488,7 +488,7 @@ namespace OpenRA.WebSim
 		{
 			// Relay's authored defence phase is four minutes, then a counterattack on the surviving command post.
 			// Endless free heavy-armour waves after that phase turned the counterattack into an economy trap.
-			if (current.Id == "hezbollah-relay" && states.Any(s => s.Spec.Kind == "survive" && !s.Spec.Secondary && s.Status == "complete"))
+			if (current.Id == "lebanon-relay" && states.Any(s => s.Spec.Kind == "survive" && !s.Spec.Secondary && s.Status == "complete"))
 				return;
 			if (current.WaveUnits.Length > 0) { OperationWave(world); return; }
 			var enemy = world.Players.FirstOrDefault(p => p.InternalName == current.Enemy);

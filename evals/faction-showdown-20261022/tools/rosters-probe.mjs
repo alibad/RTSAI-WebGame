@@ -10,7 +10,7 @@ await page.goto("http://127.0.0.1:3741/?profile=public&mode=skirmish");
 await page.waitForFunction(() => window.store?.getState().phase === "setup", null, { timeout: 300000, polling: 500 });
 const options = await page.evaluate(() => Object.fromEntries((window.store.getState().setup.options ?? []).map((o) => [o.id, o.default])));
 await page.evaluate((o) => window.game.start(JSON.stringify({ map: "ra2-tournament-2B", seed: 1, players: [
-  { slot: "Multi0", faction: "israel", bot: "normal", color: "4F80FF" }, { slot: "Multi1", faction: "hezbollah", bot: "normal", color: "FF4848" }],
+  { slot: "Multi0", faction: "israel", bot: "normal", color: "4F80FF" }, { slot: "Multi1", faction: "lebanon", bot: "normal", color: "FF4848" }],
   options: { ...o, cheats: "False", "rtsai-cocommander": "False", startingunits: "none", startingcash: "2500" } })), options);
 await page.waitForFunction(() => window.store.getState().phase === "playing", null, { timeout: 300000, polling: 250 });
 await page.evaluate(() => window.game.client.send({ type: "pause", paused: true }));

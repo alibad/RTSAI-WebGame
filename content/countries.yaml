@@ -1,6 +1,6 @@
 ^BaseWorld:
 	Faction@random:
-		RandomFactionMembers: america, germany, england, france, korea, cuba, libya, iraq, russia, china, iran, turkey, saudi, israel, yemen, hezbollah
+		RandomFactionMembers: america, germany, england, france, korea, cuba, libya, iraq, russia, china, iran, turkey, saudi, israel, yemen, lebanon
 	Faction@allies:
 		Name: faction-random-allies-name
 		InternalName: random-allies
@@ -10,7 +10,7 @@
 	Faction@soviets:
 		Name: faction-random-soviets-name
 		InternalName: random-soviets
-		RandomFactionMembers: cuba, libya, iraq, russia, iran, yemen, hezbollah
+		RandomFactionMembers: cuba, libya, iraq, russia, iran, yemen, lebanon
 		Side: Randoms
 		Description: faction-random-soviets-description
 	Faction@1:
@@ -139,7 +139,7 @@ gacnst:
 			england: cnst-turkey
 			france: cnst-israel
 			korea: cnst-china
-			cuba: cnst-hezbollah
+			cuba: cnst-lebanon
 			libya: cnst-yemen
 			iraq: cnst-iran
 			russia: cnst-iran
@@ -151,7 +151,7 @@ nacnst:
 			england: cnst-turkey
 			france: cnst-israel
 			korea: cnst-china
-			cuba: cnst-hezbollah
+			cuba: cnst-lebanon
 			libya: cnst-yemen
 			iraq: cnst-iran
 			russia: cnst-iran
@@ -163,7 +163,7 @@ gapowr:
 			england: powr-turkey
 			france: powr-israel
 			korea: powr-china
-			cuba: powr-hezbollah
+			cuba: powr-lebanon
 			libya: powr-yemen
 			iraq: powr-iran
 			russia: powr-iran
@@ -175,7 +175,7 @@ napowr:
 			england: powr-turkey
 			france: powr-israel
 			korea: powr-china
-			cuba: powr-hezbollah
+			cuba: powr-lebanon
 			libya: powr-yemen
 			iraq: powr-iran
 			russia: powr-iran
@@ -187,7 +187,7 @@ garefn:
 			england: refn-turkey
 			france: refn-israel
 			korea: refn-china
-			cuba: refn-hezbollah
+			cuba: refn-lebanon
 			libya: refn-yemen
 			iraq: refn-iran
 			russia: refn-iran
@@ -199,7 +199,7 @@ narefn:
 			england: refn-turkey
 			france: refn-israel
 			korea: refn-china
-			cuba: refn-hezbollah
+			cuba: refn-lebanon
 			libya: refn-yemen
 			iraq: refn-iran
 			russia: refn-iran
@@ -211,7 +211,7 @@ gapile:
 			england: barr-turkey
 			france: barr-israel
 			korea: barr-china
-			cuba: barr-hezbollah
+			cuba: barr-lebanon
 			libya: barr-yemen
 			iraq: barr-iran
 			russia: barr-iran
@@ -223,7 +223,7 @@ nahand:
 			england: barr-turkey
 			france: barr-israel
 			korea: barr-china
-			cuba: barr-hezbollah
+			cuba: barr-lebanon
 			libya: barr-yemen
 			iraq: barr-iran
 			russia: barr-iran
@@ -235,7 +235,7 @@ gaweap:
 			england: weap-turkey
 			france: weap-israel
 			korea: weap-china
-			cuba: weap-hezbollah
+			cuba: weap-lebanon
 			libya: weap-yemen
 			iraq: weap-iran
 			russia: weap-iran
@@ -247,7 +247,7 @@ naweap:
 			england: weap-turkey
 			france: weap-israel
 			korea: weap-china
-			cuba: weap-hezbollah
+			cuba: weap-lebanon
 			libya: weap-yemen
 			iraq: weap-iran
 			russia: weap-iran
@@ -259,7 +259,7 @@ naradr:
 			england: radr-turkey
 			france: radr-israel
 			korea: radr-china
-			cuba: radr-hezbollah
+			cuba: radr-lebanon
 			libya: radr-yemen
 			iraq: radr-iran
 			russia: radr-iran
@@ -271,7 +271,7 @@ gaairc:
 			england: airf-turkey
 			france: airf-israel
 			korea: airf-china
-			cuba: airf-hezbollah
+			cuba: airf-lebanon
 			libya: airf-yemen
 			iraq: airf-iran
 			russia: airf-iran
@@ -283,7 +283,7 @@ gayard:
 			england: yard-turkey
 			france: yard-israel
 			korea: yard-china
-			cuba: yard-hezbollah
+			cuba: yard-lebanon
 			libya: yard-yemen
 			iraq: yard-iran
 			russia: yard-iran
@@ -295,7 +295,7 @@ nayard:
 			england: yard-turkey
 			france: yard-israel
 			korea: yard-china
-			cuba: yard-hezbollah
+			cuba: yard-lebanon
 			libya: yard-yemen
 			iraq: yard-iran
 			russia: yard-iran
@@ -307,7 +307,7 @@ gadept:
 			england: dept-turkey
 			france: dept-israel
 			korea: dept-china
-			cuba: dept-hezbollah
+			cuba: dept-lebanon
 			libya: dept-yemen
 			iraq: dept-iran
 			russia: dept-iran
@@ -319,7 +319,7 @@ nadept:
 			england: dept-turkey
 			france: dept-israel
 			korea: dept-china
-			cuba: dept-hezbollah
+			cuba: dept-lebanon
 			libya: dept-yemen
 			iraq: dept-iran
 			russia: dept-iran
@@ -331,7 +331,7 @@ gatech:
 			england: tech-turkey
 			france: tech-israel
 			korea: tech-china
-			cuba: tech-hezbollah
+			cuba: tech-lebanon
 			libya: tech-yemen
 			iraq: tech-iran
 			russia: tech-iran
@@ -343,7 +343,7 @@ natech:
 			england: tech-turkey
 			france: tech-israel
 			korea: tech-china
-			cuba: tech-hezbollah
+			cuba: tech-lebanon
 			libya: tech-yemen
 			iraq: tech-iran
 			russia: tech-iran
@@ -355,7 +355,7 @@ gacsph:
 			england: sw1-turkey
 			france: sw1-israel
 			korea: sw1-china
-			cuba: sw1-hezbollah
+			cuba: sw1-lebanon
 			libya: sw1-yemen
 			iraq: sw1-iran
 			russia: sw1-iran
@@ -367,7 +367,7 @@ nairon:
 			england: sw2-turkey
 			france: sw2-israel
 			korea: sw2-china
-			cuba: sw2-hezbollah
+			cuba: sw2-lebanon
 			libya: sw2-yemen
 			iraq: sw2-iran
 			russia: sw2-iran
@@ -379,7 +379,7 @@ gawall:
 			england: wall-turkey
 			france: wall-israel
 			korea: wall-china
-			cuba: wall-hezbollah
+			cuba: wall-lebanon
 			libya: wall-yemen
 			iraq: wall-iran
 			russia: wall-iran
@@ -391,7 +391,7 @@ nawall:
 			england: wall-turkey
 			france: wall-israel
 			korea: wall-china
-			cuba: wall-hezbollah
+			cuba: wall-lebanon
 			libya: wall-yemen
 			iraq: wall-iran
 			russia: wall-iran
@@ -403,7 +403,7 @@ nanrct:
 			england: hpwr-turkey
 			france: hpwr-israel
 			korea: hpwr-china
-			cuba: hpwr-hezbollah
+			cuba: hpwr-lebanon
 			libya: hpwr-yemen
 			iraq: hpwr-iran
 			russia: hpwr-iran
@@ -415,7 +415,7 @@ amcv:
 			england: unit-mcv-turkey
 			france: unit-mcv-israel
 			korea: unit-mcv-china
-			cuba: unit-mcv-hezbollah
+			cuba: unit-mcv-lebanon
 			libya: unit-mcv-yemen
 			iraq: unit-mcv-iran
 			russia: unit-mcv-iran
@@ -427,7 +427,7 @@ smcv:
 			england: unit-mcv-turkey
 			france: unit-mcv-israel
 			korea: unit-mcv-china
-			cuba: unit-mcv-hezbollah
+			cuba: unit-mcv-lebanon
 			libya: unit-mcv-yemen
 			iraq: unit-mcv-iran
 			russia: unit-mcv-iran
@@ -439,7 +439,7 @@ cmin:
 			england: unit-harv-turkey
 			france: unit-harv-israel
 			korea: unit-harv-china
-			cuba: unit-harv-hezbollah
+			cuba: unit-harv-lebanon
 			libya: unit-harv-yemen
 			iraq: unit-harv-iran
 			russia: unit-harv-iran
@@ -451,7 +451,7 @@ harv:
 			england: unit-harv-turkey
 			france: unit-harv-israel
 			korea: unit-harv-china
-			cuba: unit-harv-hezbollah
+			cuba: unit-harv-lebanon
 			libya: unit-harv-yemen
 			iraq: unit-harv-iran
 			russia: unit-harv-iran
@@ -463,7 +463,7 @@ htk:
 			england: unit-htk-turkey
 			france: unit-htk-israel
 			korea: unit-htk-china
-			cuba: unit-htk-hezbollah
+			cuba: unit-htk-lebanon
 			libya: unit-htk-yemen
 			iraq: unit-htk-iran
 			russia: unit-htk-iran
@@ -475,7 +475,7 @@ sapc:
 			england: unit-sapc-turkey
 			france: unit-sapc-israel
 			korea: unit-sapc-china
-			cuba: unit-sapc-hezbollah
+			cuba: unit-sapc-lebanon
 			libya: unit-sapc-yemen
 			iraq: unit-sapc-iran
 			russia: unit-sapc-iran
@@ -487,7 +487,7 @@ lcrf:
 			england: unit-lcrf-turkey
 			france: unit-lcrf-israel
 			korea: unit-lcrf-china
-			cuba: unit-lcrf-hezbollah
+			cuba: unit-lcrf-lebanon
 			libya: unit-lcrf-yemen
 			iraq: unit-lcrf-iran
 			russia: unit-lcrf-iran
@@ -499,7 +499,7 @@ spy:
 			england: unit-spy-turkey
 			france: unit-spy-israel
 			korea: unit-spy-china
-			cuba: unit-spy-hezbollah
+			cuba: unit-spy-lebanon
 			libya: unit-spy-yemen
 			iraq: unit-spy-iran
 			russia: unit-spy-iran
@@ -511,7 +511,7 @@ dog:
 			england: unit-dog-turkey
 			france: unit-dog-israel
 			korea: unit-dog-china
-			cuba: unit-dog-hezbollah
+			cuba: unit-dog-lebanon
 			libya: unit-dog-yemen
 			iraq: unit-dog-iran
 			russia: unit-dog-iran
@@ -523,7 +523,7 @@ engineer:
 			england: unit-engineer-turkey
 			france: unit-engineer-israel
 			korea: unit-engineer-china
-			cuba: unit-engineer-hezbollah
+			cuba: unit-engineer-lebanon
 			libya: unit-engineer-yemen
 			iraq: unit-engineer-iran
 			russia: unit-engineer-iran
@@ -547,7 +547,7 @@ gapurifier:
 			england: purifier-turkey
 			france: purifier-israel
 			korea: purifier-china
-			cuba: purifier-hezbollah
+			cuba: purifier-lebanon
 			libya: purifier-yemen
 			iraq: purifier-iran
 			russia: purifier-iran

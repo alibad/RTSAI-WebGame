@@ -25,7 +25,7 @@ const dir = process.env.RTSAI_ARENA_DIR ?? path.join(process.env.LOCALAPPDATA ??
 for (const sub of ["decisions", "replays"]) fs.mkdirSync(path.join(dir, sub), { recursive: true });
 const { chromium } = await import(pathToFileURL(path.join(repo, "web", "node_modules", "playwright-core", "index.mjs")).href);
 const keys = keyStore(dir);
-export const MODERN = ["china", "iran", "turkey", "saudi", "israel", "yemen", "hezbollah"];
+export const MODERN = ["china", "iran", "turkey", "saudi", "israel", "yemen", "lebanon"];
 const MAPS = ["ra2-tournament-2B", "twin-fords", "harbor-line", "ra2-little-big-lake"];
 
 // ---------------------------------------------------------------------------------------------------------------

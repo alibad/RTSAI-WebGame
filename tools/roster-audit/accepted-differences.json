@@ -1000,7 +1000,7 @@
     "saudi",
     "israel",
     "yemen",
-    "hezbollah"
+    "lebanon"
    ],
    "fields": {
     "cost": {
@@ -1636,7 +1636,7 @@
    "factions": [
     "iran",
     "yemen",
-    "hezbollah"
+    "lebanon"
    ],
    "fields": {
     "name": {
@@ -1777,7 +1777,7 @@
    "factions": [
     "iran",
     "yemen",
-    "hezbollah"
+    "lebanon"
    ],
    "fields": {
     "name": {
@@ -2375,7 +2375,7 @@
     "russia",
     "iran",
     "yemen",
-    "hezbollah"
+    "lebanon"
    ],
    "fields": {
     "name": {
@@ -2480,7 +2480,7 @@
     "russia",
     "iran",
     "yemen",
-    "hezbollah"
+    "lebanon"
    ],
    "fields": {
     "name": {
@@ -2500,7 +2500,7 @@
     "russia",
     "iran",
     "yemen",
-    "hezbollah"
+    "lebanon"
    ],
    "fields": {
     "name": {
@@ -2606,7 +2606,7 @@
     "russia",
     "iran",
     "yemen",
-    "hezbollah"
+    "lebanon"
    ],
    "fields": {
     "name": {
@@ -2626,7 +2626,7 @@
     "russia",
     "iran",
     "yemen",
-    "hezbollah"
+    "lebanon"
    ],
    "fields": {
     "name": {
@@ -2646,7 +2646,7 @@
     "russia",
     "iran",
     "yemen",
-    "hezbollah"
+    "lebanon"
    ],
    "fields": {
     "name": {
@@ -2906,7 +2906,7 @@
     "russia",
     "iran",
     "yemen",
-    "hezbollah"
+    "lebanon"
    ],
    "fields": {
     "sight": {

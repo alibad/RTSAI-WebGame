@@ -58,7 +58,7 @@ Build tools that are not shipped add MPL-2.0 (lightningcss) and CC-BY-4.0 (caniu
 
 Data and media with their own terms
 -----------------------------------
-web/public/flags/            flag-icons, MIT (LICENSE.txt there); hezbollah.svg from the RTS AI website (SOURCES.md)
+web/public/flags/            flag-icons, MIT (LICENSE.txt there; SOURCES.md)
 web/public/earth-terrain/    (c) OpenStreetMap contributors, ODbL 1.0 (https://www.openstreetmap.org/copyright)
 web/public/earth-sites/      names and links from OpenStreetMap (ODbL 1.0) and Wikipedia
 web/public/audio-credits.json  the project voices and their speech models (Kokoro-82M, Chatterbox, MOSS-TTS-Nano):

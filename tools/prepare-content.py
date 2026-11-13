@@ -79,7 +79,7 @@ def resolve(allnodes, key, visiting=()):
     return out
 
 COUNTRIES = {'america':'saudi','germany':'china','england':'turkey','france':'israel','korea':'china',
-             'cuba':'hezbollah','libya':'yemen','iraq':'iran','russia':'iran'}
+             'cuba':'lebanon','libya':'yemen','iraq':'iran','russia':'iran'}
 
 # Each country's signature keeps its original rules, weapon, cost and prerequisites; its stand-in art comes from a
 # project unit (isometric mode).
@@ -103,7 +103,7 @@ def countries():
     overlay = parse((MOD.parent/'rtsai-classic/rules/factions.yaml').read_text())
     # The public world selects from all sixteen real countries.
     overlay['^BaseWorld']['children']['Faction@random']['children']['RandomFactionMembers'] = node(', '.join([
-        *COUNTRIES,'china','iran','turkey','saudi','israel','yemen','hezbollah']))
+        *COUNTRIES,'china','iran','turkey','saudi','israel','yemen','lebanon']))
     # Reuse the kit's faction paint schemes for shared buildings and utility units.
     kit = parse((MOD/'standalone/base-kit.yaml').read_text())
     for actor,n in kit.items():
@@ -251,7 +251,7 @@ def missions():
             faction=byname.get(owner,{}).get('Faction',node('china'))['value']
             if 'r2'+kind in rules: kind='r2'+kind
             else: kind=convert.get(kind,kind)
-            if kind in ('gacnst','garefn','gapowr','gapile','gaweap','gaairc','gadept','gatech') and faction in ('iran','yemen','hezbollah','russia'):
+            if kind in ('gacnst','garefn','gapowr','gapile','gaweap','gaairc','gadept','gatech') and faction in ('iran','yemen','lebanon','russia'):
                 kind={'gacnst':'nacnst','garefn':'narefn','gapowr':'napowr','gapile':'nahand','gaweap':'naweap','gaairc':'naradr','gadept':'nadept','gatech':'natech'}[kind]
             if kind=='e1': kind={'saudi':'r2sang','china':'r2cnrifle','turkey':'r2trrifle'}.get(faction,'e1')
             if kind=='e2': kind={'yemen':'r2ymr','iran':'r2basij'}.get(faction,'e2')
@@ -292,9 +292,9 @@ def missions():
         catalog.append(mission)
         scenario=dict(map=mission['id'],mission=mission['id'],seed=2026,players=[dict(slot=mission['slot'],faction=mission['faction'],color='2A6FDB')],options={'startingcash':'10000','difficulty':'normal','fog':'True','explored':'False'})
         (SCENARIOS/('mission-'+mission['id']+'.json')).write_text(json.dumps(scenario,indent=2)+'\n')
-    # No legacy Hezbollah mission exists. This new fictional exercise uses the modern roster.
-    hz=dict(id='hezbollah-relay',title='Relay Under Siege',faction='hezbollah',campaign='Combined Arms',slot='Hezbollah',enemy='Opposition',
-            protect=['HezbollahConyard'],briefing='A fictional training exercise: establish a relay and field workshop, defend your supply base through repeated attacks, then destroy the opposing command post. Use rifle teams, anti-tank specialists, mobile launchers and reconnaissance drones together. Expand the economy before the main assault. No real operation or force disposition is represented.',
+    # No legacy Lebanon mission exists. This new fictional exercise uses the modern roster.
+    hz=dict(id='lebanon-relay',title='Relay Under Siege',faction='lebanon',campaign='Combined Arms',slot='Lebanon',enemy='Opposition',
+            protect=['LebanonConyard'],briefing='A fictional training exercise: establish a relay and field workshop, defend your supply base through repeated attacks, then destroy the opposing command post. Use rifle teams, anti-tank specialists, mobile launchers and reconnaissance drones together. Expand the economy before the main assault. No real operation or force disposition is represented.',
             adaptation='An original RTS AI mission using project units, art and terrain.',
             objectives=[objective('Build a field relay and workshop.','build',types=['r2hzrelay','r2hzworkshop']),
                         objective('Hold the base through four minutes of attacks.','survive',seconds=240),
@@ -302,7 +302,7 @@ def missions():
     base=MOD/'standalone/maps/twin-fords'
     game_map=parse((base/'map.yaml').read_text())
     game_map['Title']=node(hz['title']); game_map['Visibility']=node('MissionSelector');game_map['Categories']=node('Campaign')
-    game_map['Players']=node(children=parse('PlayerReference@Neutral:\n\tName: Neutral\n\tOwnsWorld: True\n\tNonCombatant: True\n\tFaction: china\nPlayerReference@Hezbollah:\n\tName: Hezbollah\n\tPlayable: True\n\tRequired: True\n\tLockFaction: True\n\tFaction: hezbollah\n\tEnemies: Opposition\nPlayerReference@Opposition:\n\tName: Opposition\n\tFaction: israel\n\tColor: D83A2E\n\tEnemies: Hezbollah\n'))
+    game_map['Players']=node(children=parse('PlayerReference@Neutral:\n\tName: Neutral\n\tOwnsWorld: True\n\tNonCombatant: True\n\tFaction: china\nPlayerReference@Lebanon:\n\tName: Lebanon\n\tPlayable: True\n\tRequired: True\n\tLockFaction: True\n\tFaction: lebanon\n\tEnemies: Opposition\nPlayerReference@Opposition:\n\tName: Opposition\n\tFaction: israel\n\tColor: D83A2E\n\tEnemies: Lebanon\n'))
     actors={k:n for k,n in game_map['Actors']['children'].items() if n['value']=='oremine'}
     if CLASSIC_MODE:
         game_map['RequiresMod']=node('rtsai-topdown')
@@ -313,14 +313,14 @@ def missions():
         off=v&1; location=f'{u},{v}' if CLASSIC_MODE else f'{(v+off)//2+u},{(v-off)//2-u}'
         actors[name]=node(kind,values(Owner=owner,Location=location))
     add('MissionSpawn','mpspawn','Neutral',13,94)
-    for name,kind,u,v in [('HezbollahConyard','nacnst',12,92),('HezbollahPower','napowr',8,98),
-                          ('HezbollahRefinery','narefn',15,98),('HezbollahBarracks','nahand',10,104),
-                          ('HezbollahFactory','naweap',18,108),('HezbollahRadar','naradr',5,106),
-                          ('HezbollahHarvester','harv',19,94)]: add(name,kind,'Hezbollah',u,v)
-    for i in range(4): add('Rifle'+str(i),'r2hzrifle','Hezbollah',18+i*2,96)
-    for i in range(2): add('AT'+str(i),'r2hzat','Hezbollah',18+i*3,102)
-    add('Scout','r2hzscout','Hezbollah',23,96)
-    add('Launcher','r2hzrockets','Hezbollah',22,105)
+    for name,kind,u,v in [('LebanonConyard','nacnst',12,92),('LebanonPower','napowr',8,98),
+                          ('LebanonRefinery','narefn',15,98),('LebanonBarracks','nahand',10,104),
+                          ('LebanonFactory','naweap',18,108),('LebanonRadar','naradr',5,106),
+                          ('LebanonHarvester','harv',19,94)]: add(name,kind,'Lebanon',u,v)
+    for i in range(4): add('Rifle'+str(i),'r2hzrifle','Lebanon',18+i*2,96)
+    for i in range(2): add('AT'+str(i),'r2hzat','Lebanon',18+i*3,102)
+    add('Scout','r2hzscout','Lebanon',23,96)
+    add('Launcher','r2hzrockets','Lebanon',22,105)
     add('EnemyCommand','gacnst','Opposition',48,30)
     add('EnemyFactory','gaweap','Opposition',45,24)
     add('EnemyGuard1','r2merkava','Opposition',43,34)
@@ -329,7 +329,7 @@ def missions():
     game_map['Actors']=node(children=actors)
     game_map['Rules']=node(children=parse('World:\n\t-SpawnStartingUnits:\n\t-CrateSpawner:\n\t-StartGameNotification:\nPlayer:\n\t-ConquestVictoryConditions:\n'))
     for n in actors.values():
-        if n['value'] not in rules: raise ValueError('Hezbollah mission unknown actor '+n['value'])
+        if n['value'] not in rules: raise ValueError('Lebanon mission unknown actor '+n['value'])
     d=OUT/'maps'/hz['id'];d.mkdir(parents=True,exist_ok=True)
     (d/'map.yaml').write_text(dump(game_map),encoding='utf-8',newline='\n')
     raw=bytearray((base/'map.bin').read_bytes())
@@ -349,7 +349,7 @@ def missions():
 
 # Lines of Hope, Act III: original missions on the terrain of two adapted maps, with new actors placed here.
 # Orion Group is the fictional contractor force (no flag, no real nation); its faction only picks its unit art and
-# the scripted wave type (Missions.Wave). Positions are (u, v) map cells, like the Hezbollah exercise above.
+# the scripted wave type (Missions.Wave). Positions are (u, v) map cells, like the Lebanon exercise above.
 TILE = dict(water=1 if CLASSIC_MODE else 1015, rough=2 if CLASSIC_MODE else 1047,
             road=3 if CLASSIC_MODE else 1031, beach=0 if CLASSIC_MODE else 1063, clear=0,
             # Concrete: the tileset's sixteen "Pavement Individual" tiles (463-478), mixed per cell; road in Classic.
@@ -1450,4 +1450,4 @@ if __name__ == '__main__':
     receipt={'gameMode':args.game_mode,'modId':'rtsai-topdown' if CLASSIC_MODE else 'rtsai','gridType':'Rectangular' if CLASSIC_MODE else 'RectangularIsometric','compilerSha256':hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
              'eaArt':({'manifestSha256':ea_manifest['sha256'],'files':len(ea_manifest['files']),'notice':ea_manifest['notice'],'generatorSha256':hashlib.sha256((Path(__file__).parent/'ea_originals.py').read_bytes()).hexdigest()} if ea_manifest else None),'eaAudio':({'manifestSha256':ea_manifest['audio']['sha256'],'clips':len(ea_manifest['audio']['files']),'absent':len(ea_manifest['audio']['absent']),'generatorSha256':hashlib.sha256((Path(__file__).parent/'ea_voices.py').read_bytes()).hexdigest()} if ea_audio else None),'sources':[{'path':str(p),'sha256':hashlib.sha256(p.read_bytes()).hexdigest()} for p in sorted(set(sources))],'outputs':[{'path':str(p.relative_to(OUT)),'sha256':hashlib.sha256(p.read_bytes()).hexdigest()} for p in sorted(OUT.rglob('*')) if p.is_file()]}
     (OUT/'mode-provenance.json').write_text(json.dumps(receipt,indent=2)+'\n')
-    print('prepared nine additional countries, five adapted missions and one original Hezbollah exercise')
+    print('prepared nine additional countries, five adapted missions and one original Lebanon exercise')

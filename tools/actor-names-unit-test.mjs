@@ -61,7 +61,7 @@ assert.equal(actorName('x', new Map([['x', '']]), false), 'Unit');
 // ---- When the panel draws the actor instead of the engine's cameo
 const icon = 'data:image/png;base64,AAAA';
 assert.deepEqual([...ORIGINAL_COUNTRIES].sort(), ['america', 'cuba', 'england', 'france', 'germany', 'iraq', 'korea', 'libya', 'russia']);
-const MODERN = ['saudi', 'iran', 'china', 'turkey', 'israel', 'yemen', 'hezbollah'];
+const MODERN = ['saudi', 'iran', 'china', 'turkey', 'israel', 'yemen', 'lebanon'];
 for (const country of ORIGINAL_COUNTRIES) {
   assert.equal(drawsActor('gacnst', icon, country, country, 'public'), true, `${country}: its own yard's cameo is the stand-in`);
   assert.equal(drawsActor('nacnst', icon, country, country, 'public'), true);

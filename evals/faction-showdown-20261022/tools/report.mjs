@@ -31,14 +31,12 @@ const setup = JSON.parse(fs.readFileSync(path.join(root, "setup.json"), "utf8"))
 // The run's own build note (BUILD.txt) when it has one, else the page twin's.
 const build = fs.readFileSync(fs.existsSync(path.join(run, "BUILD.txt")) ? path.join(run, "BUILD.txt") : path.join(root, "page", "EVAL-BUILD.txt"), "utf8").replace(/^﻿/, "").trim();
 
-const F = ["america", "germany", "england", "france", "korea", "cuba", "libya", "iraq", "russia", "china", "iran", "turkey", "saudi", "israel", "yemen", "hezbollah"];
+const F = ["america", "germany", "england", "france", "korea", "cuba", "libya", "iraq", "russia", "china", "iran", "turkey", "saudi", "israel", "yemen", "lebanon"];
 const GROUP = { america: "Allies", germany: "Allies", england: "Allies", france: "Allies", korea: "Allies", cuba: "Soviets", libya: "Soviets", iraq: "Soviets", russia: "Soviets" };
 const groupOf = (f) => GROUP[f] ?? "Modern";
 const nameOf = (f) => setup.factions.find((x) => x.id === f)?.name ?? f;
 const flagCache = {};
-// Hezbollah shows the HZB monogram, as in the films (owner rule: never its flag).
-const HZB = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 60 40"><rect width="60" height="40" rx="3" fill="#24331a"/><rect x="1" y="1" width="58" height="38" rx="2.5" fill="none" stroke="#7fae3a" stroke-width="2"/><text x="30" y="26.5" text-anchor="middle" font-family="Segoe UI,Arial,sans-serif" font-weight="700" font-size="17" fill="#cfe7a4">HZB</text></svg>`;
-const flag = (f) => (flagCache[f] ??= `data:image/svg+xml;base64,${(f === "hezbollah" ? Buffer.from(HZB) : fs.readFileSync(path.join(root, "page", "flags", `${f}.svg`))).toString("base64")}`);
+const flag = (f) => (flagCache[f] ??= `data:image/svg+xml;base64,${fs.readFileSync(path.join(root, "page", "flags", `${f}.svg`)).toString("base64")}`);
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
 const mmss = (s) => `${Math.floor(s / 60)}:${String(Math.round(s % 60)).padStart(2, "0")}`;
 const pct = (x) => `${Math.round(x * 100)}%`;

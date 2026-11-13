@@ -37,7 +37,7 @@ const SIGNATURE: Record<string, string[]> = {
   china: ["r2qilin", "r2zbd", "r2crane", "r2cnrifle"],
   israel: ["r2merkava", "r2namer", "r2ilgunship", "r2ilrifle"],
   yemen: ["r2ymlr", "r2technical", "r2samad", "r2yrpg"],
-  hezbollah: ["r2hzrockets", "r2hztechnical", "r2hzdrone", "r2hzrifle"],
+  lebanon: ["r2hzrockets", "r2hztechnical", "r2hzdrone", "r2hzrifle"],
 };
 const PERSONALITIES = [
   { value: "standard", label: "Balanced", description: "Uses the normal computer opponent's tactics." },

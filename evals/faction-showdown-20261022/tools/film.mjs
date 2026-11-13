@@ -115,9 +115,7 @@ await page.evaluate(({ A, B, nameA, nameB, mapTitle, label, sub }) => {
   g.cam.zoom = 0.85;
 
   // ---- overlay
-  const flag = (id) => id === "hezbollah"
-    ? `<span class="evo-mono" style="--c:#7fae3a">HZB</span>` // never the Hezbollah flag in a video (owner rule)
-    : `<img class="evo-flag" src="flags/${id}.svg" alt="">`;
+  const flag = (id) => `<img class="evo-flag" src="flags/${id}.svg" alt="">`;
   const root = document.createElement("div");
   root.id = "evo";
   root.innerHTML = `<style>

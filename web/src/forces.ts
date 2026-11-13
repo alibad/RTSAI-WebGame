@@ -20,7 +20,7 @@ const NAMED: [RegExp, string][] = [
   [/\b(Turkish|Türk)\b/i, "turkey"],
   [/\b(Israel Defense Forces|IDF|Israeli)\b/, "israel"],
   [/\b(Houthi|Ansar Allah|Yemeni)\b/i, "yemen"],
-  [/\b(Hezbollah|Hizbullah)\b/i, "hezbollah"],
+  [/\b(Lebanese Armed Forces|Lebanese|Lebanon)\b/i, "lebanon"],
   [/\b(Iraqi)\b/i, "iraq"],
   [/\b(Libyan)\b/i, "libya"],
   [/\b(Cuban)\b/i, "cuba"],
@@ -30,7 +30,7 @@ const NAMED: [RegExp, string][] = [
  * fight as their bloc's (the GCC: Saudi Arabia). */
 const HOME: Record<string, string> = {
   us: "america", gb: "england", fr: "france", de: "germany", kr: "korea", cu: "cuba", ly: "libya", iq: "iraq", ru: "russia",
-  sa: "saudi", ir: "iran", cn: "china", tr: "turkey", il: "israel", ye: "yemen", lb: "hezbollah",
+  sa: "saudi", ir: "iran", cn: "china", tr: "turkey", il: "israel", ye: "yemen", lb: "lebanon",
   qa: "saudi", ae: "saudi", bh: "saudi", kw: "saudi", om: "saudi",
 };
 
@@ -38,14 +38,14 @@ const HOME: Record<string, string> = {
 const RIVALS: Record<string, string[]> = {
   america: ["iran", "russia", "china"], england: ["russia", "iran"], france: ["russia", "libya"], germany: ["russia"],
   korea: ["china", "russia"], russia: ["america", "germany", "turkey"], china: ["america", "korea"],
-  iran: ["america", "israel", "saudi"], saudi: ["iran", "yemen"], turkey: ["russia", "iran"], israel: ["hezbollah", "iran"],
-  yemen: ["saudi", "america"], hezbollah: ["israel"], iraq: ["america", "iran"], libya: ["france", "america"], cuba: ["america"],
+  iran: ["america", "israel", "saudi"], saudi: ["iran", "yemen"], turkey: ["russia", "iran"], israel: ["lebanon", "iran"],
+  yemen: ["saudi", "america"], lebanon: ["israel"], iraq: ["america", "iran"], libya: ["france", "america"], cuba: ["america"],
 };
 
 const NAME: Record<string, string> = {
   america: "the United States", england: "Britain", france: "France", germany: "Germany", korea: "Korea", cuba: "Cuba",
   libya: "Libya", iraq: "Iraq", russia: "Russia", saudi: "Saudi Arabia", iran: "Iran", china: "China", turkey: "Turkey",
-  israel: "Israel", yemen: "the Houthis", hezbollah: "Hezbollah",
+  israel: "Israel", yemen: "the Houthis", lebanon: "Lebanon",
 };
 export const forceName = (id: string) => NAME[id] ?? id;
 

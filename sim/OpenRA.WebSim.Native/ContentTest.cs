@@ -30,7 +30,7 @@ static class ContentTest
 		["america"] = "e1", ["germany"] = "tnkd", ["england"] = "snipe", ["france"] = "gtgcan", ["korea"] = "beag",
 		["cuba"] = "terror", ["libya"] = "dtruck", ["iraq"] = "deso", ["russia"] = "ttnk",
 		["china"] = "r2cnnetwork", ["iran"] = "r2karrar", ["turkey"] = "r2aras", ["saudi"] = "r2m1a2s",
-		["israel"] = "r2merkava", ["yemen"] = "r2ymlr", ["hezbollah"] = "r2hzrifle"
+		["israel"] = "r2merkava", ["yemen"] = "r2ymlr", ["lebanon"] = "r2hzrifle"
 	};
 
 	public static int Run(Dictionary<string, string> opts)
@@ -48,7 +48,7 @@ static class ContentTest
 		var mcv = world.Actors.FirstOrDefault(a => a.Owner == own && a.Info.Name.EndsWith("mcv")) ?? throw new Exception(faction + ": no starting MCV");
 		SimHost.Select([mcv.ActorID], false); Ui.Command("{\"cmd\":\"deploy\"}");
 		for (var i = 0; i < 100; i++) SimHost.Tick();
-		var soviet = new[] { "cuba", "libya", "iraq", "russia", "iran", "yemen", "hezbollah" }.Contains(faction);
+		var soviet = new[] { "cuba", "libya", "iraq", "russia", "iran", "yemen", "lebanon" }.Contains(faction);
 		var yard = soviet ? "nacnst" : "gacnst";
 		if (!world.Actors.Any(a => a.Owner == own && a.Info.Name == yard)) throw new Exception(faction + ": MCV did not deploy");
 		var power = soviet ? "napowr" : "gapowr";

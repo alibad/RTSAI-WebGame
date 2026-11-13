@@ -1,13 +1,13 @@
 {
  "a": "israel",
- "b": "hezbollah",
+ "b": "lebanon",
  "map": "ra2-tournament-2B",
  "seed": 3009,
  "bot": "normal",
- "winner": "hezbollah",
+ "winner": "lebanon",
  "gameSeconds": 2062,
  "wallSeconds": 443,
- "video": "C:\\Users\\Admin\\Code\\hq\\games\\artifacts\\faction-showdown-20261021\\runs\\units-and-money\\videos\\israel-vs-hezbollah-s3009.mp4",
+ "video": "C:\\Users\\Admin\\Code\\hq\\games\\artifacts\\faction-showdown-20261021\\runs\\units-and-money\\videos\\israel-vs-lebanon-s3009.mp4",
  "videoSeconds": 102.6,
  "longestFrameGapMs": 258,
  "timeline": [

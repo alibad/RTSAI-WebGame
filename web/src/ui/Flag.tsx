@@ -4,7 +4,7 @@
 import catalog from "../data/factions.json";
 import { cn } from "../lib/utils";
 
-const FLAGS = new Set(["america", "china", "cuba", "england", "france", "germany", "hezbollah", "iran", "iraq", "israel", "korea", "libya", "russia", "saudi", "turkey", "ukraine", "yemen"]);
+const FLAGS = new Set(["america", "china", "cuba", "england", "france", "germany", "lebanon", "iran", "iraq", "israel", "korea", "libya", "russia", "saudi", "turkey", "ukraine", "yemen"]);
 
 export function Flag({ id, className }: { id: string; className?: string }) {
   if (!FLAGS.has(id))

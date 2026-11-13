@@ -13,18 +13,18 @@ Players:
 		OwnsWorld: True
 		NonCombatant: True
 		Faction: china
-	PlayerReference@Hezbollah:
-		Name: Hezbollah
+	PlayerReference@Lebanon:
+		Name: Lebanon
 		Playable: True
 		Required: True
 		LockFaction: True
-		Faction: hezbollah
+		Faction: lebanon
 		Enemies: Opposition
 	PlayerReference@Opposition:
 		Name: Opposition
 		Faction: israel
 		Color: D83A2E
-		Enemies: Hezbollah
+		Enemies: Lebanon
 Actors:
 	Mine0: oremine
 		Owner: Neutral
@@ -41,50 +41,50 @@ Actors:
 	MissionSpawn: mpspawn
 		Owner: Neutral
 		Location: 60,34
-	HezbollahConyard: nacnst
-		Owner: Hezbollah
+	LebanonConyard: nacnst
+		Owner: Lebanon
 		Location: 58,34
-	HezbollahPower: napowr
-		Owner: Hezbollah
+	LebanonPower: napowr
+		Owner: Lebanon
 		Location: 57,41
-	HezbollahRefinery: narefn
-		Owner: Hezbollah
+	LebanonRefinery: narefn
+		Owner: Lebanon
 		Location: 64,34
-	HezbollahBarracks: nahand
-		Owner: Hezbollah
+	LebanonBarracks: nahand
+		Owner: Lebanon
 		Location: 62,42
-	HezbollahFactory: naweap
-		Owner: Hezbollah
+	LebanonFactory: naweap
+		Owner: Lebanon
 		Location: 72,36
-	HezbollahRadar: naradr
-		Owner: Hezbollah
+	LebanonRadar: naradr
+		Owner: Lebanon
 		Location: 58,48
-	HezbollahHarvester: harv
-		Owner: Hezbollah
+	LebanonHarvester: harv
+		Owner: Lebanon
 		Location: 66,28
 	Rifle0: r2hzrifle
-		Owner: Hezbollah
+		Owner: Lebanon
 		Location: 66,30
 	Rifle1: r2hzrifle
-		Owner: Hezbollah
+		Owner: Lebanon
 		Location: 68,28
 	Rifle2: r2hzrifle
-		Owner: Hezbollah
+		Owner: Lebanon
 		Location: 70,26
 	Rifle3: r2hzrifle
-		Owner: Hezbollah
+		Owner: Lebanon
 		Location: 72,24
 	AT0: r2hzat
-		Owner: Hezbollah
+		Owner: Lebanon
 		Location: 69,33
 	AT1: r2hzat
-		Owner: Hezbollah
+		Owner: Lebanon
 		Location: 72,30
 	Scout: r2hzscout
-		Owner: Hezbollah
+		Owner: Lebanon
 		Location: 71,25
 	Launcher: r2hzrockets
-		Owner: Hezbollah
+		Owner: Lebanon
 		Location: 75,30
 	EnemyCommand: gacnst
 		Owner: Opposition
