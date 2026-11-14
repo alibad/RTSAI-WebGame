@@ -34,8 +34,10 @@ class RocketImpacts(unittest.TestCase):
         scale = float(effect.val('Scale'))
         self.assertGreater(scale, 0)
         self.assertLessEqual(scale, 0.25, 'The rocket flash must not dwarf a tank')
-        record = json.loads((Path(__file__).parent / 'data/project-effect-anchors.json').read_text())['effects']['s_clsn58.shp']
-        data = (MOD / 'mods/rtsai/standalone/effects/s_clsn58.shp').read_bytes()
+        # Since 14 Nov 2026 the blast is fx_soft's sheet, with the ground line of the SHP it replaced.
+        self.assertEqual(effect.val('Filename'), 'ra2|standalone/effects/s_clsn58.png')
+        record = json.loads((Path(__file__).parent / 'data/project-effect-anchors.json').read_text())['effects']['s_clsn58.png']
+        data = (MOD / 'mods/rtsai/standalone/effects/s_clsn58.png').read_bytes()
         self.assertEqual(hashlib.sha256(data).hexdigest(), record['sha256'], 'Audit a changed sprite before reusing its pivot')
         x, y, z = map(float, effect.val('Offset').split(','))
         self.assertEqual(x, 0)

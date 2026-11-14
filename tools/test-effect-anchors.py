@@ -5,7 +5,7 @@ import struct
 import tempfile
 import unittest
 import ea_originals as E
-from effect_anchors import anchor_patches
+from effect_anchors import anchor_patches, canvas_of
 
 
 class ImpactAnchors(unittest.TestCase):
@@ -36,6 +36,41 @@ class ImpactAnchors(unittest.TestCase):
             g, records, _ = self.fixture(root)
             (g.mod_root / 'mods/rtsai/standalone/effects/s_clsn58.shp').write_bytes(b'different artwork')
             with self.assertRaisesRegex(ValueError, 'artwork changed'):
+                anchor_patches(g, E, records)
+
+    # The explosions are RGBA sheets since 14 Nov 2026: a sheet's canvas is its FrameSize text chunk.
+    @staticmethod
+    def sheet(width, height):
+        def chunk(kind, body):
+            return struct.pack('>I', len(body)) + kind + body + b'\0\0\0\0'
+        return (b'\x89PNG\r\n\x1a\n' + chunk(b'IHDR', struct.pack('>IIBBBBB', width * 3, height, 8, 6, 0, 0, 0))
+                + chunk(b'tEXt', b'FrameSize\0' + f'{width},{height}'.encode()) + chunk(b'tEXt', b'FrameAmount\0003')
+                + chunk(b'IDAT', b'frames') + chunk(b'IEND', b''))
+
+    def sheet_fixture(self, root):
+        folder = Path(root) / 'mods/rtsai/standalone/effects'
+        folder.mkdir(parents=True)
+        data = self.sheet(182, 156)
+        (folder / 's_clsn58.png').write_bytes(data)
+        records = {'s_clsn58.png': {'sha256': hashlib.sha256(data).hexdigest(), 'groundY': 72, 'canvas': [182, 156]}}
+        sequences = E.parse('explosion:\n\tDefaults:\n\t\tOffset: 0, 0, 30\n\tverylarge_clsn:\n\t\tFilename: s_clsn58.png\n')
+        return SimpleNamespace(mod_root=Path(root), curseq={node.key: node for node in sequences}), records
+
+    def test_a_sheet_keeps_the_contact_point_of_the_shp_it_replaced(self):
+        self.assertEqual(canvas_of('s_clsn58.png', self.sheet(182, 156)), [182, 156])
+        self.assertIsNone(canvas_of('s_clsn58.png', b'not a picture'))
+        with tempfile.TemporaryDirectory() as root:
+            g, records = self.sheet_fixture(root)
+            merged = E.merge([list(g.curseq.values()), anchor_patches(g, E, records)])
+            self.assertEqual(merged['explosion'].get('verylarge_clsn').val('Offset'), '0, -72, 30')
+
+    def test_rejects_a_sheet_on_another_canvas(self):
+        with tempfile.TemporaryDirectory() as root:
+            g, records = self.sheet_fixture(root)
+            data = self.sheet(200, 156)
+            (g.mod_root / 'mods/rtsai/standalone/effects/s_clsn58.png').write_bytes(data)
+            records['s_clsn58.png']['sha256'] = hashlib.sha256(data).hexdigest()
+            with self.assertRaisesRegex(ValueError, 'canvas differs'):
                 anchor_patches(g, E, records)
 
 
