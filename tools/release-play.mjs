@@ -214,6 +214,26 @@ function engineCopy(pin) {
 const brotli = (raw) => zlib.brotliCompressSync(raw, { params: { [zlib.constants.BROTLI_PARAM_QUALITY]: 11,
   [zlib.constants.BROTLI_PARAM_LGWIN]: 24, [zlib.constants.BROTLI_PARAM_SIZE_HINT]: raw.length } });
 
+/** Lays the runtime's framework files out under rt-<hash>/<profile>/aot/_framework/, brotli in place, for each profile
+ *  that is not there yet. The files are the same for every profile; only the folder differs. */
+function layOutRuntime(rel, framework, rtRoot, profiles) {
+  const files = fs.readdirSync(framework).map((f) => path.join(framework, f)).filter((f) => fs.statSync(f).isFile());
+  let raw = 0, wire = 0, laid = 0;
+  for (const profile of profiles) {
+    for (const f of files) {
+      const to = path.join(rel, "roots", rtRoot, profile, "aot", "_framework", path.basename(f));
+      const bytes = fs.readFileSync(f);
+      if (!fs.existsSync(to)) {
+        fs.mkdirSync(path.dirname(to), { recursive: true });
+        fs.writeFileSync(to, brotli(bytes));
+        laid++;
+      }
+      raw += bytes.length; wire += fs.statSync(to).size;
+    }
+  }
+  return { files: files.length * profiles.length, raw, wire, laid };
+}
+
 /** AOT runtime from this checkout, the pinned engine and the data's mod snapshot, as a root laid out and named
  *  exactly like tools/build-public.mjs lays it out: rt-<hash>/<profile>/aot/_framework/<file>, brotli in place.
  *  dir/runtime.json is written last; a dir that has it is a finished build of the same sources and is reused. */
@@ -221,7 +241,18 @@ function buildRuntime(rel, pin, inputs, profiles) {
   const meta = path.join(rel, "runtime.json");
   if (fs.existsSync(meta)) {
     say(`  reusing the runtime built from the same sources in ${rel}`);
-    return { ...JSON.parse(fs.readFileSync(meta, "utf8")), framework: path.join(rel, "wasm-aot", "wwwroot", "_framework") };
+    const cached = JSON.parse(fs.readFileSync(meta, "utf8"));
+    const framework = path.join(rel, "wasm-aot", "wwwroot", "_framework");
+    // The cache key is the sources, not the profiles: a dry run of one profile leaves a one-profile root (15 Nov 2026:
+    // the gate's Classic smoke failed to boot on it). Lay out the profiles this release ships that the root lacks.
+    const missing = profiles.filter((p) => !fs.existsSync(path.join(rel, "roots", cached.rtRoot, p, "aot", "_framework")));
+    if (missing.length) {
+      const { laid, ...sizes } = layOutRuntime(rel, framework, cached.rtRoot, profiles);
+      say(`  laid out ${missing.join(", ")} for ${cached.rtRoot} (${laid} files; the runtime itself is the same)`);
+      Object.assign(cached, sizes);
+      fs.writeFileSync(meta, `${JSON.stringify(cached, null, 2)}\n`);
+    }
+    return { ...cached, framework };
   }
   fs.rmSync(rel, { recursive: true, force: true });
   fs.mkdirSync(rel, { recursive: true });
@@ -249,17 +280,8 @@ function buildRuntime(rel, pin, inputs, profiles) {
   const h = crypto.createHash("sha256");
   for (const f of [...files].sort()) h.update(path.basename(f)).update(fs.readFileSync(f));
   const rtRoot = `rt-${h.digest("hex").slice(0, 12)}/`;
-  let raw = 0, wire = 0;
-  for (const f of files) {
-    const bytes = fs.readFileSync(f), packed = brotli(bytes);
-    for (const profile of profiles) {
-      const to = path.join(rel, "roots", rtRoot, profile, "aot", "_framework", path.basename(f));
-      fs.mkdirSync(path.dirname(to), { recursive: true });
-      fs.writeFileSync(to, packed);
-      raw += bytes.length; wire += packed.length;
-    }
-  }
-  const result = { rtRoot, files: files.length * profiles.length, raw, wire };
+  const { files: count, raw, wire } = layOutRuntime(rel, framework, rtRoot, profiles);
+  const result = { rtRoot, files: count, raw, wire };
   fs.writeFileSync(meta, `${JSON.stringify(result, null, 2)}\n`);
   return { ...result, framework };
 }
