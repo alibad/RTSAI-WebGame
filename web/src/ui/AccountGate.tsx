@@ -31,12 +31,12 @@ export function AccountGate({ children }: { children: ReactNode }) {
         <div><span className="menu-eyebrow">Your friend’s match is waiting</span><strong className="mp-code">{invite}</strong></div>
       </div> : null}
       <h1>Sign in to play</h1>
-      <p>{invite ? "Sign in and you’ll go straight to their lobby." : "One free account for the browser game, multiplayer with friends, and the Workshop."}</p>
+      <p>{invite ? "Sign in and you’ll go straight to their lobby." : "One free account for the browser game, multiplayer with friends, the map editor and the battle simulator."}</p>
       <ul className="ag-features">
         <li style={{ backgroundImage: 'url("menu/skirmish.webp")' }}><Swords size={16} aria-hidden="true" /><span>Skirmish</span></li>
         <li style={{ backgroundImage: 'url("menu/campaign.webp")' }}><BookOpen size={16} aria-hidden="true" /><span>Lines of Hope</span></li>
         <li style={{ backgroundImage: 'url("menu/isometric.webp")' }}><Users size={16} aria-hidden="true" /><span>Play with friends</span></li>
-        <li style={{ backgroundImage: 'url("menu/classic.webp")' }}><Map size={16} aria-hidden="true" /><span>Workshop</span></li>
+        <li style={{ backgroundImage: 'url("menu/classic.webp")' }}><Map size={16} aria-hidden="true" /><span>Map editor</span></li>
       </ul>
       <a className="gbtn gbtn-primary gbtn-lg ag-primary" href={signInUrl()}><LogIn size={17} aria-hidden="true" />Sign in or create account</a>
       <a className="ag-secondary" href={`${siteOrigin}/download`}><Download size={13} aria-hidden="true" />Downloads stay free without an account</a>
