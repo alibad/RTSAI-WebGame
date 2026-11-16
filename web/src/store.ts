@@ -89,6 +89,8 @@ export interface Store {
   reviewOpen: boolean;
   /** Short screens: the sidebar folded away to give the battlefield the whole width (Hud.tsx SidebarHandle). */
   sidebarCollapsed: boolean;
+  /** The cell grid over the battlefield (ui/GridToggle.tsx, render/grid.ts); kept in the preferences. */
+  grid: boolean;
   set: (p: Partial<Store>) => void;
 }
 
@@ -136,6 +138,7 @@ export const useStore = create<Store>((set) => ({
   graphics: "ok",
   reviewOpen: false,
   sidebarCollapsed: false,
+  grid: false,
   set: (p) => set(p),
 }));
 

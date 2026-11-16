@@ -147,8 +147,9 @@ export class Game {
 
   constructor(readonly canvas: HTMLCanvasElement) {
     this.renderer = new Renderer(canvas);
+    this.renderer.setGrid(preferences.grid === true);
     this.client = new SimClient(this.renderer);
-    store.set({ shared: this.client.shared });
+    store.set({ shared: this.client.shared, grid: preferences.grid === true });
     this.client.onSnapshot = (s) => this.onSnapshot(s);
     this.client.onSheets = (uploaded, total) => store.set({ sheets: { uploaded, total } });
     this.renderer.onMissingTexture = (id) => this.client.needSheet(id);

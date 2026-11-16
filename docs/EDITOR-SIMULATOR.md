@@ -67,6 +67,16 @@ The campaign's objective code runs it in the engine (`Missions.StartOperation`);
   and a sound where it landed, or a red mark with the reason ("Not on water"). Right-click on open ground or Esc puts
   the brush down. Building cards show the building as the battlefield draws it (`preview`), not the cameo.
 
+## Grid (16 November 2026)
+
+The Grid button (`web/src/ui/GridToggle.tsx`) on the battle's top bar, the simulator's setup bar and the editor's bar
+outlines every map cell, so a battle reads as a board you can count and measure. The owner liked this about the old
+website Workshop's map. The page draws it (`web/src/render/grid.ts`) from the terrain the engine laid out: each cell's
+tile ends at the bottom corner of its diamond, which gives that corner's height, and every other corner is another
+cell's bottom corner. So slopes come out as one mesh, and cliffs (more than two height levels) as a clean step. It lies
+over the ground, under every unit and under the shroud; Classic's square maps get square cells. The choice is kept in
+the preferences (`rtsai.preferences.v1` `grid`). It needs no runtime change.
+
 ## Data and building
 
 The page imports website source (RTSAI-Web: the Faction viewer components and the Earth compiler). The build finds

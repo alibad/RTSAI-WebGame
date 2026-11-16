@@ -16,6 +16,7 @@ import { cn } from "../lib/utils";
 import { SIDE_COLORS, nationGroup, playableNations } from "../sides";
 import { GameMenu, Hud, Rank, RotateHint } from "./Hud";
 import { FeedbackSlot } from "./feedback/slot";
+import { GridToggle } from "./GridToggle";
 import { Flag } from "./Flag";
 import { GameButton } from "./kit/game";
 import { MapStrip } from "./MapStrip";
@@ -301,6 +302,7 @@ export function Simulator({ game, exit }: { game: Game; exit: () => void }) {
       <nav className="hud-bar" aria-label="Game controls" data-ui-sfx>
         <button type="button" className="hud-tool" aria-label="Main menu" data-tip="Main menu" onClick={exit}><ArrowLeft /></button>
         <GameMenu game={game} />
+        <GridToggle game={game} />
         <FeedbackSlot kind="hud" />
       </nav>
       <div className="sb-hint"><div className="hud-card">

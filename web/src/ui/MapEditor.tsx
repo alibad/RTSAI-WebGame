@@ -12,6 +12,7 @@ import { useStore } from "../store";
 import { cn } from "../lib/utils";
 import { OptionSelect } from "../components/ui/fields";
 import { FeedbackSlot } from "./feedback/slot";
+import { GridToggle } from "./GridToggle";
 import { GameButton } from "./kit/game";
 import { MapStrip } from "./MapStrip";
 import { ScreenBackdrop } from "./screen-parts";
@@ -276,6 +277,7 @@ function Editing({ game, editor, test }: { game: Game; editor: EditorController;
         <button type="button" className="hud-tool" aria-label="Undo" data-tip="Undo · Ctrl+Z" disabled={!st.undo} onClick={() => editor.undo()}><Undo2 /></button>
         <button type="button" className="hud-tool" aria-label="Redo" data-tip="Redo · Ctrl+Y" disabled={!st.redo} onClick={() => editor.redo()}><Redo2 /></button>
         <button type="button" className="hud-tool" aria-label="Delete selection" data-tip="Delete selection · Del" onClick={() => editor.deleteSelection()}><Trash2 /></button>
+        <GridToggle game={game} />
         <FeedbackSlot kind="hud" />
         <span className="ed-sep" />
         <GameButton size="sm" icon={<Save size={14} />} onClick={() => void editor.save()} data-testid="ed-save">{st.saving ? "Saving…" : st.dirty || !st.saved ? "Save" : "Saved"}</GameButton>

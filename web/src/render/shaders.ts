@@ -235,6 +235,28 @@ void main()
 }
 `;
 
+/** Lines of any slope (the cell grid, grid.ts): one instance per line, a quad uWidth drawing-buffer px wide. */
+export const LINE_VS = /* glsl */ `#version 300 es
+precision highp float;
+layout(location = 0) in vec4 aLine;   // x0, y0, x1, y1 in world px
+layout(location = 1) in vec4 aColor;  // premultiplied rgba
+uniform vec3 uScroll;
+uniform vec3 uP1;
+uniform vec3 uP2;
+uniform float uZoom;
+uniform float uWidth;
+out vec4 vColor;
+void main()
+{
+  vec2 a = aLine.xy, b = aLine.zw, d = b - a;
+  vec2 n = vec2(-d.y, d.x) / max(length(d), 1e-4);
+  float along = float(gl_VertexID & 1), side = float(gl_VertexID >> 1) * 2.0 - 1.0;
+  vec2 pos = mix(a, b, along) + n * side * 0.5 * uWidth / uZoom;
+  gl_Position = vec4((pos - uScroll.xy) * uP1.xy + uP2.xy, 0.0, 1.0);
+  vColor = aColor;
+}
+`;
+
 export const COLOR_FS = /* glsl */ `#version 300 es
 precision highp float;
 in vec4 vColor;

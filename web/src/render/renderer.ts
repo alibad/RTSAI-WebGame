@@ -6,6 +6,7 @@ import { COLOR_FS, COLOR_VS, COMBINED_FS, SHROUD_FS, SHROUD_VS, SPRITE_VS, TERRA
 import { DRAW_BYTES, type Actor, type Snapshot, type SpriteInfo, type StartInfo } from "../sim/protocol";
 import { ModelPass } from "./models";
 import { IconRaster, type IconSprite } from "./icons";
+import { GridPass } from "./grid";
 
 export interface Camera {
   x: number; // world px at the canvas centre
@@ -78,6 +79,9 @@ export class Renderer {
   private shroudAllVisible = true;
   models!: ModelPass;
   private iconRaster!: IconRaster;
+  private gridPass!: GridPass;
+  /** The cell grid over the ground (the Grid button, grid.ts). */
+  private gridOn = false;
   private capVao!: WebGLVertexArrayObject;
   private capVbo!: WebGLBuffer;
   private capIbo!: WebGLBuffer;
@@ -153,6 +157,7 @@ export class Renderer {
     this.shroudProg = compile(gl, SHROUD_VS, SHROUD_FS);
     this.models = new ModelPass(gl);
     this.iconRaster = new IconRaster(gl);
+    this.gridPass = new GridPass(gl);
 
     // Captured engine vertices (OpenRA.Graphics.Vertex, the terrain layout) drawn as indexed quads.
     this.capVao = gl.createVertexArray()!;
@@ -288,6 +293,14 @@ export class Renderer {
     this.terrainVao = vao;
     this.terrainBuffers = [vb, ib];
     this.terrainIndexCount = idx.length;
+    this.gridPass.invalidate();
+    this.version++;
+  }
+
+  /** The cell grid over the ground (the Grid button): on or off, redrawn at once. */
+  setGrid(on: boolean) {
+    if (on === this.gridOn) return;
+    this.gridOn = on;
     this.version++;
   }
 
@@ -298,6 +311,7 @@ export class Renderer {
     // The copy a lost context is rebuilt from (rebuild) takes the edit too.
     const copy = this.terrainCopy;
     if (copy && offset + data.byteLength <= copy.byteLength) new Uint8Array(copy, offset, data.byteLength).set(new Uint8Array(data));
+    this.gridPass.invalidate();
     if (this.lost || !this.terrainBuffers.length) return;
     const gl = this.gl;
     gl.bindBuffer(gl.ARRAY_BUFFER, this.terrainBuffers[0]);
@@ -766,6 +780,8 @@ export class Renderer {
     // reject foreground pixels as actors cross tile boundaries. Keep depth
     // testing for actors against other actors (including buildings).
     if (depthOn) gl.disable(gl.DEPTH_TEST);
+    // The cell grid lies on the ground: over the terrain, under everything standing on it and under the shroud.
+    if (this.gridOn && this.terrainCopy && this.terrainVao && !this.actorFilter) this.gridPass.draw(this.info, this.terrainCopy, (p) => this.viewUniforms(p, cam));
     if (cur) this.drawCaptured(cur, cam, true);
     if (depthOn) { gl.enable(gl.DEPTH_TEST); gl.clear(gl.DEPTH_BUFFER_BIT); }
     if (cur) this.drawSprites(cur, prev, cam, now, false);
