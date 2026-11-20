@@ -149,6 +149,7 @@
 .mp-match-waiting-icon { display: grid; place-items: center; flex: none; width: 30px; height: 30px; border-radius: 50%; background: rgba(231, 180, 47, .16); color: var(--hud-yellow); }
 .mp-match-waiting strong { color: #fff2c9; font-size: 13px; }
 .mp-match-waiting p { margin: 3px 0 0; font-size: 12px; }
+.mp-outcome-note { max-width: 520px; margin: 12px auto 0; color: #efe3bd; font-size: 13px; line-height: 1.5; text-align: center; }
 .mp-match-error strong { color: #ffe1d9; font-size: 13px; }
 .mp-match-error p { margin: 3px 0 10px; font-size: 12px; }
 

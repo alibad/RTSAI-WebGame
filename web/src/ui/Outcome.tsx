@@ -73,7 +73,12 @@ export function Outcome({ game }: { game: Game }) {
   const over = win === "Won" || win === "Lost";
   useEffect(() => {
     if (!over) { setStats(null); setSaved(""); setError(""); setAside(false); return; }
-    game.command<GameStats>({ cmd: "stats" }).then(setStats).catch(() => setStats(null));
+    const read = () => game.command<GameStats>({ cmd: "stats" }).then(setStats).catch(() => setStats(null));
+    void read();
+    // A multiplayer match can go on after this player's result (others still fighting): keep its standings current.
+    if (!game.multiplayer) return;
+    const timer = setInterval(read, 5000);
+    return () => clearInterval(timer);
   }, [over, game]);
   useEffect(() => {
     if (!over) return;
@@ -85,9 +90,18 @@ export function Outcome({ game }: { game: Game }) {
   const won = win === "Won";
   const scenario = parseScenario(game.scenarioJson);
   const players = stats ? [...stats.players].sort((a, b) => Number(b.local) - Number(a.local)) : [];
+  // The engine calls every human "Commander". In a multiplayer match the lobby's "Player 2" tells them apart: each
+  // seat has its own colour (peer.ts peerColors).
+  const seat = (p: GameStats["players"][number]) => {
+    const found = game.multiplayer && !p.bot ? scenario.players?.find((s) => s.client && s.color?.toLowerCase() === p.color.toLowerCase()) : undefined;
+    return found ? `Player ${found.client}` : p.name;
+  };
   const me = players.find((p) => p.local);
   const ticks = stats ? (stats.tick * stats.timestep) / 1000 * TICKS_PER_SECOND : 0;
   const canKeep = !game.multiplayer && !!game.scenarioJson;
+  // Multiplayer with three or more players: this player is out, but others have no result yet. Leaving the match
+  // stops it for everyone (multiplayer.ts), so the way out says so.
+  const othersPlaying = game.multiplayer && !!stats && stats.players.some((p) => !p.local && !p.bot && p.win !== "Won" && p.win !== "Lost");
   async function watch() {
     setBusy(true); setError("");
     try {
@@ -138,7 +152,7 @@ export function Outcome({ game }: { game: Game }) {
                         <i style={{ background: `#${p.color}` }} />
                         <Flag id={p.faction} />
                         <div>
-                          <b>{p.local ? "You" : p.name}{p.win === "Won" && <span className="oc-winner" aria-label="Winner"><Star fill="currentColor" /></span>}</b>
+                          <b>{p.local ? "You" : seat(p)}{p.win === "Won" && <span className="oc-winner" aria-label="Winner"><Star fill="currentColor" /></span>}</b>
                           {factionIdentity(p.faction) && <small>{factionIdentity(p.faction)!.title}</small>}
                         </div>
                       </div>
@@ -171,8 +185,9 @@ export function Outcome({ game }: { game: Game }) {
             </>
             : mission
             ? <GameButton onClick={() => game.quit()}>Campaign menu</GameButton>
-            : <GameButton variant="primary" size="lg" onClick={() => game.quit()} data-sfx-hover>Continue</GameButton>}
+            : <GameButton variant="primary" size="lg" onClick={() => game.quit()} data-sfx-hover>{othersPlaying ? "Leave match" : "Continue"}</GameButton>}
         </div>
+        {othersPlaying && <p role="note" className="mp-outcome-note">The other players are still fighting. Leaving now stops the match for all of them: stay on this screen to let them finish.</p>}
         {error && <p role="alert" className="lib-error">{error}</p>}
       </div>
     </div>
