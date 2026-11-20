@@ -29,6 +29,8 @@ const crf = opt("crf", "22");
 // --settle <ms>: wait this long after each battle is built, before the camera rolls (with --cold-audio, the time a
 // page's own background sound fetch gets, as a match gets while the player sets up a base).
 const settle = Number(opt("settle", "0"));
+// --note "text": a label in the middle of the frame for the whole film (which build this is, in a before/after pair).
+const note = opt("note", "");
 const onlyRows = opt("rows", "")?.split(",").filter(Boolean);
 const unitsForAll = opt("units", "")?.split(",").filter(Boolean); // a short parade of just these roster units
 const W = 1280, H = 720, FPS = 30;
@@ -82,6 +84,15 @@ if (!flag("cold-audio")) {
     await route.fulfill({ response, body: patched });
   });
 }
+// --pack <file>: the page's data bundle (public/web-bundle.pack) is answered from this file: a copy of the live
+// bundle with a rules change under test, so a proposed rules fix can be filmed on the live build before any data build.
+const packFile = opt("pack", "");
+if (packFile) {
+  const body = fs.readFileSync(packFile);
+  await page.route(/\/public\/web-bundle\.pack(\?.*)?$/, (route) => route.fulfill({ status: 200, contentType: "application/octet-stream",
+    headers: { "access-control-allow-origin": "*", "cross-origin-resource-policy": "cross-origin" }, body }));
+  log(`data bundle answered from ${packFile}`);
+}
 const cdp = await context.newCDPSession(page);
 
 await page.goto(`${base}?profile=public&mode=simulator&private=0`);
@@ -93,7 +104,7 @@ const wanted = (opt("factions", "") || Object.keys(catalog.rosters).join(",")).s
 log(`page ready: ${catalog.units.length} units, ${Object.keys(catalog.rosters).length} countries; filming ${wanted.map((w) => w.faction).join(", ")}`);
 
 // The film's own layer: caption, name tags, the audio log and the sound tap.
-await page.evaluate(() => {
+await page.evaluate((note) => {
   const css = document.createElement("style");
   css.textContent = `
     :root,.fixed.inset-0{--sidebar-w:0px !important}
@@ -101,6 +112,8 @@ await page.evaluate(() => {
       background:rgba(10,12,16,.72);color:#fff;font:600 17px/1.1 system-ui,Segoe UI,sans-serif;letter-spacing:.01em;pointer-events:none}
     #parade-caption img{height:22px;border-radius:3px;display:block}
     #parade-caption .row{font-weight:500;opacity:.85}
+    #parade-note{position:fixed;left:50%;top:150px;transform:translateX(-50%);z-index:2147483000;padding:6px 14px;border-radius:9px;background:rgba(233,180,60,.95);
+      color:#111;font:700 17px/1.2 system-ui,Segoe UI,sans-serif;white-space:nowrap;pointer-events:none}
     #parade-caption .step{margin-left:6px;padding:3px 8px;border-radius:6px;background:#e9644b;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.06em}
     .parade-tag{position:fixed;z-index:2147482999;transform:translate(-50%,0);padding:1px 6px;border-radius:5px;background:rgba(10,12,16,.62);color:#fff;
       font:500 11px/1.35 system-ui,Segoe UI,sans-serif;white-space:nowrap;pointer-events:none;transition:opacity .5s}
@@ -113,6 +126,7 @@ await page.evaluate(() => {
   cap.id = "parade-caption";
   cap.style.display = "none";
   document.body.appendChild(cap);
+  if (note) { const n = document.createElement("div"); n.id = "parade-note"; n.textContent = note; document.body.appendChild(n); }
   const P = window.__parade = { tags: new Map(), audio: [], cap, t: () => performance.timeOrigin + performance.now() };
   P.caption = (flag, country, row, step) => {
     cap.style.display = country ? "flex" : "none";
@@ -183,7 +197,7 @@ await page.evaluate(() => {
     for (let i = 0; i < bytes.length; i += 32768) bin += String.fromCharCode(...bytes.subarray(i, i + 32768));
     return { b64: btoa(bin), rate: s.rate, startEpoch: s.startEpoch, peak };
   };
-});
+}, note);
 
 // ---------------------------------------------------------------------------------------------------- recording
 function recorder(dir) {
