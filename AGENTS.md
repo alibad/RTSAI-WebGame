@@ -63,6 +63,14 @@ See docs/DEPLOY-PUBLIC.md ("Releasing").
 Shipping something that is not on main yet means landing it on main first. That includes a campaign chapter, new
 data, or a branch's runtime.
 
+## Showing the owner a fight: battle clips and the Review inbox (20 November 2026)
+
+The owner judges the game by watching short clips in the website's Review inbox and answering each with Looks good,
+Skip or a voice note (`RTSAI-Web/docs/review-inbox.md`). For fights, `tools/battle-clips.mjs` films rows of the
+coverage grid `evals/battle-review/grid.json` through the Battle simulator on the build players have
+(`docs/BATTLE-CLIPS.md`). Add a row for what you need judged, watch your own clip first, then send it with
+`node tools/review.mjs add` in RTSAI-Web. Keep the grid curated: each clip needs a reason to exist.
+
 ## Worktrees require an explicit owner request (15 October 2026)
 
 - Use the existing canonical checkout. Do not create a Git worktree or a parallel clone unless the owner explicitly asks for it in the current task. This supersedes older instructions permitting worktrees for concurrency, isolation, convenience, or risk.
