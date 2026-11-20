@@ -2,7 +2,8 @@
 // engine, WebRTC between browser contexts on this machine. What each player's page gets before anything loads:
 //   - the engine's own synchronization reports, kept per frame (window.mp.hashes), and every frame's arrival time;
 //   - a network shim on the direct line (window.mp.net): `delay`/`jitter` ms added to every message this page sends
-//     (order kept), and `hold`, which keeps messages back until it is cleared (a connection that drops and returns);
+//     (order kept); `hold`, which keeps messages back until window.mp.release() (a connection that drops and
+//     returns); and `blocked`, which makes the other side's addresses unreachable (two networks with no direct route);
 //   - host ICE routes only by default (no STUN): players on one machine, not a cross-network certification.
 //   RTSAI_TEST_URL            the page, default http://127.0.0.1:3520/
 //   RTSAI_FIRESTORE_EMULATOR  host:port of the Firestore emulator, default 127.0.0.1:8085
@@ -15,18 +16,25 @@ export const FIRESTORE = `http://${process.env.RTSAI_FIRESTORE_EMULATOR || '127.
 export const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 
 export function launch(kind = 'chromium', { headed = process.env.RTSAI_TEST_HEADED === '1', args = [] } = {}) {
-  if (kind === 'firefox') return firefox.launch({ headless: !headed, firefoxUserPrefs: { 'media.navigator.streams.fake': true, 'media.navigator.permission.disabled': true } });
+  // Firefox hides a machine's own addresses behind .local names unless a camera was granted; here they are the only route.
+  if (kind === 'firefox') return firefox.launch({ headless: !headed, firefoxUserPrefs: { 'media.navigator.streams.fake': true, 'media.navigator.permission.disabled': true,
+    'media.peerconnection.ice.obfuscate_host_addresses': false, 'media.peerconnection.ice.loopback': true } });
   return chromium.launch({ executablePath: browserExecutable(), headless: !headed, args: [...browserArgs(), '--use-fake-device-for-media-stream', '--use-fake-ui-for-media-stream', ...args] });
 }
 
 /** Runs in the page before its own scripts. */
 function instrument({ hostRoutesOnly, net }) {
-  const mp = window.mp = { frames: [], errors: [], hashes: {}, connections: [], worldStarts: [], net: { delay: 0, jitter: 0, hold: false, ...net }, held: [] };
+  const mp = window.mp = { frames: [], errors: [], hashes: {}, connections: [], worldStarts: [], net: { delay: 0, jitter: 0, hold: false, blocked: false, ...net }, held: [] };
   window.addEventListener('rtsai:world-started', e => mp.worldStarts.push(e.detail));
   const Original = window.RTCPeerConnection;
   if (!Original) return;
   window.RTCPeerConnection = class extends Original {
     constructor(config) { super(hostRoutesOnly ? { ...config, iceServers: [] } : config); mp.connections.push(this); }
+    // Blocked: every route the other side offers points at an address nothing answers on (192.0.2.1, TEST-NET-1).
+    setRemoteDescription(description) {
+      if (mp.net.blocked && description?.sdp) description = { type: description.type, sdp: description.sdp.replace(/^(a=candidate:\S+ \d+ \S+ \d+) \S+ (\d+ typ )/gm, '$1 192.0.2.1 $2') };
+      return super.setRemoteDescription(description);
+    }
   };
   const send = RTCDataChannel.prototype.send;
   const deliver = (channel, data) => { try { send.call(channel, data); } catch { /* the channel closed meanwhile */ } };
@@ -184,8 +192,8 @@ const until = async (page, fn, arg, ms = 120000, every = 400) => {
   return null;
 };
 
-/** Names of what a production tab offers now: [{ name, cost, buildable }]. */
-export const offered = (player, queue) => player.page.evaluate(q => (window.store.getState().catalog.find(c => c.type === q)?.items ?? []).map(i => ({ name: i.name, cost: i.cost, buildable: i.buildable })), queue);
+/** What a production tab offers now: [{ name (the engine's id), label (what the player reads), cost, buildable }]. */
+export const offered = (player, queue) => player.page.evaluate(q => (window.store.getState().catalog.find(c => c.type === q)?.items ?? []).map(i => ({ name: i.name, label: i.label, cost: i.cost, buildable: i.buildable })), queue);
 
 /** The local player's actors: [{ id, type, x, y, building }]. */
 export const army = player => player.page.evaluate(() => {
@@ -194,12 +202,13 @@ export const army = player => player.page.evaluate(() => {
 });
 
 /**
- * Builds the first offered building whose name matches `pattern` and places it near the construction yard.
- * Returns its name, or null when nothing matches, it never finished or no spot took it.
+ * Builds the first offered building whose id or label matches `pattern` (RA2 ids: powr, refn, weap, pile/hand for a
+ * barracks) and places it near the construction yard. Returns its id, or null when nothing matches, it never
+ * finished or no spot took it.
  */
 export async function construct(player, pattern, { wait = 240000 } = {}) {
   const { page } = player;
-  const item = await until(page, p => window.store.getState().catalog.find(c => c.type === 'Building')?.items.find(i => i.buildable && new RegExp(p, 'i').test(i.name))?.name, pattern.source ?? pattern, 20000);
+  const item = await until(page, p => window.store.getState().catalog.find(c => c.type === 'Building')?.items.find(i => i.buildable && new RegExp(p, 'i').test(`${i.name} ${i.label}`))?.name, pattern.source ?? pattern, 20000);
   if (!item) return null;
   const count = name => page.evaluate(n => { const g = window.game, s = g.client.cur; return s.actors.filter(a => a.owner === s.header.localPlayer && g.client.str(a.type) === n).length; }, name);
   const before = await count(item);
@@ -221,9 +230,9 @@ export async function construct(player, pattern, { wait = 240000 } = {}) {
   return null;
 }
 
-/** Queues `count` of the first offered unit of a tab ("Infantry", "Vehicle") whose name matches. Returns its name. */
+/** Queues `count` of the first offered unit of a tab ("Infantry", "Vehicle") whose id or label matches. Returns its id. */
 export async function train(player, queue, pattern, count = 1) {
-  const item = await until(player.page, ([q, p]) => window.store.getState().catalog.find(c => c.type === q)?.items.find(i => i.buildable && new RegExp(p, 'i').test(i.name))?.name, [queue, pattern.source ?? pattern], 30000);
+  const item = await until(player.page, ([q, p]) => window.store.getState().catalog.find(c => c.type === q)?.items.find(i => i.buildable && new RegExp(p, 'i').test(`${i.name} ${i.label}`))?.name, [queue, pattern.source ?? pattern], 30000);
   if (item) await player.page.evaluate(([q, i, n]) => window.game.command({ cmd: 'produce', queue: q, item: i, count: n }), [queue, item, count]);
   return item;
 }
@@ -236,7 +245,7 @@ export async function attackMove(player, types, [x, y]) {
     if (!ids.length) return 0;
     await g.select(ids);
     await g.command({ cmd: 'mode', mode: 'attackmove' });
-    g.click(x, y, 1, 0);
+    g.modeClick(x, y, 0);   // the page's own click for an order mode: attack-move confirms with the right button
     return ids.length;
   }, [types, x, y]);
 }
