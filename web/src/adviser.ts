@@ -171,6 +171,24 @@ export function assessThreat(snapshot: AdviserObservation): AdviserThreat {
   return result(score, [...new Set(reasons.slice(0, 2))].join("; ") || "No immediate visible threat");
 }
 
+/**
+ * Where to look for an enemy base nobody has seen: the far side of the map from our own base (its mirror through the
+ * centre), then the mirrors across each axis, then the centre; the first of them still unexplored. Null: all explored.
+ */
+export function searchGoal(snapshot: AdviserObservation): { x: number; y: number } | null {
+  const w = snapshot.mapWidth, h = snapshot.mapHeight, own = snapshot.buildings.length ? snapshot.buildings : snapshot.units;
+  if (!own.length || w <= 0 || h <= 0) return null;
+  const hx = Math.floor(own.reduce((sum, actor) => sum + actor.cellX, 0) / own.length), hy = Math.floor(own.reduce((sum, actor) => sum + actor.cellY, 0) / own.length);
+  const map = snapshot.spatial, channels = map?.channels ?? 0;
+  const grid = map && channels >= 5 && map.bytes.length >= w * h * channels * 4 ? new DataView(map.bytes.buffer, map.bytes.byteOffset, map.bytes.byteLength) : null;
+  const explored = (x: number, y: number) => grid !== null && grid.getFloat32(((y * w + x) * channels + 4) * 4, true) >= 1;
+  for (const [x, y] of [[w - 1 - hx, h - 1 - hy], [w - 1 - hx, hy], [hx, h - 1 - hy], [Math.floor(w / 2), Math.floor(h / 2)]]) {
+    const cx = Math.max(0, Math.min(w - 1, x)), cy = Math.max(0, Math.min(h - 1, y));
+    if ((cx - hx) ** 2 + (cy - hy) ** 2 > 20 ** 2 && !explored(cx, cy)) return { x: cx, y: cy };
+  }
+  return null;
+}
+
 export function nextAdvice(snapshot: AdviserObservation, options: { buildFocus?: boolean } = {}): AdviserAdvice | null {
   const tree = snapshot.techTree ?? {};
   const available = snapshot.availableProduction.map(item => item.toLowerCase());
@@ -277,7 +295,22 @@ export function nextAdvice(snapshot: AdviserObservation, options: { buildFocus?:
     `Train 3 ${plural(infantry)}`, train(infantry, 3), "train:infantry");
   if (options.buildFocus) return null;
   const targets = snapshot.visibleEnemyBuildings.length ? snapshot.visibleEnemyBuildings : snapshot.rememberedEnemyBuildings ?? [];
-  if (fighters.length && !targets.length) return advise(`We haven't found the enemy base yet; send a scout to explore the ${100 - Math.round(snapshot.exploredPercent)}% of the map still in fog.`, "", [], "scout");
+  if (fighters.length && !targets.length) {
+    // Looking for the enemy base is an order like any other: one fast scout, or, once there is an army, the idle
+    // fighters together. Whoever is already out looking is left to it.
+    const out = (unit: AdviserActor) => snapshot.buildings.length > 0 && snapshot.buildings.every(building => distanceSquared(unit, building) > 20 ** 2);
+    if (fighters.some(unit => !unit.idle && out(unit))) return null;
+    const goal = searchGoal(snapshot);
+    const idle = fighters.filter(unit => unit.idle).sort((a, b) => (b.speed ?? 0) - (a.speed ?? 0) || a.actorId - b.actorId);
+    if (goal && fighters.length >= 8 && idle.length >= 6) {
+      const group = idle.slice(0, 12);
+      return advise(`We haven't found the enemy base yet; advance ${group.length} units together across the map to find it.`,
+        `Advance ${group.length} units to find the enemy base`, group.map(unit => ({ action: "attack_move", actor_id: unit.actorId, target_x: goal.x, target_y: goal.y })), "sweep");
+    }
+    if (goal && idle.length) return advise(`We haven't found the enemy base yet; send your ${name(idle[0].kind)} to scout the far side of the map.`,
+      `Send the ${name(idle[0].kind)} to scout`, [{ action: "move", actor_id: idle[0].actorId, target_x: goal.x, target_y: goal.y }], "scout");
+    return advise(`We haven't found the enemy base yet; send a scout to explore the ${100 - Math.round(snapshot.exploredPercent)}% of the map still in fog.`, "", [], "scout");
+  }
   if (fighters.length >= 8 && targets.length) {
     const target = targets[0];
     const attackers = [...fighters].sort((a, b) => Number(!a.idle) - Number(!b.idle) || a.actorId - b.actorId).slice(0, 12);

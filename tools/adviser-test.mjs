@@ -67,7 +67,12 @@ for profile, data in load()['profiles'].items():
       add(prefix+'build-focus',{**base,'units':army,'visible_enemies':[enemy]},items,True)
       # Busy unit queues force the strategic scout / attack branch.
       busy=[dict(queue_type=q,item=infantry,progress=.5,remaining_ticks=10) for q in ['Vehicle','Infantry']]
-      add(prefix+'scout',{**base,'units':army,'production':busy},items)
+      # Looking for the enemy base: one scout while few fighters are idle, the idle fighters together once there
+      # is an army, and nobody new while a unit is already out looking.
+      near=[actor(infantry,i+100,12+i,12,True,i%2==0) for i in range(10)]
+      add(prefix+'scout',{**base,'units':near,'production':busy},items)
+      add(prefix+'sweep',{**base,'units':[actor(infantry,i+100,12+i,12,True) for i in range(10)],'production':busy},items)
+      add(prefix+'scout-out',{**base,'units':near+[actor(infantry,200,80,80,True,False)],'production':busy},items)
       target=actor(next(iter(roles.values())),1000,80,80)
       add(prefix+'visible-base',{**base,'units':army,'production':busy,'visible_enemy_buildings':[target]},items)
       add(prefix+'remembered-base',{**base,'units':army,'production':busy,'remembered_enemy_buildings':[target]},items)
@@ -95,7 +100,7 @@ print(json.dumps(cases))
 `, companion], { encoding: 'utf8', maxBuffer: 16 * 1024 * 1024 }));
 
 const actor = a => ({ actorId: a.actor_id ?? 0, kind: a.type, cellX: a.cell_x ?? 0, cellY: a.cell_y ?? 0,
-  idle: a.is_idle ?? false, canAttack: a.can_attack ?? false, hpPercent: a.hp_percent ?? 1,
+  idle: a.is_idle ?? false, canAttack: a.can_attack ?? false, hpPercent: a.hp_percent ?? 1, speed: a.speed ?? 0,
   canDisguise: a.can_disguise, canInfiltrate: a.can_infiltrate, isDisguised: a.is_disguised, detectsDisguise: a.detects_disguise });
 const observation = ({ raw: r, tree }) => ({ tick:r.tick, cash:r.cash ?? 0, powerProvided:r.power_provided ?? 0,
   powerDrained:r.power_drained ?? 0, harvesterCount:r.harvester_count ?? 0, mapWidth:r.map_width ?? 0, mapHeight:r.map_height ?? 0,
@@ -122,7 +127,7 @@ for (const test of parity) {
   assert.equal(JSON.stringify(input), before, `${test.label}: observation must not mutate`);
   if (actual) keys.add(actual.key);
 }
-for (const key of ['deploy','place','defend','build:power','build:refinery','build:barracks','build:factory','build:radar','train:harvester','train:tank','scout','attack','done'])
+for (const key of ['deploy','place','defend','build:power','build:refinery','build:barracks','build:factory','build:radar','train:harvester','train:tank','scout','sweep','attack','done'])
   assert(keys.has(key), `Parity cases must cover ${key}`);
 assert.deepEqual([desiredHarvesterCount(64,64),desiredHarvesterCount(96,96),desiredHarvesterCount(128,128),desiredHarvesterCount(129,128)], [2,3,4,5]);
 // No queue metadata: never misidentify a low-cost structure as infantry.
