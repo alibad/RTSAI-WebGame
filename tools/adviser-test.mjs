@@ -67,15 +67,18 @@ for profile, data in load()['profiles'].items():
       add(prefix+'build-focus',{**base,'units':army,'visible_enemies':[enemy]},items,True)
       # Busy unit queues force the strategic scout / attack branch.
       busy=[dict(queue_type=q,item=infantry,progress=.5,remaining_ticks=10) for q in ['Vehicle','Infantry']]
-      # Looking for the enemy base: one scout, the fighters together once there are 8, and nobody new while any
+      # Looking for the enemy base: one scout, the fighters together once there are 12, and nobody new while any
       # fighter is busy.
-      near=[actor(infantry,i+100,12+i,12,True) for i in range(10)]
+      near=[actor(infantry,i+100,12+(i%6),12+i//6,True) for i in range(12)]
       add(prefix+'scout',{**base,'units':near[:5],'production':busy},items)
       add(prefix+'sweep',{**base,'units':near,'production':busy},items)
       add(prefix+'scout-out',{**base,'units':near[:5]+[actor(infantry,200,80,80,True,False)],'production':busy},items)
       target=actor(next(iter(roles.values())),1000,80,80)
-      add(prefix+'visible-base',{**base,'units':army,'production':busy,'visible_enemy_buildings':[target]},items)
-      add(prefix+'remembered-base',{**base,'units':army,'production':busy,'remembered_enemy_buildings':[target]},items)
+      # An attack is a wave of ready fighters: all ten idle attack; five idle of ten wait for more.
+      wave=[actor(infantry,i+100,20+i,20,True) for i in range(10)]
+      add(prefix+'visible-base',{**base,'units':wave,'production':busy,'visible_enemy_buildings':[target]},items)
+      add(prefix+'remembered-base',{**base,'units':wave,'production':busy,'remembered_enemy_buildings':[target]},items)
+      add(prefix+'base-known-army-busy',{**base,'units':army,'production':busy,'visible_enemy_buildings':[target]},items)
     add(prefix+'done',{**base,'done':True,'result':'win'},items)
 
 # Classic uses the native catalog with the same production metadata supplied

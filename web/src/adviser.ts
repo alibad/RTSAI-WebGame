@@ -296,12 +296,12 @@ export function nextAdvice(snapshot: AdviserObservation, options: { buildFocus?:
   if (options.buildFocus) return null;
   const targets = snapshot.visibleEnemyBuildings.length ? snapshot.visibleEnemyBuildings : snapshot.rememberedEnemyBuildings ?? [];
   if (fighters.length && !targets.length) {
-    // Looking for the enemy base is an order like any other: one cheap scout, or, once there is an army, the
+    // Looking for the enemy base is an order like any other: one cheap scout, or, once there is an army of 12, the
     // fighters together. One order at a time: while any fighter is busy (out looking, or fighting), nobody new is sent.
     if (fighters.some(unit => !unit.idle)) return null;
     const goal = searchGoal(snapshot);
     const price = (unit: AdviserActor) => tree[baseType(unit.kind)]?.cost ?? 99999;
-    if (goal && fighters.length >= 8) {
+    if (goal && fighters.length >= 12) {
       const group = [...fighters].sort((a, b) => a.actorId - b.actorId).slice(0, 12);
       return advise(`We haven't found the enemy base yet; advance ${group.length} units together across the map to find it.`,
         `Advance ${group.length} units to find the enemy base`, group.map(unit => ({ action: "attack_move", actor_id: unit.actorId, target_x: goal.x, target_y: goal.y })), "sweep");
@@ -313,10 +313,13 @@ export function nextAdvice(snapshot: AdviserObservation, options: { buildFocus?:
     }
     return advise(`We haven't found the enemy base yet; send a scout to explore the ${100 - Math.round(snapshot.exploredPercent)}% of the map still in fog.`, "", [], "scout");
   }
-  if (fighters.length >= 8 && targets.length) {
+  // An attack is a wave of fighters that are ready: 8 or more idle ones go together. Units already fighting are left
+  // to it, so the card does not come back every few seconds and fresh units do not trickle in one by one.
+  const wave = fighters.filter(unit => unit.idle);
+  if (wave.length >= 8 && targets.length) {
     const target = targets[0];
-    const attackers = [...fighters].sort((a, b) => Number(!a.idle) - Number(!b.idle) || a.actorId - b.actorId).slice(0, 12);
-    return advise(`Your ${fighters.length} combat units can push now; attack-move them to the enemy base.`,
+    const attackers = [...wave].sort((a, b) => a.actorId - b.actorId).slice(0, 12);
+    return advise(`Your ${wave.length} combat units can push now; attack-move them to the enemy base.`,
       `Attack-move ${attackers.length} units to the enemy base`, attackers.map(unit => ({ action: "attack_move", actor_id: unit.actorId, target_x: target.cellX, target_y: target.cellY })), "attack");
   }
   return null;
