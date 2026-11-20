@@ -273,15 +273,27 @@ const setupMaps = await g(() => window.store.getState().setup.maps.map((m) => ({
 // Each unit's voice set, from the rules the engine resolved (cmd unitrules). Selected units share one voice channel
 // (Sound.PlayPredefined: a selected actor's voice is refused while another selected actor's is still playing), so
 // the film waits a voice out only the first time a set is heard and moves on quickly otherwise.
-const voiceSets = {}, cloaks = {};
-async function voiceSetOf(name) {
-  if (!(name in voiceSets)) {
+const voiceSets = {}, cloaks = {}, ruleText = {};
+const blocks = (text, trait) => {
+  const out = [], re = new RegExp("^" + trait + "(?:@[^:\\n]*)?:\\n((?:\\t.*\\n?)*)", "gm");
+  for (let m; (m = re.exec(text));) out.push(Object.fromEntries(m[1].split("\n").filter((l) => /^\t[^\t]/.test(l)).map((l) => { const i = l.indexOf(":"); return [l.slice(1, i).trim(), l.slice(i + 1).trim()]; })));
+  return out;
+};
+const holds = (expr, granted) => !expr || expr.split("||").some((or) => or.split("&&").every((t) => { t = t.trim().replace(/[()]/g, ""); return t.startsWith("!") ? !granted.has(t.slice(1).trim()) : granted.has(t); }));
+/** The voice set this country's owner hears from the unit (an original country's units switch to their own sets). */
+async function voiceSetOf(name, faction) {
+  if (!(name in ruleText)) {
     const r = await g((type) => window.game.command({ cmd: "unitrules", type }), name).catch(() => null);
+    ruleText[name] = r?.actor ?? "";
     // A unit that hides when it stands still (Cloak that a move or a shot lifts): pale to its owner after a few seconds.
-    cloaks[name] = /^Cloak(?:@[^:\n]*)?:\n(?:\t.*\n)*?\tUncloakOn:/m.test(r?.actor ?? "");
-    voiceSets[name] = /^(?:RTSAI)?Voiced(?:@[^:\n]*)?:\n\tVoiceSet: (\S+)/m.exec(r?.actor ?? "")?.[1] ?? null;
+    cloaks[name] = /^Cloak(?:@[^:\n]*)?:\n(?:\t.*\n)*?\tUncloakOn:/m.test(ruleText[name]);
   }
-  return voiceSets[name];
+  const key = `${faction}|${name}`;
+  if (!(key in voiceSets)) {
+    const granted = new Set(blocks(ruleText[name], "GrantConditionOnFaction").filter((x) => (x.Factions ?? "").split(",").map((f) => f.trim()).includes(faction)).map((x) => x.Condition));
+    voiceSets[key] = [...blocks(ruleText[name], "RTSAIVoiced"), ...blocks(ruleText[name], "Voiced")].find((x) => holds(x.RequiresCondition, granted))?.VoiceSet ?? null;
+  }
+  return voiceSets[key];
 }
 /** The voice (a sound not placed on the battlefield) that started since t, with its length, or null. */
 const voiceSince = (t) => g((t) => { const a = window.__parade.audio.find((x) => x.t >= t && x.relative); return a ? { t: a.t, seconds: window.game.audio.sources?.get(a.source)?.duration ?? 1.2 } : null; }, t);
@@ -347,7 +359,7 @@ async function unitTake(faction, country, enemy, row, takeDir, heard) {
   const refs = water ? [] : (row.refs ?? []);
   const st = water ? STAGES.water : refs.length ? STAGES.land4 : STAGES.land;
   const c = st.centre;
-  for (const name of row.units) await voiceSetOf(name);
+  for (const name of row.units) await voiceSetOf(name, faction);
   const names = [...row.units.filter((u) => cloaks[u]), ...row.units.filter((u) => !cloaks[u]), ...refs];
   const n = names.length;
   const fixed = row.kind === "defenses";
@@ -420,14 +432,41 @@ async function unitTake(faction, country, enemy, row, takeDir, heard) {
   const track = { facings: new Map(live.map((p) => [p.id, new Set()])), seqs: new Map(live.map((p) => [p.id, new Set()])) };
   const sampler = setInterval(() => { void actors().then((list) => { for (const a of list) { track.facings.get(a.id)?.add(a.facing >> 5); track.seqs.get(a.id)?.add(a.seq); } }).catch(() => {}); }, 110);
 
+  let voiceUntil = 0; // when the selected units' voice channel is free again (page clock)
+  const rowVoices = {};
+  /** Boxes the player's row; a select line it may answer with is accounted for. */
+  const boxRow = async () => {
+    const t = await pageNow();
+    await g((ids) => window.game.select(ids), mine.map((p) => p.id));
+    await sleep(140);
+    const v = await voiceSince(t);
+    if (v) voiceUntil = v.t + v.seconds * 1000;
+  };
+  /**
+   * One order for the whole row, given on a silent voice channel, so that the row's own line for that order is the
+   * one heard. (The engine refuses a voice while a selected unit is still speaking, and answers every selection made
+   * on a silent channel with a select line: a unit that is selected and ordered in one go never says its order line.)
+   * Returns the seconds of the line that answered, or 0.
+   */
+  const rowOrder = async ([x, y]) => {
+    await boxRow();
+    const busy = voiceUntil - (await pageNow());
+    if (busy > 0) await sleep(Math.min(2600, busy + 80));
+    const t = await pageNow();
+    await g(([x, y]) => window.game["click"](x, y, 2, 0), [x, y]);
+    await sleep(240);
+    const v = await voiceSince(t);
+    if (v) voiceUntil = v.t + v.seconds * 1000;
+    return v ? Number(v.seconds.toFixed(2)) : 0;
+  };
+
   // 1. Select each: the voice.
   await step("select");
   const lens = [];
-  let voiceUntil = 0; // when the selected units' voice channel is free again (page clock)
   const groupVoice = await voiceSince(tGroup);
   if (groupVoice) voiceUntil = Math.max(groupVoice.t, tStart) + groupVoice.seconds * 1000;
   for (const [k, p] of live.entries()) {
-    const set = await voiceSetOf(p.name);
+    const set = p.ref ? null : await voiceSetOf(p.name, faction);
     if (k > 0 && set && !heard.has(set)) { const busy = voiceUntil - (await pageNow()); if (busy > 0) await sleep(Math.min(2400, busy + 60)); }
     const t = await pageNow();
     const at = await g(async (id) => { const gm = window.game; window.__parade.focus(id); await gm.select([id]); const a = gm.client.cur.actors.find((x) => x.id === id); return a ? gm.toClient(a.sx, a.sy) : null; }, p.id);
@@ -452,18 +491,16 @@ async function unitTake(faction, country, enemy, row, takeDir, heard) {
   // 2. A dog-leg: three short legs, so every unit shows several facings and its moving frames.
   if (!fixed) {
     await step("move");
+    rowVoices.move = await rowOrder(cellPx(c.u, vStart - 12));
     for (const p of mine) {
       const u = u0 + gap * p.i;
       const legs = [[u + 1, vStart - 3], [u - 1, vStart - 5], [u, vEnd]].map(([a, b]) => cellPx(a, b));
-      const t = await pageNow();
-      const free = t >= voiceUntil;
       await g(async ({ id, legs }) => { const gm = window.game; await gm.select([id]); legs.forEach(([x, y], k) => gm["click"](x, y, 2, k ? 1 : 0)); }, { id: p.id, legs });
-      await sleep(200);
-      const voice = await voiceSince(t);
-      if (voice) voiceUntil = voice.t + voice.seconds * 1000;
-      report[p.i].moveVoice = voice ? Number(voice.seconds.toFixed(2)) : free ? 0 : null;
+      await sleep(90);
     }
-    await g(() => window.game.select([]));
+    // The row stays boxed for the attack order to come (boxing it then, on a silent channel, would answer with a
+    // select line instead).
+    await boxRow();
     await sleep(1200);
     // Until they stand still again (idle), at most 5 s more.
     await until((ids) => { const s = window.game.client.cur; return ids.every((id) => { const a = s.actors.find((x) => x.id === id); return !a || (a.flags & 4) !== 0; }); }, mine.map((p) => p.id), 5000, 150);
@@ -475,6 +512,10 @@ async function unitTake(faction, country, enemy, row, takeDir, heard) {
   const results = () => g(() => window.store.getState().ui?.sandbox ?? null);
   const before = await results();
   const kinds = water ? ["lcrf", "gapowr", "zep"] : ["gapowr", "cmin", "engineer", "zep"];
+  if (!fixed) {
+    const first = dummies.filter((d) => d.type === kinds[0] && d.id != null).map((d) => now0.find((x) => x.id === d.id)).find((a) => a && a.hp > 0);
+    if (first) rowVoices.attack = await rowOrder([first.sx, first.sy]);
+  }
   for (const p of mine) {
     const unit = unitOf[p.name], me = now0.find((x) => x.id === p.id);
     let target = null;
@@ -487,15 +528,11 @@ async function unitTake(faction, country, enemy, row, takeDir, heard) {
       }
     }
     report[p.i].target = target?.d.type ?? null;
-    if (!target) continue;
+    // A unit with nothing to shoot at stays where it is (the row's order would send an engineer into the building).
+    if (!target) { if (!fixed) await g(async (id) => { const gm = window.game; await gm.select([id]); await gm.command({ cmd: "stop" }); }, p.id); continue; }
     p.target = { id: target.d.id, hp: target.a.hp };
-    const t = await pageNow();
-    const free = t >= voiceUntil;
     await g(async ({ id, x, y }) => { const gm = window.game; await gm.select([id]); gm["click"](x, y, 2, 0); }, { id: p.id, x: target.a.sx, y: target.a.sy });
-    await sleep(200);
-    const voice = await voiceSince(t);
-    if (voice) voiceUntil = voice.t + voice.seconds * 1000;
-    report[p.i].attackVoice = voice ? Number(voice.seconds.toFixed(2)) : free ? 0 : null;
+    await sleep(90);
   }
   await g(() => window.game.select([]));
   const tFire = await pageNow();
@@ -546,7 +583,7 @@ async function unitTake(faction, country, enemy, row, takeDir, heard) {
   const take = encodeTake(rec.frames, path.join(takeDir, "frames"), path.join(takeDir, "take.mp4"), audio, lens);
   fs.rmSync(path.join(takeDir, "frames"), { recursive: true, force: true });
   stamp(report, take);
-  return { row: row.title, kind: row.kind, map: st.map, ...take, ...speed, allDead: !!dead, battlefieldSoundsWhileFiring: fireSounds, battlefieldSoundsWhileDying: deathSounds, units: report };
+  return { row: row.title, kind: row.kind, map: st.map, ...take, ...speed, moveLine: rowVoices.move, attackLine: rowVoices.attack, allDead: !!dead, battlefieldSoundsWhileFiring: fireSounds, battlefieldSoundsWhileDying: deathSounds, units: report };
 }
 
 /** The buildings: standing (each selected in turn), or the same base worn down to a sliver and brought down. */
