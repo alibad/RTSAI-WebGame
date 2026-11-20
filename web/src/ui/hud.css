@@ -1125,15 +1125,16 @@
 @media (max-height: 500px) {
   :root { --mh-w: min(214px, calc(100vw - var(--sidebar-w) - 24px)); --mission-hud-top: 48px; }
   :root .cc-root, :root .cc-root.has-mission { top: 6px; bottom: auto; left: auto; right: calc(var(--sidebar-w) + 6px); justify-content: flex-end; }
-  :root .cc-col { width: min(280px, calc(100vw - var(--sidebar-w) - var(--mh-w) - 60px)); max-height: calc(100dvh - 20px); }
+  :root .cc-col { width: min(300px, calc(100vw - var(--sidebar-w) - var(--mh-w) - 60px)); max-height: calc(100dvh - 20px); }
   :root .cc-root:not(.is-open) .cc-col { min-width: 200px; }
   :root .cc-strip { height: 36px; gap: 6px; padding: 0 3px 0 5px; border-radius: 9px; }
   :root .cc-avatar { width: 26px; height: 26px; }
   :root .cc-threat { display: none; }
   :root .cc-line { font-size: 12px; }
   .cc-inline-offer { display: flex; min-width: 0; flex: 1; align-items: center; gap: 4px; }
-  .cc-inline-offer .cc-line { display: inline-flex; align-items: center; gap: 5px; color: #f6e7bd; }
-  .cc-inline-offer .cc-line svg { flex: none; color: var(--hud-accent); }
+  /* The order must be readable ("Deploy the Mobile Construction Vehicle", not "Deploy the…"): two lines, no arrow. */
+  .cc-inline-offer .cc-line { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; white-space: normal; font-size: 11px; line-height: 1.2; color: #f6e7bd; }
+  .cc-inline-offer .cc-line svg { display: none; }
   .cc-inline-offer .cc-apply { height: 30px; padding: 0 8px; gap: 4px; }
   .cc-inline-offer .cc-cancel { width: 30px; height: 30px; }
   :root .mh-stack { z-index: 32; gap: 6px; max-height: calc(100dvh - var(--mission-hud-top) - 8px); }
@@ -1158,6 +1159,8 @@
   .hud-sidebar-handle { position: absolute; right: var(--sidebar-w); top: 50%; z-index: 25; display: grid; place-items: center; width: 26px; height: 56px; margin-top: -28px; border-radius: 9px 0 0 9px; border: 1px solid var(--hud-edge-hi); border-right: 0; background: linear-gradient(180deg, rgba(43, 48, 52, .96), rgba(24, 29, 32, .96)); color: var(--hud-accent); box-shadow: -6px 0 16px rgba(0, 0, 0, .4); }
   /* A finger needs more than the handle's 26 px: an invisible margin widens what it can hit. */
   .hud-sidebar-handle::before { content: ""; position: absolute; inset: -6px 0 -6px -18px; }
+  /* Under the result screen it would sit on the table (it covered the "Value" heading). */
+  :root:has(.oc-root) .hud-sidebar-handle { display: none; }
   :root[data-sidebar="collapsed"] { --sidebar-w: 0px; }
   :root[data-sidebar="collapsed"] .hud-sidebar { display: none; }
 }
