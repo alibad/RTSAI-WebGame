@@ -22,6 +22,7 @@ import copy
 import hashlib
 import json
 import re
+import sys
 from pathlib import Path
 import ea_retail
 import effect_anchors
@@ -949,6 +950,9 @@ class Generator:
                 node.children.append(Node(s.key, value))
             model_nodes.append(node)
         files.update(EA_PALETTE_FILES.values())
+        # Effects RA2 draws see-through (art.ini Translucent / Translucency) are drawn so here too.
+        if self.retail is not None:
+            ea_retail.translucent_sequences(sys.modules[__name__], seq_nodes, self.retail.look['anims'])
         self.seq_nodes = seq_nodes
         self.model_nodes = model_nodes
         self.ea_files = sorted(files)

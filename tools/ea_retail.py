@@ -75,6 +75,78 @@ def instant_projectile(E, weapon, original):
     return True
 
 
+def load_look():
+    """Red Alert 2's own facts about how each weapon looks (rules.ini and art.ini): see tools/data/ra2-weapon-look.json."""
+    return json.loads((Path(__file__).parent / 'data/ra2-weapon-look.json').read_text(encoding='utf-8'))
+
+
+def explosion_files(E, sequences):
+    """The explosion image's sequence that plays each animation file: {'xgrymed2': 'large_grey_explosion', ...}."""
+    out = {}
+    for seq in sequences.children if sequences is not None else []:
+        filename = seq.val('Filename') or ''
+        stem = Path(filename.split('|')[-1]).stem.lower()
+        # twlt070 is both "building" (a building's death) and "large_twlt": a weapon's blast is the latter.
+        if stem and seq.key != 'building' and stem not in out:
+            out[stem] = seq.key
+    return out
+
+
+def retail_impact(E, weapon, original, warhead, explosions):
+    """The impact animation Red Alert 2 plays for this weapon. RA2 draws one entry of the warhead's AnimList per hit,
+    chosen by the weapon's damage in bands of 25: up to 24 the first, 25 to 49 the second, and so on, the last one past
+    the end; armour (Verses) does not change it (ModEnc, "AnimList"). The port kept the RA2 mod's own choice instead,
+    so a Prism Tank's hit was a fireball where RA2 draws a grey smoke puff, a Rhino's or Grizzly's shell landed with a
+    bigger blast than RA2's and a Kirov's bomb with a far smaller one (weapon fidelity audit, 20 Nov 2026).
+    Changes the ground and air effect warhead of the explosion image; returns the sequence chosen, or None."""
+    anims = [a.strip().lower() for a in warhead.get('AnimList', '').split(',') if a.strip()]
+    if not anims or warhead.get('EMEffect', '').lower() in ('yes', 'true'):
+        return None  # EMEffect warheads pick at random; no list, nothing to restore
+    try:
+        damage = int(float(original.get('Damage', '0')))
+    except ValueError:
+        return None
+    if damage < 1:
+        return None  # RA2 plays nothing from the list below 1 damage
+    sequence = explosions.get(anims[min(damage // 25, len(anims) - 1)])
+    if sequence is None:
+        return None
+    for node in weapon.children:
+        if node.value != 'CreateEffect' or node.get('Explosions') is None:
+            continue
+        if (node.val('Image') or 'explosion').lower() not in ('explosion', 'ea-explosion'):
+            continue
+        valid = node.val('ValidTargets', 'Ground, Air')
+        if 'Ground' not in valid and 'Air' not in valid:
+            continue  # the splash on water keeps its own
+        set_value(E, node, 'Explosions', sequence)
+        return sequence
+    return None
+
+
+def translucent_sequences(E, images, anims):
+    """Red Alert 2 draws an animation that art.ini marks Translucent=yes at half strength (Translucency=25/50/75 sets
+    how much shows through). Every impact animation a weapon uses is marked so, and the port drew them all solid, which
+    made each hit look heavier than RA2's, as if the target were going up (the owner, 20 Nov 2026, of a battle of
+    Apocalypses against Prism Tanks). Sets Alpha on each sequence whose file is such an animation; returns how many."""
+    changed = 0
+    for image in images:
+        for seq in image.children:
+            stem = Path((seq.val('Filename') or '').split('|')[-1]).stem.lower()
+            facts = anims.get(stem)
+            if not facts or seq.get('Alpha') is not None or seq.get('BlendMode') is not None:
+                continue
+            if 'Translucency' in facts:
+                alpha = 1 - int(facts['Translucency']) / 100
+            elif str(facts.get('Translucent', '')).lower() in ('yes', 'true'):
+                alpha = 0.5
+            else:
+                continue
+            seq.children.append(E.Node('Alpha', f'{alpha:g}'))
+            changed += 1
+    return changed
+
+
 def normalize_voices(voices, E):
     # sound.ini's CrazyIvanMove/AttackCommand and TeslaTroopSelect do not name these clips.
     # Kirov has no fear/feedback voice event at all. Keep an explicitly empty phrase so the
@@ -214,6 +286,8 @@ class Retail:
     def __init__(self, g, E):
         self.g, self.E = g, E
         self.baseline = g.retail_baseline
+        self.look = load_look()
+        self.explosions = explosion_files(E, g.refseq.get('explosion'))
         self.weapons = []
         self.rules = []
         self.modern_rules = []
@@ -446,6 +520,7 @@ class Retail:
             set_value(E, twin, 'Burst', 1)
         instant_projectile(E, twin, original)
         warhead = self.baseline['warheads'].get(original.get('Warhead'), {})
+        retail_impact(E, twin, original, warhead, self.explosions)
         if twin.key in ('ea-retail-demobomb', 'ea-retail-terrorbomb', 'ea-retail-crnuke', 'ea-retail-crterrorbomb'):
             # Retail suicide damage is one radial blast, not the port's extra delayed nuclear rings.
             twin.children = [n for n in twin.children if not n.key.startswith('Warhead')]
