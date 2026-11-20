@@ -19,8 +19,9 @@ row, lets the simulator run it, and films the battlefield.
 - Nothing is approximated: it is the game's page, runtime and data. The simulator's panels are hidden in the film,
   not removed.
 - The camera shows both armies while they stand and approach, then closes in on the units being hit and whoever
-  stands near them, so the fight fills the picture. `"camera": "all"` keeps everyone in frame for the whole clip
-  (long-range fights, where the launch and the landing are far apart).
+  stands near them, so the fight fills the picture. `"camera": "all"` keeps everyone in frame for the whole clip;
+  `"camera": "launch"` opens close on the player's own units until something is hit (long-range fights: first the
+  launch, then the landing).
 - The clip opens on both armies standing (the run is held on its first tick for a second), then plays in real time
   until the row's seconds are up or one side is gone.
 
@@ -90,17 +91,29 @@ the shore, transports and landings, engineers and spies, repair.
   (the least zoom once the fighting starts).
 - Defences that need power get a power plant in their own side's last group.
 - Ships need water: `node tools/battle-clips.mjs --probe <map> --unit <ship>` draws where a unit can be placed.
-- `script`: the player's orders during the fight, e.g. `[{ "at": 0.4, "do": "attack", "target": "apoc" }]`.
+- `script`: the player's orders during the fight, e.g.
+  `[{ "at": 0.5, "do": "attack", "units": ["v3"], "target": "gtgcan" }, { "at": 1.5, "do": "deselect" }]`: the named
+  units (all of them when left out) are selected and given a right-click on the first enemy of that type. Also
+  `{ "do": "stance", "stance": "holdfire" }`.
+- Ships: keep them in open water. The simulator accepts beach and road cells for ships, and a boat placed there
+  stands on dry land.
 
 ## Watching your own clips first
 
 Before anything goes to the owner, watch every clip. `report.json` and the `suspects` in `clips.json` come from the
-simulator's own counts (a unit type that recorded no shot, a fight where nobody died, a unit the map refused, a page
-error): they are leads, not verdicts. Look at the frames, drop broken recordings, and rewrite the suspects into what
-you actually see. Some units never "fire" by design (suicide drones, a demolition truck).
+simulator's own counts (a unit type that recorded no shot, a fight where nothing was destroyed, a unit the map
+refused, a page error) and from the buildings' health, which the simulator's counts leave out: they are leads, not
+verdicts. Look at the frames, drop broken recordings, and rewrite the suspects into what you actually see. Some
+units never "fire" by design (suicide drones, a demolition truck).
+
+The recorder also measures the game's speed while it films (25 ticks a second is normal) and prints `SLOW` when a
+busy machine made the fight run slower than players see it: film that clip again.
 
 ```sh
 ffmpeg -i <clip>.mp4 -vf "fps=1/2.5,scale=960:-1,tile=4x3" -frames:v 1 <clip>-sheet.jpg     # twelve frames on one sheet
 ```
 
 Clips are silent for now: the recorder films the page's frames only. Sound needs its own capture.
+
+Keep a clip under 25 MiB (the clip host's limit per file): the default encoding does that for 30 to 40 seconds; pass
+`"crf": 26` on a row that comes out larger.

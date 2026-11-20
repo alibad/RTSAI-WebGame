@@ -205,8 +205,9 @@ for (const clip of grid.clips) {
 
   // The camera: both armies in frame while they stand and approach, then close in on where units are being hit
   // (and whoever stands near them), so the fight itself fills the picture. "camera": "all" keeps everyone in frame
-  // for the whole clip (long-range fights, where the launch and the landing are far apart).
-  await page.evaluate(({ zoomMin, zoomMax, fightMin, all }) => {
+  // for the whole clip; "launch" opens on the player's own units until something is hit (long-range fights: first
+  // the launch close up, then the landing).
+  await page.evaluate(({ zoomMin, zoomMax, fightMin, all, launch }) => {
     const g = window.game;
     document.documentElement.classList.add("footage-clean");
     // Snapshots carry only actors in view: ask for the whole map, the camera still shows its own part.
@@ -223,6 +224,7 @@ for (const clip of grid.clips) {
         // Who was hit in the last moments, and everyone within reach of them.
         const hot = all ? [] : live.filter((a) => now - (hit.get(a.id) ?? -1e9) < 2600);
         let shown = live, fight = false;
+        if (launch && !hot.length && !hit.size && !window.store.getState().paused) { shown = live.filter((a) => a.owner === sides[0]); fight = true; }
         if (hot.length) {
           const hx = hot.map((a) => a.sx), hy = hot.map((a) => a.sy);
           const [a0, a1, b0, b1] = [Math.min(...hx) - 380, Math.max(...hx) + 380, Math.min(...hy) - 260, Math.max(...hy) + 260];
@@ -243,7 +245,7 @@ for (const clip of grid.clips) {
       window.__director = requestAnimationFrame(frame);
     };
     window.__director = requestAnimationFrame(frame);
-  }, { zoomMin: clip.zoomMin ?? 0.55, zoomMax: clip.zoomMax ?? 2.2, fightMin: clip.fightMin ?? 1.15, all: clip.camera === "all" });
+  }, { zoomMin: clip.zoomMin ?? 0.55, zoomMax: clip.zoomMax ?? 2.2, fightMin: clip.fightMin ?? 1.15, all: clip.camera === "all", launch: clip.camera === "launch" });
 
   // Run it as the simulator's own button does, held on its first tick: the film opens on both armies standing.
   await page.evaluate(() => {
@@ -268,33 +270,47 @@ for (const clip of grid.clips) {
   for (const step of clip.script ?? []) {
     await sleep(Math.max(0, step.at * 1000 - (Date.now() - started)));
     if (step.do === "attack") {
-      const at = await page.evaluate(async ({ type }) => {
-        const g = window.game, s = g.client.cur, me = s.header.localPlayer, name = (a) => s.strings[a.type];
-        const own = s.actors.filter((a) => a.owner === me && (a.flags & 1) && !(a.flags & 8) && !(a.flags & 16));
+      // The order goes in as a right-click at the target's place on the map (the message the page sends for a
+      // real right-click), so it lands even when the camera is not showing the target.
+      const ordered = await page.evaluate(async ({ type, units }) => {
+        const g = window.game, s = g.client.cur, me = s.header.localPlayer, name = (a) => g.client.strings[a.type];
+        const own = s.actors.filter((a) => a.owner === me && (a.flags & 1) && !(a.flags & 8) && !(a.flags & 16) && (!units || units.includes(name(a))));
         const target = s.actors.filter((a) => a.owner !== me && !(a.flags & 16) && a.maxHp > 0 && (!type || name(a) === type)).sort((a, b) => b.maxHp - a.maxHp)[0];
-        if (!own.length || !target) return null;
+        if (!own.length || !target) return false;
         await g.select(own.map((a) => a.id));
-        return g.toClient(target.sx, target.sy);
-      }, { type: step.target });
-      if (at) await page.mouse.click(at[0], at[1], { button: "right" });
-      else errors.push(`script: no target for the attack order (${step.target ?? "any"})`);
+        g.click(target.sx, target.sy, 2, 0);
+        return true;
+      }, { type: step.target, units: step.units });
+      if (!ordered) errors.push(`script: no target for the attack order (${step.target ?? "any"})`);
     } else if (step.do === "stance") await page.evaluate(async ({ stance }) => { const g = window.game, s = g.client.cur; await g.select(s.actors.filter((a) => a.owner === s.header.localPlayer && (a.flags & 1)).map((a) => a.id)); await g.command({ cmd: "stance", stance }); }, { stance: step.stance });
     else if (step.do === "deselect") await page.evaluate(() => window.game.select([]));
   }
 
   // Watch it: who is alive, who has fired, until the time is up or one side is gone.
   const seconds = Number(opt("seconds", clip.seconds ?? 28)), timeline = [];
-  let ended = null, stats = null;
+  let ended = null, stats = null, built0 = null, builtNow = null, tick0 = null, tickNow = null;
   while ((Date.now() - started) / 1000 < seconds) {
     await sleep(500);
-    stats = await page.evaluate(() => window.store.getState().ui?.sandbox ?? null);
+    const seen = await page.evaluate(() => {
+      const g = window.game, s = g.client.cur;
+      const sides = s.players.map((p, i) => ((p.flags & 4) && !(p.flags & 8) ? i : -1)).filter((i) => i >= 0).slice(0, 2);
+      // Buildings and defences per side: how many stand, and their health.
+      const built = sides.map((owner) => { const b = s.actors.filter((a) => a.owner === owner && (a.flags & 8) && a.maxHp > 0 && !(a.flags & 16)); return { alive: b.length, hp: b.reduce((n, a) => n + a.hp, 0) }; });
+      return { stats: window.store.getState().ui?.sandbox ?? null, built, tick: s.header.tick };
+    });
+    stats = seen.stats;
     if (!stats) continue;
     const t = (Date.now() - started) / 1000;
-    timeline.push({ t: +t.toFixed(1), alive: stats.sides.map((s) => s.alive), shots: stats.sides.map((s) => s.shots), hp: stats.sides.map((s) => s.hp) });
-    if (ended === null && stats.sides.some((s) => s.total > 0 && s.alive === 0)) ended = t;
+    if (!built0) { built0 = seen.built; tick0 = { tick: seen.tick, at: Date.now() }; }
+    builtNow = seen.built; tickNow = { tick: seen.tick, at: Date.now() };
+    timeline.push({ t: +t.toFixed(1), alive: stats.sides.map((s) => s.alive), shots: stats.sides.map((s) => s.shots), hp: stats.sides.map((s) => s.hp), built: seen.built });
+    // Over when a side has nothing left standing: no unit, and no building either.
+    if (ended === null && stats.sides.some((s, i) => s.total + built0[i].alive > 0 && s.alive + seen.built[i].alive === 0)) ended = t;
     if (ended !== null && t - ended > 3.5 && t > 10) break;
   }
   const length = (Date.now() - started) / 1000;
+  // The game runs 25 ticks a second. On a busy machine it falls behind, and the film would show a slow fight.
+  const tps = tick0 && tickNow.at > tick0.at ? +(((tickNow.tick - tick0.tick) * 1000) / (tickNow.at - tick0.at)).toFixed(1) : null;
   recording = false;
   await cdp.send("Page.stopScreencast");
   cdp.off("Page.screencastFrame", onFrame);
@@ -303,7 +319,7 @@ for (const clip of grid.clips) {
   ff.stdin.end();
   await new Promise((r) => ff.on("close", r));
   const vf = ["scale=1920:1080:flags=lanczos:in_range=full:in_color_matrix=bt601:out_range=limited:out_color_matrix=bt709", "format=yuv420p", "setparams=range=tv:color_primaries=bt709:color_trc=bt709:colorspace=bt709"].join(",");
-  await new Promise((r) => spawn("ffmpeg", ["-y", "-v", "error", "-i", raw, "-vf", vf, "-c:v", "libx264", "-preset", "medium", "-crf", String(clip.crf ?? 22), "-pix_fmt", "yuv420p", "-movflags", "+faststart", file], { stdio: "inherit" }).on("close", r));
+  await new Promise((r) => spawn("ffmpeg", ["-y", "-v", "error", "-i", raw, "-vf", vf, "-c:v", "libx264", "-preset", "medium", "-crf", String(clip.crf ?? 24), "-pix_fmt", "yuv420p", "-movflags", "+faststart", file], { stdio: "inherit" }).on("close", r));
   fs.rmSync(raw, { force: true });
   await page.evaluate(() => { cancelAnimationFrame(window.__director); document.documentElement.classList.remove("footage-clean"); });
 
@@ -316,8 +332,11 @@ for (const clip of grid.clips) {
       const side = [clip.a, clip.b][ty.side];
       suspects.push({ t: at(length * 0.6), text: `${factionNames[side.faction]}'s ${labels[ty.type] ?? ty.type} (${ty.total}) recorded no shot in ${Math.round(length)} seconds.` });
     }
-    if (stats.sides.every((s) => s.kills === 0)) suspects.push({ t: at(length - 2), text: `Nobody died in ${Math.round(length)} seconds.` });
-    stats.sides.forEach((s, i) => { if (s.damageDealt === 0 && s.total > 0) suspects.push({ t: at(length * 0.5), text: `${factionNames[[clip.a, clip.b][i].faction]} did no damage at all.` }); });
+    // What each side did to the other: to its units (the simulator's count) and to its buildings (their health).
+    const builtLost = built0 ? built0.map((b, i) => b.hp - builtNow[i].hp) : [0, 0];
+    const standing = (i) => (built0 ? built0[i].alive : 0);
+    if (stats.sides.every((s) => s.kills === 0) && (!built0 || built0.every((b, i) => b.alive === builtNow[i].alive))) suspects.push({ t: at(length - 2), text: `Nothing was destroyed in ${Math.round(length)} seconds.` });
+    stats.sides.forEach((s, i) => { if (s.damageDealt === 0 && builtLost[1 - i] === 0 && s.total + standing(i) > 0) suspects.push({ t: at(length * 0.5), text: `${factionNames[[clip.a, clip.b][i].faction]} did no damage at all.` }); });
   } else suspects.push({ t: 0, text: "The simulator reported no results for this fight." });
   for (const e of [...new Set(errors)].slice(0, 3)) suspects.push({ t: 0, text: `The page reported an error: ${e.slice(0, 160)}` });
 
@@ -335,11 +354,12 @@ for (const clip of grid.clips) {
   manifest.clips = [...manifest.clips.filter((c) => c.id !== clip.id), entry];
   // The grid's order is the inbox's order.
   manifest.clips.sort((a, b) => grid.clips.findIndex((c) => c.id === a.id) - grid.clips.findIndex((c) => c.id === b.id));
-  report.clips[clip.id] = { classes: clip.classes, mode: clip.mode.id, factions: [clip.a.faction, clip.b.faction], seconds: +total.toFixed(1), runAt: +runAt.toFixed(2), ended, stats, timeline, missing, errors: [...new Set(errors)], suspects };
+  report.clips[clip.id] = { classes: clip.classes, mode: clip.mode.id, factions: [clip.a.faction, clip.b.faction], seconds: +total.toFixed(1), runAt: +runAt.toFixed(2), ticksPerSecond: tps, ended, stats, built: built0 && { start: built0, end: builtNow }, timeline, missing, errors: [...new Set(errors)], suspects };
   fs.writeFileSync(manifestFile, JSON.stringify(manifest, null, 2));
   fs.writeFileSync(reportFile, JSON.stringify(report, null, 1));
-  const line = stats ? stats.sides.map((s, i) => `${[clip.a, clip.b][i].faction} ${s.alive}/${s.total} alive, ${s.shots} shots, ${s.kills} kills`).join(" | ") : "no stats";
-  log(`  ${clock(total)}  ${line}${suspects.length ? `\n      suspects: ${suspects.map((s) => s.text).join(" / ")}` : ""}`);
+  const line = stats ? stats.sides.map((s, i) => `${[clip.a, clip.b][i].faction} ${s.alive}/${s.total} alive, ${s.shots} shots, ${s.kills} kills${built0 && built0[i].alive ? `, buildings ${builtNow[i].alive}/${built0[i].alive}` : ""}`).join(" | ") : "no stats";
+  if (tps !== null && tps < 23) log(`  SLOW: the game ran at ${tps} ticks a second (25 is normal). Film this one again when the machine is quieter.`);
+  log(`  ${clock(total)}  ${tps ?? "?"} ticks/s  ${line}${suspects.length ? `\n      suspects: ${suspects.map((s) => s.text).join(" / ")}` : ""}`);
 }
 await browser.close();
 log("done:", manifestFile);
