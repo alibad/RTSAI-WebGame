@@ -1,0 +1,2425 @@
+{
+ "anims": {
+  "apmuzzle": {
+   "visible": [
+    25,
+    23
+   ]
+  },
+  "apocexp": {
+   "visible": [
+    75,
+    74
+   ]
+  },
+  "demtexp": {
+   "visible": [
+    184,
+    107
+   ]
+  },
+  "explolrg": {
+   "Translucent": "yes",
+   "UseNormalLight": "yes",
+   "visible": [
+    165,
+    149
+   ]
+  },
+  "explomed": {
+   "Translucent": "yes",
+   "UseNormalLight": "yes",
+   "visible": [
+    65,
+    63
+   ]
+  },
+  "explosml": {
+   "Translucent": "yes",
+   "UseNormalLight": "yes",
+   "visible": [
+    37,
+    49
+   ]
+  },
+  "gcmuzzle": {
+   "visible": [
+    57,
+    52
+   ]
+  },
+  "gunfire": {
+   "Layer": "ground",
+   "Translucent": "yes",
+   "visible": [
+    18,
+    17
+   ]
+  },
+  "htrkpuff": {
+   "Translucency": "50",
+   "Translucent": "yes",
+   "visible": [
+    45,
+    42
+   ]
+  },
+  "ironfx": {
+   "Translucency": "50",
+   "Translucent": "yes",
+   "visible": [
+    37,
+    38
+   ]
+  },
+  "ktstlexp": {
+   "visible": [
+    93,
+    102
+   ]
+  },
+  "mgun-e": {
+   "visible": [
+    8,
+    4
+   ]
+  },
+  "mgun-n": {
+   "visible": [
+    4,
+    5
+   ]
+  },
+  "mgun-ne": {
+   "visible": [
+    7,
+    7
+   ]
+  },
+  "mgun-nw": {
+   "visible": [
+    7,
+    7
+   ]
+  },
+  "mgun-s": {
+   "visible": [
+    4,
+    8
+   ]
+  },
+  "mgun-se": {
+   "visible": [
+    6,
+    6
+   ]
+  },
+  "mgun-sw": {
+   "visible": [
+    6,
+    6
+   ]
+  },
+  "mgun-w": {
+   "visible": [
+    7,
+    4
+   ]
+  },
+  "mininuke": {
+   "visible": [
+    114,
+    101
+   ]
+  },
+  "mininuke - added 11/30": {},
+  "nukeanim": {
+   "Rate": "400",
+   "visible": [
+    291,
+    256
+   ]
+  },
+  "piff": {
+   "visible": [
+    15,
+    9
+   ]
+  },
+  "piffpiff": {
+   "visible": [
+    20,
+    17
+   ]
+  },
+  "ring1": {
+   "Flat": "true",
+   "Rate": "300",
+   "Translucent": "no",
+   "visible": [
+    251,
+    131
+   ]
+  },
+  "s_clsn16": {
+   "Normalized": "yes",
+   "Translucent": "yes",
+   "UseNormalLight": "yes",
+   "visible": [
+    28,
+    26
+   ]
+  },
+  "s_clsn22": {
+   "Normalized": "yes",
+   "Translucent": "yes",
+   "UseNormalLight": "yes",
+   "visible": [
+    36,
+    34
+   ]
+  },
+  "s_clsn30": {
+   "Normalized": "yes",
+   "Translucent": "yes",
+   "UseNormalLight": "yes",
+   "visible": [
+    59,
+    60
+   ]
+  },
+  "s_clsn42": {
+   "Normalized": "yes",
+   "Translucent": "yes",
+   "UseNormalLight": "yes",
+   "visible": [
+    65,
+    81
+   ]
+  },
+  "s_clsn58": {
+   "Normalized": "yes",
+   "Translucent": "yes",
+   "UseNormalLight": "yes",
+   "visible": [
+    165,
+    134
+   ]
+  },
+  "smkpuff": {
+   "Translucency": "50",
+   "Translucent": "yes",
+   "visible": [
+    66,
+    67
+   ]
+  },
+  "sqdg_e": {
+   "Layer": "ground",
+   "Rate": "600",
+   "visible": [
+    152,
+    126
+   ]
+  },
+  "sqdg_n": {
+   "Layer": "ground",
+   "Rate": "600",
+   "visible": [
+    142,
+    115
+   ]
+  },
+  "sqdg_ne": {
+   "Layer": "ground",
+   "Rate": "600",
+   "visible": [
+    59,
+    134
+   ]
+  },
+  "sqdg_nw": {
+   "Layer": "ground",
+   "Rate": "600",
+   "visible": [
+    157,
+    91
+   ]
+  },
+  "sqdg_s": {
+   "Layer": "ground",
+   "Rate": "600",
+   "visible": [
+    137,
+    121
+   ]
+  },
+  "sqdg_se": {
+   "Layer": "ground",
+   "Rate": "600",
+   "visible": [
+    157,
+    102
+   ]
+  },
+  "sqdg_sw": {
+   "Layer": "ground",
+   "Rate": "600",
+   "visible": [
+    60,
+    145
+   ]
+  },
+  "sqdg_w": {
+   "Layer": "ground",
+   "Rate": "600",
+   "visible": [
+    147,
+    124
+   ]
+  },
+  "tstimpct": {
+   "visible": [
+    30,
+    28
+   ]
+  },
+  "twlt070": {
+   "Normalized": "yes",
+   "Translucent": "yes",
+   "UseNormalLight": "yes",
+   "visible": [
+    163,
+    128
+   ]
+  },
+  "ucflash": {
+   "Layer": "ground",
+   "Translucent": "yes",
+   "visible": [
+    22,
+    20
+   ]
+  },
+  "vtexplod": {
+   "visible": [
+    68,
+    74
+   ]
+  },
+  "vtmuzzle": {
+   "visible": [
+    27,
+    46
+   ]
+  },
+  "xgrymed1": {
+   "Translucent": "yes",
+   "visible": [
+    73,
+    71
+   ]
+  },
+  "xgrymed2": {
+   "Translucent": "yes",
+   "visible": [
+    79,
+    87
+   ]
+  },
+  "xgrysml1": {
+   "Translucent": "yes",
+   "visible": [
+    36,
+    38
+   ]
+  },
+  "xgrysml2": {
+   "Translucent": "yes",
+   "visible": [
+    39,
+    45
+   ]
+  },
+  "yuricntl": {
+   "Rate": "450",
+   "visible": [
+    30,
+    15
+   ]
+  }
+ },
+ "artSha256": "b477f861063a9509e87b7836b78190204c73bea5ea5595a842c456f5920ea223",
+ "rulesSha256": "fd1e95cea0306ea78049dc81c8cd816e18c28c496872a1ff02edd50bd082062f",
+ "schema": 1,
+ "source": "Red Alert 2 (not Yuri's Revenge) rules.ini and art.ini from the player's own local.mix, read with the engine's MixFile. Facts about how each weapon looks: its projectile, muzzle animation, laser flags and impact animations. \"visible\" is the largest frame of the animation's own pixels, measured from the original file.",
+ "warheads": {
+  "AP": "S_CLSN16,S_CLSN22",
+  "HE": "XGRYSML1,XGRYSML2,EXPLOSML,XGRYMED1,XGRYMED2,EXPLOMED,EXPLOLRG,TWLT070",
+  "SA": "PIFFPIFF,PIFFPIFF"
+ },
+ "weapons": {
+  "105mm": {
+   "Bright": "yes",
+   "damage": "65",
+   "image": "120MM",
+   "impact": "S_CLSN16,S_CLSN22",
+   "kind": "arcing",
+   "muzzle": "GUNFIRE",
+   "projectile": "Cannon",
+   "report": "GrizzlyTankAttack",
+   "speed": "40",
+   "warhead": "AP"
+  },
+  "105mme": {
+   "Bright": "yes",
+   "Burst": "2",
+   "damage": "55",
+   "image": "120MM",
+   "impact": "VTEXPLOD",
+   "kind": "arcing",
+   "muzzle": "VTMUZZLE",
+   "projectile": "Cannon",
+   "report": "GrizzlyTankAttack",
+   "speed": "40",
+   "warhead": "GRIZAPE"
+  },
+  "120he": {
+   "Bright": "yes",
+   "damage": "80",
+   "image": "120MM",
+   "impact": "S_CLSN16,S_CLSN22,S_CLSN30,S_CLSN42,S_CLSN58",
+   "kind": "arcing",
+   "muzzle": "GUNFIRE",
+   "projectile": "Cannon",
+   "report": "RhinoTankAttack",
+   "speed": "40",
+   "warhead": "HowitzerWH"
+  },
+  "120mm": {
+   "Bright": "yes",
+   "damage": "90",
+   "image": "120MM",
+   "impact": "S_CLSN16,S_CLSN22",
+   "kind": "arcing",
+   "muzzle": "GUNFIRE",
+   "projectile": "Cannon",
+   "report": "RhinoTankAttack",
+   "speed": "40",
+   "warhead": "AP"
+  },
+  "120mme": {
+   "Bright": "yes",
+   "Burst": "2",
+   "damage": "85",
+   "image": "120MM",
+   "impact": "VTEXPLOD",
+   "kind": "arcing",
+   "muzzle": "VTMUZZLE",
+   "projectile": "Cannon",
+   "report": "RhinoTankAttack",
+   "speed": "40",
+   "warhead": "RHINAPE"
+  },
+  "120mmx": {
+   "Bright": "yes",
+   "Burst": "2",
+   "damage": "100",
+   "image": "120MM",
+   "impact": "APOCEXP",
+   "kind": "arcing",
+   "muzzle": "APMUZZLE",
+   "projectile": "Cannon",
+   "report": "ApocalypseAttackGround",
+   "speed": "40",
+   "warhead": "ApocAP"
+  },
+  "120mmxe": {
+   "Bright": "yes",
+   "Burst": "4",
+   "damage": "100",
+   "image": "120MM",
+   "impact": "VTEXPLOD",
+   "kind": "arcing",
+   "muzzle": "VTMUZZLE",
+   "projectile": "Cannon",
+   "report": "ApocalypseAttackGround",
+   "speed": "40",
+   "warhead": "ApocAPE"
+  },
+  "155mm": {
+   "damage": "60",
+   "image": "120MM",
+   "impact": "XGRYSML1,XGRYSML2,EXPLOSML,XGRYMED1,XGRYMED2,EXPLOMED,EXPLOLRG",
+   "kind": "arcing",
+   "muzzle": "GUNFIRE",
+   "projectile": "Ballistic",
+   "report": "DestroyerAttack",
+   "speed": "10",
+   "warhead": "ARTYHE"
+  },
+  "155mme": {
+   "Burst": "2",
+   "damage": "60",
+   "image": "120MM",
+   "impact": "XGRYSML1,XGRYSML2,EXPLOSML,XGRYMED1,XGRYMED2,EXPLOMED,EXPLOLRG",
+   "kind": "arcing",
+   "muzzle": "GUNFIRE",
+   "projectile": "Ballistic",
+   "report": "DestroyerAttack",
+   "speed": "10",
+   "warhead": "ARTYHE"
+  },
+  "20mm": {
+   "damage": "25",
+   "image": "none",
+   "impact": "PIFFPIFF,PIFFPIFF",
+   "kind": "invisible",
+   "muzzle": null,
+   "projectile": "Invisible3",
+   "report": "RocketeerAttack",
+   "speed": "100",
+   "warhead": "SSA"
+  },
+  "20mme": {
+   "damage": "25",
+   "image": "none",
+   "impact": "PIFFPIFF,PIFFPIFF",
+   "kind": "invisible",
+   "muzzle": null,
+   "projectile": "Invisible3",
+   "report": "RocketeerAttack",
+   "speed": "100",
+   "warhead": "SSA"
+  },
+  "20mmrapid": {
+   "damage": "30",
+   "image": "none",
+   "impact": "PIFFPIFF,PIFFPIFF",
+   "kind": "invisible",
+   "muzzle": "GUNFIRE",
+   "projectile": "InvisibleLow",
+   "report": "WarMinerAttack",
+   "speed": "100",
+   "warhead": "HARVWH"
+  },
+  "20mmrapide": {
+   "Bright": "yes",
+   "damage": "50",
+   "image": "120MM",
+   "impact": "S_CLSN16,S_CLSN22,S_CLSN30,S_CLSN42,S_CLSN58",
+   "kind": "arcing",
+   "muzzle": "GUNFIRE",
+   "projectile": "Cannon",
+   "report": "RhinoTankAttack",
+   "speed": "40",
+   "warhead": "HowitzerWH"
+  },
+  "75mm": {
+   "Bright": "yes",
+   "damage": "35",
+   "image": "120MM",
+   "impact": "S_CLSN16,S_CLSN22",
+   "kind": "arcing",
+   "muzzle": "GUNFIRE",
+   "projectile": "Cannon",
+   "report": null,
+   "speed": "40",
+   "warhead": "AP"
+  },
+  "90mm": {
+   "Bright": "yes",
+   "damage": "36",
+   "image": "120MM",
+   "impact": "S_CLSN16,S_CLSN22",
+   "kind": "arcing",
+   "muzzle": "GUNFIRE",
+   "projectile": "Cannon",
+   "report": "LightTankAttack",
+   "speed": "40",
+   "warhead": "AP"
+  },
+  "alliedoccupyw": {
+   "damage": "30",
+   "image": "none",
+   "impact": "PIFFPIFF,PIFFPIFF",
+   "kind": "invisible",
+   "muzzle": "UCFLASH",
+   "projectile": "InvisibleHigh",
+   "report": "AlliedOccupiedAttack",
+   "speed": "100",
+   "warhead": "SSAB"
+  },
+  "alligatorbite": {
+   "damage": "30",
+   "image": "none",
+   "impact": "PIFF",
+   "kind": "invisible",
+   "muzzle": null,
+   "projectile": "InvisibleLow",
+   "report": "AlligatorAttack",
+   "speed": "100",
+   "warhead": "HollowPoint"
+  },
+  "assaultbolt": {
+   "damage": "10",
+   "image": "none",
+   "impact": null,
+   "kind": "electric",
+   "muzzle": null,
+   "projectile": "InvisibleLow",
+   "report": "TeslaTroopRechargeCoil",
+   "speed": "100",
+   "warhead": "ElectricAssault"
+  },
+  "assaultcannon": {
+   "damage": "40",
+   "image": "none",
+   "impact": "PIFFPIFF,PIFFPIFF",
+   "kind": "invisible",
+   "muzzle": null,
+   "projectile": "InvisibleLow",
+   "report": "GIAttackDeployed",
+   "speed": "100",
+   "warhead": "SA"
+  },
+  "aswbomb": {
+   "damage": "50",
+   "image": "DRAGON",
+   "impact": "S_CLSN16,S_CLSN22,S_CLSN30,S_CLSN42,S_CLSN58",
+   "kind": "missile",
+   "muzzle": null,
+   "projectile": "DepthCharge",
+   "report": "OspreyAttack",
+   "speed": "30",
+   "warhead": "APSplash"
+  },
+  "aswcollision": {
+   "Bright": "yes",
+   "damage": "100",
+   "image": "DRAGON",
+   "impact": "S_CLSN16,S_CLSN22",
+   "kind": "missile",
+   "muzzle": null,
+   "projectile": "AAHeatSeeker2",
+   "report": "OspreyCollision",
+   "speed": "30",
+   "warhead": "AP"
+  },
+  "aswlauncher": {
+   "damage": "1",
+   "image": null,
+   "impact": null,
+   "kind": "shell",
+   "muzzle": null,
+   "projectile": "ASWVirt",
+   "report": null,
+   "speed": "10",
+   "warhead": "Special"
+  },
+  "awp": {
+   "damage": "125",
+   "image": "none",
+   "impact": "PIFF",
+   "kind": "invisible",
+   "muzzle": null,
+   "projectile": "InvisibleLow",
+   "report": "SniperAttack",
+   "speed": "100",
+   "warhead": "HollowPoint"
+  },
+  "awpe": {
+   "damage": "125",
+   "image": "none",
+   "impact": "PIFF",
+   "kind": "invisible",
+   "muzzle": null,
+   "projectile": "InvisibleLow",
+   "report": "SniperAttack",
+   "speed": "100",
+   "warhead": "HollowPoint"
+  },
+  "badteeth": {
+   "damage": "30",
+   "image": "DOGP",
+   "impact": null,
+   "kind": "missile",
+   "muzzle": null,
+   "projectile": "DOGJUMP",
+   "report": "DogAttack",
+   "speed": "30",
+   "warhead": "ParasiteDog"
+  },
+  "barrelexplosion": {
+   "damage": "200",
+   "image": "none",
+   "impact": null,
+   "kind": "invisible",
+   "muzzle": "RING1",
+   "projectile": "Invisible",
+   "report": null,
+   "speed": null,
+   "warhead": "OilExplosionWH"
+  },
+  "bazooka": {
+   "damage": "25",
+   "image": "DRAGON",
+   "impact": "S_CLSN16,S_CLSN22",
+   "kind": "missile",
+   "muzzle": null,
+   "projectile": "AAHeatSeeker2",
+   "report": "FlakCannonAttack",
+   "speed": "25",
+   "warhead": "AP"
+  },
+  "bearbite": {
+   "damage": "30",
+   "image": "none",
+   "impact": "PIFF",
+   "kind": "invisible",
+   "muzzle": null,
+   "projectile": "InvisibleLow",
+   "report": "BearAttack",
+   "speed": "100",
+   "warhead": "HollowPoint"
+  },
+  "bikemissile": {
+   "damage": "40",
+   "image": "DRAGON",
+   "impact": "S_CLSN16,S_CLSN22",
+   "kind": "missile",
+   "muzzle": null,
+   "projectile": "HeatSeeker",
+   "report": "SeawolfAttack",
+   "speed": "30",
+   "warhead": "AP"
+  },
+  "blackhawkcannon": {
+   "damage": "35",
+   "image": "none",
+   "impact": "PIFFPIFF,PIFFPIFF",
+   "kind": "invisible",
+   "muzzle": "MGUN-N,MGUN-NE,MGUN-E,MGUN-SE,MGUN-S,MGUN-SW,MGUN-W,MGUN-NW",
+   "projectile": "QuadShell",
+   "report": "BlackOpsAttack",
+   "speed": "100",
+   "warhead": "SA"
+  },
+  "blackhawkcannone": {
+   "damage": "40",
+   "image": "none",
+   "impact": "PIFFPIFF,PIFFPIFF",
+   "kind": "invisible",
+   "muzzle": "MGUN-N,MGUN-NE,MGUN-E,MGUN-SE,MGUN-S,MGUN-SW,MGUN-W,MGUN-NW",
+   "projectile": "QuadShell",
+   "report": "BlackOpsAttack",
+   "speed": "100",
+   "warhead": "SSA"
+  },
+  "blimpbomb": {
+   "Burst": "1",
+   "damage": "250",
+   "image": "ZBOMB",
+   "impact": "XGRYSML1,XGRYSML2,EXPLOSML,XGRYMED1,XGRYMED2,EXPLOMED,EXPLOLRG,TWLT070",
+   "kind": "shell",
+   "muzzle": null,
+   "projectile": "BlimpBombP",
+   "report": "KirovAttack",
+   "speed": "20",
+   "warhead": "BlimpHE"
+  },
+  "blimpbombe": {
+   "Burst": "1",
+   "damage": "250",
+   "image": "ZBOMB",
+   "impact": "KTSTLEXP",
+   "kind": "shell",
+   "muzzle": null,
+   "projectile": "BlimpBombP",
+   "report": "KirovAttack",
+   "speed": "20",
+   "warhead": "KTSTLEXP"
+  },
+  "bomb": {
+   "damage": "160",
+   "image": "120MM",
+   "impact": "EXPLOMED,EXPLOLRG",
+   "kind": "shell",
+   "muzzle": null,
+   "projectile": "Cannon2",
+   "report": null,
+   "speed": "0",
+   "warhead": "ORCAHE"
+  },
+  "chemlauncher": {
+   "damage": "100",
+   "image": "MISLCHEM",
+   "impact": null,
+   "kind": "missile",
+   "muzzle": null,
+   "projectile": "ChemMissile",
+   "report": "ICBM1",
+   "speed": "30",
+   "warhead": "Gas"
+  },
+  "chimpbite": {
+   "damage": "30",
+   "image": "none",
+   "impact": "PIFF",
+   "kind": "invisible",
+   "muzzle": null,
+   "projectile": "InvisibleLow",
+   "report": "ChimpAttack",
+   "speed": "100",
+   "warhead": "HollowPoint"
+  },
+  "chronomp5": {
+   "damage": "125",
+   "image": "none",
+   "impact": "PIFF",
+   "kind": "invisible",
+   "muzzle": null,
+   "projectile": "InvisibleLow",
+   "report": "SealAttack",
+   "speed": "100",
+   "warhead": "HollowPointNoBuilding"
+  },
+  "chronomp5e": {
+   "damage": "125",
+   "image": "none",
+   "impact": "PIFF",
+   "kind": "invisible",
+   "muzzle": null,
+   "projectile": "InvisibleLow",
+   "report": "SealAttack",
+   "speed": "100",
+   "warhead": "HollowPointNoBuilding"
+  },
+  "coilbolt": {
+   "damage": "200",
+   "image": "none",
+   "impact": "TSTIMPCT",
+   "kind": "electric",
+   "muzzle": null,
+   "projectile": "Invisible",
+   "report": "TeslaCoilAttack",
+   "speed": "100",
+   "warhead": "Electric"
+  },
+  "comet": {
+   "Bright": "yes",
+   "IsHouseColor": "true",
+   "IsLaser": "true",
+   "LaserDuration": "15",
+   "LaserOuterSpread": "0,0,0",
+   "damage": "100",
+   "image": "none",
+   "impact": "XGRYSML1,XGRYSML2,EXPLOSML,XGRYMED1,XGRYMED2,EXPLOMED,EXPLOLRG,TWLT070",
+   "kind": "laser",
+   "muzzle": null,
+   "projectile": "LargeCometP",
+   "report": "PrismTankAttack",
+   "speed": "40",
+   "warhead": "CometWH"
+  },
+  "cometfragment": {
+   "Bright": "yes",
+   "IsHouseColor": "true",
+   "IsLaser": "true",
+   "LaserDuration": "15",
+   "LaserOuterSpread": "0,0,0",
+   "damage": "30",
+   "image": "none",
+   "impact": "XGRYSML1,XGRYSML2,EXPLOSML,XGRYMED1,XGRYMED2,EXPLOMED,EXPLOLRG,TWLT070",
+   "kind": "laser",
+   "muzzle": null,
+   "projectile": "SmallCometP",
+   "report": null,
+   "speed": "10",
+   "warhead": "CometWH"
+  },
+  "cowshot": {
+   "IsBigLaser": "true",
+   "IsLaser": "true",
+   "LaserDuration": "15",
+   "LaserInnerColor": "216,0,184",
+   "LaserOuterColor": "80,0,88",
+   "LaserOuterSpread": "0,0,0",
+   "damage": "300",
+   "image": "none",
+   "impact": null,
+   "kind": "laser",
+   "muzzle": null,
+   "projectile": "InvisibleHigh",
+   "report": "IFVCowshot",
+   "speed": "100",
+   "warhead": "PrismWarhead"
+  },
+  "crawp": {
+   "damage": "250",
+   "image": "none",
+   "impact": "PIFF",
+   "kind": "invisible",
+   "muzzle": null,
+   "projectile": "InvisibleLow",
+   "report": "SILENCER",
+   "speed": "100",
+   "warhead": "HollowPoint2"
+  },
+  "crbazooka": {
+   "damage": "35",
+   "image": "DRAGON",
+   "impact": "S_CLSN16,S_CLSN22",
+   "kind": "missile",
+   "muzzle": null,
+   "projectile": "AAHeatSeeker2",
+   "report": "FlakCannonAttack",
+   "speed": "25",
+   "warhead": "AP"
+  },
+  "crelectricbolt": {
+   "damage": "60",
+   "image": "none",
+   "impact": "TSTIMPCT",
+   "kind": "electric",
+   "muzzle": null,
+   "projectile": "InvisibleLow",
+   "report": "TeslaTankAttack",
+   "speed": "100",
+   "warhead": "Shock"
+  },
+  "crflakguygun": {
+   "damage": "30",
+   "image": "120MM",
+   "impact": "HTRKPUFF",
+   "kind": "arcing",
+   "muzzle": "GUNFIRE",
+   "projectile": "FlakTProj",
+   "report": "FlakTrackAttackGround",
+   "speed": "50",
+   "warhead": "FlakTWH"
+  },
+  "crm1carbine": {
+   "damage": "30",
+   "image": "none",
+   "impact": "PIFFPIFF,PIFFPIFF",
+   "kind": "invisible",
+   "muzzle": null,
+   "projectile": "InvisibleLow",
+   "report": "GIAttack",
+   "speed": "100",
+   "warhead": "SA"
+  },
+  "crm60": {
+   "damage": "20",
+   "image": "none",
+   "impact": "PIFFPIFF,PIFFPIFF",
+   "kind": "invisible",
+   "muzzle": "MGUN-N,MGUN-NE,MGUN-E,MGUN-SE,MGUN-S,MGUN-SW,MGUN-W,MGUN-NW",
+   "projectile": "InvisibleLow",
+   "report": "IFVAttackGround",
+   "speed": "100",
+   "warhead": "SSA"
+  },
+  "crmakeupkit": {
+   "damage": "1",
+   "image": "none",
+   "impact": null,
+   "kind": "invisible",
+   "muzzle": null,
+   "projectile": "InvisibleAll",
+   "report": "MirageTankDisguise",
+   "speed": "100",
+   "warhead": "TankSnapshot"
+  },
+  "crmindcontrol": {
+   "damage": "200",
+   "image": "none",
+   "impact": null,
+   "kind": "invisible",
+   "muzzle": "RING1",
+   "projectile": "Psychic",
+   "report": "YuriDeploy",
+   "speed": "1",
+   "warhead": "PsiPulse"
+  },
+  "crmp5": {
+   "damage": "125",
+   "image": "none",
+   "impact": "PIFF",
+   "kind": "invisible",
+   "muzzle": null,
+   "projectile": "InvisibleLow",
+   "report": "SealAttack",
+   "speed": "100",
+   "warhead": "HollowPoint3"
+  },
+  "crneutronrifle": {
+   "damage": "10",
+   "image": "none",
+   "impact": null,
+   "kind": "radbeam",
+   "muzzle": null,
+   "projectile": "InvisibleLow",
+   "report": "ChronoLegionAttack",
+   "speed": "100",
+   "warhead": "ChronoBeam"
+  },
+  "crnuke": {
+   "damage": "200",
+   "image": "none",
+   "impact": "MININUKE - added 11/30",
+   "kind": "invisible",
+   "muzzle": null,
+   "projectile": "InvisibleLow",
+   "report": "NukeExplosion",
+   "speed": "35",
+   "warhead": "CRNUKEWH"
+  },
+  "crradbeamweapon": {
+   "damage": "175",
+   "image": "none",
+   "impact": null,
+   "kind": "radbeam",
+   "muzzle": null,
+   "projectile": "InvisibleLow",
+   "report": "DesolatorAttack",
+   "speed": "100",
+   "warhead": "RadBeamWarhead"
+  },
+  "crterrorbomb": {
+   "damage": "250",
+   "image": "none",
+   "impact": "MININUKE",
+   "kind": "invisible",
+   "muzzle": "RING1",
+   "projectile": "Invisible",
+   "report": null,
+   "speed": null,
+   "warhead": "TerrorBombWH"
+  },
+  "cycannon": {
+   "damage": "120",
+   "image": "TORPEDO",
+   "impact": "EXPLOMED,EXPLOLRG",
+   "kind": "missile",
+   "muzzle": null,
+   "projectile": "ProtonBlast",
+   "report": "scrin5b",
+   "speed": "70",
+   "warhead": "PlasmaWH"
+  },
+  "defusekit": {
+   "damage": "1",
+   "image": "none",
+   "impact": null,
+   "kind": "invisible",
+   "muzzle": null,
+   "projectile": "InvisibleAll",
+   "report": "DefuseKit",
+   "speed": "100",
+   "warhead": "BombDisarm"
+  },
+  "demobomb": {
+   "damage": "300",
+   "image": "none",
+   "impact": "DEMTEXP",
+   "kind": "invisible",
+   "muzzle": null,
+   "projectile": "InvisibleLow",
+   "report": "DemoTruckDie",
+   "speed": "35",
+   "warhead": "DemobombWH"
+  },
+  "doublepistols": {
+   "damage": "125",
+   "image": "none",
+   "impact": "PIFF",
+   "kind": "invisible",
+   "muzzle": null,
+   "projectile": "InvisibleLow",
+   "report": "TanyaAttack",
+   "speed": "100",
+   "warhead": "HollowPoint"
+  },
+  "doublepistolse": {
+   "damage": "125",
+   "image": "none",
+   "impact": "PIFF",
+   "kind": "invisible",
+   "muzzle": null,
+   "projectile": "InvisibleLow",
+   "report": "TanyaAttack",
+   "speed": "100",
+   "warhead": "HollowPoint"
+  },
+  "dragon": {
+   "Burst": "2",
+   "damage": "30",
+   "image": "DRAGON",
+   "impact": "S_CLSN16,S_CLSN22",
+   "kind": "missile",
+   "muzzle": null,
+   "projectile": "AAHeatSeeker2",
+   "report": "SeawolfAttack",
+   "speed": "25",
+   "warhead": "AP"
+  },
+  "dredcollision": {
+   "Bright": "yes",
+   "damage": "200",
+   "image": "DREDMISS",
+   "impact": "S_CLSN16,S_CLSN22",
+   "kind": "missile",
+   "muzzle": null,
+   "projectile": "DredMissile",
+   "report": null,
+   "speed": "30",
+   "warhead": "AP"
+  },
+  "dredlauncher": {
+   "Burst": "2",
+   "damage": "50",
+   "image": "none",
+   "impact": null,
+   "kind": "invisible",
+   "muzzle": null,
+   "projectile": "InvisibleHigh",
+   "report": null,
+   "speed": "15",
+   "warhead": "Special"
+  },
+  "dronejump": {
+   "damage": "50",
+   "image": "DRONP",
+   "impact": null,
+   "kind": "missile",
+   "muzzle": null,
+   "projectile": "JUMP",
+   "report": "TerrorDroneAttack",
+   "speed": "30",
+   "warhead": "Parasite"
+  },
+  "eiffelbolt": {
+   "damage": "2000",
+   "image": "none",
+   "impact": "TSTIMPCT",
+   "kind": "electric",
+   "muzzle": null,
+   "projectile": "InvisibleHigh",
+   "report": "ParisTowerAttack",
+   "speed": "100",
+   "warhead": "Electric"
+  },
+  "electricbolt": {
+   "damage": "50",
+   "image": "none",
+   "impact": "TSTIMPCT",
+   "kind": "electric",
+   "muzzle": null,
+   "projectile": "InvisibleLow",
+   "report": "TeslaTroopAttack",
+   "speed": "100",
+   "warhead": "Shock"
+  },
+  "electricbolte": {
+   "damage": "50",
+   "image": "none",
+   "impact": "TSTIMPCT",
+   "kind": "electric",
+   "muzzle": null,
+   "projectile": "Electricbounce",
+   "report": "TeslaTroopEliteAttack",
+   "speed": "100",
+   "warhead": "Shock"
+  },
+  "electricfragment": {
+   "damage": "50",
+   "image": null,
+   "impact": "TSTIMPCT",
+   "kind": "electric",
+   "muzzle": null,
+   "projectile": "Invisiblelow",
+   "report": "TeslaTroopAttack",
+   "speed": "100",
+   "warhead": "Shock"
+  },
+  "empulseweapon": {
+   "damage": "1200",
+   "image": "PULSBALL",
+   "impact": null,
+   "kind": "shell",
+   "muzzle": null,
+   "projectile": "PulsPr",
+   "report": "PLSECAN2",
+   "speed": "25",
+   "warhead": "EMPuls"
+  },
+  "fakec4": {
+   "damage": "5000",
+   "image": "none",
+   "impact": null,
+   "kind": "invisible",
+   "muzzle": null,
+   "projectile": "InvisibleLow",
+   "report": "SealPlaceBomb",
+   "speed": "100",
+   "warhead": "FakeC4WH"
+  },
+  "fiendshard": {
+   "Burst": "3",
+   "damage": "35",
+   "image": "CRYSTAL4",
+   "impact": null,
+   "kind": "arcing",
+   "muzzle": null,
+   "projectile": "DogShard",
+   "report": "",
+   "speed": "25",
+   "warhead": "Shard"
+  },
+  "fireballlauncher": {
+   "Burst": "2",
+   "damage": "0",
+   "image": "none",
+   "impact": null,
+   "kind": "invisible",
+   "muzzle": null,
+   "projectile": "Invisible",
+   "report": "FLAMTNK1",
+   "speed": "1",
+   "warhead": "Fire"
+  },
+  "flakguyaagun": {
+   "damage": "20",
+   "image": "none",
+   "impact": "SMKPUFF",
+   "kind": "invisible",
+   "muzzle": "GUNFIRE",
+   "projectile": "FlakProj",
+   "report": "FlakTrackAttackAir",
+   "speed": "100",
+   "warhead": "FlakGuyWH"
+  },
+  "flakguyaagune": {
+   "Burst": "2",
+   "damage": "8",
+   "image": "none",
+   "impact": "SMKPUFF",
+   "kind": "invisible",
+   "muzzle": "GUNFIRE",
+   "projectile": "FlakProj",
+   "report": "FlakTrackAttackAir",
+   "speed": "100",
+   "warhead": "FlakGuyWH"
+  },
+  "flakguygun": {
+   "damage": "20",
+   "image": "120MM",
+   "impact": "HTRKPUFF",
+   "kind": "arcing",
+   "muzzle": "GUNFIRE",
+   "projectile": "FlakTProj",
+   "report": "FlakTrackAttackGround",
+   "speed": "50",
+   "warhead": "FlakTWH"
+  },
+  "flakguygune": {
+   "Burst": "2",
+   "damage": "20",
+   "image": "120MM",
+   "impact": "HTRKPUFF",
+   "kind": "arcing",
+   "muzzle": "GUNFIRE",
+   "projectile": "FlakTProj",
+   "report": "FlakTrackAttackGround",
+   "speed": "50",
+   "warhead": "FlakTWH"
+  },
+  "flaktrackaagun": {
+   "damage": "35",
+   "image": "none",
+   "impact": "SMKPUFF",
+   "kind": "invisible",
+   "muzzle": "GUNFIRE",
+   "projectile": "FlakProj",
+   "report": "FlakTrackAttackAir",
+   "speed": "100",
+   "warhead": "FlakWH"
+  },
+  "flaktrackaagune": {
+   "Burst": "2",
+   "damage": "20",
+   "image": "none",
+   "impact": "SMKPUFF",
+   "kind": "invisible",
+   "muzzle": "GUNFIRE",
+   "projectile": "FlakProj",
+   "report": "FlakTrackAttackAir",
+   "speed": "100",
+   "warhead": "FlakWH"
+  },
+  "flaktrackgun": {
+   "damage": "25",
+   "image": "120MM",
+   "impact": "HTRKPUFF",
+   "kind": "arcing",
+   "muzzle": "GUNFIRE",
+   "projectile": "FlakTProj",
+   "report": "FlakTrackAttackGround",
+   "speed": "50",
+   "warhead": "FlakTWH"
+  },
+  "flaktrackgune": {
+   "Burst": "2",
+   "damage": "25",
+   "image": "120MM",
+   "impact": "HTRKPUFF",
+   "kind": "arcing",
+   "muzzle": "GUNFIRE",
+   "projectile": "FlakTProj",
+   "report": "FlakTrackAttackGround",
+   "speed": "50",
+   "warhead": "FlakTWH"
+  },
+  "flakweapon": {
+   "damage": "40",
+   "image": "none",
+   "impact": "SMKPUFF",
+   "kind": "invisible",
+   "muzzle": "GUNFIRE",
+   "projectile": "FlakProj",
+   "report": "FlakCannonAttack",
+   "speed": "100",
+   "warhead": "FlakWH"
+  },
+  "flakweapone": {
+   "Burst": "2",
+   "damage": "35",
+   "image": "none",
+   "impact": "SMKPUFF",
+   "kind": "invisible",
+   "muzzle": "GUNFIRE",
+   "projectile": "FlakProj",
+   "report": "FlakCannonAttack",
+   "speed": "100",
+   "warhead": "FlakWH"
+  },
+  "goodteeth": {
+   "damage": "30",
+   "image": "ADOGP",
+   "impact": null,
+   "kind": "missile",
+   "muzzle": null,
+   "projectile": "ADOGJUMP",
+   "report": "DogAttack",
+   "speed": "30",
+   "warhead": "ParasiteDog"
+  },
+  "grandcannonweapon": {
+   "Bright": "yes",
+   "damage": "150",
+   "image": "120MM",
+   "impact": "XGRYSML1,XGRYSML2,EXPLOSML,XGRYMED1,XGRYMED2,EXPLOMED,EXPLOLRG,TWLT070",
+   "kind": "arcing",
+   "muzzle": "GCMUZZLE",
+   "projectile": "GrandCannonBall",
+   "report": "GrandCannonAttack",
+   "speed": "1",
+   "warhead": "GrandCannonWH"
+  },
+  "grenade": {
+   "Bright": "yes",
+   "damage": "40",
+   "image": "DISCUS",
+   "impact": "XGRYSML1,XGRYSML2,EXPLOSML,XGRYMED1,XGRYMED2,EXPLOMED,EXPLOLRG,TWLT070",
+   "kind": "arcing",
+   "muzzle": null,
+   "projectile": "Lobbed",
+   "report": null,
+   "speed": "5",
+   "warhead": "HE"
+  },
+  "harpyclaw": {
+   "damage": "60",
+   "image": "none",
+   "impact": "PIFFPIFF,PIFFPIFF",
+   "kind": "invisible",
+   "muzzle": null,
+   "projectile": "Invisible2",
+   "report": "CYGUN1",
+   "speed": "100",
+   "warhead": "SA"
+  },
+  "heal": {
+   "damage": "-50",
+   "image": "none",
+   "impact": null,
+   "kind": "invisible",
+   "muzzle": null,
+   "projectile": "Invisible",
+   "report": "HEALER1",
+   "speed": "100",
+   "warhead": "Organic"
+  },
+  "hellfire": {
+   "Burst": "2",
+   "damage": "30",
+   "image": "DRAGON",
+   "impact": "S_CLSN16,S_CLSN22,S_CLSN30,S_CLSN42,S_CLSN58",
+   "kind": "missile",
+   "muzzle": null,
+   "projectile": "AAHeatSeeker2",
+   "report": "ORCAMIS1",
+   "speed": "30",
+   "warhead": "ORCAAP"
+  },
+  "hornetbomb": {
+   "damage": "40",
+   "image": "DRAGON",
+   "impact": "S_CLSN16,S_CLSN22,S_CLSN30,S_CLSN42,S_CLSN58",
+   "kind": "missile",
+   "muzzle": null,
+   "projectile": "NormalBomb",
+   "report": "HornetAttack",
+   "speed": "30",
+   "warhead": "ORCAAP"
+  },
+  "hornetbombe": {
+   "damage": "80",
+   "image": "DRAGON",
+   "impact": "XGRYSML1,XGRYSML2,EXPLOSML,XGRYMED1,XGRYMED2,EXPLOMED,EXPLOLRG",
+   "kind": "missile",
+   "muzzle": null,
+   "projectile": "NormalBomb",
+   "report": "HornetAttack",
+   "speed": "30",
+   "warhead": "ARTYHE"
+  },
+  "hornetcollision": {
+   "Bright": "yes",
+   "damage": "100",
+   "image": "DRAGON",
+   "impact": "S_CLSN16,S_CLSN22",
+   "kind": "missile",
+   "muzzle": null,
+   "projectile": "AAHeatSeeker2",
+   "report": "HornetCollision",
+   "speed": "30",
+   "warhead": "AP"
+  },
+  "hornetlauncher": {
+   "damage": "1",
+   "image": "none",
+   "impact": null,
+   "kind": "invisible",
+   "muzzle": null,
+   "projectile": "Invisible",
+   "report": null,
+   "speed": "10",
+   "warhead": "Special"
+  },
+  "hovermissile": {
+   "Burst": "2",
+   "damage": "25",
+   "image": "DRAGON",
+   "impact": "XGRYSML1,XGRYSML2,EXPLOSML,XGRYMED1,XGRYMED2,EXPLOMED,EXPLOLRG,TWLT070",
+   "kind": "missile",
+   "muzzle": null,
+   "projectile": "AAHeatSeeker2",
+   "report": "SeawolfAttack",
+   "speed": "40",
+   "warhead": "HE"
+  },
+  "hovermissile2": {
+   "Burst": "2",
+   "damage": "25",
+   "image": "DRAGON",
+   "impact": "S_CLSN16,S_CLSN22",
+   "kind": "missile",
+   "muzzle": null,
+   "projectile": "AAHeatSeeker",
+   "report": "SeawolfAttack",
+   "speed": "40",
+   "warhead": "AP"
+  },
+  "hovermissile2e": {
+   "Burst": "2",
+   "damage": "25",
+   "image": "DRAGON",
+   "impact": "S_CLSN16,S_CLSN22",
+   "kind": "missile",
+   "muzzle": null,
+   "projectile": "AAHeatSeeker",
+   "report": "SeawolfAttack",
+   "speed": "40",
+   "warhead": "AP"
+  },
+  "hovermissilee": {
+   "Burst": "4",
+   "damage": "80",
+   "image": "DRAGON",
+   "impact": "XGRYSML1,XGRYSML2,EXPLOSML,XGRYMED1,XGRYMED2,EXPLOMED,EXPLOLRG,TWLT070",
+   "kind": "missile",
+   "muzzle": null,
+   "projectile": "AAHeatSeeker2",
+   "report": "SeawolfAttack",
+   "speed": "40",
+   "warhead": "HE"
+  },
+  "howitzergun": {
+   "Bright": "yes",
+   "damage": "75",
+   "image": "120MM",
+   "impact": "S_CLSN16,S_CLSN22,S_CLSN30,S_CLSN42,S_CLSN58",
+   "kind": "arcing",
+   "muzzle": "GUNFIRE",
+   "projectile": "Ballistic",
+   "report": "ApocalypseAttackGround",
+   "speed": "100",
+   "warhead": "HowitzerWH"
+  },
+  "ivanbomber": {
+   "damage": "400",
+   "image": "none",
+   "impact": null,
+   "kind": "invisible",
+   "muzzle": null,
+   "projectile": "Invisible",
+   "report": null,
+   "speed": null,
+   "warhead": "IvanBomb"
+  },
+  "ivanbombere": {
+   "damage": "600",
+   "image": "none",
+   "impact": null,
+   "kind": "invisible",
+   "muzzle": null,
+   "projectile": "Invisible",
+   "report": null,
+   "speed": null,
+   "warhead": "IvanBomb"
+  },
+  "jumpcannon": {
+   "Burst": "2",
+   "damage": "15",
+   "image": "none",
+   "impact": "PIFFPIFF,PIFFPIFF",
+   "kind": "invisible",
+   "muzzle": null,
+   "projectile": "Invisible3",
+   "report": "JUMPJET1",
+   "speed": "100",
+   "warhead": "SA"
+  },
+  "laserfire": {
+   "IsBigLaser": "true",
+   "IsLaser": "true",
+   "LaserDuration": "15",
+   "LaserInnerColor": "255,0,0",
+   "LaserOuterColor": "0,0,0",
+   "LaserOuterSpread": "20,40,40",
+   "damage": "250",
+   "image": "none",
+   "impact": "XGRYSML1,XGRYSML2,EXPLOSML,XGRYMED1,XGRYMED2,EXPLOMED,EXPLOLRG,TWLT070",
+   "kind": "laser",
+   "muzzle": null,
+   "projectile": "LLine",
+   "report": "PrismTowerAttack",
+   "speed": "100",
+   "warhead": "Super"
+  },
+  "laserfire2": {
+   "IsLaser": "true",
+   "LaserDuration": "15",
+   "LaserInnerColor": "255,0,0",
+   "LaserOuterColor": "0,0,0",
+   "LaserOuterSpread": "20,40,40",
+   "damage": "30",
+   "image": "none",
+   "impact": "XGRYSML1,XGRYSML2,EXPLOSML,XGRYMED1,XGRYMED2,EXPLOMED,EXPLOLRG,TWLT070",
+   "kind": "laser",
+   "muzzle": null,
+   "projectile": "LLine2",
+   "report": "LASTUR1",
+   "speed": "100",
+   "warhead": "Super"
+  },
+  "ltrail": {
+   "damage": "0",
+   "image": "none",
+   "impact": null,
+   "kind": "invisible",
+   "muzzle": "GUNFIRE",
+   "projectile": "InvisibleLow",
+   "report": "BIGGGUN1",
+   "speed": "100",
+   "warhead": "RailShot2"
+  },
+  "m1carbine": {
+   "damage": "15",
+   "image": "none",
+   "impact": "PIFFPIFF,PIFFPIFF",
+   "kind": "invisible",
+   "muzzle": null,
+   "projectile": "InvisibleLow",
+   "report": "ConscriptAttack",
+   "speed": "100",
+   "warhead": "SA"
+  },
+  "m1carbinee": {
+   "damage": "20",
+   "image": "none",
+   "impact": "PIFFPIFF,PIFFPIFF",
+   "kind": "invisible",
+   "muzzle": null,
+   "projectile": "InvisibleLow",
+   "report": "ConscriptAttack",
+   "speed": "100",
+   "warhead": "SA"
+  },
+  "m60": {
+   "damage": "15",
+   "image": "none",
+   "impact": "PIFFPIFF,PIFFPIFF",
+   "kind": "invisible",
+   "muzzle": "MGUN-N,MGUN-NE,MGUN-E,MGUN-SE,MGUN-S,MGUN-SW,MGUN-W,MGUN-NW",
+   "projectile": "InvisibleLow",
+   "report": "GIAttack",
+   "speed": "100",
+   "warhead": "SA"
+  },
+  "m60e": {
+   "damage": "25",
+   "image": "none",
+   "impact": "PIFFPIFF,PIFFPIFF",
+   "kind": "invisible",
+   "muzzle": "MGUN-N,MGUN-NE,MGUN-E,MGUN-SE,MGUN-S,MGUN-SW,MGUN-W,MGUN-NW",
+   "projectile": "InvisibleLow",
+   "report": "GIAttack",
+   "speed": "100",
+   "warhead": "SA"
+  },
+  "makeupkit": {
+   "damage": "1",
+   "image": "none",
+   "impact": null,
+   "kind": "invisible",
+   "muzzle": null,
+   "projectile": "InvisibleAll",
+   "report": "SpyAttack",
+   "speed": "100",
+   "warhead": "Snapshot"
+  },
+  "mammothtusk": {
+   "Burst": "2",
+   "damage": "50",
+   "image": "DRAGON",
+   "impact": "XGRYSML1,XGRYSML2,EXPLOSML,XGRYMED1,XGRYMED2,EXPLOMED,EXPLOLRG,TWLT070",
+   "kind": "missile",
+   "muzzle": null,
+   "projectile": "AAHeatSeeker",
+   "report": "ApocalypseAttackAir",
+   "speed": "20",
+   "warhead": "HE"
+  },
+  "maverick": {
+   "Burst": "2",
+   "damage": "150",
+   "image": "DRAGON",
+   "impact": "S_CLSN16,S_CLSN22,S_CLSN30,S_CLSN42,S_CLSN58",
+   "kind": "missile",
+   "muzzle": null,
+   "projectile": "AirToGroundMissile",
+   "report": "IntruderAttack",
+   "speed": "70",
+   "warhead": "ORCAAP"
+  },
+  "maverick2": {
+   "Burst": "2",
+   "damage": "200",
+   "image": "DRAGON",
+   "impact": "S_CLSN16,S_CLSN22,S_CLSN30,S_CLSN42,S_CLSN58",
+   "kind": "missile",
+   "muzzle": null,
+   "projectile": "AirToGroundMissile",
+   "report": "BlackEagleAttack",
+   "speed": "70",
+   "warhead": "ORCAAP"
+  },
+  "maverick2e": {
+   "Burst": "2",
+   "damage": "400",
+   "image": "DRAGON",
+   "impact": "S_CLSN16,S_CLSN22,S_CLSN30,S_CLSN42,S_CLSN58",
+   "kind": "missile",
+   "muzzle": null,
+   "projectile": "AirToGroundMissile",
+   "report": "BlackEagleAttack",
+   "speed": "70",
+   "warhead": "ORCAAP"
+  },
+  "mavericke": {
+   "Burst": "4",
+   "damage": "300",
+   "image": "DRAGON",
+   "impact": "S_CLSN16,S_CLSN22,S_CLSN30,S_CLSN42,S_CLSN58",
+   "kind": "missile",
+   "muzzle": null,
+   "projectile": "AirToGroundMissile",
+   "report": "IntruderAttack",
+   "speed": "70",
+   "warhead": "ORCAAP"
+  },
+  "mayanprism": {
+   "IsHouseColor": "true",
+   "IsLaser": "true",
+   "LaserDuration": "15",
+   "LaserOuterSpread": "0,0,0",
+   "damage": "1000",
+   "image": "none",
+   "impact": null,
+   "kind": "laser",
+   "muzzle": null,
+   "projectile": "InvisibleHigh",
+   "report": "PrismTowerAttack",
+   "speed": "25",
+   "warhead": "PrismWarhead"
+  },
+  "mechrailgun": {
+   "damage": "0",
+   "image": "none",
+   "impact": null,
+   "kind": "invisible",
+   "muzzle": "GUNFIRE",
+   "projectile": "InvisibleLow",
+   "report": "RAILUSE5",
+   "speed": "100",
+   "warhead": "RailShot"
+  },
+  "medusa": {
+   "damage": "100",
+   "image": "MEDUSA",
+   "impact": "XGRYSML1,XGRYSML2,EXPLOSML",
+   "kind": "missile",
+   "muzzle": null,
+   "projectile": "MedusaProjectile",
+   "report": "AegisAttack",
+   "speed": "120",
+   "warhead": "SAMWH"
+  },
+  "medusae": {
+   "Burst": "2",
+   "damage": "100",
+   "image": "MEDUSA",
+   "impact": "XGRYSML1,XGRYSML2,EXPLOSML",
+   "kind": "missile",
+   "muzzle": null,
+   "projectile": "MedusaProjectile",
+   "report": "AegisAttack",
+   "speed": "150",
+   "warhead": "SAMWH"
+  },
+  "mindcontrol": {
+   "damage": "10",
+   "image": "none",
+   "impact": "YURICNTL",
+   "kind": "invisible",
+   "muzzle": "YURICNTL",
+   "projectile": "PsychicControl",
+   "report": null,
+   "speed": "100",
+   "warhead": "Controller"
+  },
+  "mindcontrole": {
+   "damage": "10",
+   "image": "none",
+   "impact": "YURICNTL",
+   "kind": "invisible",
+   "muzzle": "YURICNTL",
+   "projectile": "PsychicControl",
+   "report": null,
+   "speed": "100",
+   "warhead": "Controller"
+  },
+  "minigun": {
+   "damage": "8",
+   "image": "none",
+   "impact": "PIFFPIFF,PIFFPIFF",
+   "kind": "invisible",
+   "muzzle": null,
+   "projectile": "InvisibleLow",
+   "report": "GIAttack",
+   "speed": "100",
+   "warhead": "SA"
+  },
+  "miragegun": {
+   "Bright": "yes",
+   "damage": "100",
+   "image": "none",
+   "impact": "IRONFX",
+   "kind": "invisible",
+   "muzzle": "VTMUZZLE",
+   "projectile": "InvisibleLow",
+   "report": "MirageTankAttack",
+   "speed": "100",
+   "warhead": "MirageWH"
+  },
+  "miragegune": {
+   "Bright": "yes",
+   "damage": "150",
+   "image": "none",
+   "impact": "IRONFX",
+   "kind": "invisible",
+   "muzzle": null,
+   "projectile": "InvisibleLow",
+   "report": "MirageTankAttack",
+   "speed": "100",
+   "warhead": "MirageWH"
+  },
+  "mp5": {
+   "damage": "125",
+   "image": "none",
+   "impact": "PIFF",
+   "kind": "invisible",
+   "muzzle": null,
+   "projectile": "InvisibleLow",
+   "report": "SealAttack",
+   "speed": "100",
+   "warhead": "HollowPoint"
+  },
+  "mp5e": {
+   "damage": "125",
+   "image": "none",
+   "impact": "PIFF",
+   "kind": "invisible",
+   "muzzle": null,
+   "projectile": "InvisibleLow",
+   "report": "SealAttack",
+   "speed": "100",
+   "warhead": "HollowPoint"
+  },
+  "neutronrifle": {
+   "damage": "8",
+   "image": "none",
+   "impact": null,
+   "kind": "radbeam",
+   "muzzle": null,
+   "projectile": "InvisibleLow",
+   "report": "ChronoLegionAttack",
+   "speed": "100",
+   "warhead": "ChronoBeam"
+  },
+  "neutronriflee": {
+   "damage": "16",
+   "image": "none",
+   "impact": null,
+   "kind": "radbeam",
+   "muzzle": null,
+   "projectile": "InvisibleLow",
+   "report": "ChronoLegionAttack",
+   "speed": "100",
+   "warhead": "ChronoBeam"
+  },
+  "nukebomb": {
+   "damage": "1500",
+   "image": "none",
+   "impact": "NUKEANIM",
+   "kind": "invisible",
+   "muzzle": null,
+   "projectile": "InvisibleLow",
+   "report": null,
+   "speed": "100",
+   "warhead": "NUKE"
+  },
+  "nukepayload": {
+   "damage": "600",
+   "image": "NKMSLDN",
+   "impact": "NUKEANIM",
+   "kind": "shell",
+   "muzzle": null,
+   "projectile": "GiantNukeDown",
+   "report": "",
+   "speed": "10",
+   "warhead": "NUKE"
+  },
+  "oilexplosion": {
+   "damage": "600",
+   "image": "none",
+   "impact": null,
+   "kind": "invisible",
+   "muzzle": "RING1",
+   "projectile": "Invisible",
+   "report": null,
+   "speed": null,
+   "warhead": "OilExplosionWH"
+  },
+  "opcoilbolt": {
+   "damage": "300",
+   "image": "none",
+   "impact": "TSTIMPCT",
+   "kind": "electric",
+   "muzzle": null,
+   "projectile": "InvisibleHigh",
+   "report": "TeslaCoilSuper",
+   "speed": "100",
+   "warhead": "Electric"
+  },
+  "outpostmachinegun": {
+   "damage": "20",
+   "image": "none",
+   "impact": "PIFFPIFF,PIFFPIFF",
+   "kind": "invisible",
+   "muzzle": "MGUN-N,MGUN-NE,MGUN-E,MGUN-SE,MGUN-S,MGUN-SW,MGUN-W,MGUN-NW",
+   "projectile": "InvisibleLow",
+   "report": "TechOutpostAttack",
+   "speed": "100",
+   "warhead": "SA"
+  },
+  "para": {
+   "damage": "15",
+   "image": "none",
+   "impact": "PIFFPIFF,PIFFPIFF",
+   "kind": "invisible",
+   "muzzle": null,
+   "projectile": "InvisibleLow",
+   "report": "GIAttackDeployed",
+   "speed": "100",
+   "warhead": "SSA"
+  },
+  "paradropweapon": {
+   "Burst": "1",
+   "damage": "60",
+   "image": "DRAGON",
+   "impact": "S_CLSN16,S_CLSN22,S_CLSN30,S_CLSN42,S_CLSN58",
+   "kind": "missile",
+   "muzzle": null,
+   "projectile": "AAHeatSeeker2",
+   "report": null,
+   "speed": "30",
+   "warhead": "MaverickHE"
+  },
+  "parae": {
+   "damage": "25",
+   "image": "none",
+   "impact": "PIFFPIFF,PIFFPIFF",
+   "kind": "invisible",
+   "muzzle": null,
+   "projectile": "InvisibleLow",
+   "report": "GIAttackDeployed",
+   "speed": "100",
+   "warhead": "SSA"
+  },
+  "pistola": {
+   "damage": "2",
+   "image": "none",
+   "impact": "PIFFPIFF,PIFFPIFF",
+   "kind": "invisible",
+   "muzzle": null,
+   "projectile": "InvisibleLow",
+   "report": "CivAttack",
+   "speed": "100",
+   "warhead": "SA"
+  },
+  "prismshot": {
+   "IsHouseColor": "true",
+   "IsLaser": "true",
+   "LaserDuration": "15",
+   "LaserOuterSpread": "0,0,0",
+   "damage": "120",
+   "image": "none",
+   "impact": null,
+   "kind": "laser",
+   "muzzle": null,
+   "projectile": "InvisibleHigh",
+   "report": "PrismTowerAttack",
+   "speed": "100",
+   "warhead": "PrismWarhead"
+  },
+  "prismsupport": {
+   "IsHouseColor": "true",
+   "IsLaser": "true",
+   "LaserDuration": "15",
+   "LaserOuterSpread": "0,0,0",
+   "damage": "200",
+   "image": "none",
+   "impact": null,
+   "kind": "laser",
+   "muzzle": null,
+   "projectile": "InvisibleHigh",
+   "report": null,
+   "speed": "100",
+   "warhead": "DummyWarhead"
+  },
+  "proton": {
+   "damage": "30",
+   "image": "TORPEDO",
+   "impact": "XGRYSML1,XGRYSML2,EXPLOSML,XGRYMED1,XGRYMED2,EXPLOMED,EXPLOLRG,TWLT070",
+   "kind": "missile",
+   "muzzle": null,
+   "projectile": "ProtonTorpedo",
+   "report": "scrin5b",
+   "speed": "30",
+   "warhead": "HE"
+  },
+  "psiwave": {
+   "damage": "250",
+   "image": "none",
+   "impact": null,
+   "kind": "invisible",
+   "muzzle": "RING1",
+   "projectile": "Psychic",
+   "report": "YuriDeploy",
+   "speed": "1",
+   "warhead": "PsiPulse"
+  },
+  "quadcannon": {
+   "damage": "35",
+   "image": "none",
+   "impact": "PIFFPIFF,PIFFPIFF",
+   "kind": "invisible",
+   "muzzle": "MGUN-N,MGUN-NE,MGUN-E,MGUN-SE,MGUN-S,MGUN-SW,MGUN-W,MGUN-NW",
+   "projectile": "QuadShell",
+   "report": "FlakTrackAttackGround",
+   "speed": "100",
+   "warhead": "SA"
+  },
+  "radbeamweapon": {
+   "damage": "125",
+   "image": "none",
+   "impact": null,
+   "kind": "radbeam",
+   "muzzle": null,
+   "projectile": "InvisibleLow",
+   "report": "DesolatorAttack",
+   "speed": "100",
+   "warhead": "RadBeamWarhead"
+  },
+  "radbeamweapone": {
+   "damage": "200",
+   "image": "none",
+   "impact": null,
+   "kind": "radbeam",
+   "muzzle": null,
+   "projectile": "InvisibleLow",
+   "report": "DesolatorAttack",
+   "speed": "100",
+   "warhead": "RadBeamWarhead"
+  },
+  "raderuptionweapon": {
+   "damage": "1",
+   "image": "none",
+   "impact": null,
+   "kind": "invisible",
+   "muzzle": null,
+   "projectile": "InvisibleLow",
+   "report": "DesolatorDeploy",
+   "speed": "1",
+   "warhead": "RadEruptionWarhead"
+  },
+  "raidercannon": {
+   "damage": "40",
+   "image": "none",
+   "impact": "PIFFPIFF,PIFFPIFF",
+   "kind": "invisible",
+   "muzzle": "MGUN-N,MGUN-NE,MGUN-E,MGUN-SE,MGUN-S,MGUN-SW,MGUN-W,MGUN-NW",
+   "projectile": "InvisibleLow",
+   "report": "PillboxAttack",
+   "speed": "100",
+   "warhead": "SA"
+  },
+  "redeye2": {
+   "damage": "75",
+   "image": "DRAGON",
+   "impact": "XGRYSML1,XGRYSML2,EXPLOSML",
+   "kind": "missile",
+   "muzzle": null,
+   "projectile": "AAHeatSeeker",
+   "report": "PatriotAttack",
+   "speed": "100",
+   "warhead": "SAMWH"
+  },
+  "repairbullet": {
+   "damage": "-50",
+   "image": "none",
+   "impact": null,
+   "kind": "invisible",
+   "muzzle": null,
+   "projectile": "Invisible",
+   "report": "IFVRepair",
+   "speed": "100",
+   "warhead": "Mechanical"
+  },
+  "rpgtower": {
+   "damage": "110",
+   "image": "CANISTER",
+   "impact": "S_CLSN16,S_CLSN22,S_CLSN30,S_CLSN42,S_CLSN58",
+   "kind": "arcing",
+   "muzzle": null,
+   "projectile": "Lobbed2",
+   "report": "GLNCH4",
+   "speed": "30",
+   "warhead": "RPG"
+  },
+  "sabot": {
+   "Bright": "yes",
+   "damage": "150",
+   "image": "120MM",
+   "impact": "S_CLSN30",
+   "kind": "arcing",
+   "muzzle": "GUNFIRE",
+   "projectile": "Cannon",
+   "report": "TankDestroyerAttack",
+   "speed": "60",
+   "warhead": "UltraAP"
+  },
+  "sabote": {
+   "Bright": "yes",
+   "Burst": "2",
+   "damage": "175",
+   "image": "120MM",
+   "impact": "VTEXPLOD",
+   "kind": "arcing",
+   "muzzle": "VTMUZZLE",
+   "projectile": "Cannon",
+   "report": "TankDestroyerAttack",
+   "speed": "60",
+   "warhead": "UltraAPE"
+  },
+  "sapper": {
+   "damage": "2500",
+   "image": "none",
+   "impact": "XGRYSML1,XGRYSML2,EXPLOSML,XGRYMED1,XGRYMED2,EXPLOMED,EXPLOLRG,TWLT070",
+   "kind": "invisible",
+   "muzzle": null,
+   "projectile": "Invisible5",
+   "report": "SealPlaceBomb",
+   "speed": null,
+   "warhead": "Super"
+  },
+  "slimeattack": {
+   "damage": "100",
+   "image": "none",
+   "impact": null,
+   "kind": "invisible",
+   "muzzle": null,
+   "projectile": "Invisible",
+   "report": "VICER1",
+   "speed": "25",
+   "warhead": "Slimer"
+  },
+  "sniper": {
+   "damage": "150",
+   "image": "none",
+   "impact": "PIFF",
+   "kind": "invisible",
+   "muzzle": null,
+   "projectile": "InvisibleLow",
+   "report": "SILENCER",
+   "speed": "100",
+   "warhead": "HollowPoint"
+  },
+  "soniczap": {
+   "damage": "4",
+   "image": null,
+   "impact": null,
+   "kind": "shell",
+   "muzzle": null,
+   "projectile": "Sonic",
+   "report": "DolphinAttack",
+   "speed": "100",
+   "warhead": "SonicWarhead"
+  },
+  "soniczape": {
+   "Burst": "2",
+   "damage": "8",
+   "image": null,
+   "impact": null,
+   "kind": "shell",
+   "muzzle": null,
+   "projectile": "Sonic",
+   "report": "DolphinAttack",
+   "speed": "100",
+   "warhead": "SonicWarhead"
+  },
+  "sovietoccupyw": {
+   "damage": "20",
+   "image": "none",
+   "impact": "PIFFPIFF,PIFFPIFF",
+   "kind": "invisible",
+   "muzzle": "UCFLASH",
+   "projectile": "InvisibleHigh",
+   "report": "SovietOccupiedAttack",
+   "speed": "100",
+   "warhead": "SSAB"
+  },
+  "squidgrab": {
+   "damage": "15",
+   "image": "none",
+   "impact": null,
+   "kind": "invisible",
+   "muzzle": "SQDG_N,SQDG_NE,SQDG_E,SQDG_SE,SQDG_S,SQDG_SW,SQDG_W,SQDG_NW",
+   "projectile": "SQDJUMP",
+   "report": "SquidAttack",
+   "speed": "30",
+   "warhead": "ParasitePlus"
+  },
+  "squidgrabe": {
+   "damage": "40",
+   "image": "none",
+   "impact": null,
+   "kind": "invisible",
+   "muzzle": "SQDG_N,SQDG_NE,SQDG_E,SQDG_SE,SQDG_S,SQDG_SW,SQDG_W,SQDG_NW",
+   "projectile": "SQDJUMP",
+   "report": "SquidAttack",
+   "speed": "30",
+   "warhead": "ParasitePlus"
+  },
+  "squidpunch": {
+   "damage": "50",
+   "image": "none",
+   "impact": "XGRYSML1,XGRYSML2,EXPLOSML,XGRYMED1,XGRYMED2,EXPLOMED,EXPLOLRG,TWLT070",
+   "kind": "invisible",
+   "muzzle": null,
+   "projectile": "InvisibleLow",
+   "report": "SquidAttackNonShip",
+   "speed": "30",
+   "warhead": "HE"
+  },
+  "squidpunche": {
+   "damage": "200",
+   "image": "none",
+   "impact": "XGRYSML1,XGRYSML2,EXPLOSML,XGRYMED1,XGRYMED2,EXPLOMED,EXPLOLRG,TWLT070",
+   "kind": "invisible",
+   "muzzle": null,
+   "projectile": "InvisibleAll",
+   "report": "SquidAttackNonShip",
+   "speed": "30",
+   "warhead": "HE"
+  },
+  "subtorpedo": {
+   "damage": "100",
+   "image": "SUBT",
+   "impact": "S_CLSN16,S_CLSN22,S_CLSN30,S_CLSN42,S_CLSN58",
+   "kind": "missile",
+   "muzzle": null,
+   "projectile": "Torpedo",
+   "report": "SubAttack",
+   "speed": "25",
+   "warhead": "APSplash"
+  },
+  "subtorpedoe": {
+   "Burst": "2",
+   "damage": "100",
+   "image": "SUBT",
+   "impact": "S_CLSN16,S_CLSN22,S_CLSN30,S_CLSN42,S_CLSN58",
+   "kind": "missile",
+   "muzzle": null,
+   "projectile": "Torpedo",
+   "report": "SubAttack",
+   "speed": "18",
+   "warhead": "APSplash"
+  },
+  "suicidebomb": {
+   "Bright": "yes",
+   "damage": "11000",
+   "image": "none",
+   "impact": null,
+   "kind": "invisible",
+   "muzzle": null,
+   "projectile": "Invisible",
+   "report": "HUNTER2",
+   "speed": "0",
+   "warhead": "SUPER"
+  },
+  "supercomet": {
+   "Bright": "yes",
+   "IsHouseColor": "true",
+   "IsLaser": "true",
+   "LaserDuration": "15",
+   "LaserOuterSpread": "0,0,0",
+   "damage": "150",
+   "image": "none",
+   "impact": "XGRYSML1,XGRYSML2,EXPLOSML,XGRYMED1,XGRYMED2,EXPLOMED,EXPLOLRG,TWLT070",
+   "kind": "laser",
+   "muzzle": null,
+   "projectile": "SuperCometP",
+   "report": "",
+   "speed": "10",
+   "warhead": "CometWH"
+  },
+  "supercometfragment": {
+   "Bright": "yes",
+   "IsHouseColor": "true",
+   "IsLaser": "true",
+   "LaserDuration": "15",
+   "LaserOuterSpread": "0,0,0",
+   "damage": "50",
+   "image": "none",
+   "impact": "XGRYSML1,XGRYSML2,EXPLOSML,XGRYMED1,XGRYMED2,EXPLOMED,EXPLOLRG,TWLT070",
+   "kind": "laser",
+   "muzzle": null,
+   "projectile": "SuperSmallCometP",
+   "report": "",
+   "speed": "10",
+   "warhead": "CometWH"
+  },
+  "supermindcontrol": {
+   "damage": "10",
+   "image": "none",
+   "impact": "YURICNTL",
+   "kind": "invisible",
+   "muzzle": "YURICNTL",
+   "projectile": "PsychicControl",
+   "report": null,
+   "speed": "100",
+   "warhead": "Controller"
+  },
+  "tankbolt": {
+   "damage": "135",
+   "image": "none",
+   "impact": "TSTIMPCT",
+   "kind": "electric",
+   "muzzle": null,
+   "projectile": "InvisibleLow",
+   "report": "TeslaTankAttack",
+   "speed": "100",
+   "warhead": "Electric"
+  },
+  "tankbolte": {
+   "damage": "150",
+   "image": "none",
+   "impact": "TSTIMPCT",
+   "kind": "electric",
+   "muzzle": null,
+   "projectile": "Electricbounce",
+   "report": "TeslaTankAttack",
+   "speed": "100",
+   "warhead": "Electric"
+  },
+  "tankmakeupkit": {
+   "damage": "1",
+   "image": "none",
+   "impact": null,
+   "kind": "invisible",
+   "muzzle": null,
+   "projectile": "Invisible",
+   "report": "MirageTankDisguise",
+   "speed": "100",
+   "warhead": "TankSnapshot"
+  },
+  "terrorbomb": {
+   "damage": "225",
+   "image": "none",
+   "impact": "MININUKE",
+   "kind": "invisible",
+   "muzzle": "RING1",
+   "projectile": "Invisible",
+   "report": null,
+   "speed": null,
+   "warhead": "TerrorBombWH"
+  },
+  "teslafragment": {
+   "damage": "30",
+   "image": "none",
+   "impact": "TSTIMPCT",
+   "kind": "electric",
+   "muzzle": "PIFFPIFF",
+   "projectile": "SmallTeslaP",
+   "report": "TeslaCoilAttack",
+   "speed": "10",
+   "warhead": "Electric"
+  },
+  "v3airburst": {
+   "damage": "25",
+   "image": "none",
+   "impact": "XGRYSML1,XGRYSML2,EXPLOSML,XGRYMED1,XGRYMED2,EXPLOMED,EXPLOLRG,TWLT070",
+   "kind": "invisible",
+   "muzzle": null,
+   "projectile": "V3AirburstP",
+   "report": null,
+   "speed": null,
+   "warhead": "V3HE"
+  },
+  "v3cluster": {
+   "damage": "80",
+   "image": "DRAGON",
+   "impact": "XGRYSML1,XGRYSML2,EXPLOSML,XGRYMED1,XGRYMED2,EXPLOMED,EXPLOLRG,TWLT070",
+   "kind": "missile",
+   "muzzle": null,
+   "projectile": "ClusterBits",
+   "report": null,
+   "speed": "20",
+   "warhead": "V3HE"
+  },
+  "v3launcher": {
+   "damage": "1",
+   "image": "none",
+   "impact": null,
+   "kind": "invisible",
+   "muzzle": null,
+   "projectile": "InvisibleHigh",
+   "report": null,
+   "speed": "10",
+   "warhead": "Special"
+  },
+  "virtualscanner": {
+   "damage": "1",
+   "image": "none",
+   "impact": "PIFFPIFF,PIFFPIFF",
+   "kind": "invisible",
+   "muzzle": null,
+   "projectile": "InvisibleAll",
+   "report": null,
+   "speed": "100",
+   "warhead": "SA"
+  },
+  "vulcan": {
+   "damage": "50",
+   "image": "none",
+   "impact": "PIFFPIFF,PIFFPIFF",
+   "kind": "invisible",
+   "muzzle": "MGUN-N,MGUN-NE,MGUN-E,MGUN-SE,MGUN-S,MGUN-SW,MGUN-W,MGUN-NW",
+   "projectile": "InvisibleLow",
+   "report": "SentryGunAttack",
+   "speed": "100",
+   "warhead": "SA"
+  },
+  "vulcan2": {
+   "damage": "50",
+   "image": "none",
+   "impact": "PIFFPIFF,PIFFPIFF",
+   "kind": "invisible",
+   "muzzle": "MGUN-N,MGUN-NE,MGUN-E,MGUN-SE,MGUN-S,MGUN-SW,MGUN-W,MGUN-NW",
+   "projectile": "InvisibleLow",
+   "report": "PillboxAttack",
+   "speed": "100",
+   "warhead": "SA"
+  },
+  "vulcan3": {
+   "Burst": "3",
+   "damage": "10",
+   "image": "none",
+   "impact": "PIFFPIFF,PIFFPIFF",
+   "kind": "invisible",
+   "muzzle": null,
+   "projectile": "InvisibleLow",
+   "report": "CYGUN1",
+   "speed": "100",
+   "warhead": "SA"
+  },
+  "vulcantower": {
+   "Bright": "true",
+   "damage": "50",
+   "image": "none",
+   "impact": "PIFFPIFF,PIFFPIFF",
+   "kind": "invisible",
+   "muzzle": "MGUN-N,MGUN-NE,MGUN-E,MGUN-SE,MGUN-S,MGUN-SW,MGUN-W,MGUN-NW",
+   "projectile": "InvisibleLow",
+   "report": "PillboxAttack",
+   "speed": "100",
+   "warhead": "SA"
+  }
+ }
+}
