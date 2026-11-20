@@ -528,6 +528,110 @@ def sha256(path: Path):
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+# ---------------------------------------------------------------------------------------------------------------
+# The original turret's place.
+
+ORIGINAL_TURRET = 'ea'
+# A condition that holds only for the original countries: CONDITION itself, not its negation.
+ORIGINAL_ONLY = re.compile(r'(?<![!\w-])' + re.escape(CONDITION) + r'(?![\w-])')
+
+
+def turret_place(turret: Node | None):
+    return ((turret.val('Offset') if turret is not None else None) or '0,0,0').replace(' ', '')
+
+
+def stands_for(turret):
+    """The reference turret an original turret stands in for: ea -> primary, ea-<name> -> <name>."""
+    if turret == ORIGINAL_TURRET:
+        return 'primary'
+    return turret[len(ORIGINAL_TURRET) + 1:] if turret.startswith(ORIGINAL_TURRET + '-') else turret
+
+
+def _set(node: Node, key, value):
+    child = node.get(key)
+    if child is None:
+        node.children.append(Node(key, value))
+    else:
+        child.value = value
+
+
+def reference_armament(ref: Node, key):
+    """The reference armament an original-art twin was made from (ea_retail.py: Armament@x -> Armament@retail-x,
+    ea_gameplay.py: its elite twin -> Armament@retail-x-missing-elite), or None."""
+    name = key.removesuffix('-missing-elite')
+    if not name.startswith('Armament@retail-'):
+        return None
+    suffix = name[len('Armament@retail-'):]
+    for candidate in ['Armament@' + suffix] + (['Armament'] if suffix == 'primary' else []):
+        if ref.get(candidate) is not None:
+            return ref.get(candidate)
+    return None
+
+
+def original_turrets(name, cur: Node, ref: Node, out: Node):
+    """Give the original voxel turret its own turret where the original rules put it, when the stand-in moved the
+    shared one. Changes `out` (the actor's generated rules, retail armaments included) in place and returns
+    {stand-in turret: [the stand-in's place, the original place]} for each turret it moved.
+
+    The Flak Track (htk) is why: the standalone kit lifts its sprite turret half a cell (Turreted Offset 0,0,582), the
+    original rules put the gun on the rear deck (-280,-3,0), and drawn on the kit's turret the original gun floated
+    above the hull (seen by the owner, 20 November 2026). The new turret is the stand-in's in all but its place (turn
+    speed, facing and pauses stay), enabled for the original countries only: the original voxel turret and barrel are
+    drawn on it, the original-art armaments fire from it at the original rules' muzzle position (the kit's put the
+    flash beside the hull), and the attack that turns the stand-in's turns it too.
+    """
+    ref_turrets = {t.val('Turret', 'primary'): t for _, t in traits(ref, 'Turreted')}
+    cur_turrets = {t.val('Turret', 'primary'): t for _, t in traits(cur, 'Turreted')}
+    drawn = [(key, t) for kind in ('WithVoxelTurret', 'WithVoxelBarrel') for key, t in traits(ref, kind)]
+    moved = {}
+    for turret in sorted({t.val('Turret', 'primary') for _, t in drawn}):
+        reference, stand_in = ref_turrets.get(turret), cur_turrets.get(turret)
+        if reference is None or stand_in is None or turret_place(reference) == turret_place(stand_in):
+            continue
+        own = ORIGINAL_TURRET if turret == 'primary' else f'{ORIGINAL_TURRET}-{turret}'
+        twin = [c.clone() for c in stand_in.children if c.key not in ('Turret', 'Offset', 'RequiresCondition')]
+        twin += [Node('Turret', own), Node('Offset', reference.val('Offset')),
+                 Node('RequiresCondition', both(CONDITION, stand_in.val('RequiresCondition')))]
+        out.children.append(Node('Turreted@' + own, None, twin))
+        for key, t in drawn:
+            if t.val('Turret', 'primary') == turret:
+                node = out.get(key)
+                if node is None:
+                    raise GenerationError(f'{name}.{key}: the original voxel trait is not generated; it cannot move to turret {own}')
+                _set(node, 'Turret', own)
+        armed = 0
+        for node in out.children:
+            if trait_type(node.key) != 'Armament' or not ORIGINAL_ONLY.search(node.val('RequiresCondition') or ''):
+                continue
+            shared = cur.get(node.key)
+            if (node.val('Turret') or (shared.val('Turret') if shared is not None else None) or 'primary') == turret:
+                original = reference_armament(ref, node.key)
+                if original is None:
+                    raise GenerationError(f'{name}.{node.key}: no reference armament gives it a muzzle position on turret {own}')
+                _set(node, 'Turret', own)
+                for field in ('LocalOffset', 'LocalYaw'):
+                    if original.val(field) is not None:
+                        _set(node, field, original.val(field))
+                    elif node.get(field) is not None:
+                        node.children.remove(node.get(field))
+                armed += 1
+        if not armed:
+            raise GenerationError(f'{name}: no original-art armament fires from turret {turret}; moving its picture alone '
+                                  'would leave the shots at the stand-in\'s place')
+        attacks = [(key, t) for key, t in traits(cur, 'AttackTurreted') if turret in split_list(t.val('Turrets', 'primary'))]
+        if not attacks:
+            raise GenerationError(f'{name}: no AttackTurreted turns turret {turret}, so turret {own} would never turn')
+        for key, t in attacks:
+            node = out.get(key)
+            if node is None:
+                node = Node(key)
+                out.children.append(node)
+            current = split_list(node.val('Turrets') or t.val('Turrets', 'primary'))
+            _set(node, 'Turrets', ', '.join(current + [own]))
+        moved[turret] = [turret_place(stand_in), turret_place(reference)]
+    return moved
+
+
 class Generator:
     def __init__(self, mod_root: Path, content: Path, *, target='web'):
         if target not in ('web', 'native-render-only'):
@@ -857,8 +961,18 @@ class Generator:
         if self.plug_prerequisites is not None:
             availability.append(Node('gapurifier', None, [Node('Buildable', None, [Node('Prerequisites', self.plug_prerequisites)])]))
         self.rules_nodes = [self._palettes()] + availability + [self._actor(name) for name in sorted(self.actors)]
+        self.moved_turrets = {}
         if self.retail is not None:
             self.retail.finish()
+            # After the retail merge, when each actor's original-art armaments are complete. (The native render-only
+            # target has no armament twins: its shots stay shared, so its turrets do too.)
+            by_key = {n.key.lower(): n for n in self.rules_nodes}
+            for name in sorted(self.actors):
+                facts = self.actors[name]
+                if 'images' in facts and 'voxel' in facts and name in by_key:
+                    moved = original_turrets(name, self.cur[name], self.ref[name], by_key[name])
+                    if moved:
+                        self.moved_turrets[name] = moved
         # Only the project "explosion" image: original ea-explosion keeps its own pivots.
         if not self.native_render_only:
             self.seq_nodes.extend(effect_anchors.anchor_patches(self, __import__(__name__)))
@@ -1145,10 +1259,39 @@ class Generator:
                     if v.startswith('ra2|') and v.lower().endswith('.png'):
                         continue
                     raise GenerationError(f'{n.key}.{s.key}: project file {v} would be drawn with original palettes')
+        if self.retail is not None:
+            self._validate_turrets()
         audit = self.audit()
         failures = {f: a for f, a in audit['countries'].items() if a['missing'] or a['replacements'] or a['extensions']}
         if failures:
             raise GenerationError('Original-country roster is incomplete: ' + json.dumps(failures))
+
+    def _validate_turrets(self):
+        """Every original voxel turret or barrel, and every original-art armament, sits on a turret at the place the
+        original rules give it (the Flak Track's gun floated half a cell above its hull until 20 November 2026)."""
+        effective = {k.lower(): v for k, v in merge([list(self.cur.values()), self.rules_nodes]).items()}
+        for name, facts in sorted(self.actors.items()):
+            if 'images' not in facts or 'voxel' not in facts:
+                continue
+            actor = effective[name]
+            original = {t.val('Turret', 'primary'): turret_place(t) for _, t in traits(self.ref[name], 'Turreted')}
+            turrets = {t.val('Turret', 'primary'): t for _, t in traits(actor, 'Turreted')}
+            uses = [(key, t) for kind in ('WithVoxelTurret', 'WithVoxelBarrel', 'Armament') for key, t in traits(actor, kind)
+                    if ORIGINAL_ONLY.search(t.val('RequiresCondition') or '')]
+            for key, t in uses:
+                turret = t.val('Turret', 'primary')
+                expected = original.get(stands_for(turret))
+                if expected is None or turret not in turrets:
+                    continue
+                if turret_place(turrets[turret]) != expected:
+                    raise GenerationError(f'{name}.{key}: drawn or fired from turret {turret} at {turret_place(turrets[turret])}; '
+                                          f'the original rules put it at {expected}')
+                if turret != stands_for(turret) and trait_type(key) == 'Armament':
+                    original = reference_armament(self.ref[name], key)
+                    muzzle = (original.val('LocalOffset') if original is not None else None) or ''
+                    if (t.val('LocalOffset') or '').replace(' ', '') != muzzle.replace(' ', ''):
+                        raise GenerationError(f'{name}.{key}: fires from turret {turret} at muzzle {t.val("LocalOffset")}; '
+                                              f'the original rules\' muzzle is {muzzle or "missing"}')
 
     def audit(self):
         """Compare complete reachable rosters, not a minimum number of original-looking actors."""
@@ -1194,7 +1337,9 @@ class Generator:
                    'restoredFoundations': list(RESTORED_FOUNDATIONS), 'restoredProduction': list(RESTORED_PRODUCTION),
                    'actors': {k: {'countries': v['countries'], 'images': sorted({'ea-' + i for i in v.get('images', {}).values()}),
                                   'voxel': ('ea-' + v['voxel']) if v.get('voxel') else None} for k, v in sorted(self.actors.items())},
-                   'aliases': {k: sorted(v) for k, v in sorted(self.aliases.items())}}
+                   'aliases': {k: sorted(v) for k, v in sorted(self.aliases.items())},
+                   # Original turrets moved off the stand-in's place: {actor: {turret: [stand-in place, original place]}}.
+                   'movedTurrets': getattr(self, 'moved_turrets', {})}
         (out / 'ea-files.json').write_text(json.dumps(summary, indent=1) + '\n', encoding='utf-8', newline='\n')
         (out / 'original-country-audit.json').write_text(json.dumps(self.audit(), indent=1) + '\n', encoding='utf-8', newline='\n')
         return summary

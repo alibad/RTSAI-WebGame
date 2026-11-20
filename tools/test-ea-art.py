@@ -88,6 +88,53 @@ class Manifest(unittest.TestCase):
         self.assertEqual(png[25], 6)
 
 
+class OriginalTurrets(unittest.TestCase):
+    """The original voxel turret sits where the original rules put it, not where the stand-in moved the shared turret
+    (the Flak Track's gun floated half a cell above its hull until 20 November 2026)."""
+    # Shapes of the real htk: the kit's sprite turret lifted to 0,0,582, the reference turret on the rear deck.
+    CUR = ('htk:\n\tTurreted:\n\t\tTurnSpeed: 60\n\t\tOffset: 0,0,582\n\tAttackTurreted:\n\t\tVoice: Attack\n'
+           '\tArmament@primary:\n\t\tWeapon: FlakTrackGun\n\t\tLocalOffset: 489,-244,212\n'
+           '\tWithVoxelTurret:\n\t\tRequiresCondition: false\n')
+    REF = ('htk:\n\tTurreted:\n\t\tTurnSpeed: 60\n\t\tOffset: -280,-3,0\n\tAttackTurreted:\n\t\tVoice: Attack\n'
+           '\tArmament@primary:\n\t\tWeapon: FlakTrackGun\n\t\tLocalOffset: 256,0,1536\n\tWithVoxelTurret:\n')
+    OUT = ('htk:\n\tWithVoxelTurret:\n\t\tRequiresCondition: ea-art\n\tArmament@primary:\n\t\tRequiresCondition: !ea-art\n'
+           '\tArmament@retail-primary:\n\t\tWeapon: ea-retail-flaktrackgun\n\t\tName: retail-armament-primary\n'
+           '\t\tRequiresCondition: ea-art && (!rank-elite)\n'
+           '\tArmament@retail-primary-missing-elite:\n\t\tWeapon: ea-retail-flaktrackgune\n\t\tRequiresCondition: ea-art && (rank-elite)\n'
+           '\tAttackTurreted:\n\t\tArmaments: primary, retail-armament-primary\n')
+
+    def actors(self, cur=None, ref=None):
+        return [E.parse(t)[0] for t in (cur or self.CUR, ref or self.REF, self.OUT)]
+
+    def test_a_moved_stand_in_turret_gives_the_original_art_its_own(self):
+        cur, ref, out = self.actors()
+        self.assertEqual(E.original_turrets('htk', cur, ref, out), {'primary': ['0,0,582', '-280,-3,0']})
+        twin = out.get('Turreted@ea')
+        self.assertEqual((twin.val('Turret'), twin.val('Offset'), twin.val('TurnSpeed'), twin.val('RequiresCondition')),
+                         ('ea', '-280,-3,0', '60', 'ea-art'))
+        self.assertEqual(out.get('WithVoxelTurret').val('Turret'), 'ea')
+        # The original guns fire from it at the original rules' muzzle (the kit's put the flash beside the hull).
+        for key in ('Armament@retail-primary', 'Armament@retail-primary-missing-elite'):
+            self.assertEqual((out.get(key).val('Turret'), out.get(key).val('LocalOffset')), ('ea', '256,0,1536'), key)
+        # The stand-in's armament keeps the stand-in's turret and muzzle; the attack turns both turrets.
+        self.assertIsNone(out.get('Armament@primary').val('Turret'))
+        self.assertIsNone(out.get('Armament@primary').val('LocalOffset'))
+        self.assertEqual(E.split_list(out.get('AttackTurreted').val('Turrets')), ['primary', 'ea'])
+        self.assertEqual(out.get('AttackTurreted').val('Armaments'), 'primary, retail-armament-primary')
+
+    def test_a_turret_in_its_original_place_is_left_alone(self):
+        cur, ref, out = self.actors(cur=self.CUR.replace('0,0,582', '-280,-3,0'))
+        before = E.dump([out])
+        self.assertEqual(E.original_turrets('htk', cur, ref, out), {})
+        self.assertEqual(E.dump([out]), before)
+
+    def test_an_original_gun_with_shared_shots_is_refused(self):
+        cur, ref, out = self.actors()
+        out.children = [c for c in out.children if not c.key.startswith('Armament@retail')]
+        with self.assertRaises(E.GenerationError):
+            E.original_turrets('htk', cur, ref, out)
+
+
 class Voices(unittest.TestCase):
     def test_files_follow_prefixes_and_variants(self):
         node = E.parse('Engineer:\n\tDefaultVariant: .wav\n\tPrefixes:\n\t\tamerica: iena\n\t\tcuba: iens\n'
@@ -236,6 +283,22 @@ class Generated(unittest.TestCase):
             turret = self.seqs[image].get('turret')
             self.assertEqual(turret.val('Filename'), E.BLANK, image)
             self.assertEqual(turret.val('InterpolatedFacings'), '32', image)
+
+    def test_the_flak_tracks_original_gun_sits_on_its_rear_deck(self):
+        # The kit lifts the shared turret half a cell for its own sprite (RTSAI-Mod standalone/base-kit.yaml); the
+        # original gun has its own turret at the original rules' place, and its armaments fire from it (20 Nov 2026).
+        htk = self.rules['htk']
+        twin = htk.get('Turreted@ea')
+        self.assertIsNotNone(twin, 'htk: no original turret')
+        self.assertEqual(twin.val('Offset').replace(' ', ''), '-280,-3,0')
+        self.assertEqual(twin.val('RequiresCondition'), 'ea-art')
+        self.assertEqual(htk.get('WithVoxelTurret').val('Turret'), 'ea')
+        self.assertIn('ea', E.split_list(htk.get('AttackTurreted').val('Turrets')))
+        retail = [arm for _, arm in E.traits(htk, 'Armament') if E.ORIGINAL_ONLY.search(arm.val('RequiresCondition') or '')]
+        self.assertEqual(len(retail), 4)
+        for arm in retail:
+            self.assertEqual((arm.val('Turret'), arm.val('LocalOffset')), ('ea', '256,0,1536'), arm.key)
+        self.assertEqual(self.files.get('movedTurrets'), {'htk': {'primary': ['0,0,582', '-280,-3,0']}})
 
     def test_suicide_damage_uses_restored_weapon_not_just_targeting_armament(self):
         weapons = {n.key: n for n in E.parse((self.content / 'ea-retail-weapons.yaml').read_text(encoding='utf-8'))}
