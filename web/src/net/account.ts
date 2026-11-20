@@ -12,6 +12,9 @@ const config = {
 };
 /** Local tests run against the Firebase emulators (VITE_FIREBASE_EMULATORS=1), never the real project. */
 const emulators = env.VITE_FIREBASE_EMULATORS === "1";
+/** Their ports, "<auth>,<firestore>": the Firebase defaults unless a test run brings its own emulators (sessions that
+ *  share one PC must not share emulators). */
+const [authPort, firestorePort] = (env.VITE_FIREBASE_EMULATOR_PORTS || "9099,8085").split(",").map(Number);
 export const accountsConfigured = !!(config.apiKey && config.projectId && config.appId);
 /** The public build only starts the game (and its ~40 MB first download) for signed-in players. */
 export const requireSignIn = env.VITE_REQUIRE_SIGNIN === "1" && accountsConfigured;
@@ -29,7 +32,7 @@ export function firebaseApp() {
     // the website, which is not cross-origin isolated).
     const auth = A.initializeAuth(instance, { persistence: [A.indexedDBLocalPersistence, A.browserLocalPersistence] });
     if (emulators) {
-      A.connectAuthEmulator(auth, "http://127.0.0.1:9099", { disableWarnings: true });
+      A.connectAuthEmulator(auth, `http://127.0.0.1:${authPort}`, { disableWarnings: true });
       (window as unknown as { rtsaiTestAccount: unknown }).rtsaiTestAccount = {
         signIn: (email: string, password: string) => A.signInWithEmailAndPassword(auth, email, password).then(c => c.user.uid),
         signUp: (email: string, password: string) => A.createUserWithEmailAndPassword(auth, email, password).then(c => c.user.uid),
@@ -43,7 +46,7 @@ export function firestore() {
   return db ??= (async () => {
     const [{ app: instance }, F] = await Promise.all([firebaseApp(), import("firebase/firestore")]);
     const store = F.initializeFirestore(instance, { experimentalAutoDetectLongPolling: true });
-    if (emulators) F.connectFirestoreEmulator(store, "127.0.0.1", 8085);
+    if (emulators) F.connectFirestoreEmulator(store, "127.0.0.1", firestorePort);
     return store;
   })();
 }

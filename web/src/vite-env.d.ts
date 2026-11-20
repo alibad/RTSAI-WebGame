@@ -22,6 +22,8 @@ interface ImportMetaEnv {
   readonly VITE_FIREBASE_MEASUREMENT_ID?: string;
   /** "1": use the local Firebase emulators (tests). */
   readonly VITE_FIREBASE_EMULATORS?: string;
+  /** "<auth port>,<firestore port>" of those emulators; the Firebase defaults (9099,8085) when unset. */
+  readonly VITE_FIREBASE_EMULATOR_PORTS?: string;
   /** "1": the game starts only for signed-in players (public build). */
   readonly VITE_REQUIRE_SIGNIN?: string;
   /** The website that owns sign-in, /api/event and /api/feedback; "" = this origin (rtsai.net/play). */
