@@ -73,9 +73,33 @@ never add one to make a release pass without saying why. `--write-baseline` rewr
   red, green and yellow noise (the owner, 20 Nov: "it doesn't feel like a submarine missile"), and 11 flak shells and
   3 missile smoke trails were off too. They now use RA2's animation palette.
 
-## Open, ranked by units (live build, 20 Nov 2026)
+- **Missiles that reach** (generator and RTSAI-Mod): 19 missiles ran out of fuel (RangeLimit) short of their own
+  range once the climb to cruise altitude is counted, so a shot at full range burst in the air and did no damage (the
+  elite Harrier's, the Patriot's, the Aegis'). Their fuel now covers the range, the climb and a cell. RA2's missiles
+  run out after their range too (`Ranged=yes`), never inside it.
+- **Modern blasts by damage** (RTSAI-Mod): 39 modern rockets, missiles and tank guns drew a blast meant for a
+  150-damage missile while doing 16-90 damage. Each now draws RA2's animation for its own damage. The owner is asked
+  in the Review inbox whether to keep this scale for the new countries.
+- **Muzzle flashes** (RTSAI-Mod): the Qilin coaxial gun on five countries' tanks now flashes. The ten defences listed
+  without a flash had one all along, drawn by their body or turret's fire animation; the audit now sees those.
+- **Original palettes** (generator): original art drawn in the owner's colours (a Kirov's bomb) uses the original
+  player palette.
 
-See the latest `weapon-fidelity.md`. The largest: modern rockets and missiles inherit the Harrier's Maverick
-(150 damage, RA2's biggest blast) with 34-60 damage and keep its blast (21 units); modern tank guns inherit
-`^LargeBullet`'s medium blast where RA2's AP shell draws a small one (18 units); 15 modern defences and vehicles name
-no muzzle flash; the Qilin coaxial gun's flash is drawn 7-11 px off its tip on four tanks.
+The audit itself also learned: a missile still flying when a trial stops is not a miss, and a weapon RA2 leaves
+silent (the carrier's Hornet launcher, Yuri's mind control) is not missing a sound.
+
+## Open (20 Nov 2026, evening: 18 findings, from 110)
+
+`tools/data/weapon-fidelity-baseline.json` lists each with its reason: "open" is a fault still to fix, "RA2's own" is
+how Red Alert 2 behaves too, from its `rules.ini`, and "accepted" is a deliberate difference.
+
+- Open: the original G.I.'s machine gun has no flash. RA2 plays its directional MGUN animation; infantry need a
+  muzzle overlay from the generator (the art is there: the pillbox uses it). Four modern designators (FPV link, both
+  JTAC lasers, the Turkish designator) have no firing sound; the project has none that fits, so it is a pick for the
+  owner or the Sound Desk.
+- RA2's own: the Apocalypse's slow anti-air missile runs out behind a helicopter that flies off (its `AAHeatSeeker`
+  is `Ranged=yes`). The Kirov's bomb drops straight down up to 1.5 cells from its target (`BlimpBombP` is
+  `Vertical=yes`; `BlimpBomb` fires from `Range=1.5` with `CellRangefinding`). Its 2-cell blast still reaches the
+  target. Artillery lands where the target was when it fired (`Ballistic`: arcing, no `ROT`).
+- Accepted: the JTAC designators' marking beams are thin and brief (they mark a target and do no damage), and the
+  demolition charge's blast is bigger than a gun hit of the same damage.

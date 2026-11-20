@@ -104,6 +104,24 @@ class ProjectilePalettes(unittest.TestCase):
         self.assertEqual(R.original_projectile_palettes(E, modern), 0)  # project art keeps the project palette
 
 
+class MissileReach(unittest.TestCase):
+    def test_a_missile_reaches_the_end_of_its_range_after_its_climb(self):
+        maverick = E.parse('''ea-retail-mavericke:
+	Range: 9c0
+	Projectile: Missile
+		CruiseAltitude: 4352
+		RangeLimit: 10c204
+''')[0]
+        self.assertEqual(R.missile_reach(E, maverick), 9216 + 4352 + 1024)
+        self.assertEqual(maverick.get('Projectile').val('RangeLimit'), '14c256')
+        self.assertIsNone(R.missile_reach(E, maverick))  # already enough
+        shell = E.parse('''w:
+	Range: 9c0
+	Projectile: Bullet
+''')[0]
+        self.assertIsNone(R.missile_reach(E, shell))
+
+
 class Translucency(unittest.TestCase):
     def test_translucent_animations_are_drawn_at_half_strength(self):
         images = E.parse('''ea-explosion:

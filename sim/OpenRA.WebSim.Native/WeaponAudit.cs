@@ -331,6 +331,22 @@ static class WeaponAudit
 				}
 			}
 
+			// A gun that flashes through its turret's or body's fire animation (the modern defences' art has the flash drawn in).
+			var fireAnims = shooter.TraitsImplementing<WithSpriteTurret>().Where(x => !x.IsTraitDisabled).Select(x => x.DefaultAnimation)
+				.Concat(shooter.TraitsImplementing<WithSpriteBody>().Where(x => !x.IsTraitDisabled).Select(x => x.DefaultAnimation));
+			foreach (var anim in fireAnims)
+			{
+				var seq = anim?.CurrentSequence?.Name;
+				if (seq == null || !seq.Contains("fire")) continue;
+				var owner = shooter.TraitsImplementing<Armament>().FirstOrDefault(a => !a.IsTraitDisabled && a.Barrels.Length > 0);
+				var tip = owner != null ? shooter.CenterPosition + owner.MuzzleOffset(shooter, owner.Barrels[0]) : shooter.CenterPosition;
+				muzzles.Add(new
+				{
+					tick = t, armament = owner?.Info.Name, image = anim.Name, sequence = seq, frame = anim.CurrentFrame, length = anim.CurrentSequence.Length,
+					tip = Px(wr, tip), drawn = Px(wr, tip), rect = (int[])null, turretFire = true
+				});
+			}
+
 			// New effects, and every live one's state.
 			var live = world.Effects.ToHashSet();
 			foreach (var e in live)

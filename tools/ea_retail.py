@@ -124,6 +124,29 @@ def retail_impact(E, weapon, original, warhead, explosions):
     return None
 
 
+def world(value):
+    """A distance as the engine reads it ("10c204" or "4352") in world units."""
+    m = re.fullmatch(r'\s*(-?\d+)c(\d+)\s*', str(value))
+    return int(m.group(1)) * 1024 + int(m.group(2)) if m else int(str(value).strip() or 0)
+
+
+def missile_reach(E, weapon):
+    """A missile flies far enough to reach anything in its weapon's range. The port's missiles stop at a RangeLimit set
+    for the RA2 mod's ranges; with RA2's ranges restored (the elite Harrier's 9 cells, the Patriot's and the Aegis' 12)
+    and the climb to cruise altitude on the way, a shot at full reach burst in the air short of its target and did no
+    damage (weapon fidelity audit, 20 Nov 2026). RA2's missiles (AAHeatSeeker, AirToGroundMissile: Ranged=yes) run out
+    after their weapon's range, never inside it, and fly there straight. Raises RangeLimit to the range plus the cruise
+    climb plus a cell; returns the new limit or None."""
+    projectile = weapon.get('Projectile')
+    if projectile is None or projectile.value != 'Missile' or projectile.get('RangeLimit') is None or weapon.get('Range') is None:
+        return None
+    need = world(weapon.val('Range')) + world(projectile.val('CruiseAltitude', '512')) + 1024
+    if world(projectile.val('RangeLimit')) >= need:
+        return None
+    set_value(E, projectile, 'RangeLimit', f'{need // 1024}c{need % 1024}')
+    return need
+
+
 # A projectile's sprite and trail fields, each with the palette it is drawn with.
 PROJECTILE_PALETTES = (('Image', 'Palette'), ('TrailImage', 'TrailPalette'))
 
@@ -534,6 +557,9 @@ class Retail:
                     old = parent.val(palette)
                     if old in ('effect', 'ra', 'terrain', 'effect75alpha'):
                         set_value(E, parent, palette, 'eaeffect' if old != 'ra' else 'eaunit')
+                    elif old == 'player':
+                        # The owner's colours on original art (a Kirov's bombs): the original player palette.
+                        set_value(E, parent, palette, 'eaplayer')
         for field in ('Image', 'TrailImage', 'MissileImage'):
             image(node, field)
         if node.key == 'Projectile':
@@ -557,6 +583,7 @@ class Retail:
         if 'Burst' not in original:
             set_value(E, twin, 'Burst', 1)
         instant_projectile(E, twin, original)
+        missile_reach(E, twin)
         homing_lock(E, twin, original)
         warhead = self.baseline['warheads'].get(original.get('Warhead'), {})
         retail_impact(E, twin, original, warhead, self.explosions)

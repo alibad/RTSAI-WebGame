@@ -71,6 +71,12 @@ const torpedo = (trailPalette) => ({ ...weapons, "ea-retail-120mmx": { ...weapon
 assert.deepEqual(analyze({ trials: [trial()], weapons: torpedo("effect") }, look).findings.map((f) => f.check), ["originalPalette"]);
 assert.deepEqual(analyze({ trials: [trial()], weapons: torpedo("eaeffect") }, look).findings, []);
 
+// A weapon with no firing sound fails, unless RA2's own weapon is silent too (the carrier's HornetLauncher).
+const silent = (ra2Report) => analyze({ trials: [trial()], weapons: { ...weapons, "ea-retail-120mmx": { ...weapons["ea-retail-120mmx"], report: [] } } },
+  { ...look, weapons: { ...look.weapons, "120mmx": { ...look.weapons["120mmx"], report: ra2Report } } }).findings.map((f) => f.check);
+assert.deepEqual(silent("VApocalypseAttack"), ["sound"]);
+assert.deepEqual(silent(null), []);
+
 // A known finding in the baseline does not fail a release; a fixed one is reported as fixed.
 r = run([trial({ muzzles: [], muzzleSequence: null })], { accepted: { "apoc|0|ea-retail-120mmx|muzzleFlash": "open" } });
 assert.equal(r.fresh.length, 0);

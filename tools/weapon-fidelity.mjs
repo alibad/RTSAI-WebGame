@@ -47,14 +47,18 @@ const area = (r) => (r ? r[2] * r[3] : 0);
 export function ra2For(weapon, facts, look) {
   const own = look.weapons[weapon.replace(/^ea-retail-/, "").replace(/^retail/, "")];
   if (weapon.startsWith("ea-retail-") && own) return { ...own, exact: true, damage: Number(own.damage ?? facts.damage ?? 0) };
+  // A modern copy of an RA2 weapon (the stand-in Flak Track's flaktrackaagun) is held to that weapon's own impacts.
+  if (own) return { ...own, exact: false, damage: Number(facts.damage ?? own.damage ?? 0) };
   const p = facts.projectile;
   const image = facts.fields?.Image;
   const damage = Number(facts.damage ?? 0);
   // A modern weapon is held to the closest RA2 kind: its impact to that kind's generic warhead (HE, AP or SA).
   if (BEAMS.has(p) || p === "OriginalRa2Action") return { kind: "laser", muzzle: null, exact: false, damage };
-  if (p === "Missile") return { kind: "missile", muzzle: null, exact: false, impact: look.warheads?.HE, damage };
+  if (p === "Missile" || p === "OriginalRa2Rocket") return { kind: "missile", muzzle: null, exact: false, impact: look.warheads?.HE, damage };
   if (p === "GravityBomb") return { kind: "bomb", muzzle: null, exact: false, impact: look.warheads?.HE, damage };
-  if (p === "Bullet" && image) return { kind: "shell", muzzle: "GUNFIRE", exact: false, impact: look.warheads?.AP, damage };
+  // Artillery and naval guns (long range or a high arc) land with RA2's general explosive list, tank guns with its AP one.
+  const artillery = (facts.range ?? 0) >= 9 * 1024 || Number(String(facts.fields?.LaunchAngle ?? "0").split(",")[0]) >= 100;
+  if (p === "Bullet" && image) return { kind: "shell", muzzle: "GUNFIRE", exact: false, impact: artillery ? look.warheads?.HE : look.warheads?.AP, damage };
   return { kind: "invisible", muzzle: "GUNFIRE", exact: false, impact: look.warheads?.SA, damage };
 }
 
@@ -73,7 +77,11 @@ export function measureTrial(t, facts) {
   const sprites = tracks.filter((k) => k.kind === "sprite" && k.end);
   // The weapon's own effect images (its warheads'): another sprite near the target, such as a ship's wake, is not its hit.
   const own = new Set((facts?.effects ?? []).map((e) => e.image).filter(Boolean));
-  const hits = own.size ? sprites.filter((s) => own.has(s.image) || s.explosion) : sprites;
+  // ... and only its own explosions: a tank's coaxial gun is not credited with the main gun's blast beside it.
+  const ownSeqs = new Set((facts?.effects ?? []).flatMap((e) => e.explosions ?? []));
+  // With no effect images of its own, only an explosion counts (a dog's "impact" is otherwise its victim's death).
+  const hits = sprites.filter((s) => (own.size ? own.has(s.image) || s.explosion : s.explosion) && !/watersplash/.test(s.sequences?.[0] ?? "")
+    && (!ownSeqs.size || ownSeqs.has(s.sequences?.[0])));
   const path = new Map((t.victimPath ?? []).map((p) => [p[0], p]));
   const victimAt = (tick) => {
     if (!t.moving || path.size === 0) return { c: t.victimCentre, r: t.victimRect };
@@ -85,6 +93,8 @@ export function measureTrial(t, facts) {
   const shots = [];
   for (const k of projectiles) {
     const beam = BEAMS.has(k.type);
+    // A missile still flying when the trial stops has not landed anywhere yet (the Aegis' late salvo).
+    if (!beam && t.ticks != null && k.last >= t.ticks - 1) continue;
     // A beam strikes on its first tick and then fades; a shell or missile strikes when it is gone.
     const tick = beam ? k.first : k.last + 1;
     const near = (p) => hits.filter((s) => s.first >= tick - 2 && s.first <= tick + 2 && dist(s.end, p) < 60);
@@ -189,7 +199,9 @@ export function analyze(raw, look, baseline = { accepted: {} }) {
     const atShooter = [...new Set(m.flatMap((x) => x.m.atShooter))];
     add("noBlastAtShooter", atShooter.length === 0, atShooter.length ? `explosion drawn on the shooter: ${atShooter.join(", ")}` : "none", `explosion drawn on the shooter (${atShooter[0]})`);
     const effects = m.flatMap((x) => x.m.shots).filter((s) => s.effect?.rect);
-    const expected = ra2Impact(ra2, look);
+    // RA2's flak draws its own puffs (HTRKPUFF, SMKPUFF) whatever the damage: a flak gun drawing them is RA2's look.
+    const flak = { flak_puff: "htrkpuff", flak_puff_AA: "smkpuff" }[effects[0]?.effect.sequence];
+    const expected = flak ? { name: flak, visible: look.anims?.[flak]?.visible } : ra2Impact(ra2, look);
     if (effects.length && expected?.visible) {
       // Held to what RA2 draws for a hit of this damage, not to the target's size: RA2's big missiles do dwarf a tank.
       const worst = effects.reduce((a, b) => (area(b.effect.rect) > area(a.effect.rect) ? b : a));
@@ -217,7 +229,10 @@ export function analyze(raw, look, baseline = { accepted: {} }) {
         `${beams[0].type}: a thin, faint line`);
       add("beamDuration", short.length === 0, `lit for ${Math.min(...beams.map((b) => b.litTicks))} ticks`, `${beams[0].type}: gone too fast`);
     }
-    if (fired && !(facts.report?.length)) add("sound", false, "no firing sound", "weapon has no Report (firing sound)");
+    // RA2's own weapon may be silent too: the carrier's HornetLauncher (its Hornets sound), Yuri's MindControl (the
+    // controller plays YuriMindControl). Only a sound RA2 gives and the port lacks, or a modern weapon's, is missing.
+    const silentInRa2 = !!ra2.projectile && !ra2.report;
+    if (fired && !(facts.report?.length)) add("sound", silentInRa2, silentInRa2 ? "silent, as RA2's weapon is" : "no firing sound", "weapon has no Report (firing sound)");
     // Original art drawn with the project's palette shows as coloured noise (the Typhoon's bubble trail, 20 Nov 2026).
     for (const [image, palette] of [["Image", "Palette"], ["TrailImage", "TrailPalette"]]) {
       const img = facts.fields?.[image], pal = facts.fields?.[palette];
