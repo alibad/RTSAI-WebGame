@@ -238,7 +238,11 @@ for (const clip of grid.clips) {
           const zoom = Math.max(fight ? fightMin : zoomMin, Math.min(zoomMax, fit));
           // Snap while the fight is held on its first tick, then glide.
           const k = first || window.store.getState().paused ? 1 : 0.028;
-          g.cam.x += ((x0 + x1) / 2 - g.cam.x) * k; g.cam.y += ((y0 + y1) / 2 - g.cam.y) * k; g.cam.zoom += (zoom - g.cam.zoom) * k;
+          // Stay on the map where it is larger than the picture: the black beyond its edge is not part of the game.
+          const bounds = window.store.getState().info?.bounds, halfW = g.canvas.clientWidth / zoom / 2, halfH = g.canvas.clientHeight / zoom / 2;
+          const within = (v, lo, hi, half) => (hi - lo > half * 2 ? Math.min(hi - half, Math.max(lo + half, v)) : v);
+          const tx = bounds ? within((x0 + x1) / 2, bounds[0], bounds[2], halfW) : (x0 + x1) / 2, ty = bounds ? within((y0 + y1) / 2, bounds[1], bounds[3], halfH) : (y0 + y1) / 2;
+          g.cam.x += (tx - g.cam.x) * k; g.cam.y += (ty - g.cam.y) * k; g.cam.zoom += (zoom - g.cam.zoom) * k;
           first = false;
         }
       }
