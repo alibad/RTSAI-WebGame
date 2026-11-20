@@ -206,6 +206,27 @@ def homing_lock(E, weapon, original):
     return True
 
 
+MISSILE_SPEED = 16 / 3  # the port's own scale: retail Speed 70 (Maverick) is 373, 40 (HoverMissile) is 213
+
+
+def missile_speed(E, weapon, original):
+    """The port flies the Patriot's RedEye2 and the Aegis's Medusa at 100 (retail Speed 100 and 120), off the scale
+    it uses for every other missile (retail Speed x 16/3): slower than every aircraft they are for (F-15 270, Harrier
+    210, Apache 150) but the Kirov, so they could not catch one. An anti-air homing missile (AAHeatSeeker,
+    MedusaProjectile) that is slower than that scale is put on it. Returns whether the weapon changed."""
+    projectile = weapon.get('Projectile')
+    if projectile is None or projectile.value != 'Missile' or not original.get('Speed'):
+        return False
+    if not re.search(r'aaheatseeker|medusa', original.get('Projectile', ''), re.I):
+        return False
+    speed = round(float(original['Speed']) * MISSILE_SPEED)
+    current = projectile.get('Speed')
+    if current is not None and int(current.value) >= speed:
+        return False
+    set_value(E, projectile, 'Speed', speed)
+    return True
+
+
 def normalize_voices(voices, E):
     # sound.ini's CrazyIvanMove/AttackCommand and TeslaTroopSelect do not name these clips.
     # Kirov has no fear/feedback voice event at all. Keep an explicitly empty phrase so the
@@ -585,6 +606,7 @@ class Retail:
         instant_projectile(E, twin, original)
         missile_reach(E, twin)
         homing_lock(E, twin, original)
+        missile_speed(E, twin, original)
         warhead = self.baseline['warheads'].get(original.get('Warhead'), {})
         retail_impact(E, twin, original, warhead, self.explosions)
         if twin.key in ('ea-retail-demobomb', 'ea-retail-terrorbomb', 'ea-retail-crnuke', 'ea-retail-crterrorbomb'):
