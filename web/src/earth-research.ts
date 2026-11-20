@@ -75,6 +75,20 @@ export async function researchSites(place: Place, radius: number, options: {
   };
   await Promise.allSettled(needed.map(work)); publish(false);
 }
+/**
+ * The listed places' pictures: one request for all of them (Wikipedia's lead image of each article, by page id), never
+ * one per marker. Answers id -> image address; places without an article or a lead image are simply absent.
+ */
+export async function sitePictures(sites: Pick<Site, "id" | "source">[], signal: AbortSignal): Promise<Record<string, string>> {
+  const ids = sites.filter(s => s.source === "Wikipedia" && /^wiki-\d+$/.test(s.id)).map(s => s.id.slice(5)).slice(0, 50);
+  if (!ids.length) return {};
+  try {
+    const answer = await json(`https://en.wikipedia.org/w/api.php?action=query&prop=pageimages&piprop=thumbnail&pithumbsize=160&pilimit=50&pageids=${ids.join("|")}&format=json&origin=*`, AbortSignal.any([signal, AbortSignal.timeout(8000)]));
+    const pages = Object.values(answer.query?.pages ?? {}) as { pageid?: number; thumbnail?: { source?: string } }[];
+    return Object.fromEntries(pages.filter(p => p.pageid && typeof p.thumbnail?.source === "string" && p.thumbnail.source.startsWith("https://"))
+      .map(p => [`wiki-${p.pageid}`, p.thumbnail!.source!]));
+  } catch { return {}; }
+}
 /** Only the selected article's text. Marker loading never fans out into article summaries. */
 export async function siteDetails(site: Site, signal: AbortSignal): Promise<Partial<Site>> {
   if (site.source !== "Wikipedia" || !site.id.startsWith("wiki-") || !site.url?.startsWith("https://en.wikipedia.org/wiki/")) return {};

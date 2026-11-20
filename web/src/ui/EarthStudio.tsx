@@ -4,7 +4,7 @@
 // lib/earth-battlefield.ts, the same file /studio runs). From there: edit the map, or start a mission on the fly at a
 // site the scan found, between any two nations.
 
-import { useEffect, useRef, useState, type CSSProperties } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ArrowLeft, Dices, LoaderCircle, MapPin, Pencil, Search, Shield, Swords } from "lucide-react";
 import { developerTools } from "../developer-tools";
 import type { Game } from "../game";
@@ -18,7 +18,7 @@ import { Flag } from "./Flag";
 import { GameButton } from "./kit/game";
 import { compileBattlefield } from "@site/lib/earth-battlefield";
 import { elevationGrid } from "../elevation";
-import { researchSites, siteDetails, type Place, type Site, type SiteStatus } from "../earth-research";
+import { researchSites, siteDetails, sitePictures, type Place, type Site, type SiteStatus } from "../earth-research";
 import { preloadKnownSites } from "../earth-site-catalog";
 import { mergeSites, type CoreSite } from "../earth-site-model";
 import { overpassFailure, terrainBox, terrainFeatures } from "@site/lib/earth-evidence";
@@ -51,6 +51,12 @@ const FOOTPRINTS = [
 ];
 const OVERPASS = ["https://overpass-api.de/api/interpreter", "https://maps.mail.ru/osm/tools/overpass/api/interpreter", "https://overpass.kumi.systems/api/interpreter", "https://overpass.private.coffee/api/interpreter"];
 const ESRI = "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}";
+/** The satellite picture of a spot (the globe's own imagery, one tile): a place's picture when its article has none. */
+function satelliteTile(lat: number, lon: number, z = 16) {
+  const n = 2 ** z, rad = Math.max(-85, Math.min(85, lat)) * Math.PI / 180;
+  const x = Math.floor(((lon + 180) / 360) * n), y = Math.floor((1 - Math.log(Math.tan(rad) + 1 / Math.cos(rad)) / Math.PI) / 2 * n);
+  return ESRI.replace("{z}", String(z)).replace("{y}", String(Math.max(0, Math.min(n - 1, y)))).replace("{x}", String(((x % n) + n) % n));
+}
 
 async function overpass(query: string, signal?: AbortSignal) {
   const deadline = AbortSignal.any([...(signal ? [signal] : []), AbortSignal.timeout(60000)]);
@@ -248,6 +254,20 @@ export function EarthStudio({ game, editor, close, mission, play }: { game: Game
     });
     return () => controller.abort();
   }, [site?.id]);
+  // The listed places' pictures, asked for once per place (one request for the whole list).
+  const [pictures, setPictures] = useState<Record<string, string>>({});
+  const pictured = useRef(new Set<string>());
+  const unpictured = sites.slice(0, sitePage * 30).filter(s => !s.thumb && s.source === "Wikipedia" && !pictured.current.has(s.id)).map(s => s.id).join(",");
+  useEffect(() => {
+    if (!unpictured) return;
+    const controller = new AbortController(), ids = unpictured.split(",");
+    ids.forEach(id => pictured.current.add(id));
+    void sitePictures(ids.map(id => ({ id, source: "Wikipedia" as const })), controller.signal).then(found => {
+      if (controller.signal.aborted) { ids.forEach(id => pictured.current.delete(id)); return; }
+      if (Object.keys(found).length) setPictures(p => ({ ...p, ...found }));
+    });
+    return () => controller.abort();
+  }, [unpictured]);
   const exportSites = () => {
     const data = { schema: 1, dataset: datasetVersion, savedAt: new Date().toISOString(), place, radius: fp.radius, scope: "Known public geographic sites; not a complete inventory or current force positions", attribution: "© OpenStreetMap contributors (ODbL); Wikipedia metadata and linked article licenses", sites: place ? sites : knownSites };
     const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }));
@@ -535,7 +555,8 @@ export function EarthStudio({ game, editor, close, mission, play }: { game: Game
               {!scanning && sites.length === 0 && <p className="ed-tip">No nearby site information is available. You can still build the battlefield.</p>}
               {sites.slice(0, sitePage * 30).map((s) => (
                 <button key={s.id} type="button" className="es-site" aria-pressed={site?.id === s.id} onClick={() => pickSite.current(s)}>
-                  <span className="es-site-th" style={s.thumb ? { backgroundImage: `url("${s.thumb}")` } as CSSProperties : undefined}>{!s.thumb && <MapPin size={20} />}</span>
+                  {/* An <img> asked for with CORS: the page is cross-origin isolated, where a CSS background from another site is refused. */}
+                  <span className="es-site-th"><MapPin size={20} /><img src={s.thumb ?? pictures[s.id] ?? satelliteTile(s.lat, s.lon)} crossOrigin="anonymous" alt="" loading="lazy" draggable={false} onError={(e) => { e.currentTarget.hidden = true; }} /></span>
                   <span className="es-site-body">
                     <b>{s.name}</b>
                     {s.extract && <small>{s.extract}</small>}
