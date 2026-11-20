@@ -9,7 +9,7 @@
 // a caption, a name tag under each unit and the HUD being hidden are the film's own.
 //
 //   node tools/film-parade.mjs --base http://127.0.0.1:3590/ --out <dir> [--factions iran,germany:tnkd+mtnk+e1] [--rows infantry,vehicles,ships,defenses,buildings]
-//        [--units tnkd,mtnk] [--map web-arena] [--crf 22] [--keep-takes] [--cold-audio]
+//        [--units tnkd,mtnk] [--map web-arena] [--crf 22] [--keep-takes] [--cold-audio [--settle 15000]]
 // Writes <out>/<faction>.mp4 (H.264 + AAC, 1280x720, 30 fps) and <out>/<faction>.json: per unit, what was heard and
 // seen (voices on select and on orders, shots counted by the engine, distinct facings, body sequences, death).
 import fs from "node:fs";
@@ -26,6 +26,9 @@ const flag = (k) => argv.includes(`--${k}`);
 const base = opt("base", "http://127.0.0.1:3590/");
 const out = path.resolve(opt("out", "parade"));
 const crf = opt("crf", "22");
+// --settle <ms>: wait this long after each battle is built, before the camera rolls (with --cold-audio, the time a
+// page's own background sound fetch gets, as a match gets while the player sets up a base).
+const settle = Number(opt("settle", "0"));
 const onlyRows = opt("rows", "")?.split(",").filter(Boolean);
 const unitsForAll = opt("units", "")?.split(",").filter(Boolean); // a short parade of just these roster units
 const W = 1280, H = 720, FPS = 30;
@@ -99,6 +102,7 @@ await page.evaluate(() => {
     .parade-tag{position:fixed;z-index:2147482999;transform:translate(-50%,0);padding:1px 6px;border-radius:5px;background:rgba(10,12,16,.62);color:#fff;
       font:500 11px/1.35 system-ui,Segoe UI,sans-serif;white-space:nowrap;pointer-events:none;transition:opacity .5s}
     .parade-tag.ref{background:rgba(233,180,60,.88);color:#111}
+    .parade-tag.cloaks{outline:1px dashed rgba(255,255,255,.85);outline-offset:-1px}
     .parade-tag.gone{opacity:.35}`;
   document.head.appendChild(css);
   const cap = document.createElement("div");
@@ -115,7 +119,7 @@ await page.evaluate(() => {
     P.tags.clear();
     for (const t of list) {
       const el = document.createElement("div");
-      el.className = "parade-tag" + (t.ref ? " ref" : "");
+      el.className = "parade-tag" + (t.ref ? " ref" : "") + (t.cloaks ? " cloaks" : "");
       el.textContent = t.label;
       document.body.appendChild(el);
       P.tags.set(t.id, { el, x: 0, y: 0, dy: t.dy ?? 26 });
@@ -222,7 +226,7 @@ function encodeTake(frames, dir, file, audio, lens = []) {
   const af = (offset >= 0 ? `adelay=${Math.round(offset * 1000)}:all=1` : `atrim=start=${(-offset).toFixed(3)},asetpts=PTS-STARTPTS`) + `,apad,atrim=end=${(durationMs / 1000).toFixed(3)}`;
   // The screencast JPEGs are full-range BT.601 YCbCr; the delivery is limited-range BT.709 yuv420p.
   const colour = "scale=trunc(iw/2)*2:trunc(ih/2)*2:in_range=full:in_color_matrix=bt601:out_range=limited:out_color_matrix=bt709,format=yuv420p,setparams=range=tv:color_primaries=bt709:color_trc=bt709:colorspace=bt709";
-  const CW = 132, CH = 108, Z = 3, B = 3;
+  const CW = Math.min(132, lens[0]?.w ?? 132), CH = 108, Z = 3, B = 3;
   const shots = lens.map((l, k) => ({ a: Math.max(0, (l.t - first) / 1000), b: Math.max(0, ((lens[k + 1]?.t ?? l.t + (l.ms ?? 800)) - first) / 1000),
     x: Math.round(Math.min(W - CW, Math.max(0, l.x - CW / 2))), y: Math.round(Math.min(H - CH, Math.max(0, l.y - CH / 2 - 6))) }));
   let graph = `[0:v]${colour}[v0]`, last = "v0";
@@ -239,7 +243,7 @@ function encodeTake(frames, dir, file, audio, lens = []) {
   fs.writeFileSync(path.join(dir, "graph.txt"), graph);
   execFileSync("ffmpeg", ["-nostdin", "-y", "-v", "error", "-f", "concat", "-safe", "0", "-i", "list.txt", "-i", "sound.wav", "-r", String(FPS), "-filter_complex_script", "graph.txt",
     "-map", `[${last}]`, "-map", "[a]", "-c:v", "libx264", "-preset", "medium", "-crf", crf, "-g", "60", "-c:a", "aac", "-b:a", "128k", "-ar", "48000", "-ac", "2", "-shortest", "-movflags", "+faststart", file], { cwd: dir });
-  return { first, seconds: durationMs / 1000, frames: frames.length, framesPerSecond: Number((frames.length / (durationMs / 1000)).toFixed(1)), soundOffset: Number(offset.toFixed(3)), peak: Number(audio.peak.toFixed(2)) };
+  return { first, seconds: durationMs / 1000, frames: frames.length, framesPerSecond: Number((frames.length / (durationMs / 1000)).toFixed(1)), soundOffset: Number(offset.toFixed(3)), peak: Number(audio.peak.toFixed(2)), lens: shots.length ? [CW * Z + 2 * B, CH * Z + 2 * B] : undefined };
 }
 
 // ---------------------------------------------------------------------------------------------------- the game
@@ -263,10 +267,12 @@ const setupMaps = await g(() => window.store.getState().setup.maps.map((m) => ({
 // Each unit's voice set, from the rules the engine resolved (cmd unitrules). Selected units share one voice channel
 // (Sound.PlayPredefined: a selected actor's voice is refused while another selected actor's is still playing), so
 // the film waits a voice out only the first time a set is heard and moves on quickly otherwise.
-const voiceSets = {};
+const voiceSets = {}, cloaks = {};
 async function voiceSetOf(name) {
   if (!(name in voiceSets)) {
     const r = await g((type) => window.game.command({ cmd: "unitrules", type }), name).catch(() => null);
+    // A unit that hides when it stands still (Cloak that a move or a shot lifts): pale to its owner after a few seconds.
+    cloaks[name] = /^Cloak(?:@[^:\n]*)?:\n(?:\t.*\n)*?\tUncloakOn:/m.test(r?.actor ?? "");
     voiceSets[name] = /^(?:RTSAI)?Voiced(?:@[^:\n]*)?:\n\tVoiceSet: (\S+)/m.exec(r?.actor ?? "")?.[1] ?? null;
   }
   return voiceSets[name];
@@ -296,7 +302,7 @@ async function startBattle(st, faction, enemy, placements) {
   await look();
   // Every sheet the two sides and the effects need is on the GPU before the camera rolls.
   await page.waitForFunction(() => window.game.renderer.stats.skipped === 0, null, { timeout: 60000 }).catch(() => log("  (some sprites still loading)"));
-  await sleep(350);
+  await sleep(350 + settle);
 }
 
 /** Where the land stage's middle is (the map's own middle), asked once. */
@@ -333,13 +339,14 @@ async function unitTake(faction, country, enemy, row, takeDir, heard) {
   const water = row.kind === "ships";
   const st = water ? STAGES.water : STAGES.land;
   const c = st.centre;
-  const names = [...row.units, ...(row.refs ?? [])];
+  for (const name of row.units) await voiceSetOf(name);
+  const names = [...row.units.filter((u) => cloaks[u]), ...row.units.filter((u) => !cloaks[u]), ...(row.refs ?? [])];
   const n = names.length;
   const fixed = row.kind === "defenses";
   const gap = water ? (n > 4 ? 2 : 3) : n > 7 ? 2 : 3;
   const u0 = Math.round(c.u - (gap * (n - 1)) / 2);
   // Low in the frame at the start, a third up after the walk; targets near the top. Defences stand where they fire.
-  const vStart = c.v + (fixed ? 4 : 13), vEnd = c.v + (fixed ? 4 : 6), vTargets = c.v - (fixed ? 4 : 6);
+  const vStart = c.v + (fixed ? 4 : 13), vEnd = c.v + (fixed ? 4 : 6), vTargets = c.v - (fixed ? 4 : row.kind === "infantry" ? 2 : 6);
   const placements = [];
   names.forEach((name, i) => placements.push({ id: name, side: 0, u: u0 + gap * i, v: vStart, facing: 384 }));
   // The other side's dummies: buildings (ground), engineers (infantry), a miner (vehicle), transports (sea), and two
@@ -383,11 +390,9 @@ async function unitTake(faction, country, enemy, row, takeDir, heard) {
   const yard = row.yard ? all.find((a) => a.own && a.type === row.yard) : null;
   // The stage's ground level (the lake lies above the map's zero): heights are measured from it.
   const groundZ = Math.min(...all.map((a) => a.z));
-  const tags = live.map((p) => ({ id: p.id, label: label(p.name) + (report[p.i].ref ? " (original)" : ""), ref: report[p.i].ref, dy: unitOf[p.name]?.kind === "aircraft" ? 28 : fixed ? 30 : 24 }));
+  const tags = live.map((p) => ({ id: p.id, label: label(p.name) + (report[p.i].ref ? " (original)" : ""), ref: report[p.i].ref, cloaks: !!cloaks[p.name], dy: unitOf[p.name]?.kind === "aircraft" ? 28 : fixed ? 30 : 24 }));
   if (yard) tags.push({ id: yard.id, label: label(row.yard), dy: 40 });
   await g(({ tags, flagId, country, title }) => { const P = window.__parade; P.setTags(tags); P.caption(flagId, country, title, ""); }, { tags, flagId: faction, country, title: row.title });
-  // Hold fire until the fire step: nobody opens up on the dummies on their own.
-  await g(async (ids) => { await window.game.select(ids); await window.game.command({ cmd: "stance", stance: "holdfire" }); await window.game.select([]); }, live.map((p) => p.id));
 
   const rec = recorder(path.join(takeDir, "frames"));
   await g(() => window.__parade.startTap());
@@ -403,20 +408,31 @@ async function unitTake(faction, country, enemy, row, takeDir, heard) {
   await step("select");
   const lens = [];
   let voiceUntil = 0; // when the selected units' voice channel is free again (page clock)
-  for (const p of live) {
+  // The whole row is boxed first, as a player would, and told to hold fire until the fire step (nobody opens up on
+  // the dummies on their own). The engine answers a group with its first unit's voice: that is the first unit's line.
+  const tGroup = await pageNow();
+  await g(async (ids) => { await window.game.select(ids); await window.game.command({ cmd: "stance", stance: "holdfire" }); }, live.map((p) => p.id));
+  await sleep(260);
+  const groupVoice = await voiceSince(tGroup);
+  if (groupVoice) voiceUntil = groupVoice.t + groupVoice.seconds * 1000;
+  for (const [k, p] of live.entries()) {
     const set = await voiceSetOf(p.name);
+    if (k > 0 && set && !heard.has(set)) { const busy = voiceUntil - (await pageNow()); if (busy > 0) await sleep(Math.min(2400, busy + 60)); }
     const t = await pageNow();
     const at = await g(async (id) => { const gm = window.game; await gm.select([id]); const a = gm.client.cur.actors.find((x) => x.id === id); return a ? gm.toClient(a.sx, a.sy) : null; }, p.id);
-    if (at) lens.push({ t, x: at[0], y: at[1] });
+    if (at) lens.push({ t, x: at[0], y: at[1], w: gap * 60 - 6 });
     const free = t >= voiceUntil;
     await sleep(320);
-    const voice = await voiceSince(t);
+    let voice = await voiceSince(t);
     if (voice) voiceUntil = voice.t + voice.seconds * 1000;
-    Object.assign(report[p.i], { t, voiceSet: set, selectVoice: voice ? Number(voice.seconds.toFixed(2)) : free ? 0 : null });
-    // A set heard for the first time is heard out (at most 3.2 s); otherwise the next unit follows after 0.65 s.
+    // The first unit's line is the one that answered the group.
+    else if (k === 0 && groupVoice) voice = groupVoice;
+    Object.assign(report[p.i], { t, voiceSet: set, cloaks: !!cloaks[p.name] || undefined, selectVoice: voice ? Number(voice.seconds.toFixed(2)) : free ? 0 : null });
+    // A set heard for the first time is heard out (at most 2.4 s); otherwise the next unit follows after 0.65 s.
     const firstHearing = voice && set && !heard.has(set);
     if (firstHearing) heard.add(set);
-    await sleep(Math.max(330, firstHearing ? Math.min(3200, voice.seconds * 1000 + 150) - 320 : 0));
+    const left = firstHearing ? Math.min(2400, voiceUntil - (await pageNow()) + 120) : 0;
+    await sleep(Math.max(330, left));
   }
   if (lens.length) lens[lens.length - 1].ms = 800;
   if (yard) { await g((id) => window.game.select([id]), yard.id); await sleep(600); }
@@ -470,7 +486,7 @@ async function unitTake(faction, country, enemy, row, takeDir, heard) {
   }
   await g(() => window.game.select([]));
   const tFire = await pageNow();
-  await sleep(row.kind === "infantry" ? 5000 : 4200);
+  await sleep(row.kind === "infantry" ? 4400 : 3800);
   const after = await results();
   const shots = (r, type) => (r?.types ?? []).filter((x) => x.side === 0 && x.type === type).reduce((k, x) => k + x.shots, 0);
   const now1 = await actors();
@@ -499,8 +515,8 @@ async function unitTake(faction, country, enemy, row, takeDir, heard) {
     }
     gm.setPaused(false);
   }, { posNow: posNow.map((a) => ({ id: a.id, sx: a.sx, sy: a.sy, zpx: Math.max(0, a.z - groundZ) * 30 / 1448, kind: unitOf[a.type]?.queue === "Ship" ? "ship" : unitOf[a.type]?.kind })), row: row.kind, killers: KILLERS, water });
-  const dead = await until((ids) => { const s = window.game.client.cur; return ids.every((id) => !s.actors.some((x) => x.id === id && x.hp > 0 && !(x.flags & 16))); }, live.map((p) => p.id), 7000, 150);
-  await sleep(1700);
+  const dead = await until((ids) => { const s = window.game.client.cur; return ids.every((id) => !s.actors.some((x) => x.id === id && x.hp > 0 && !(x.flags & 16))); }, live.map((p) => p.id), 6000, 150);
+  await sleep(1500);
   const end = await actors();
   clearInterval(sampler);
   for (const p of live) {
@@ -637,7 +653,7 @@ for (const { faction, units: onlyUnits } of wanted) {
     if (onlyRows.length && !onlyRows.includes(kind)) continue;
     const refs = MODERN.has(faction) ? REFS[kind].filter((r) => !groups[kind].includes(r)) : [];
     if (!groups[kind].length) continue;
-    const parts = chunk(groups[kind], kind === "ships" ? 5 : 10 - refs.length);
+    const parts = chunk(groups[kind], (kind === "ships" ? 5 : 7) - refs.length);
     parts.forEach((units, k) => rows.push({ kind, title: titles[kind] + (parts.length > 1 ? ` ${k + 1}/${parts.length}` : ""), units, refs: k === 0 ? refs : [], yard: kind === "ships" && k === 0 ? yard : undefined }));
   }
   const dir = path.join(out, `${faction}-takes`);
@@ -648,7 +664,7 @@ for (const { faction, units: onlyUnits } of wanted) {
       let take = await f();
       // The normal speed is 25 game ticks a second; a take the PC could not keep up with (under 21) is filmed again,
       // once. Each take's measured speed stays in the report either way.
-      if (take.ticksPerSecond < 21 || take.framesPerSecond < 24) { log(`  slow take (${take.ticksPerSecond} ticks/s, ${take.framesPerSecond} frames/s): again`); take = { ...(await f()), retried: true }; }
+      if (take.ticksPerSecond < 21 || take.framesPerSecond < 20) { log(`  slow take (${take.ticksPerSecond} ticks/s, ${take.framesPerSecond} frames/s): again`); take = { ...(await f()), retried: true }; }
       takes.push({ file: path.join(takeDir, "take.mp4"), ...take });
     }
     catch (e) { log(`  TAKE FAILED: ${String(e).slice(0, 300)}`); takes.push({ row: title, kind, failed: String(e).slice(0, 300) }); await g(() => window.game.setPaused(true)).catch(() => {}); await cdp.send("Page.stopScreencast").catch(() => {}); }
