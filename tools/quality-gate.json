@@ -15,6 +15,7 @@
     { "file": "lazyfs.test.mjs" },
     { "file": "local-ai-readiness-test.mjs" },
     { "file": "map-names-unit-test.mjs" },
+    { "file": "match-sounds-unit-test.mjs" },
     { "file": "mission-adviser-test.mjs" },
     { "file": "overpass-relay-test.mjs" },
     { "file": "peer-unit-test.mjs" },

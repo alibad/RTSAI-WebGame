@@ -8,6 +8,7 @@ import {
   textureUpdates, type FromWorker, type ToWorker,
 } from "./protocol";
 import { LazyMount, httpRangeReader, httpRangeReaderAsync, mountPack, wholeFileReader, wholeFileReaderAsync } from "./lazyfs";
+import { matchSounds } from "./match-sounds";
 import { normalizeVoiceLanguage } from "../voice-language";
 import { CompanionRelay } from "./companion";
 import { encodeAdviserStatus } from "./adviser-rpc";
@@ -354,11 +355,15 @@ function start(scenario: string, startPaused = false, companion: boolean | "brow
   lastUi = "";
   ticks = 0;
   post({ type: "started", info, terrain: tbuf, radarTerrain: rbuf, startMs: performance.now() - t0, lazy: lazy?.stats }, [tbuf, rbuf]);
-  // The local player's announcer and the interface sounds, fetched in the background (a sound that is not here yet
-  // is skipped, never waited for).
+  // The sounds this match is sure to need, fetched in the background in the order the player meets them: the
+  // announcer and the interface, the battlefield's weapons and explosions, the local player's own unit voices
+  // (match-sounds.ts). A sound that is not here yet is skipped, never waited for, so what is not asked for here
+  // stays silent the first time it is needed.
   try {
-    const local = (spec.players as { client?: number; faction?: string; bot?: string }[]).find((p) => !p.bot && (!spec.multiplayer || p.client === spec.localClient))?.faction;
-    if (lazy && local) lazy.prefetch(lazy.backgroundPaths().filter((p) => p.includes(`/eva/${local}/`) || p.includes("/audio/ui/")));
+    const playing = (info.players ?? []) as { name: string; faction: string }[];
+    const local = playing.find((p) => p.name === info.localPlayer)?.faction
+      ?? (spec.players as { client?: number; faction?: string; bot?: string }[]).find((p) => !p.bot && (!spec.multiplayer || p.client === spec.localClient))?.faction;
+    if (lazy && local) void lazy.prefetch(matchSounds(lazy.backgroundPaths(), local, playing.length ? playing.map((p) => p.faction) : [local]));
   } catch { /* a scenario without players */ }
   if (companionEnabled && companion !== "browser") {
     const url = new URL("companion/bridge", base);
