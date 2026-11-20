@@ -71,8 +71,9 @@ in-match chat (Enter) and an optional camera and microphone are included.
   team) clears everyone's Ready; a join, a leave or another player's Ready does not, and no longer swallows a Ready
   that was on its way.
 - **A match that stands still says so.** When no frame has played for 1.5 seconds, the match bar turns amber and
-  names whose orders the match is waiting for ("Waiting for Player 2…"), and from 5 seconds on counts toward the
-  15 at which the line gives up.
+  names whose orders the match is waiting for ("Waiting for Player 2…"); at the very start it says that their game
+  is still loading, and from 5 seconds on it counts the seconds. It promises no time: only a silent line ends the
+  match (15 seconds without any message), not a slow game.
 - **Networks.** Public STUN servers (Google, Cloudflare) find routes. There is no TURN relay. Some strict networks
   cannot connect directly.
   - The guest then reads "Couldn't connect directly to your host. Some networks block direct connections; try

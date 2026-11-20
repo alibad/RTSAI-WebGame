@@ -45,6 +45,13 @@ function waitingText(view: SessionView) {
   if (others.length > 1) return `Waiting for Players ${others.slice(0, -1).join(', ')} and ${others.at(-1)}`;
   return view.waitingFor.includes(view.you) ? 'Your game is catching up' : 'Waiting for the other players';
 }
+/** The line under it: why the match stands still and what happens next. Nothing here promises a time. */
+function waitingDetail(view: SessionView) {
+  const mine = view.waitingFor.length === 1 && view.waitingFor[0] === view.you;
+  if (view.waitingToStart) return mine ? 'The match starts for everyone when your game has loaded.' : 'Their game is still loading. The match starts for everyone when it has.';
+  const how = mine ? 'continues as soon as your game has caught up' : 'continues as soon as their game answers';
+  return `The match is paused for everyone and ${how}.${view.waiting >= 5 ? ` No answer for ${view.waiting} seconds.` : ''}`;
+}
 
 function MatchBar({ view, session }: { view: SessionView; session: MultiplayerSession }) {
   const [details, setDetails] = useState(false), stopped = view.stage === 'stopped';
@@ -66,7 +73,7 @@ function MatchBar({ view, session }: { view: SessionView; session: MultiplayerSe
     </div>}
     {waiting && <div role="status" className="mp-popover mp-match-waiting">
       <span className="mp-match-waiting-icon" aria-hidden="true"><Hourglass size={16} /></span>
-      <div><strong>{waitingText(view)}…</strong><p>The match is paused for everyone and continues as soon as {view.waitingFor.includes(view.you) && view.waitingFor.length === 1 ? 'it has' : 'they answer'}. {view.waiting >= 5 ? `No answer for ${view.waiting} seconds; it stops at 15.` : ''}</p></div>
+      <div><strong>{waitingText(view)}…</strong><p>{waitingDetail(view)}</p></div>
     </div>}
     {stopped && view.error && <div role="alert" className="mp-popover mp-match-error">
       <span className="mp-match-error-icon" aria-hidden="true"><TriangleAlert size={16} /></span>

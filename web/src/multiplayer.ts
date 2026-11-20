@@ -42,9 +42,11 @@ export type SessionView = {
   delay: number;
   /** Playing: the match has not moved for this many seconds (0: it is running), and whose orders it is waiting for. */
   waiting: number; waitingFor: number[];
+  /** That wait is at the very start: those players' games have not sent their first orders (still loading). */
+  waitingToStart: boolean;
 };
 
-const idle: SessionView = { stage: 'idle', host: false, room: '', you: 0, lobby: null, chat: [], status: '', error: '', frame: 0, camera: false, remote: [], mapLoading: false, delay: 0, waiting: 0, waitingFor: [] };
+const idle: SessionView = { stage: 'idle', host: false, room: '', you: 0, lobby: null, chat: [], status: '', error: '', frame: 0, camera: false, remote: [], mapLoading: false, delay: 0, waiting: 0, waitingFor: [], waitingToStart: false };
 const ANSWER_WAIT_MS = 45000, OPEN_WAIT_MS = 20000, HELLO_WAIT_MS = 20000;
 /** A running match that has not moved for this long says so on screen (the line itself gives up after 15 s). */
 const STALL_NOTICE_MS = 1500;
@@ -458,13 +460,13 @@ export class MultiplayerSession {
     const lock = this.lock = new PeerLockstep(humans, frame => this.game.client.send({ type: 'peerFrame', ...frame }), delay);
     this.unwatch?.(); this.unwatch = null;
     this.lastFrameAt = 0;
-    this.set({ stage: 'playing', you, frame: 0, status: '', delay, waiting: 0, waitingFor: [] });
+    this.set({ stage: 'playing', you, frame: 0, status: '', delay, waiting: 0, waitingFor: [], waitingToStart: false });
     // A match that stands still says whose orders it is waiting for, instead of a frozen screen (before the first
     // frame the loading screen is still up).
     this.stallWatch = setInterval(() => {
       if (this.lock !== lock || this.view.stage !== 'playing' || !this.lastFrameAt) return;
       const still = performance.now() - this.lastFrameAt, waiting = still > STALL_NOTICE_MS ? Math.floor(still / 1000) : 0;
-      if (waiting !== this.view.waiting) this.set({ waiting, waitingFor: waiting ? lock.waitingFor() : [] });
+      if (waiting !== this.view.waiting) this.set({ waiting, waitingFor: waiting ? lock.waitingFor() : [], waitingToStart: lock.frame <= lock.delay });
     }, 500);
     useStore.getState().set({ cc: { ...useStore.getState().cc, enabled: false } });
     this.game.start(JSON.stringify({ ...scenario, localClient: you, network: { peer: true, delay } }));

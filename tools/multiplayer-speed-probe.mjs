@@ -4,7 +4,7 @@
 // frames a second: the probe reports what the match reached, and that every frame's SyncHash agreed.
 //   RTSAI_TEST_URL=... RTSAI_FIRESTORE_EMULATOR=... node tools/multiplayer-speed-probe.mjs [--pings 0,60,120,200] [--players 2] [--seconds 40] [--jitter 0]
 import fs from 'node:fs';
-import { launch, openPlayer, signIn, atMenu, createMatch, joinMatch, ready, startMatch, syncReport, deployMcv, diagnose, sleep } from './multiplayer-harness.mjs';
+import { launch, openPlayer, signIn, atMenu, createMatch, joinMatch, ready, startMatch, syncReport, deployMcv, diagnose, lineBytes, sleep } from './multiplayer-harness.mjs';
 
 const argv = process.argv.slice(2), opt = (k, d) => { const i = argv.indexOf(`--${k}`); return i >= 0 ? argv[i + 1] : d; };
 const pings = opt('pings', '0,60,120,200').split(',').map(Number), count = Number(opt('players', 2)), seconds = Number(opt('seconds', 40)), jitter = Number(opt('jitter', 0));
@@ -25,9 +25,13 @@ try {
     await startMatch(host, players);
     await sleep(4000);
     for (const p of players) await deployMcv(p);
+    const before = await Promise.all(players.map(lineBytes));
     await sleep(seconds * 1000);
     const report = await syncReport(players, { sinceMs: (seconds - 2) * 1000 });
-    rows.push({ ping, jitter, speed: report.speed, percent: report.speed.map(s => Math.round(s / 25 * 100)), frames: report.frames, compared: report.compared, mismatch: report.mismatch, errors: report.errors.flat() });
+    // What the direct line carried per player, in kilobytes a second (sent, received): what a relay would have to pass on.
+    const after = await Promise.all(players.map(lineBytes));
+    const line = after.map((a, i) => [+((a.sent - before[i].sent) / seconds / 1000).toFixed(1), +((a.received - before[i].received) / seconds / 1000).toFixed(1)]);
+    rows.push({ ping, jitter, speed: report.speed, percent: report.speed.map(s => Math.round(s / 25 * 100)), frames: report.frames, compared: report.compared, mismatch: report.mismatch, errors: report.errors.flat(), kilobytesPerSecond: line });
     console.log(JSON.stringify(rows.at(-1)));
     // Back to the menu for the next round.
     await host.page.evaluate(() => window.game.quit());

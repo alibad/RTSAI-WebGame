@@ -152,6 +152,16 @@ export async function syncReport(players, { sinceMs = 0 } = {}) {
     mismatchHashes: mismatch === null ? null : states.map(s => s.hashes[mismatch]), speed };
 }
 
+/** Bytes this player's direct connections have sent and received so far (orders, hashes, chat, media, overhead). */
+export const lineBytes = player => player.page.evaluate(async () => {
+  let sent = 0, received = 0;
+  for (const pc of window.mp.connections) {
+    if (pc.connectionState === 'closed') continue;
+    for (const stat of (await pc.getStats()).values()) if (stat.type === 'transport') { sent += stat.bytesSent ?? 0; received += stat.bytesReceived ?? 0; }
+  }
+  return { sent, received };
+});
+
 /** The local player's actors of a kind, through the page's own game API. */
 export const own = (player, match) => player.page.evaluate(m => {
   const g = window.game, s = g.client.cur;
