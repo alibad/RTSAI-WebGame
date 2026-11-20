@@ -27,9 +27,10 @@ fs.mkdirSync(raw, { recursive: true }); fs.mkdirSync(out, { recursive: true });
 const filmTool = path.join(repo, "evals", "faction-showdown-20261022", "tools", "film.mjs");
 
 /** One side in a sentence: what the review needs to know without watching the numbers. */
-function line(s) {
+function line(s, g) {
   const never = s.neverLand.filter((u) => !/Construction Vehicle|Spy/.test(u.name)).map((u) => u.name);
-  return `${nameOf(s.faction)} (${s.skillLabel}): ${s.idleShare === null ? "too short to judge idling" : `${s.idleShare}% of its fighters idle after 5:00`}; ${s.firstAttack === null ? "never reached the enemy base" : `at the enemy base from ${clock(s.firstAttack)}, biggest group ${s.biggestWave}`}; ${never.length ? `never built ${never.slice(0, 4).join(", ")}${never.length > 4 ? ` and ${never.length - 4} more` : ""}` : "built its whole land and air roster"}.`;
+  const roster = g.gameSeconds < 900 ? "the game was too short for its later units" : never.length ? `never built ${never.slice(0, 3).join(", ")}${never.length > 3 ? ` and ${never.length - 3} more` : ""}` : "built its whole land and air roster";
+  return `${nameOf(s.faction)} (${s.skillLabel}): ${s.idleShare === null ? "too short to judge idling" : `${s.idleShare}% of its fighters idle after 5:00`}; ${s.firstAttack === null ? "never reached the enemy base" : `at the enemy base from ${clock(s.firstAttack)}, biggest group ${s.biggestWave}`}; ${roster}.`;
 }
 
 // --only also sets the order: the games worth seeing first are filmed first.
@@ -37,7 +38,8 @@ const order = only ? [...only].map((id) => report.games.find((g) => g.id === id)
 for (const g of order) {
   const name = `${g.id}${tag ? `-${tag}` : ""}`, [a, b] = g.sides;
   const mp4 = path.join(out, `${name}.mp4`);
-  if (fs.existsSync(mp4) && !argv.includes("--again")) { console.log(`${name}: already filmed`); continue; }
+  // --recaption: the film is kept; its 720p copy and captions are made again.
+  if (fs.existsSync(mp4) && !argv.includes("--again") && !argv.includes("--recaption")) { console.log(`${name}: already filmed`); continue; }
   const label = `${nameOf(b.faction)} · ${b.skillLabel}`, sub = `vs ${nameOf(a.faction)} · ${a.skillLabel}${tag ? ` · ${tag}` : ""}`;
   const t0 = Date.now();
   const made = path.join(raw, `${name}.mp4`);
@@ -48,7 +50,7 @@ for (const g of order) {
   const filmInfo = JSON.parse(fs.readFileSync(path.join(raw, `${name}.json`), "utf8"));
   // Captions: two lines under the picture, the reference side first (blue), then the side under test (red).
   const caption = path.join(raw, `${name}.txt`);
-  fs.writeFileSync(caption, `${line(a)}\n${line(b)}`);
+  fs.writeFileSync(caption, `${line(a, g)}\n${line(b, g)}`);
   const esc = (p) => p.replace(/\\/g, "/").replace(/:/g, "\\:");
   const vf = `scale=1280:720:flags=lanczos,pad=1280:792:0:0:color=0x10140e,drawtext=fontfile='${esc("C:/Windows/Fonts/segoeui.ttf")}':textfile='${esc(caption)}':expansion=none:fontsize=15:fontcolor=0xeeeadd:x=18:y=732:line_spacing=7`;
   execFileSync("ffmpeg", ["-y", "-loglevel", "error", "-i", made, "-vf", vf, "-c:v", "libx264", "-preset", "medium", "-crf", "29", "-pix_fmt", "yuv420p", "-movflags", "+faststart", mp4]);
