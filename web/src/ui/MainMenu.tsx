@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from "react";
-import { BookOpen, ChevronRight, Crosshair, Map as MapIcon, MonitorX, Swords, X } from "lucide-react";
+import { BookOpen, ChevronRight, Crosshair, Map as MapIcon, MonitorX, Play, Swords, X } from "lucide-react";
 import { EA_NOTICE, SOURCE_URL } from "../legal";
 import { gpuInfo } from "../gpu";
 import { useStore } from '../store';
@@ -34,7 +34,26 @@ function GpuNotice() {
   );
 }
 
-export function MainMenu({ onSkirmish, onCampaign, onSimulator, onEditor }: { onSkirmish: () => void; onCampaign: () => void; onSimulator: () => void; onEditor: () => void }) {
+/**
+ * "Your first battle": the newcomer's way in, above the other choices (first-battle.ts). The whole card starts it; the
+ * Play now button is a picture of that, not a second control.
+ */
+function FirstBattleCard({ onClick }: { onClick: () => void }) {
+  return (
+    <button type="button" className="menu-card menu-first" onClick={onClick}>
+      <span className="menu-card-art" style={{ backgroundImage: 'url("menu/isometric.webp")' }} aria-hidden="true" />
+      <span className="menu-card-brackets" aria-hidden="true"><i /><i /><i /><i /></span>
+      <span className="menu-card-body">
+        <span className="menu-eyebrow">New here? Start with this</span>
+        <b>Your first battle</b>
+        <small>About 10 minutes against an easy opponent. The adviser shows each step: build a base, raise an army, win.</small>
+      </span>
+      <span className="gbtn gbtn-primary gbtn-lg menu-first-go" aria-hidden="true"><Play size={16} fill="currentColor" />Play now</span>
+    </button>
+  );
+}
+
+export function MainMenu({ onFirstBattle, onSkirmish, onCampaign, onSimulator, onEditor }: { onFirstBattle?: () => void; onSkirmish: () => void; onCampaign: () => void; onSimulator: () => void; onEditor: () => void }) {
   const classic = useStore(s => s.setup?.modId === 'rtsai-classic-core');
   const offered = (import.meta.env.VITE_GAME_MODES ?? (classic ? 'public,public-classic' : 'public')).split(',');
   function chooseMode(nextClassic: boolean) {
@@ -51,23 +70,25 @@ export function MainMenu({ onSkirmish, onCampaign, onSimulator, onEditor }: { on
       <div className="menu-shade" aria-hidden="true" />
       <main className="menu-content">
         <header className="menu-title">
-          <span className="menu-eyebrow">{classic ? 'Classic · OpenRA' : 'Modern real-time strategy'}</span>
-          <h1>RTS <b>AI</b></h1>
+          <div>
+            <span className="menu-eyebrow">{classic ? 'Classic · OpenRA' : 'Modern real-time strategy'}</span>
+            <h1>RTS <b>AI</b></h1>
+          </div>
+          {/* The two battlefield modes: a small switch beside the title, so the first battle has the room (owner, 20 Nov 2026). */}
+          {offered.includes('public') && offered.includes('public-classic') && <section className="menu-views" aria-label="Battlefield mode">
+            <span className="menu-eyebrow">Battlefield mode</span>
+            <div className="menu-view-row">
+              {[{ id: 'isometric', title: 'Isometric', text: 'Maps, countries and the campaign', selected: !classic },
+                { id: 'classic', title: 'Classic', text: 'Classic, Red Alert Plus & Combined Arms maps', selected: classic }].map(view => (
+                <button key={view.id} type="button" className="view-tile" data-selected={view.selected} aria-pressed={view.selected} title={view.text} onClick={() => chooseMode(view.id === 'classic')}>
+                  <b>{view.title}</b>
+                </button>
+              ))}
+            </div>
+          </section>}
         </header>
         <GpuNotice />
-        {offered.includes('public') && offered.includes('public-classic') && <section className="menu-views" aria-label="Battlefield mode">
-          <span className="menu-eyebrow">Choose your battlefield mode</span>
-          <div className="menu-view-row">
-            {[{ id: 'isometric', title: 'Isometric', text: 'Maps, countries and the campaign', selected: !classic },
-              { id: 'classic', title: 'Classic', text: 'Classic, Red Alert Plus & Combined Arms maps', selected: classic }].map(view => (
-              <button key={view.id} type="button" className="view-tile" data-selected={view.selected} aria-pressed={view.selected} onClick={() => chooseMode(view.id === 'classic')}>
-                <img src={`menu/${view.id}.webp`} alt="" />
-                <span className="view-tile-label"><b>{view.title}</b><small>{view.text}</small></span>
-                {view.selected && <span className="view-tile-badge">Selected</span>}
-              </button>
-            ))}
-          </div>
-        </section>}
+        {onFirstBattle && <FirstBattleCard onClick={onFirstBattle} />}
         <section className="menu-cards" aria-label="Play">
           <MenuCard title="Skirmish" text="Pick a nation, build a base, defeat the AI." image="menu/skirmish.webp" icon={<Swords size={22} />} onClick={onSkirmish} />
           <MenuCard title="Campaign" text={classic ? 'Classic campaigns are available in the desktop game.' : 'Lines of Hope · Follow the story through missions and films.'} disabled={classic} image="menu/campaign.webp" icon={<BookOpen size={22} />} onClick={onCampaign} />

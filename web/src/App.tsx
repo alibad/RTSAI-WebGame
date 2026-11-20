@@ -13,6 +13,7 @@ import { MapEditor } from "./ui/MapEditor";
 import { ARENA, Sandbox, parseSandboxUrl } from "./sandbox";
 import { EditorController } from "./editor";
 import { missionOperation, missionPlacements, type MissionSpec } from "./mission";
+import { firstBattleOffered, firstBattleScenario } from "./first-battle";
 import { CoachPanel } from "./ui/Coach";
 import { Annotations } from "./ui/Annotations";
 import { installTelemetry } from "./net/telemetry";
@@ -343,6 +344,17 @@ export default function App() {
   // The menus use the mod's cursors too: ask for them as soon as the mod is loaded.
   useEffect(() => { if (game && phase === "setup") game.requestCursors(); }, [game, phase]);
 
+  // "Your first battle" (first-battle.ts): straight from the main menu into the guided match, with the adviser on. The
+  // menu stays the screen behind it, so leaving or finishing the match comes back there.
+  const firstBattle = useStore((s) => firstBattleOffered(s.setup));
+  const startFirstBattle = () => {
+    const setup = useStore.getState().setup;
+    const scenario = game && setup ? firstBattleScenario(setup) : null;
+    if (!game || !scenario) return;
+    game.cc.setEnabled(true);
+    game.start(JSON.stringify(scenario));
+  };
+
   const playing = phase === "playing";
   const classicCore = useStore((s) => s.setup?.modId === "rtsai-classic-core");
   const editorMode = mode === "editor";
@@ -354,7 +366,7 @@ export default function App() {
       {game && editorMode && phase !== "boot" && <MapEditor game={game} exit={exitEditor} test={testInSimulator} mission={startMission} play={playEarth} earthFirst={earthFirst} openMap={editMap} />}
       {game && phase === "setup" && !sandboxMode && !editorMode && <>
         {mode !== "skirmish" && <div className="menu-utility" data-ui-sfx><MatchLibrary game={game} /><GameSettings game={game} /><FeedbackSlot kind="menu" /></div>}
-        {mode === "home" ? <MainMenu onSkirmish={() => setMode("skirmish")} onCampaign={() => setMode("missions")} onSimulator={() => setMode("simulator")} onEditor={() => openEditor()} /> : <>
+        {mode === "home" ? <MainMenu onFirstBattle={firstBattle ? startFirstBattle : undefined} onSkirmish={() => setMode("skirmish")} onCampaign={() => setMode("missions")} onSimulator={() => setMode("simulator")} onEditor={() => openEditor()} /> : <>
           {mode === "missions" ? <Missions game={game} /> : <Setup game={game} utilities={<><MatchLibrary game={game} /><GameSettings game={game} /><FeedbackSlot kind="menu" /></>} />}
           <nav className="menu-subnav scr-subnav" aria-label="Game modes" data-ui-sfx>
             <button type="button" onClick={() => setMode("home")} className="menu-subnav-back" aria-label="Main menu"><ArrowLeft size={15} aria-hidden="true" /><span>Main menu</span></button>

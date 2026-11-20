@@ -19,26 +19,19 @@ html, body { cursor: var(--cursor-default, default); }
 
 .menu-content { position: relative; width: min(1040px, 100%); margin: 0 auto; padding: clamp(28px, 7vh, 80px) 32px 104px; display: flex; flex-direction: column; gap: 28px; }
 .menu-eyebrow { display: block; font-size: 11px; font-weight: 700; letter-spacing: .22em; text-transform: uppercase; color: var(--hud-accent-dim); }
-.menu-title { animation: menu-rise .5s ease-out backwards; }
+.menu-title { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px 24px; animation: menu-rise .5s ease-out backwards; }
 .menu-title h1 { margin: 6px 0 0; font-size: clamp(52px, 7vw, 80px); line-height: .92; font-weight: 900; letter-spacing: .02em; color: #f5efe4; text-shadow: 0 3px 0 #000, 0 0 36px rgb(var(--command-accent-rgb) / .2); }
 .menu-title h1 b { color: var(--hud-accent); font-weight: 900; }
 
-/* Battlefield view: two pictures of the same base, the chosen one framed in gold. */
-.menu-views { display: flex; flex-direction: column; gap: 10px; animation: menu-rise .5s .05s ease-out backwards; }
-.menu-view-row { display: flex; flex-wrap: wrap; gap: 14px; }
-.view-tile { position: relative; width: 260px; aspect-ratio: 16 / 10; padding: 0; border: 1px solid var(--hud-edge-hi); border-radius: 7px; overflow: hidden; background: #181d20; text-align: left; color: inherit; filter: saturate(.5) brightness(.6); transition: transform .18s ease, border-color .18s, box-shadow .2s, filter .2s; }
-.view-tile img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; transition: transform .6s cubic-bezier(.2, .7, .2, 1); }
-.view-tile::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, transparent 35%, rgba(4, 6, 4, .94)); pointer-events: none; }
-.view-tile-label { position: absolute; left: 12px; right: 12px; bottom: 10px; z-index: 1; display: flex; flex-direction: column; gap: 2px; }
-.view-tile-label b { font-size: 15px; font-weight: 700; color: #f5efe4; }
-.view-tile-label small { font-size: 11px; color: #aab29f; }
-.view-tile:hover:not(:disabled) { filter: saturate(.9) brightness(.9); transform: translateY(-2px); border-color: #8d9a72; }
-.view-tile:hover:not(:disabled) img { transform: scale(1.06); }
-.view-tile[data-selected="true"] { filter: none; border: 2px solid var(--hud-accent); box-shadow: 0 0 0 4px rgb(var(--command-accent-rgb) / .12), 0 12px 30px rgba(0, 0, 0, .5), 0 0 26px rgb(var(--command-accent-rgb) / .24); }
-.view-tile[data-selected="true"] .view-tile-label b { color: var(--hud-accent); }
+/* Battlefield mode: a two-way switch beside the title, the chosen mode in gold (it was two big picture tiles until the
+   first battle needed their room, 20 Nov 2026). The tests find the buttons as button.view-tile with the name in <b>. */
+.menu-views { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; animation: menu-rise .5s .05s ease-out backwards; }
+.menu-view-row { display: inline-flex; padding: 2px; border: 1px solid var(--hud-edge-hi); border-radius: 8px; background: rgba(12, 15, 11, .86); box-shadow: 0 6px 18px rgba(0, 0, 0, .4); }
+.view-tile { height: 34px; padding: 0 14px; border-radius: 6px; color: #c9cfbf; transition: background .15s, color .15s; }
+.view-tile b { font-size: 12px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
+.view-tile:hover:not(:disabled):not([data-selected="true"]) { background: rgba(43, 48, 52, .94); color: var(--hud-accent); }
+.view-tile[data-selected="true"] { background: linear-gradient(180deg, var(--command-accent-hi), var(--command-accent)); color: #171510; box-shadow: 0 2px 10px rgb(var(--command-accent-rgb) / .3); }
 .view-tile:disabled { opacity: .45; }
-.view-tile-badge { position: absolute; top: 8px; right: 8px; z-index: 1; display: inline-flex; align-items: center; gap: 4px; padding: 3px 9px 3px 7px; border-radius: 999px; background: var(--hud-accent); color: #171510; font-size: 11px; font-weight: 800; box-shadow: 0 2px 8px rgba(0, 0, 0, .5); }
-.view-tile-switching { position: absolute; inset: 0; z-index: 2; display: flex; align-items: center; justify-content: center; gap: 8px; background: rgba(21, 23, 25, .72); color: var(--hud-accent); font-size: 13px; font-weight: 700; }
 .menu-spin { animation: menu-spin 1s linear infinite; }
 @keyframes menu-spin { to { transform: rotate(360deg); } }
 
@@ -70,6 +63,22 @@ html, body { cursor: var(--cursor-default, default); }
 .menu-card-brackets i:nth-child(4) { bottom: 8px; right: 8px; border-left: 0; border-top: 0; transform: translate(7px, 7px); }
 .menu-card:hover .menu-card-brackets i, .menu-card:focus-visible .menu-card-brackets i { opacity: 1; transform: none; }
 .menu-card:focus-visible, .view-tile:focus-visible { outline: 2px solid var(--hud-accent); outline-offset: 3px; }
+
+/* "Your first battle": the newcomer's way in, framed in gold above the other choices, the battle art fading in behind
+   the words from the far side. */
+.menu-card.menu-first { align-items: center; gap: 20px; min-height: 176px; padding: 22px 28px; border-color: var(--hud-accent); box-shadow: 0 0 0 3px rgb(var(--command-accent-rgb) / .14), 0 18px 40px rgba(0, 0, 0, .55), 0 0 30px rgb(var(--command-accent-rgb) / .18); animation-delay: .06s; }
+.menu-first .menu-card-art { background-position: 70% 40%; filter: saturate(1) brightness(.78); }
+.menu-card.menu-first::before { background: linear-gradient(90deg, rgba(21, 23, 25, .94) 0%, rgba(21, 23, 25, .78) 48%, rgba(21, 23, 25, .15) 82%); }
+:dir(rtl) .menu-card.menu-first::before, [dir="rtl"] .menu-card.menu-first::before { background: linear-gradient(270deg, rgba(21, 23, 25, .94) 0%, rgba(21, 23, 25, .78) 48%, rgba(21, 23, 25, .15) 82%); }
+.menu-first .menu-card-brackets { display: contents; } /* its corners still sit on the card; no empty gap before the words */
+.menu-first .menu-card-body { gap: 6px; }
+.menu-first .menu-eyebrow { color: var(--hud-accent); }
+.menu-first .menu-card-body b { font-size: 34px; color: #f5efe4; }
+.menu-first .menu-card-body small { max-width: 560px; font-size: 15px; line-height: 1.45; color: #dfe3d4; }
+.menu-first-go { position: relative; z-index: 2; flex: none; min-width: 190px; pointer-events: none; }
+.menu-card.menu-first:hover .menu-first-go, .menu-card.menu-first:focus-visible .menu-first-go { filter: brightness(1.1); transform: translateY(-1px); box-shadow: 0 0 0 1px rgba(0, 0, 0, .6), 0 8px 22px rgb(var(--command-accent-rgb) / .35); }
+.menu-card.menu-first:hover .menu-card-art, .menu-card.menu-first:focus-visible .menu-card-art { filter: saturate(1.05) brightness(.9); }
+
 .menu-notice { max-width: 760px; font-size: 11px; line-height: 1.5; color: #848b7b; }
 /* The browser draws without the graphics card (gpu.ts): the fix, in plain words. */
 .menu-gpu { display: flex; align-items: flex-start; gap: 12px; max-width: 760px; padding: 12px 14px; border: 1px solid rgba(239, 91, 63, .55); border-radius: 8px; background: rgba(36, 14, 10, .88); color: #f3e6d6; font-size: 13px; line-height: 1.5; }
@@ -91,8 +100,13 @@ html, body { cursor: var(--cursor-default, default); }
   .menu-cards { grid-template-columns: 1fr; }
   .menu-card { min-height: 168px; }
   .menu-card-body b { font-size: 26px; }
-  .view-tile { width: calc(50% - 7px); }
-  .view-tile-label small { display: none; }
+  /* The first battle stands upright: its words, then Play now across the card. */
+  .menu-card.menu-first { flex-wrap: wrap; gap: 16px; min-height: 0; padding: 20px 18px 18px; }
+  .menu-first .menu-card-body { flex-basis: 100%; }
+  .menu-first .menu-card-body b { font-size: 28px; }
+  .menu-first .menu-card-body small { font-size: 14px; }
+  .menu-first-go { flex: 1; }
+  .menu-card.menu-first::before, :dir(rtl) .menu-card.menu-first::before, [dir="rtl"] .menu-card.menu-first::before { background: linear-gradient(180deg, rgba(21, 23, 25, .55) 0%, rgba(21, 23, 25, .9) 70%); }
 }
 /* Software drawing: no motion and no blur, which the CPU would redraw every frame. */
 :root[data-gpu="software"] .menu-backdrop, :root[data-gpu="software"] .menu-title, :root[data-gpu="software"] .menu-views, :root[data-gpu="software"] .menu-card { animation: none; }
@@ -100,7 +114,7 @@ html, body { cursor: var(--cursor-default, default); }
 
 @media (prefers-reduced-motion: reduce) {
   .menu-backdrop, .menu-title, .menu-views, .menu-card { animation: none; }
-  .menu-card, .view-tile, .menu-card-art, .view-tile img, .menu-card-go, .menu-card-brackets i { transition: none; }
+  .menu-card, .view-tile, .menu-card-art, .menu-card-go, .menu-card-brackets i, .menu-first-go { transition: none; }
 }
 
 /* Settings: one panel, three short sections, keycaps for the command keys. */
@@ -186,14 +200,14 @@ html, body { cursor: var(--cursor-default, default); }
 @media (max-width: 760px) and (pointer: coarse), (max-height: 500px) and (pointer: coarse) {
   :root { --menu-bar-h: 61px; }
 }
-/* Laptop windows (501 to 860 px tall, wider than a phone): the title, the two battlefield modes and all four choices
-   fit on the first screen, each sized from the window's height. Under 700 px the mode tiles keep only their names. */
+/* Laptop windows (501 to 860 px tall, wider than a phone): the title, the first battle and all four choices fit on the
+   first screen, each sized from the window's height. */
 @media (min-width: 761px) and (min-height: 501px) and (max-height: 860px) {
   .menu-utility ~ .menu-root .menu-content { padding-top: clamp(16px, 4vh, 44px); padding-bottom: 18px; gap: clamp(12px, 2.6vh, 26px); }
   .menu-title h1 { font-size: clamp(44px, 9vh, 76px); }
-  .view-tile { width: clamp(168px, 30vh, 260px); }
-  .menu-card { min-height: clamp(128px, 26vh, 236px); }
-  .menu-card-body b { font-size: clamp(24px, 4.2vh, 30px); }
+  .menu-card { min-height: clamp(112px, 18vh, 236px); }
+  .menu-card-body b { font-size: clamp(22px, 3.4vh, 30px); }
+  .menu-card.menu-first { min-height: clamp(132px, 22vh, 190px); padding-top: 16px; padding-bottom: 16px; }
+  .menu-first .menu-card-body b { font-size: clamp(26px, 4.6vh, 34px); }
   .menu-card.wide { padding-top: clamp(10px, 1.8vh, 16px); padding-bottom: clamp(10px, 1.8vh, 16px); }
 }
-@media (min-width: 761px) and (min-height: 501px) and (max-height: 699px) { .view-tile-label small { display: none; } }
