@@ -147,6 +147,24 @@ def translucent_sequences(E, images, anims):
     return changed
 
 
+def homing_lock(E, weapon, original):
+    """Retail's homing missiles (AAHeatSeeker, AirToGroundMissile, MedusaProjectile: ROT above 0) always home on their
+    target; RA2 has no lock-on that fails. The port's twins of the Patriot's RedEye2 and the Aegis's Medusa keep an
+    OpenRA LockOnProbability of 80 and 85: one missile in five or six flew to where an aircraft had been
+    (weapon-fidelity audit, 20 Nov 2026: 70-80 px from a helicopter crossing). They lock every time, as in retail.
+    Returns whether the weapon changed."""
+    projectile = weapon.get('Projectile')
+    if projectile is None or projectile.value != 'Missile':
+        return False
+    if not re.search(r'heatseeker|missile|medusa', original.get('Projectile', ''), re.I):
+        return False
+    lock = projectile.get('LockOnProbability')
+    if lock is None or int(lock.value) >= 100:
+        return False
+    projectile.children.remove(lock)
+    return True
+
+
 def normalize_voices(voices, E):
     # sound.ini's CrazyIvanMove/AttackCommand and TeslaTroopSelect do not name these clips.
     # Kirov has no fear/feedback voice event at all. Keep an explicitly empty phrase so the
@@ -519,6 +537,7 @@ class Retail:
         if 'Burst' not in original:
             set_value(E, twin, 'Burst', 1)
         instant_projectile(E, twin, original)
+        homing_lock(E, twin, original)
         warhead = self.baseline['warheads'].get(original.get('Warhead'), {})
         retail_impact(E, twin, original, warhead, self.explosions)
         if twin.key in ('ea-retail-demobomb', 'ea-retail-terrorbomb', 'ea-retail-crnuke', 'ea-retail-crterrorbomb'):
