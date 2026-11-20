@@ -128,6 +128,32 @@ class OriginalTurrets(unittest.TestCase):
         self.assertEqual(E.original_turrets('htk', cur, ref, out), {})
         self.assertEqual(E.dump([out]), before)
 
+    def test_damage_smoke_from_ra2s_facts(self):
+        # RA2 puffs small grey smoke from a damaged vehicle or ship (DamageParticleSystems=SparkSys,SmallGreySSys); the
+        # nine countries' ships looked brand new at 20% health (20 Nov 2026).
+        out = E.parse('dest:\n\tGrantConditionOnFaction@ea-art:\n\t\tCondition: ea-art\n\t\tFactions: america\n')[0]
+        cur = E.parse('dest:\n\tHealth:\n\t\tHP: 600\n')[0]
+        self.assertTrue(E.damage_smoke('dest', cur, out, {'kind': 'vehicle', 'naval': True, 'damageParticleSystems': ['SparkSys', 'SmallGreySSys']}))
+        smoke = out.get('WithIdleOverlay@' + E.DAMAGE_SMOKE)
+        self.assertEqual((smoke.val('Image'), smoke.val('Palette'), smoke.val('Offset'), smoke.val('RequiresCondition')),
+                         ('r2fxsmoke', 'effect50alpha', '0,0,1024', 'ea-art && ' + E.DAMAGE_SMOKE))
+        self.assertNotIn(smoke.val('Palette'), E.EA_PALETTE_NAMES)  # a project picture keeps a project palette
+        self.assertEqual(out.get('GrantConditionOnDamageState@' + E.DAMAGE_SMOKE).val('ValidDamageStates'), 'Heavy, Critical')
+        self.assertTrue(E.has_damage_look(out))
+        # RA2 gives a submarine none, and a modern unit keeps its own smoke and fire.
+        self.assertFalse(E.damage_smoke('sub', cur, E.parse('sub:\n')[0], None))
+        modern = E.parse('r2luyang:\n\tWithIdleOverlay@R2FXSMOKE:\n\t\tImage: r2fxsmoke\n')[0]
+        self.assertFalse(E.damage_smoke('r2luyang', modern, E.parse('r2luyang:\n')[0], {'kind': 'vehicle', 'damageParticleSystems': ['SmallGreySSys']}))
+        facts = json.loads(E.DAMAGE_SMOKE_FACTS.read_text(encoding='utf-8'))
+        retail = json.loads((Path(__file__).resolve().parent / 'data/ra2-retail.json').read_text(encoding='utf-8'))
+        self.assertEqual(facts['sourceSha256']['rules.ini'], retail['sourceSha256'])
+        self.assertEqual(facts['conditionYellow'], '50%')
+        self.assertEqual(facts['particleSystems'][E.SMOKE_SYSTEM]['image'], 'SGRYSMK1')
+        for actor in ('dest', 'aegis', 'dred', 'hyd', 'htnk', 'mtnk', 'apoc'):
+            self.assertIn(E.SMOKE_SYSTEM, facts['actors'][actor]['damageParticleSystems'], actor)
+        for actor in ('sub', 'dlph', 'sqd'):
+            self.assertNotIn(actor, facts['actors'], actor)
+
     def test_an_original_gun_with_shared_shots_is_refused(self):
         cur, ref, out = self.actors()
         out.children = [c for c in out.children if not c.key.startswith('Armament@retail')]
@@ -317,6 +343,13 @@ class Generated(unittest.TestCase):
         for arm in retail:
             self.assertEqual((arm.val('Turret'), arm.val('LocalOffset')), ('ea', '256,0,1536'), arm.key)
         self.assertEqual(self.files.get('movedTurrets'), {'htk': {'primary': ['0,0,582', '-280,-3,0']}})
+
+    def test_damaged_original_ships_and_tanks_smoke(self):
+        for actor in ('dest', 'aegis', 'dred', 'hyd', 'carrier', 'htnk', 'mtnk', 'apoc', 'harv'):
+            self.assertTrue(E.has_damage_look(self.rules[actor]), actor)
+            self.assertIn(actor, self.files['damageSmoke'], actor)
+        for actor in ('sub', 'dlph', 'sqd', 'mgtk'):
+            self.assertIsNone(self.rules[actor].get('WithIdleOverlay@' + E.DAMAGE_SMOKE), actor)
 
     def test_suicide_damage_uses_restored_weapon_not_just_targeting_armament(self):
         weapons = {n.key: n for n in E.parse((self.content / 'ea-retail-weapons.yaml').read_text(encoding='utf-8'))}

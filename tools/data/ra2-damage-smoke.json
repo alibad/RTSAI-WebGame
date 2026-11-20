@@ -1,0 +1,958 @@
+{
+ "schema": 1,
+ "source": "Original retail RA2 rules.ini extracted with OpenRA.Utility from installed ra2.mix/language.mix; base game, not Yuri expansion. Names and numbers only. Written by tools/ra2-damage-smoke.py.",
+ "sourceSha256": {
+  "rules.ini": "fd1e95cea0306ea78049dc81c8cd816e18c28c496872a1ff02edd50bd082062f"
+ },
+ "conditionYellow": "50%",
+ "conditionRed": "25%",
+ "particleSystems": {
+  "BigGreySmokeSys": {
+   "holds": "LargeGreySmoke",
+   "spawnFrames": "10",
+   "behavesLike": "Smoke",
+   "image": "LGRYSMK1",
+   "translucency": "50"
+  },
+  "LGSparkSys": {
+   "holds": "LargeSpark",
+   "spawnFrames": "",
+   "behavesLike": "Spark",
+   "image": "",
+   "translucency": ""
+  },
+  "SmallGreySSys": {
+   "holds": "SmallGreySmoke",
+   "spawnFrames": "10",
+   "behavesLike": "Smoke",
+   "image": "SGRYSMK1",
+   "translucency": "50"
+  },
+  "SmallGreySmokeSys": {
+   "holds": "",
+   "spawnFrames": "",
+   "behavesLike": "",
+   "image": "",
+   "translucency": ""
+  },
+  "SparkSys": {
+   "holds": "Spark",
+   "spawnFrames": "",
+   "behavesLike": "Spark",
+   "image": "",
+   "translucency": ""
+  }
+ },
+ "actors": {
+  "aegis": {
+   "kind": "vehicle",
+   "naval": true,
+   "damageParticleSystems": [
+    "SparkSys",
+    "SmallGreySSys"
+   ]
+  },
+  "amcv": {
+   "kind": "vehicle",
+   "naval": false,
+   "damageParticleSystems": [
+    "SparkSys",
+    "SmallGreySSys"
+   ]
+  },
+  "amradr": {
+   "kind": "building",
+   "naval": false,
+   "damageParticleSystems": [
+    "SparkSys",
+    "SmallGreySSys",
+    "BigGreySmokeSys"
+   ],
+   "damageSmokeOffset": "75, 270, 140"
+  },
+  "apoc": {
+   "kind": "vehicle",
+   "naval": false,
+   "damageParticleSystems": [
+    "SparkSys",
+    "SmallGreySSys"
+   ]
+  },
+  "asw": {
+   "kind": "aircraft",
+   "naval": false,
+   "damageParticleSystems": [
+    "SparkSys",
+    "SmallGreySSys"
+   ]
+  },
+  "atesla": {
+   "kind": "building",
+   "naval": false,
+   "damageParticleSystems": [
+    "SparkSys",
+    "SmallGreySSys",
+    "BigGreySmokeSys"
+   ],
+   "damageSmokeOffset": "96, 64, 112"
+  },
+  "beag": {
+   "kind": "aircraft",
+   "naval": false,
+   "damageParticleSystems": [
+    "SparkSys",
+    "SmallGreySSys"
+   ]
+  },
+  "bluelamp": {
+   "kind": "building",
+   "naval": false,
+   "damageParticleSystems": [
+    "SparkSys",
+    "LGSparkSys"
+   ]
+  },
+  "bus": {
+   "kind": "vehicle",
+   "naval": false,
+   "damageParticleSystems": [
+    "SparkSys",
+    "SmallGreySSys"
+   ]
+  },
+  "caairp": {
+   "kind": "building",
+   "naval": false,
+   "damageParticleSystems": [
+    "SmallGreySSys",
+    "BigGreySmokeSys"
+   ]
+  },
+  "caarmr": {
+   "kind": "building",
+   "naval": false,
+   "damageParticleSystems": [
+    "SmallGreySSys",
+    "BigGreySmokeSys"
+   ]
+  },
+  "cahosp": {
+   "kind": "building",
+   "naval": false,
+   "damageParticleSystems": [
+    "SmallGreySSys",
+    "BigGreySmokeSys"
+   ]
+  },
+  "car": {
+   "kind": "vehicle",
+   "naval": false,
+   "damageParticleSystems": [
+    "SparkSys",
+    "SmallGreySSys"
+   ]
+  },
+  "cargoplane": {
+   "kind": "aircraft",
+   "naval": false,
+   "damageParticleSystems": [
+    "SparkSys",
+    "SmallGreySSys"
+   ]
+  },
+  "carrier": {
+   "kind": "vehicle",
+   "naval": true,
+   "damageParticleSystems": [
+    "SparkSys",
+    "SmallGreySSys"
+   ]
+  },
+  "cathosp": {
+   "kind": "building",
+   "naval": false,
+   "damageParticleSystems": [
+    "SmallGreySSys",
+    "BigGreySmokeSys"
+   ]
+  },
+  "cdest": {
+   "kind": "vehicle",
+   "naval": true,
+   "damageParticleSystems": [
+    "SparkSys",
+    "SmallGreySSys"
+   ]
+  },
+  "city01": {
+   "kind": "building",
+   "naval": false,
+   "damageParticleSystems": [
+    "SmallGreySSys",
+    "BigGreySmokeSys"
+   ]
+  },
+  "city02": {
+   "kind": "building",
+   "naval": false,
+   "damageParticleSystems": [
+    "SmallGreySSys",
+    "BigGreySmokeSys"
+   ]
+  },
+  "city03": {
+   "kind": "building",
+   "naval": false,
+   "damageParticleSystems": [
+    "SmallGreySSys",
+    "BigGreySmokeSys"
+   ]
+  },
+  "city04": {
+   "kind": "building",
+   "naval": false,
+   "damageParticleSystems": [
+    "SmallGreySSys",
+    "BigGreySmokeSys"
+   ]
+  },
+  "city05": {
+   "kind": "building",
+   "naval": false,
+   "damageParticleSystems": [
+    "SmallGreySSys",
+    "BigGreySmokeSys"
+   ]
+  },
+  "city06": {
+   "kind": "building",
+   "naval": false,
+   "damageParticleSystems": [
+    "SmallGreySSys",
+    "BigGreySmokeSys"
+   ]
+  },
+  "cmin": {
+   "kind": "vehicle",
+   "naval": false,
+   "damageParticleSystems": [
+    "SparkSys",
+    "SmallGreySSys"
+   ]
+  },
+  "cmon": {
+   "kind": "vehicle",
+   "naval": false,
+   "damageParticleSystems": [
+    "SparkSys",
+    "SmallGreySSys"
+   ]
+  },
+  "cona": {
+   "kind": "vehicle",
+   "naval": false,
+   "damageParticleSystems": [
+    "SparkSys",
+    "SmallGreySSys"
+   ]
+  },
+  "cop": {
+   "kind": "vehicle",
+   "naval": false,
+   "damageParticleSystems": [
+    "SparkSys",
+    "SmallGreySSys"
+   ]
+  },
+  "cruise": {
+   "kind": "vehicle",
+   "naval": true,
+   "damageParticleSystems": [
+    "SparkSys",
+    "SmallGreySSys"
+   ]
+  },
+  "dest": {
+   "kind": "vehicle",
+   "naval": true,
+   "damageParticleSystems": [
+    "SparkSys",
+    "SmallGreySSys"
+   ]
+  },
+  "dmisl": {
+   "kind": "aircraft",
+   "naval": false,
+   "damageParticleSystems": [
+    "SmallGreySSys"
+   ]
+  },
+  "dred": {
+   "kind": "vehicle",
+   "naval": true,
+   "damageParticleSystems": [
+    "SparkSys",
+    "SmallGreySSys"
+   ]
+  },
+  "dron": {
+   "kind": "vehicle",
+   "naval": false,
+   "damageParticleSystems": [
+    "SparkSys",
+    "SmallGreySSys"
+   ]
+  },
+  "dtruck": {
+   "kind": "vehicle",
+   "naval": false,
+   "damageParticleSystems": [
+    "SparkSys",
+    "SmallGreySSys"
+   ]
+  },
+  "euroc": {
+   "kind": "vehicle",
+   "naval": false,
+   "damageParticleSystems": [
+    "SparkSys",
+    "SmallGreySSys"
+   ]
+  },
+  "fv": {
+   "kind": "vehicle",
+   "naval": false,
+   "damageParticleSystems": [
+    "SparkSys",
+    "SmallGreySSys"
+   ]
+  },
+  "galite": {
+   "kind": "building",
+   "naval": false,
+   "damageParticleSystems": [
+    "SparkSys",
+    "LGSparkSys"
+   ]
+  },
+  "gapile": {
+   "kind": "building",
+   "naval": false,
+   "damageParticleSystems": [
+    "SparkSys",
+    "SmallGreySSys",
+    "BigGreySmokeSys"
+   ],
+   "damageSmokeOffset": "215,395,200"
+  },
+  "gapill": {
+   "kind": "building",
+   "naval": false,
+   "damageParticleSystems": [
+    "SparkSys",
+    "LGSparkSys"
+   ]
+  },
+  "gaweap": {
+   "kind": "building",
+   "naval": false,
+   "damageParticleSystems": [
+    "SparkSys",
+    "SmallGreySSys",
+    "BigGreySmokeSys"
+   ],
+   "damageSmokeOffset": "408,880,435"
+  },
+  "grenlamp": {
+   "kind": "building",
+   "naval": false,
+   "damageParticleSystems": [
+    "SparkSys",
+    "LGSparkSys"
+   ]
+  },
+  "harv": {
+   "kind": "vehicle",
+   "naval": false,
+   "damageParticleSystems": [
+    "SparkSys",
+    "SmallGreySSys"
+   ]
+  },
+  "hind": {
+   "kind": "vehicle",
+   "naval": false,
+   "damageParticleSystems": [
+    "SparkSys",
+    "SmallGreySSys"
+   ]
+  },
+  "hornet": {
+   "kind": "aircraft",
+   "naval": false,
+   "damageParticleSystems": [
+    "SparkSys",
+    "SmallGreySSys"
+   ]
+  },
+  "horv": {
+   "kind": "vehicle",
+   "naval": false,
+   "damageParticleSystems": [
+    "SparkSys",
+    "SmallGreySSys"
+   ]
+  },
+  "howi": {
+   "kind": "vehicle",
+   "naval": false,
+   "damageParticleSystems": [
+    "SparkSys",
+    "SmallGreySSys"
+   ]
+  },
+  "htk": {
+   "kind": "vehicle",
+   "naval": false,
+   "damageParticleSystems": [
+    "SparkSys",
+    "SmallGreySSys"
+   ]
+  },
+  "htnk": {
+   "kind": "vehicle",
+   "naval": false,
+   "damageParticleSystems": [
+    "SparkSys",
+    "SmallGreySSys"
+   ],
+   "damageSmokeOffset": "100, 100, 275"
+  },
+  "hyd": {
+   "kind": "vehicle",
+   "naval": true,
+   "damageParticleSystems": [
+    "SparkSys",
+    "SmallGreySSys"
+   ]
+  },
+  "inblulmp": {
+   "kind": "building",
+   "naval": false,
+   "damageParticleSystems": [
+    "SparkSys",
+    "LGSparkSys"
+   ]
+  },
+  "ingalite": {
+   "kind": "building",
+   "naval": false,
+   "damageParticleSystems": [
+    "SparkSys",
+    "LGSparkSys"
+   ]
+  },
+  "ingrnlmp": {
+   "kind": "building",
+   "naval": false,
+   "damageParticleSystems": [
+    "SparkSys",
+    "LGSparkSys"
+   ]
+  },
+  "inoranlamp": {
+   "kind": "building",
+   "naval": false,
+   "damageParticleSystems": [
+    "SparkSys",
+    "LGSparkSys"
+   ]
+  },
+  "inpurplamp": {
+   "kind": "building",
+   "naval": false,
+   "damageParticleSystems": [
+    "SparkSys",
+    "LGSparkSys"
+   ]
+  },
+  "inredlmp": {
+   "kind": "building",
+   "naval": false,
+   "damageParticleSystems": [
+    "SparkSys",
+    "LGSparkSys"
+   ]
+  },
+  "inyelwlamp": {
+   "kind": "building",
+   "naval": false,
+   "damageParticleSystems": [
+    "SparkSys",
+    "LGSparkSys"
+   ]
+  },
+  "lcrf": {
+   "kind": "vehicle",
+   "naval": true,
+   "damageParticleSystems": [
+    "SparkSys",
+    "SmallGreySSys"
+   ]
+  },
+  "limo": {
+   "kind": "vehicle",
+   "naval": false,
+   "damageParticleSystems": [
+    "SparkSys",
+    "SmallGreySSys"
+   ]
+  },
+  "ltnk": {
+   "kind": "vehicle",
+   "naval": false,
+   "damageParticleSystems": [
+    "SparkSys",
+    "SmallGreySSys"
+   ],
+   "damageSmokeOffset": "100, 100, 275"
+  },
+  "mgtk": {
+   "kind": "vehicle",
+   "naval": false,
+   "damageParticleSystems": [
+    "SparkSys"
+   ]
+  },
+  "mtnk": {
+   "kind": "vehicle",
+   "naval": false,
+   "damageParticleSystems": [
+    "SparkSys",
+    "SmallGreySSys"
+   ]
+  },
+  "naclon": {
+   "kind": "building",
+   "naval": false,
+   "damageParticleSystems": [
+    "SparkSys",
+    "SmallGreySmokeSys",
+    "BigGreySmokeSys"
+   ],
+   "damageSmokeOffset": "480,96,125"
+  },
+  "nacnst": {
+   "kind": "building",
+   "naval": false,
+   "damageParticleSystems": [
+    "SparkSys",
+    "SmallGreySSys",
+    "BigGreySmokeSys"
+   ],
+   "damageSmokeOffset": "1470,1060,1078"
+  },
+  "nadept": {
+   "kind": "building",
+   "naval": false,
+   "damageParticleSystems": [
+    "SparkSys",
+    "SmallGreySSys",
+    "BigGreySmokeSys"
+   ],
+   "damageSmokeOffset": "270, 580, 260"
+  },
+  "namisl": {
+   "kind": "building",
+   "naval": false,
+   "damageParticleSystems": [
+    "SparkSys",
+    "LGSparkSys"
+   ]
+  },
+  "nanrct": {
+   "kind": "building",
+   "naval": false,
+   "damageParticleSystems": [
+    "SmallGreySSys",
+    "BigGreySmokeSys"
+   ],
+   "damageSmokeOffset": "410, 100, 165"
+  },
+  "napowr": {
+   "kind": "building",
+   "naval": false,
+   "damageParticleSystems": [
+    "SparkSys",
+    "SmallGreySSys",
+    "BigGreySmokeSys"
+   ],
+   "damageSmokeOffset": "450, 200, 300"
+  },
+  "napsis": {
+   "kind": "building",
+   "naval": false,
+   "damageParticleSystems": [
+    "SparkSys",
+    "SmallGreySSys",
+    "BigGreySmokeSys"
+   ],
+   "damageSmokeOffset": "220, 390, 150"
+  },
+  "napsyb": {
+   "kind": "building",
+   "naval": false,
+   "damageParticleSystems": [
+    "SparkSys",
+    "SmallGreySSys",
+    "BigGreySmokeSys"
+   ],
+   "damageSmokeOffset": "220, 390, 150"
+  },
+  "naradr": {
+   "kind": "building",
+   "naval": false,
+   "damageParticleSystems": [
+    "SparkSys",
+    "SmallGreySSys",
+    "BigGreySmokeSys"
+   ],
+   "damageSmokeOffset": "220, 390, 150"
+  },
+  "narefn": {
+   "kind": "building",
+   "naval": false,
+   "damageParticleSystems": [
+    "SparkSys",
+    "SmallGreySSys",
+    "BigGreySmokeSys"
+   ],
+   "damageSmokeOffset": "410, 100, 165"
+  },
+  "naweap": {
+   "kind": "building",
+   "naval": false,
+   "damageParticleSystems": [
+    "SparkSys",
+    "SmallGreySSys",
+    "BigGreySmokeSys"
+   ],
+   "damageSmokeOffset": "395,750,410"
+  },
+  "neglamp": {
+   "kind": "building",
+   "naval": false,
+   "damageParticleSystems": [
+    "SparkSys",
+    "LGSparkSys"
+   ]
+  },
+  "negred": {
+   "kind": "building",
+   "naval": false,
+   "damageParticleSystems": [
+    "SparkSys",
+    "LGSparkSys"
+   ]
+  },
+  "orca": {
+   "kind": "aircraft",
+   "naval": false,
+   "damageParticleSystems": [
+    "SparkSys",
+    "SmallGreySSys"
+   ]
+  },
+  "pdplane": {
+   "kind": "aircraft",
+   "naval": false,
+   "damageParticleSystems": [
+    "SparkSys",
+    "SmallGreySSys"
+   ]
+  },
+  "pick": {
+   "kind": "vehicle",
+   "naval": false,
+   "damageParticleSystems": [
+    "SparkSys",
+    "SmallGreySSys"
+   ]
+  },
+  "propa": {
+   "kind": "vehicle",
+   "naval": false,
+   "damageParticleSystems": [
+    "SparkSys",
+    "SmallGreySSys"
+   ]
+  },
+  "ptruck": {
+   "kind": "vehicle",
+   "naval": false,
+   "damageParticleSystems": [
+    "SparkSys",
+    "SmallGreySSys"
+   ]
+  },
+  "purplamp": {
+   "kind": "building",
+   "naval": false,
+   "damageParticleSystems": [
+    "SparkSys",
+    "LGSparkSys"
+   ]
+  },
+  "redlamp": {
+   "kind": "building",
+   "naval": false,
+   "damageParticleSystems": [
+    "SparkSys",
+    "LGSparkSys"
+   ]
+  },
+  "sapc": {
+   "kind": "vehicle",
+   "naval": true,
+   "damageParticleSystems": [
+    "SparkSys",
+    "SmallGreySSys"
+   ]
+  },
+  "shad": {
+   "kind": "vehicle",
+   "naval": false,
+   "damageParticleSystems": [
+    "SparkSys",
+    "SmallGreySSys"
+   ]
+  },
+  "smcv": {
+   "kind": "vehicle",
+   "naval": false,
+   "damageParticleSystems": [
+    "SparkSys",
+    "SmallGreySSys"
+   ]
+  },
+  "snodaylamp": {
+   "kind": "building",
+   "naval": false,
+   "damageParticleSystems": [
+    "SparkSys",
+    "LGSparkSys"
+   ]
+  },
+  "snoduslamp": {
+   "kind": "building",
+   "naval": false,
+   "damageParticleSystems": [
+    "SparkSys",
+    "LGSparkSys"
+   ]
+  },
+  "snomorlamp": {
+   "kind": "building",
+   "naval": false,
+   "damageParticleSystems": [
+    "SparkSys",
+    "LGSparkSys"
+   ]
+  },
+  "snonitlamp": {
+   "kind": "building",
+   "naval": false,
+   "damageParticleSystems": [
+    "SparkSys",
+    "LGSparkSys"
+   ]
+  },
+  "sref": {
+   "kind": "vehicle",
+   "naval": false,
+   "damageParticleSystems": [
+    "SparkSys",
+    "SmallGreySSys"
+   ],
+   "damageSmokeOffset": "100, 100, 275"
+  },
+  "stang": {
+   "kind": "vehicle",
+   "naval": false,
+   "damageParticleSystems": [
+    "SparkSys",
+    "SmallGreySSys"
+   ]
+  },
+  "suvb": {
+   "kind": "vehicle",
+   "naval": false,
+   "damageParticleSystems": [
+    "SparkSys",
+    "SmallGreySSys"
+   ]
+  },
+  "suvw": {
+   "kind": "vehicle",
+   "naval": false,
+   "damageParticleSystems": [
+    "SparkSys",
+    "SmallGreySSys"
+   ]
+  },
+  "taxi": {
+   "kind": "vehicle",
+   "naval": false,
+   "damageParticleSystems": [
+    "SparkSys",
+    "SmallGreySSys"
+   ]
+  },
+  "temdaylamp": {
+   "kind": "building",
+   "naval": false,
+   "damageParticleSystems": [
+    "SparkSys",
+    "LGSparkSys"
+   ]
+  },
+  "temduslamp": {
+   "kind": "building",
+   "naval": false,
+   "damageParticleSystems": [
+    "SparkSys",
+    "LGSparkSys"
+   ]
+  },
+  "temmorlamp": {
+   "kind": "building",
+   "naval": false,
+   "damageParticleSystems": [
+    "SparkSys",
+    "LGSparkSys"
+   ]
+  },
+  "temnitlamp": {
+   "kind": "building",
+   "naval": false,
+   "damageParticleSystems": [
+    "SparkSys",
+    "LGSparkSys"
+   ]
+  },
+  "tesla": {
+   "kind": "building",
+   "naval": false,
+   "damageParticleSystems": [
+    "SparkSys",
+    "SmallGreySSys",
+    "BigGreySmokeSys"
+   ],
+   "damageSmokeOffset": "96, 64, 112"
+  },
+  "tnkd": {
+   "kind": "vehicle",
+   "naval": false,
+   "damageParticleSystems": [
+    "SparkSys",
+    "SmallGreySSys"
+   ]
+  },
+  "trucka": {
+   "kind": "vehicle",
+   "naval": false,
+   "damageParticleSystems": [
+    "SparkSys",
+    "SmallGreySSys"
+   ]
+  },
+  "truckb": {
+   "kind": "vehicle",
+   "naval": false,
+   "damageParticleSystems": [
+    "SparkSys",
+    "SmallGreySSys"
+   ]
+  },
+  "tstlamp": {
+   "kind": "building",
+   "naval": false,
+   "damageParticleSystems": [
+    "SparkSys"
+   ]
+  },
+  "ttnk": {
+   "kind": "vehicle",
+   "naval": false,
+   "damageParticleSystems": [
+    "SparkSys",
+    "SmallGreySSys"
+   ],
+   "damageSmokeOffset": "100, 100, 275"
+  },
+  "tug": {
+   "kind": "vehicle",
+   "naval": true,
+   "damageParticleSystems": [
+    "SparkSys",
+    "SmallGreySSys"
+   ]
+  },
+  "v3": {
+   "kind": "vehicle",
+   "naval": false,
+   "damageParticleSystems": [
+    "SparkSys",
+    "SmallGreySSys"
+   ]
+  },
+  "v3rocket": {
+   "kind": "aircraft",
+   "naval": false,
+   "damageParticleSystems": [
+    "SmallGreySSys"
+   ]
+  },
+  "vlad": {
+   "kind": "vehicle",
+   "naval": true,
+   "damageParticleSystems": [
+    "SparkSys",
+    "SmallGreySSys"
+   ]
+  },
+  "wini": {
+   "kind": "vehicle",
+   "naval": false,
+   "damageParticleSystems": [
+    "SparkSys",
+    "SmallGreySSys"
+   ]
+  },
+  "xcomet": {
+   "kind": "vehicle",
+   "naval": false,
+   "damageParticleSystems": [
+    "SparkSys",
+    "SmallGreySSys"
+   ],
+   "damageSmokeOffset": "100, 100, 275"
+  },
+  "yelwlamp": {
+   "kind": "building",
+   "naval": false,
+   "damageParticleSystems": [
+    "SparkSys",
+    "LGSparkSys"
+   ]
+  },
+  "zep": {
+   "kind": "vehicle",
+   "naval": false,
+   "damageParticleSystems": [
+    "SparkSys",
+    "SmallGreySSys"
+   ]
+  }
+ }
+}

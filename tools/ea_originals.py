@@ -556,6 +556,54 @@ def _set(node: Node, key, value):
         child.value = value
 
 
+# Red Alert 2's damage smoke (tools/data/ra2-damage-smoke.json, from rules.ini): a vehicle, ship or aircraft with
+# DamageParticleSystems=...SmallGreySSys puffs small grey smoke (SGRYSMK1, half translucent, a puff every 10 of RA2's
+# 15 frames a second) once its health falls to ConditionYellow (50%, the engine's Heavy and Critical damage states).
+DAMAGE_SMOKE_FACTS = Path(__file__).resolve().parent / 'data/ra2-damage-smoke.json'
+DAMAGE_SMOKE = 'ea-damage-smoke'
+SMOKE_SYSTEM = 'SmallGreySSys'
+SMOKE_PALETTE = 'effect50alpha'
+# Missiles are their own smoke trails.
+NO_DAMAGE_SMOKE = ('v3rocket', 'dmisl')
+
+
+def damage_smoke(name, cur: Node, out: Node, ra2):
+    """RA2's damage smoke for an original-art actor (its facts in ra2-damage-smoke.json), unless the actor has a damage
+    look of its own (the modern countries' R2FX layer). Changes `out` in place; True when added.
+
+    The nine countries' damaged ships and tanks looked brand new (seen by the owner on a nearly destroyed ship, 20
+    November 2026): RA2's particle smoke was never carried over, and the modern units' smoke and fire layer (RTSAI-Art
+    tools/anim_fx.py) covers only theirs. Grey smoke over the hull, half translucent, from half health down, for the
+    original countries only."""
+    if ra2 is None or SMOKE_SYSTEM not in ra2.get('damageParticleSystems', []) or name in NO_DAMAGE_SMOKE:
+        return False
+    if any('@R2FX' in t.key for t in cur.children):
+        return False
+    out.children.append(Node('GrantConditionOnDamageState@' + DAMAGE_SMOKE, None, [
+        Node('Condition', DAMAGE_SMOKE), Node('ValidDamageStates', 'Heavy, Critical')]))
+    # The modern units' damage smoke picture (r2fxsmoke: lgrysmk1, drawn above the body) at RA2's 50% translucency: an
+    # overlay, like theirs (a LeavesTrails smoke draws nothing in the web game, 20 Nov). It is a project picture, so it
+    # keeps the project palette (RA2's effect palette turns it green), and the original art must not swap that palette.
+    swapped = out.get('WithFactionPalettes@ea')
+    swapped = {p.key for group in ('Palettes', 'PlayerPalettes') if swapped is not None and swapped.get(group) is not None
+               for p in swapped.get(group).children}
+    if SMOKE_PALETTE in swapped:
+        raise GenerationError(f'{name}: the original art swaps {SMOKE_PALETTE}, which would recolour its damage smoke')
+    out.children.append(Node('WithIdleOverlay@' + DAMAGE_SMOKE, None, [
+        Node('Image', 'r2fxsmoke'), Node('Sequence', 'idle'), Node('Palette', SMOKE_PALETTE),
+        Node('Offset', '0,0,1024' if ra2.get('naval') else '0,0,512'), Node('RequiresCondition', f'{CONDITION} && {DAMAGE_SMOKE}')]))
+    if out.get('GrantConditionOnFaction@' + CONDITION) is None:
+        raise GenerationError(f'{name}: the original countries\' condition is not granted, so its damage smoke never shows')
+    return True
+
+
+def has_damage_look(actor: Node):
+    """Smoke or fire the actor shows when damaged, for the original countries: RA2's (ea-damage-smoke) or its own
+    (the modern countries' R2FX layer)."""
+    return any('@R2FX' in t.key for t in actor.children) or any(
+        t.key == 'WithIdleOverlay@' + DAMAGE_SMOKE and ORIGINAL_ONLY.search(t.val('RequiresCondition') or '') for t in actor.children)
+
+
 def reference_armament(ref: Node, key):
     """The reference armament an original-art twin was made from (ea_retail.py: Armament@x -> Armament@retail-x,
     ea_gameplay.py: its elite twin -> Armament@retail-x-missing-elite), or None."""
@@ -977,6 +1025,9 @@ class Generator:
                     moved = original_turrets(name, self.cur[name], self.ref[name], by_key[name])
                     if moved:
                         self.moved_turrets[name] = moved
+            smoke = json.loads(DAMAGE_SMOKE_FACTS.read_text(encoding='utf-8'))['actors']
+            self.damage_smoke = sorted(name for name in self.actors if name in by_key and smoke.get(name, {}).get('kind') != 'building'
+                                       and damage_smoke(name, self.cur[name], by_key[name], smoke.get(name)))
         # Only the project "explosion" image: original ea-explosion keeps its own pivots.
         if not self.native_render_only:
             self.seq_nodes.extend(effect_anchors.anchor_patches(self, __import__(__name__)))
@@ -1244,6 +1295,8 @@ class Generator:
                         for p in (t.get(group).children if t.get(group) is not None else []):
                             if p.value not in palettes:
                                 raise GenerationError(f'{node.key}: palette {p.value} does not resolve')
+                if t.key == 'WithIdleOverlay@' + DAMAGE_SMOKE:
+                    continue  # a project picture with its own project palette, which the original art never swaps (damage_smoke)
                 for f in ('DeathSequencePalette', 'CrushedSequencePalette', 'PlayerPalette', 'IconPalette', 'Palette'):
                     v = t.val(f)
                     if v and t.key.startswith(('WithDeathAnimation@ea-', 'RenderVoxels', 'Buildable', 'WithIdleOverlay')) and v not in palettes:
@@ -1265,6 +1318,15 @@ class Generator:
                     raise GenerationError(f'{n.key}.{s.key}: project file {v} would be drawn with original palettes')
         if self.retail is not None:
             self._validate_turrets()
+            # Every original vehicle, ship and aircraft RA2 shows smoking once damaged shows it here too.
+            smoke = json.loads(DAMAGE_SMOKE_FACTS.read_text(encoding='utf-8'))['actors']
+            effective = {k.lower(): v for k, v in merge([list(self.cur.values()), self.rules_nodes]).items()}
+            for name in sorted(self.actors):
+                ra2 = smoke.get(name)
+                if ra2 is None or ra2['kind'] == 'building' or SMOKE_SYSTEM not in ra2['damageParticleSystems'] or name in NO_DAMAGE_SMOKE:
+                    continue
+                if not has_damage_look(effective[name]):
+                    raise GenerationError(f'{name}: RA2 shows it smoking once damaged; here it would look new until it dies')
         audit = self.audit()
         failures = {f: a for f, a in audit['countries'].items() if a['missing'] or a['replacements'] or a['extensions']}
         if failures:
@@ -1343,7 +1405,9 @@ class Generator:
                                   'voxel': ('ea-' + v['voxel']) if v.get('voxel') else None} for k, v in sorted(self.actors.items())},
                    'aliases': {k: sorted(v) for k, v in sorted(self.aliases.items())},
                    # Original turrets moved off the stand-in's place: {actor: {turret: [stand-in place, original place]}}.
-                   'movedTurrets': getattr(self, 'moved_turrets', {})}
+                   'movedTurrets': getattr(self, 'moved_turrets', {}),
+                   # Original-art vehicles, ships and aircraft given RA2's damage smoke.
+                   'damageSmoke': getattr(self, 'damage_smoke', [])}
         (out / 'ea-files.json').write_text(json.dumps(summary, indent=1) + '\n', encoding='utf-8', newline='\n')
         (out / 'original-country-audit.json').write_text(json.dumps(self.audit(), indent=1) + '\n', encoding='utf-8', newline='\n')
         return summary
