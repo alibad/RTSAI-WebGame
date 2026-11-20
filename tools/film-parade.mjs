@@ -10,6 +10,7 @@
 //
 //   node tools/film-parade.mjs --base http://127.0.0.1:3590/ --out <dir> [--factions iran,germany:tnkd+mtnk+e1] [--rows infantry,vehicles,ships,defenses,buildings]
 //        [--units tnkd,mtnk] [--map web-arena] [--crf 22] [--keep-takes] [--cold-audio [--settle 15000]]
+//        [--pack <web-bundle.pack>] [--overlay <dir>] [--note "text"]
 // Writes <out>/<faction>.mp4 (H.264 + AAC, 1280x720, 30 fps) and <out>/<faction>.json: per unit, what was heard and
 // seen (voices on select and on orders, shots counted by the engine, distinct facings, body sequences, death).
 import fs from "node:fs";
@@ -93,6 +94,21 @@ if (packFile) {
     headers: { "access-control-allow-origin": "*", "cross-origin-resource-policy": "cross-origin" }, body }));
   log(`data bundle answered from ${packFile}`);
 }
+// --overlay <dir>: files under <dir> answer the page's requests into the data folder (data-<id>/<path>), the rest
+// still comes from the CDN; e.g. <dir>/public/web-audio.json and <dir>/public/audio/web/ea/audio/<clip>.wav to film
+// sounds a data build would add.
+const overlay = opt("overlay", "");
+if (overlay) {
+  const types = { ".json": "application/json", ".wav": "audio/wav", ".pack": "application/octet-stream" };
+  await page.route(/\/data-[0-9a-f]{12}\//, (route) => {
+    const rel = decodeURIComponent(new URL(route.request().url()).pathname.replace(/^.*?\/data-[0-9a-f]{12}\//, ""));
+    const file = path.join(overlay, ...rel.split("/"));
+    if (rel.includes("..") || !fs.existsSync(file) || !fs.statSync(file).isFile()) return route.fallback();
+    return route.fulfill({ status: 200, contentType: types[path.extname(file)] ?? "application/octet-stream",
+      headers: { "access-control-allow-origin": "*", "cross-origin-resource-policy": "cross-origin" }, body: fs.readFileSync(file) });
+  });
+  log(`data folder overlaid from ${overlay}`);
+}
 const cdp = await context.newCDPSession(page);
 
 await page.goto(`${base}?profile=public&mode=simulator&private=0`);
@@ -163,8 +179,13 @@ await page.evaluate((note) => {
     requestAnimationFrame(place);
   };
   requestAnimationFrame(place);
-  // Every sound the engine asks the page to play (source ids; relative = not placed on the battlefield).
-  window.game.client.on("audio", (m) => { if (m.op === "play") P.audio.push({ t: P.t(), source: m.source, relative: m.relative, x: m.x, y: m.y, volume: m.volume }); });
+  // Every sound the engine asks the page to play (source ids; relative = not placed on the battlefield). A source is
+  // a decoded sound file: its format and length ("22050Hz/1ch/16b/12345B") tell which file it is.
+  P.sources = {};
+  window.game.client.on("audio", (m) => {
+    if (m.op === "source") P.sources[m.id] = `${m.rate}Hz/${m.channels}ch/${m.bits}b/${m.data?.byteLength ?? 0}B`;
+    if (m.op === "play") P.audio.push({ t: P.t(), source: m.source, file: P.sources[m.source], relative: m.relative, x: m.x, y: m.y, volume: m.volume });
+  });
   P.startTap = () => {
     const a = window.game.audio, ctx = a.context();
     if (ctx.state === "suspended") void ctx.resume();
@@ -276,6 +297,9 @@ const until = async (f, arg, ms = 20000, step = 100) => {
 const actors = () => g(() => { const c = window.game.client, s = c.cur; return s ? s.actors.map((a) => ({ id: a.id, type: c.str(a.type), own: a.owner === s.header.localPlayer, sx: a.sx, sy: a.sy, hp: a.hp, flags: a.flags, facing: a.facing, seq: c.str(a.sequence), z: a.worldZ })) : []; });
 const cellPx = (u, v) => [30 + (2 * u + (v & 1)) * 30, 15 + v * 15];
 const audioSince = (t) => g((t) => window.__parade.audio.filter((a) => a.t >= t), t);
+/** Which decoded sounds a list of audio events played, and how often: {"<rate>Hz/<channels>ch/<bits>b/<bytes>B": count}. */
+const countSounds = (events) => Object.fromEntries(Object.entries(events.reduce((m, a) => ((m[a.file ?? a.source] = (m[a.file ?? a.source] ?? 0) + 1), m), {}))
+  .sort(([a], [b]) => a.localeCompare(b)));
 const pageNow = () => g(() => window.__parade.t());
 // The game's own clock against the wall clock: a take filmed while the PC could not keep up is not at normal speed.
 const gameClock = () => g(() => ({ tick: window.game.client.cur?.header.tick ?? 0, t: performance.now() }));
@@ -593,7 +617,8 @@ async function unitTake(faction, country, enemy, row, takeDir, heard) {
     report[p.i].facings = track.facings.get(p.id).size;
     report[p.i].sequences = [...track.seqs.get(p.id)];
   }
-  const deathSounds = (await audioSince(tDie)).filter((a) => !a.relative).length;
+  const dying = (await audioSince(tDie)).filter((a) => !a.relative);
+  const deathSounds = dying.length;
   const speed = await gameSpeed(clock);
   await rec.stop();
   await g(() => window.game.setPaused(true));
@@ -601,12 +626,14 @@ async function unitTake(faction, country, enemy, row, takeDir, heard) {
   const take = encodeTake(rec.frames, path.join(takeDir, "frames"), path.join(takeDir, "take.mp4"), audio, lens);
   fs.rmSync(path.join(takeDir, "frames"), { recursive: true, force: true });
   stamp(report, take);
-  return { row: row.title, kind: row.kind, map: st.map, ...take, ...speed, moveLine: rowVoices.move, attackLine: rowVoices.attack, allDead: !!dead, battlefieldSoundsWhileFiring: fireSounds, battlefieldSoundsWhileDying: deathSounds, units: report };
+  return { row: row.title, kind: row.kind, map: st.map, ...take, ...speed, moveLine: rowVoices.move, attackLine: rowVoices.attack, allDead: !!dead, battlefieldSoundsWhileFiring: fireSounds, battlefieldSoundsWhileDying: deathSounds,
+    soundsWhileDying: countSounds(dying), units: report };
 }
 
 /** The buildings: standing (each selected in turn), or the same base worn down to a sliver and brought down. */
 async function buildingTake(faction, country, enemy, names, takeDir, wrecked) {
   const st = STAGES.land, c = st.centre;
+  let tDie = null;
   const fp = (name) => unitOf[name]?.footprint ?? [2, 2];
   // Three ranks, big buildings first; each gets a slot as wide as its footprint's diamond.
   const ranks = [[], [], []];
@@ -661,6 +688,7 @@ async function buildingTake(faction, country, enemy, names, takeDir, wrecked) {
   } else {
     await sleep(900);
     await step("destroyed");
+    tDie = await pageNow();
     await g(async ({ shown, killer }) => {
       const gm = window.game;
       gm.setPaused(true);
@@ -672,6 +700,7 @@ async function buildingTake(faction, country, enemy, names, takeDir, wrecked) {
     const end = await actors();
     for (const p of shown) { const a = end.find((x) => x.id === p.id); report[p.i].died = !a || a.hp <= 0 || (a.flags & 16) !== 0; }
   }
+  const dying = tDie == null ? [] : (await audioSince(tDie)).filter((a) => !a.relative);
   const speed = await gameSpeed(clock);
   await rec.stop();
   await g(() => window.game.setPaused(true));
@@ -679,7 +708,7 @@ async function buildingTake(faction, country, enemy, names, takeDir, wrecked) {
   const take = encodeTake(rec.frames, path.join(takeDir, "frames"), path.join(takeDir, "take.mp4"), audio);
   fs.rmSync(path.join(takeDir, "frames"), { recursive: true, force: true });
   stamp(report, take);
-  return { row: title, kind: "buildings", map: st.map, ...take, ...speed, units: report };
+  return { row: title, kind: "buildings", map: st.map, ...take, ...speed, ...(tDie == null ? {} : { soundsWhileDying: countSounds(dying) }), units: report };
 }
 
 // ---------------------------------------------------------------------------------------------------- the parade
