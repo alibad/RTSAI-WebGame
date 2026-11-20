@@ -60,6 +60,11 @@ export interface SandboxConfig {
 }
 
 export interface SideSettings { order: SandboxOrder; destination: { u: number; v: number } | null; level: number }
+/** One unit's own opening order (it outranks its side's). */
+export interface UnitOrder { order: SandboxOrder; destination?: { u: number; v: number } }
+/** A unit on the field, for its card's what-ifs. */
+export interface PlacedUnit { id: number; type: string; side: 0 | 1; u: number; v: number; level: number; health: number; own: UnitOrder | null }
+const unitKey = (type: string, side: number, u: number, v: number) => `${type}|${side}|${u}|${v}`;
 
 /** A placeable actor (Ui.UnitCatalog): `combat` is the engine's answer to "can it fight?" (it attacks with a weapon). */
 export interface SimUnit {
@@ -98,6 +103,10 @@ export interface SandboxState {
   canRedo: boolean;
   /** One line the setup has to tell (units that found no room after the map changed), until the next change. */
   notice: string | null;
+  /** Units with an opening order of their own, by where they stand ("type|side|u|v"). */
+  unitOrders: Record<string, UnitOrder>;
+  /** The unit (actor id) whose own destination the next click on the battlefield sets. */
+  pickUnit: number | null;
 }
 
 function b64urlDecode(s: string) {
@@ -156,6 +165,7 @@ export class Sandbox {
   recording: Snapshot[] = [];
   private lastRunScenario = "";
   private placementsAtRun: Placement[] = [];
+  private bareAtRun: Placement[] = [];
   private urlPlacements: Placement[];
   private playTimer: ReturnType<typeof setInterval> | null = null;
 
@@ -170,7 +180,7 @@ export class Sandbox {
         ],
         fa: cfg.fa, fb: cfg.fb, units: [], rosters: {}, map: cfg.map ?? ARENA, skill: cfg.skill ?? "normal", money: cfg.money ?? 0, fog: cfg.fog ?? false,
         recordLen: 0, replay: null, playing: false, speed: 1, paused: false, pickDestination: null, operation: null, placed: null,
-        canUndo: false, canRedo: false, notice: null,
+        canUndo: false, canRedo: false, notice: null, unitOrders: {}, pickUnit: null,
       },
     });
     // The engine draws the armed brush at the cursor (sim SandboxPlacement): a building's green and red footprint and
@@ -276,7 +286,7 @@ export class Sandbox {
   }
 
   /** Placements now in the editing world, with each side's order, destination and the URL's per-unit settings. */
-  async collect(): Promise<Placement[]> {
+  async collect(bare = false): Promise<Placement[]> {
     const r = await this.game.command<{ spawns: { type: string; player: number; x: number; y: number; facing: number; level: number; health: number }[] }>({ cmd: "placements" });
     const st = this.state;
     return (r.spawns ?? []).map((s) => {
@@ -285,18 +295,25 @@ export class Sandbox {
       const near = (p: Placement) => Math.abs(p.u - s.x) + Math.abs(p.v - s.y);
       const fromUrl = this.urlPlacements.filter((p) => p.id === s.type && p.side === side && near(p) <= 4).sort((a, b) => near(a) - near(b))[0];
       const settings = st.sides[side];
-      const order = fromUrl?.order ?? settings.order;
-      const destination = fromUrl?.destination ?? settings.destination ?? undefined;
+      // The unit's own order (set on its card, or carried by a link or a saved battle) outranks its side's. `bare`
+      // leaves the side's order out, so a kept setup still follows the side's order when that is changed later.
+      const mine = st.unitOrders[unitKey(s.type, side, s.x, s.y)];
+      const own = mine?.order ?? fromUrl?.order;
+      const order = own ?? (bare ? undefined : settings.order);
+      const destination = (mine ? mine.destination : fromUrl?.destination) ?? (bare && !own ? undefined : settings.destination ?? undefined);
       return {
         id: s.type, ...(fromUrl?.name ? { name: fromUrl.name } : {}), side, u: s.x, v: s.y, facing: s.facing, level: s.level, health: s.health,
-        order: order === "move" && !destination ? "hold" : order, destination, deploy: fromUrl?.deploy,
+        ...(order ? { order: order === "move" && !destination ? "hold" as const : order } : {}), destination, deploy: fromUrl?.deploy,
       };
     });
   }
 
   async run() {
-    const placements = this.state.mode === "edit" ? await this.collect() : this.placementsAtRun;
+    const editing = this.state.mode === "edit";
+    const placements = editing ? await this.collect() : this.placementsAtRun;
     if (!placements.length) return;
+    // Without the sides' orders too: what Edit goes back to, so the side's order can still be changed there.
+    if (editing) this.bareAtRun = await this.collect(true);
     this.placementsAtRun = placements;
     this.stopPlayback();
     this.recording = [];
@@ -310,8 +327,9 @@ export class Sandbox {
 
   /** Back to editing with the placements of the last run. */
   backToEdit() {
-    this.urlPlacements = this.placementsAtRun;
-    this.edit(this.placementsAtRun);
+    const placements = this.bareAtRun.length ? this.bareAtRun : this.placementsAtRun;
+    this.urlPlacements = placements;
+    this.edit(placements);
   }
 
   get scenarioJson() { return this.lastRunScenario; }
@@ -387,7 +405,7 @@ export class Sandbox {
   setMap(map: string) {
     if (map === this.state.map) return;
     this.clearHistory();
-    this.patch({ map, operation: null });
+    this.patch({ map, operation: null, unitOrders: {} });
     this.urlPlacements = [];
     this.game.prepare(map);
     this.edit([]);
@@ -418,7 +436,7 @@ export class Sandbox {
   /** What is on the field now, kept before a change so the change can be taken back. */
   private async checkpoint() {
     if (this.state.mode !== "edit" || store.get().phase !== "playing") return;
-    this.past.push(await this.collect());
+    this.past.push(await this.collect(true));
     if (this.past.length > 80) this.past.shift();
     this.future = [];
     this.patch({ canUndo: true, canRedo: false, notice: null });
@@ -432,7 +450,7 @@ export class Sandbox {
 
   private clearHistory() {
     this.past = []; this.future = [];
-    if (store.get().sandbox) this.patch({ canUndo: false, canRedo: false, notice: null });
+    if (store.get().sandbox) this.patch({ canUndo: false, canRedo: false, notice: null, pickUnit: null });
   }
 
   async undo() { await this.rewind(this.past, this.future); }
@@ -442,7 +460,7 @@ export class Sandbox {
     if (this.stepping || this.state.mode !== "edit" || store.get().phase !== "playing" || !from.length) return;
     this.stepping = true;
     try {
-      to.push(await this.collect());
+      to.push(await this.collect(true));
       await this.apply(from.pop()!);
       this.patch({ canUndo: this.past.length > 0, canRedo: this.future.length > 0, placed: null, notice: null });
       uiTone("place");
@@ -470,13 +488,97 @@ export class Sandbox {
     this.game.client.send({ type: "refresh" });
   }
 
+  // ---------------------------------------------------------------- one unit's what-ifs (ui/UnitWhatIfs.tsx)
+
+  /** A placed unit as the editing world has it: where it stands, its rank and health, and its own order if it has one. */
+  async unit(id: number): Promise<PlacedUnit | null> {
+    const r = await this.game.command<{ spawns: { id: number; type: string; player: number; x: number; y: number; level: number; health: number }[] }>({ cmd: "placements" });
+    const s = (r.spawns ?? []).find((x) => x.id === id);
+    if (!s) return null;
+    const side = s.player as 0 | 1;
+    return { id, type: s.type, side, u: s.x, v: s.y, level: s.level, health: s.health, own: this.state.unitOrders[unitKey(s.type, side, s.x, s.y)] ?? null };
+  }
+
+  /**
+   * Another rank, health or team for one unit. The unit is taken out and put back where it stood with the new values
+   * (a building through a rebuilt world, which is the only way back onto its exact cells). Answers its new id.
+   */
+  async changeUnit(id: number, change: { level?: number; health?: number; side?: 0 | 1 }): Promise<number | null> {
+    const u = await this.unit(id);
+    if (!u || this.state.mode !== "edit") return null;
+    await this.checkpoint();
+    const side = change.side ?? u.side, level = change.level ?? u.level, health = Math.max(1, Math.min(100, Math.round(change.health ?? u.health)));
+    const info = this.state.units.find((x) => x.name === u.type);
+    const fixed = !info || info.kind === "building" || info.kind === "defense" || !!info.footprint;
+    if (side !== u.side && u.own) this.setOwn(unitKey(u.type, side, u.u, u.v), u.own, unitKey(u.type, u.side, u.u, u.v));
+    if (fixed) {
+      const all = await this.collect(true);
+      const i = all.findIndex((p) => p.id === u.type && p.side === u.side && p.u === u.u && p.v === u.v);
+      if (i < 0) { this.forget(); return null; }
+      all[i] = { ...all[i], side, level, health, facing: side === u.side ? all[i].facing : side === 0 ? 768 : 256 };
+      this.urlPlacements = all;
+      await this.edit(all);
+    } else {
+      await this.game.command({ cmd: "remove", id });
+      await this.game.command({ cmd: "spawn", type: u.type, player: side, u: u.u, v: u.v, count: 1, level, health });
+      this.game.client.send({ type: "refresh" });
+    }
+    return this.find(u.type, side, u.u, u.v);
+  }
+
+  /** One more of the same, beside it: same type, team, rank and health. Answers the new one's id. */
+  async duplicateUnit(id: number): Promise<number | null> {
+    const u = await this.unit(id);
+    if (!u || this.state.mode !== "edit") return null;
+    const before = new Set((await this.game.command<{ spawns: { id: number }[] }>({ cmd: "placements" })).spawns?.map((s) => s.id));
+    await this.checkpoint();
+    // The engine puts it on the nearest free cell around the original (a building: where it fits, or nowhere).
+    const [x, y] = this.cellPx(u.u, u.v);
+    const r = await this.game.command<{ created?: number; blocked?: string }>({ cmd: "spawn", type: u.type, player: u.side, x, y, count: 1, level: u.level, health: u.health });
+    if (!r.created) { this.forget(); this.patch({ notice: r.blocked ?? "No room for another one here." }); return null; }
+    this.game.client.send({ type: "refresh" });
+    const after = (await this.game.command<{ spawns: { id: number }[] }>({ cmd: "placements" })).spawns ?? [];
+    return after.find((s) => !before.has(s.id))?.id ?? null;
+  }
+
+  /** One unit's own opening order: it outranks its side's. `null`: back to the side's order. */
+  async setUnitOrder(id: number, order: SandboxOrder | null, destination?: { u: number; v: number }) {
+    const u = await this.unit(id);
+    if (!u) return;
+    this.setOwn(unitKey(u.type, u.side, u.u, u.v), order ? { order, ...(destination ? { destination } : {}) } : null);
+    this.patch({ pickUnit: null });
+  }
+
+  /** The next click on the battlefield is where this unit moves when the battle starts. */
+  pickUnitDestination(id: number | null) { this.patch({ pickUnit: id, pickDestination: null, brush: null }); }
+
+  private setOwn(key: string, own: UnitOrder | null, drop?: string) {
+    const next = { ...this.state.unitOrders };
+    if (drop) delete next[drop];
+    if (own) next[key] = own; else delete next[key];
+    this.patch({ unitOrders: next });
+  }
+
+  private async find(type: string, side: number, u: number, v: number) {
+    const r = await this.game.command<{ spawns: { id: number; type: string; player: number; x: number; y: number }[] }>({ cmd: "placements" });
+    const same = (r.spawns ?? []).filter((s) => s.type === type && s.player === side);
+    return (same.find((s) => s.x === u && s.y === v) ?? same.sort((a, b) => Math.abs(a.x - u) + Math.abs(a.y - v) - Math.abs(b.x - u) - Math.abs(b.y - v))[0])?.id ?? null;
+  }
+
+  /** The middle of a cell in world px (the page's own arithmetic, as frame() uses). */
+  private cellPx(u: number, v: number): [number, number] {
+    const info = store.get().info!;
+    const [ox, oy] = info.cellOrigin, hw = info.tileSize[0] / 2, hh = info.tileSize[1] / 2;
+    return [Math.round(ox + (2 * u + (v & 1)) * hw), Math.round(oy + v * hh)];
+  }
+
   /** A line for the setup's hint bar (cleared by the next change). */
   say(notice: string | null) { this.patch({ notice }); }
 
   /** The setup as it stands, to keep or to share (battle-setups.ts): the map, both sides' settings and every placed unit. */
   async snapshot(): Promise<Omit<BattleSetup, "id" | "name" | "savedAt">> {
     const st = this.state;
-    const placements = st.mode === "edit" ? await this.collect() : this.placementsAtRun;
+    const placements = st.mode === "edit" ? await this.collect(true) : this.bareAtRun;
     const map = store.get().setup?.maps.find((m) => m.id === st.map);
     return {
       map: st.map, mapTitle: map?.title ?? "Open arena", ...(map?.generated && map.gen ? { gen: map.gen } : {}), ...(map?.library || map?.saved ? { own: true } : {}),
@@ -495,7 +597,7 @@ export class Sandbox {
       map = await this.game.generateMap(JSON.parse(s.gen));
     }
     this.clearHistory();
-    this.patch({ map, fa: s.fa, fb: s.fb, skill: s.skill, money: s.money, fog: s.fog, sides: s.sides, operation: null, brush: null, pickDestination: null });
+    this.patch({ map, fa: s.fa, fb: s.fb, skill: s.skill, money: s.money, fog: s.fog, sides: s.sides, operation: null, brush: null, pickDestination: null, unitOrders: {} });
     this.game.prepare(map);
     await this.edit(s.placements);
     const placed = (await this.collect()).length;

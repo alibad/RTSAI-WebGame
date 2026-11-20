@@ -13,6 +13,7 @@ import { useStore } from "../store";
 import { UnitCard } from "./UnitCard";
 import { Rank } from "./Hud";
 import { sidesOf } from "./BattleBoard";
+import { UnitWhatIfs } from "./UnitWhatIfs";
 
 interface Seen { id: number; type: string; side: 0 | 1; hp: number; maxHp: number; rank: number; building: boolean; dead: boolean }
 
@@ -60,6 +61,8 @@ export function Inspector({ game }: { game: Game }) {
               <span className="sb-bar"><i style={{ width: `${f * 100}%` }} /></span>
               <span className="digits">{seen.hp.toLocaleString()}<small> / {seen.maxHp.toLocaleString()}</small></span>
             </div>}
+        {/* In the setup this one unit can be changed: rank, health, team, its own first order, a copy (UnitWhatIfs). */}
+        {st.mode === "edit" && !seen.dead && game.sandbox && <UnitWhatIfs sandbox={game.sandbox} id={seen.id} building={seen.building} />}
         {stat && (
           <dl className="sim-inspect-type digits" aria-label={`Every ${unit.label} on this side`}>
             <div title="Shots fired by this type"><Crosshair size={12} /><dd>{stat.shots.toLocaleString()}</dd><dt>shots</dt></div>

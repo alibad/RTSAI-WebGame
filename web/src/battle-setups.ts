@@ -68,7 +68,8 @@ export function setupLink(s: Omit<BattleSetup, "id" | "name" | "savedAt" | "mapT
   keep.set("mode", "sandbox");
   keep.set("s", b64url(JSON.stringify({
     v: 2, fa: s.fa, fb: s.fb, map: s.map, ...(s.gen ? { gen: JSON.parse(s.gen) } : {}), skill: s.skill, money: s.money, fog: s.fog,
-    placements: s.placements.map((p) => ({
+    // A link stands alone: a unit without an order of its own carries its side's.
+    placements: s.placements.map((p) => (p.order ? p : { ...p, order: s.sides[p.side].order, destination: p.destination ?? s.sides[p.side].destination ?? undefined })).map((p) => ({
       id: p.id, side: p.side, u: p.u, v: p.v,
       ...(p.name ? { name: p.name } : {}), ...(p.level ? { level: p.level } : {}), ...(p.health !== undefined && p.health < 100 ? { health: p.health } : {}),
       ...(p.facing !== undefined ? { facing: p.facing } : {}), ...(p.order ? { order: p.order } : {}), ...(p.destination ? { destination: p.destination } : {}),

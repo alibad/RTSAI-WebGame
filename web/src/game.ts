@@ -1156,6 +1156,13 @@ export class Game {
     const sb = this.sandbox;
     if (!sb || sb.state.mode !== "edit" || !this.info) return false;
     const st = sb.state;
+    if (e.button === 0 && st.pickUnit !== null) {
+      // One unit's own destination (its card's "Move").
+      const unit = st.pickUnit;
+      this.overlay.orderFlash = { x: wx, y: wy, t: performance.now(), color: [1, 0.85, 0.3] };
+      void sb.cellAt(wx, wy).then((cell) => sb.setUnitOrder(unit, "move", cell));
+      return true;
+    }
     if (e.button === 0 && st.pickDestination !== null) {
       const side = st.pickDestination;
       this.overlay.orderFlash = { x: wx, y: wy, t: performance.now(), color: side === 0 ? [0.3, 0.55, 1] : [1, 0.35, 0.3] };
