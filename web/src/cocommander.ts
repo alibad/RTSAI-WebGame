@@ -118,6 +118,8 @@ export class CoCommander {
   private receipts = new Map<string, { accepted: boolean; detail: string }>();
   private browserProposals = new Map<string, string>();
   private browserSuppressed = "";
+  /** The tick the held card was applied (-1: the player declined it). */
+  private browserAppliedTick = -1;
   private browserLastLine = "";
   private browserDeciding = false;
   private browserReady = false;
@@ -335,6 +337,9 @@ export class CoCommander {
         if (item.state === "pending" && this.browserProposals.get(item.proposalId ?? "") !== key) this.update(item.id, { state: "expired" });
       }
       if (this.browserSuppressed && this.browserSuppressed !== key) this.browserSuppressed = "";
+      // An applied card that changed nothing (units that stood still, a target out of reach) is offered again after 20
+      // game seconds, so the adviser never falls silent for the rest of the match. A declined card stays declined.
+      if (this.browserSuppressed && this.browserAppliedTick >= 0 && observation.tick - this.browserAppliedTick > 25 * 20) this.browserSuppressed = "";
       if (!advice) return;
       if (advice.text !== this.browserLastLine || requested) {
         this.browserLastLine = advice.text;
@@ -359,7 +364,7 @@ export class CoCommander {
       || !item.proposalId || item.state !== "pending" || !this.browserProposals.has(item.proposalId)
       || !this.s.feed.some(f => f.id === item.id && f.proposalId === item.proposalId && f.state === "pending")) return;
     const key = this.browserProposals.get(item.proposalId)!;
-    if (!accept) { this.browserSuppressed = key; this.update(item.id, { state: "cancelled" }); return; }
+    if (!accept) { this.browserSuppressed = key; this.browserAppliedTick = -1; this.update(item.id, { state: "cancelled" }); return; }
     if (!this.canIssue() || store.get().phase !== "playing" || store.get().paused) return;
     const match = this.matchRevision, id = item.proposalId;
     this.browserDeciding = true;
@@ -388,6 +393,7 @@ export class CoCommander {
       if (receipt.accepted && advice.key.startsWith("mission:")) this.mission?.memory.record(advice as MissionAdvice, observation.tick);
       if (!this.receipts.has(id)) this.onEngine({ kind: "executed", id, accepted: receipt.accepted, detail: receipt.detail });
       this.browserSuppressed = key;
+      this.browserAppliedTick = observation.tick;
     } catch (error) {
       if (match !== this.matchRevision) return;
       const receipt = this.receipts.get(id);
