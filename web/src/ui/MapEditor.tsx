@@ -7,7 +7,7 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { ArrowLeft, Download, Flag as FlagIcon, Gem, Globe2, Hand, ImageOff, Lightbulb, Map as MapIcon, Maximize, Minus, Mountain, MousePointer2, Plus, Redo2, Save, Search, Swords, Trash2, Undo2, Upload, Users, Waves } from "lucide-react";
 import type { Game } from "../game";
-import { EditorController, type EditorTool } from "../editor";
+import { EditorController, type EditorCatalog, type EditorTool } from "../editor";
 import { useStore } from "../store";
 import { cn } from "../lib/utils";
 import { OptionSelect } from "../components/ui/fields";
@@ -21,16 +21,22 @@ import { readOramap } from "../oramap";
 import type { MissionSpec } from "../mission";
 
 /** Template categories worth painting with, in the order a mapper reaches for them (the tileset's own order after). */
-const FIRST = ["Lat Grass", "LAT Grass Rough", "LAT Grass, thick", "LAT Sand", "LAT Pavement", "Water", "Shore Pieces", "Sand (beach) Transitions", "Cliff Set", "Cliff/Water pieces", "Ramps", "Slope Set Pieces", "DirtRoads Straight", "DirtRoads Bendy", "DirtRoads Junctions", "Paved Roads", "Bridges", "Wood Bridges", "Farm Crops"];
-const HIDDEN = /^(ZMM|Z|Obsolete|New MM|Newest MM|Ramp edge fixup|Blank|RTS AI .* edges|Tunnel|DirtTunnel|Water Caves|Waterfalls|RA2 uss)/;
+// Ground other than grass is the game's own dirt, rough ground and sand: the sets the random and real-place maps are
+// made of (a full tile and its edge pieces). The tileset's older "LAT" rough, sand and pavement tiles are placeholders
+// that paint grass with a few specks, so they are not offered (found while filming the editor, 20 Nov 2026).
+const GROUND = ["RTS AI dirt edges", "RTS AI rough edges", "RTS AI sand edges"];
+const FIRST = ["Lat Grass", ...GROUND, "Water", "Shore Pieces", "Sand (beach) Transitions", "Cliff Set", "Cliff/Water pieces", "Ramps", "Slope Set Pieces", "DirtRoads Straight", "DirtRoads Bendy", "DirtRoads Junctions", "Paved Roads", "Bridges", "Wood Bridges", "Farm Crops"];
+const HIDDEN = /^(ZMM|Z|Obsolete|New MM|Newest MM|Ramp edge fixup|Blank|RTS AI water edges|LAT Grass Rough|LAT Sand|LAT Pavement|(GrassRough|Sand|Pavement) Individual|Tunnel|DirtTunnel|Water Caves|Waterfalls|RA2 uss)/;
 /** What a mapper calls the tileset's categories. */
 const NAMES: Record<string, string> = {
-  "Lat Grass": "Grass", "LAT Grass Rough": "Rough ground", "LAT Grass, thick": "Thick grass", "LAT Sand": "Sand", "LAT Pavement": "Pavement",
+  "Lat Grass": "Grass", "RTS AI dirt edges": "Dirt", "RTS AI rough edges": "Rough ground", "RTS AI sand edges": "Sand",
   "Water": "Water", "Shore Pieces": "Shores", "Sand (beach) Transitions": "Beaches", "Cliff Set": "Cliffs", "Cliff/Water pieces": "Sea cliffs",
   "Ramps": "Ramps", "Slope Set Pieces": "Slopes", "DirtRoads Straight": "Dirt roads", "DirtRoads Bendy": "Road bends", "DirtRoads Junctions": "Junctions",
   "Paved Roads": "Paved roads", "Bridges": "Bridges", "Wood Bridges": "Wooden bridges", "Farm Crops": "Farmland",
 };
 const nameOf = (c: string) => NAMES[c] ?? c;
+/** A category's pieces. A ground set leads with its full tile (its last piece); the edge pieces follow. */
+const tilesOf = (cat: EditorCatalog, c: string) => { const list = cat.templates.filter((t) => t.categories.includes(c)); return GROUND.includes(c) ? [...list].reverse() : list; };
 const TOOLS: { id: EditorTool; label: string; icon: React.ReactNode; key: string }[] = [
   { id: "select", label: "Select and move", icon: <MousePointer2 size={18} />, key: "S" },
   { id: "pan", label: "Pan map", icon: <Hand size={18} />, key: "H" },
@@ -100,8 +106,8 @@ function Palette({ game, editor }: { game: Game; editor: EditorController }) {
   useEffect(() => {
     if (st.tool !== "terrain") return;
     // The chosen category's templates, and one picture for each main category.
-    const covers = categories.filter((c) => FIRST.includes(c)).map((c) => cat.templates.find((t) => t.categories.includes(c))?.id).filter((id): id is number => id !== undefined);
-    editor.thumbnails([...cat.templates.filter((t) => t.categories.includes(st.category)).map((t) => t.id), ...covers]);
+    const covers = categories.filter((c) => FIRST.includes(c)).map((c) => tilesOf(cat, c)[0]?.id).filter((id): id is number => id !== undefined);
+    editor.thumbnails([...tilesOf(cat, st.category).map((t) => t.id), ...covers]);
   }, [editor, st.tool, st.category, categories, cat]);
   const actors = cat.actors.filter((a) => query ? a.label.toLowerCase().includes(query.toLowerCase()) || a.name.includes(query.toLowerCase()) : a.categories.includes(actorCategory));
   useEffect(() => { if (st.tool === "actor") game.requestIcons(actors.map((a) => a.name)); }, [game, st.tool, actorCategory, query]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -121,7 +127,7 @@ function Palette({ game, editor }: { game: Game; editor: EditorController }) {
 
   if (st.tool === "terrain") {
     const main = categories.filter((c) => FIRST.includes(c)), more = categories.filter((c) => !FIRST.includes(c));
-    const cover = (c: string) => cat.templates.find((t) => t.categories.includes(c));
+    const cover = (c: string) => tilesOf(cat, c)[0];
     return (
       <div className="ed-palette hud-panel">
         <div className="ed-cats" role="tablist" aria-label="Terrain">
@@ -146,7 +152,7 @@ function Palette({ game, editor }: { game: Game; editor: EditorController }) {
           </div>
         )}
         <div className="ed-tiles">
-          {cat.templates.filter((t) => t.categories.includes(st.category)).map((t) => (
+          {tilesOf(cat, st.category).map((t) => (
             <button key={t.id} type="button" title={`${nameOf(st.category)} · ${t.size[0]}×${t.size[1]}`} aria-pressed={st.brush === `tile:${t.id}`} onClick={() => editor.brushTile(t.id)} data-tile={t.id}>
               {st.thumbs[t.id] ? <img src={st.thumbs[t.id]} alt="" draggable={false} /> : <span className="spinner" />}
             </button>
