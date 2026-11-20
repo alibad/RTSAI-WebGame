@@ -277,6 +277,15 @@ export function Setup({ game, utilities }: { game: Game; utilities: ReactNode })
       <footer className="sk-footer" aria-label="Match actions">
         <div className="sk-footer-inner">
           <div className="menu-utility" data-ui-sfx>{utilities}</div>
+          {/* Who the match is against, beside Start: on a laptop window the Opponents panel is under the fold. */}
+          {map && opponents.length > 0 && <button type="button" className="sk-versus" title="Change opponents"
+            onClick={() => document.querySelector(".sk-opponents")?.scrollIntoView({ behavior: "smooth", block: "center" })}>
+            <span>Against</span>
+            {opponents.slice(0, 4).map((o, i) => <Flag key={i} id={o.faction} />)}
+            <b>{opponents.length === 1
+              ? `${factions.find((f) => f.id === opponents[0].faction)?.name ?? ""} · ${setup.bots.find((b) => b.type === opponents[0].bot)?.name ?? ""}`
+              : `${opponents.length} opponents`}</b>
+          </button>}
           <GameButton variant="primary" size="lg" className="scr-cta" icon={<Swords size={18} aria-hidden="true" />} onClick={start} disabled={!map || !!mapError}>Start match</GameButton>
         </div>
       </footer>
