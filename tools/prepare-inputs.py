@@ -16,6 +16,18 @@ os.environ["PYTHONDONTWRITEBYTECODE"] = "1"
 
 ROOT = Path(__file__).resolve().parents[1]
 
+# Where each frozen input is published, for a reader of BUILD.json who wants the exact source.
+REPOSITORIES = {'engine': 'alibad/OpenRA', 'mod': 'alibad/RTSAI-Mod', 'missions': 'alibad/RTSAI-Mod',
+                'classic-map-source': 'alibad/OpenRA'}
+
+def source(name, record):
+    """The git commit an input was frozen from. Its content hash alone names no public source (GPL gap G2,
+    1 Nov 2026). A working-tree snapshot may hold files that were never committed: count them, so the commit is
+    not read as the exact source when it is not."""
+    commit = record.get('commit') or record.get('head')
+    if not commit: raise ValueError(f'The {name} input names no git commit')
+    return {'repository': REPOSITORIES[name], 'commit': commit, 'uncommittedFiles': len(record.get('dirtyPaths') or [])}
+
 def standalone(mod):
     shared = mod / 'tools/shared-content.py'
     shared_content = None
@@ -56,8 +68,10 @@ def main():
     run('snapshot','--repo',args.mod,'--out',dest/'mod',*committed)
     run('snapshot','--repo',args.missions,'--include','missions','--out',dest/'missions',*committed)
     run('snapshot','--repo',args.engine_repo,'--include','mods/ra/tilesets','--include','mods/ra/maps','--out',dest/'classic-map-source',*committed)
+    records={name: json.loads((dest/name/'INPUTS.json').read_text()) for name in ['engine','mod','missions','classic-map-source']}
     result={'schema':1, 'standalone':standalone(dest/'mod'),
-            'inputs': {name: json.loads((dest/name/'INPUTS.json').read_text())['sourceSha256'] for name in ['engine','mod','missions','classic-map-source']}}
+            'inputs': {name: record['sourceSha256'] for name, record in records.items()},
+            'sources': {name: source(name, record) for name, record in records.items()}}
     (dest/'build-inputs.json').write_text(json.dumps(result,indent=2)+'\n')
     print(json.dumps(result,indent=2))
 

@@ -17,7 +17,8 @@ BUILD.json beside the page, naming every source it was built from:
 
 - this repository (the page and the browser runtime)  frontendSourceCommit, runtimeSource.webgame
 - the OpenRA engine (fork github.com/alibad/OpenRA)   runtimeSource.engine
-- the RTS AI mod (github.com/alibad/RTSAI-Mod)         runtimeSource.mod, inputs
+- the RTS AI mod (github.com/alibad/RTSAI-Mod)         inputs.sources.mod.commit (data built after
+                                                       20 Nov 2026); runtimeSource.mod is its content hash
 - the RTS AI website (RTSAI-Web), whose unit cards,   release.site
   Earth compiler and UI kit (web/src/components/ui)
   are compiled into the page

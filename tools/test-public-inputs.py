@@ -30,4 +30,14 @@ class PublicInputs(unittest.TestCase):
             (mod/'unmounted.mix').write_bytes(b'owned content')
             with self.assertRaises(ValueError):inputs.standalone(root)
 
+    def test_every_input_names_its_git_commit(self):
+        # The three shapes RTSAI-Mod tools/build-inputs.py writes into INPUTS.json.
+        engine=inputs.source('engine',{'kind':'engine-archive','commit':'a'*40})
+        self.assertEqual(engine,{'repository':'alibad/OpenRA','commit':'a'*40,'uncommittedFiles':0})
+        committed=inputs.source('mod',{'kind':'committed-tree-snapshot','head':'b'*40,'excludedWorkingChanges':[' M x']})
+        self.assertEqual(committed,{'repository':'alibad/RTSAI-Mod','commit':'b'*40,'uncommittedFiles':0})
+        working=inputs.source('missions',{'kind':'working-tree-snapshot','head':'c'*40,'dirtyPaths':[' M a','?? b']})
+        self.assertEqual(working['uncommittedFiles'],2)
+        with self.assertRaises(ValueError):inputs.source('mod',{'kind':'working-tree-snapshot'})
+
 if __name__=='__main__':unittest.main()
