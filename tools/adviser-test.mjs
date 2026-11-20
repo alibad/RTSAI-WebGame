@@ -67,12 +67,12 @@ for profile, data in load()['profiles'].items():
       add(prefix+'build-focus',{**base,'units':army,'visible_enemies':[enemy]},items,True)
       # Busy unit queues force the strategic scout / attack branch.
       busy=[dict(queue_type=q,item=infantry,progress=.5,remaining_ticks=10) for q in ['Vehicle','Infantry']]
-      # Looking for the enemy base: one scout while few fighters are idle, the idle fighters together once there
-      # is an army, and nobody new while a unit is already out looking.
-      near=[actor(infantry,i+100,12+i,12,True,i%2==0) for i in range(10)]
-      add(prefix+'scout',{**base,'units':near,'production':busy},items)
-      add(prefix+'sweep',{**base,'units':[actor(infantry,i+100,12+i,12,True) for i in range(10)],'production':busy},items)
-      add(prefix+'scout-out',{**base,'units':near+[actor(infantry,200,80,80,True,False)],'production':busy},items)
+      # Looking for the enemy base: one scout, the fighters together once there are 8, and nobody new while any
+      # fighter is busy.
+      near=[actor(infantry,i+100,12+i,12,True) for i in range(10)]
+      add(prefix+'scout',{**base,'units':near[:5],'production':busy},items)
+      add(prefix+'sweep',{**base,'units':near,'production':busy},items)
+      add(prefix+'scout-out',{**base,'units':near[:5]+[actor(infantry,200,80,80,True,False)],'production':busy},items)
       target=actor(next(iter(roles.values())),1000,80,80)
       add(prefix+'visible-base',{**base,'units':army,'production':busy,'visible_enemy_buildings':[target]},items)
       add(prefix+'remembered-base',{**base,'units':army,'production':busy,'remembered_enemy_buildings':[target]},items)

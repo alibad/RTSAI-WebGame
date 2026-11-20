@@ -1,14 +1,15 @@
 // Films the public game's built-in adviser being asked and obeyed, in the live game's sign-in-free twin page: a
 // player who does exactly what the adviser recommends (clicks Apply on every card), with the game's own screen and a
 // caption strip saying what was recommended, what the engine answered, and what happened.
-//   node tools/arena/adviser-clip.mjs --scene opening|defend|scout|attack --out <folder>
+//   node tools/arena/adviser-clip.mjs --scene opening|defend|scout|attack|game --out <folder>
 //        [--faction iran] [--enemy saudi] [--skill normal] [--map ra2-tournament-2B] [--seed 3001] [--url http://127.0.0.1:3464/]
 //        [--bundle <pack>] [--adviser <adviser js>] [--name <file name>] [--label "after the fix"]
 // --adviser previews an adviser change on the live page: a bundle of web/src/adviser.ts and adviser-tree.ts as the
 // global __adviserPreview (esbuild --bundle --format=iife --global-name=__adviserPreview) takes the place of the
 // page's own skirmish adviser. Everything else, the engine included, is the live game.
 // Scenes: opening (the first cards up to the factory), defend (until "enemies are at your base" is applied), scout
-// (until the adviser says to scout), attack (until "attack the enemy base" is applied). The stretch before a scene's
+// (until the adviser says to scout), attack (until "attack the enemy base" is applied), game (the whole game, every
+// recommendation applied, to its result or 40:00). The stretch before a scene's
 // moment plays fast and is shortened again in the cut; the moment itself plays near normal speed.
 // Writes <name>.mp4 (1280x720, H.264), <name>.jpg and <name>.json (every card, the engine's receipt, the cut).
 import fs from "node:fs";
@@ -30,7 +31,7 @@ const name = opt("name", `adviser-${scene}-${faction}`);
 const bundle = opt("bundle", "");
 const adviser = opt("adviser", ""), label = opt("label", "");
 const FAST = Number(opt("fast", 6)), SHOW = Number(opt("show", 1.5));
-const maxGame = Number(opt("max", { opening: 300, defend: 720, scout: 720, attack: 1200 }[scene] ?? 600)); // game seconds
+const maxGame = Number(opt("max", { opening: 300, defend: 720, scout: 720, attack: 1200, game: 2400 }[scene] ?? 600)); // game seconds
 fs.mkdirSync(out, { recursive: true });
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -124,7 +125,7 @@ const kindOf = (text) => /to the attackers/.test(text) ? "defend" : /to the enem
 // scout: before the fix the adviser only talks ("scout-talk"); with --adviser the moment is its scouting card.
 const MOMENT = { opening: null, defend: "defend", scout: adviser ? "scout" : "scout-talk", attack: "attack" }[scene];
 const cards = [];
-let done = false, reason = "", momentAt = null, lastCardAt = Date.now();
+let done = false, reason = "", momentAt = null, lastCardAt = Date.now(), lastStats = 0, stats = null, outcome = null;
 await setPace(scene !== "opening");
 if (scene === "opening") { marks.length = 0; markFrom = Date.now() - t0; fastNow = false; }
 await say(scene === "opening" ? "A new player who clicks Apply on everything the adviser recommends." : "Fast-forward: every recommendation is applied, until the moment this clip is about.", "note");
@@ -133,6 +134,20 @@ while (!done) {
   await sleep(250);
   const gs = await gameSeconds();
   const st = await page.evaluate(() => { const s = window.store.getState(), p = window.game.cc.pending(); return { phase: s.phase, pending: p ? { id: p.id, proposalId: p.proposalId, text: p.text, commands: p.commands?.length ?? 0 } : null, line: [...s.cc.feed].reverse().find((f) => f.kind === "ai")?.text ?? "" }; });
+  if (scene === "game" && Date.now() - lastStats > 1500) {
+    lastStats = Date.now();
+    stats = await page.evaluate(() => window.game.command({ cmd: "stats" })).catch(() => stats);
+    const win = stats?.players?.[0]?.win;
+    if (win === "Won" || win === "Lost" || gs > maxGame) {
+      outcome = win === "Won" ? "win" : win === "Lost" ? "loss" : "no winner";
+      await setPace(false);
+      const kinds = cards.reduce((m, c) => { m[c.kind] = (m[c.kind] ?? 0) + 1; return m; }, {});
+      await say(`${clock(gs)} · ${cards.length} recommendations applied (${Object.entries(kinds).map(([k, n]) => `${n} ${k}`).join(", ")}).`, "note");
+      await say(outcome === "win" ? "The player who only followed the adviser won." : outcome === "loss" ? "The player who only followed the adviser lost." : "No winner after 40 minutes of following the adviser.", outcome === "win" ? "" : "bad");
+      await sleep(7000);
+      reason = `game over: ${outcome}`; break;
+    }
+  }
   if (st.phase !== "playing") { reason = `the game left play (${st.phase})`; break; }
   if (gs > maxGame) {
     // The moment never came: that is the finding. The clip is the last stretch and a closing line.
@@ -188,7 +203,7 @@ const webm = await video.path();
 
 // The cut: fast stretches are shortened four times more (the last 2 s of each are kept as they were, to arrive gently).
 const parts = [];
-const unreached = reason.startsWith("not reached");
+const unreached = reason.startsWith("not reached") || reason.startsWith("game over");
 for (const m of marks) {
   // A moment that never came: only the last 14 s of the fast-forward are kept before the closing line.
   const from = Math.max(m.from / 1000, unreached && m.fast ? m.to / 1000 - 14 : 0), to = m.to / 1000;
@@ -201,7 +216,7 @@ execFileSync("ffmpeg", ["-y", "-loglevel", "error", "-i", webm, "-filter_complex
 const seconds = Number(execFileSync("ffprobe", ["-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", mp4]).toString().trim());
 execFileSync("ffmpeg", ["-y", "-loglevel", "error", "-ss", String(Math.max(0, seconds - 8)), "-i", mp4, "-frames:v", "1", "-q:v", "3", path.join(out, `${name}.jpg`)]);
 fs.rmSync(tmp, { recursive: true, force: true });
-const result = { scene, name, faction, enemy, skill, map, seed, reached: reason === "moment filmed" || reason === "the factory is placed", reason, momentAtGameSeconds: momentAt === null ? null : Math.round(momentAt),
+const result = { scene, name, faction, enemy, skill, map, seed, reached: reason === "moment filmed" || reason === "the factory is placed" || reason.startsWith("game over"), reason, outcome, stats: stats?.players?.map((p) => ({ faction: p.faction, win: p.win, killsCost: p.killsCost, deathsCost: p.deathsCost, earned: p.earned })), momentAtGameSeconds: momentAt === null ? null : Math.round(momentAt),
   seconds: Math.round(seconds), video: mp4, cards, refused: cards.filter((c) => c.accepted === false).length, feed: all.filter((f) => f.kind !== "proposal").map((f) => `${f.kind}: ${f.text}`), errors, bundle: bundle || null, adviser: adviser || null, filmedAt: new Date().toISOString() };
 fs.writeFileSync(path.join(out, `${name}.json`), JSON.stringify(result, null, 1));
 console.log("RESULT " + JSON.stringify({ ...result, feed: result.feed.length, cards: cards.length }));

@@ -296,19 +296,21 @@ export function nextAdvice(snapshot: AdviserObservation, options: { buildFocus?:
   if (options.buildFocus) return null;
   const targets = snapshot.visibleEnemyBuildings.length ? snapshot.visibleEnemyBuildings : snapshot.rememberedEnemyBuildings ?? [];
   if (fighters.length && !targets.length) {
-    // Looking for the enemy base is an order like any other: one fast scout, or, once there is an army, the idle
-    // fighters together. Whoever is already out looking is left to it.
-    const out = (unit: AdviserActor) => snapshot.buildings.length > 0 && snapshot.buildings.every(building => distanceSquared(unit, building) > 20 ** 2);
-    if (fighters.some(unit => !unit.idle && out(unit))) return null;
+    // Looking for the enemy base is an order like any other: one cheap scout, or, once there is an army, the
+    // fighters together. One order at a time: while any fighter is busy (out looking, or fighting), nobody new is sent.
+    if (fighters.some(unit => !unit.idle)) return null;
     const goal = searchGoal(snapshot);
-    const idle = fighters.filter(unit => unit.idle).sort((a, b) => (b.speed ?? 0) - (a.speed ?? 0) || a.actorId - b.actorId);
-    if (goal && fighters.length >= 8 && idle.length >= 6) {
-      const group = idle.slice(0, 12);
+    const price = (unit: AdviserActor) => tree[baseType(unit.kind)]?.cost ?? 99999;
+    if (goal && fighters.length >= 8) {
+      const group = [...fighters].sort((a, b) => a.actorId - b.actorId).slice(0, 12);
       return advise(`We haven't found the enemy base yet; advance ${group.length} units together across the map to find it.`,
         `Advance ${group.length} units to find the enemy base`, group.map(unit => ({ action: "attack_move", actor_id: unit.actorId, target_x: goal.x, target_y: goal.y })), "sweep");
     }
-    if (goal && idle.length) return advise(`We haven't found the enemy base yet; send your ${name(idle[0].kind)} to scout the far side of the map.`,
-      `Send the ${name(idle[0].kind)} to scout`, [{ action: "move", actor_id: idle[0].actorId, target_x: goal.x, target_y: goal.y }], "scout");
+    if (goal) {
+      const scout = [...fighters].sort((a, b) => price(a) - price(b) || (b.speed ?? 0) - (a.speed ?? 0) || a.actorId - b.actorId)[0];
+      return advise(`We haven't found the enemy base yet; send your ${name(scout.kind)} to scout the far side of the map.`,
+        `Send the ${name(scout.kind)} to scout`, [{ action: "move", actor_id: scout.actorId, target_x: goal.x, target_y: goal.y }], "scout");
+    }
     return advise(`We haven't found the enemy base yet; send a scout to explore the ${100 - Math.round(snapshot.exploredPercent)}% of the map still in fog.`, "", [], "scout");
   }
   if (fighters.length >= 8 && targets.length) {
