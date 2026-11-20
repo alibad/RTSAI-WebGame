@@ -445,7 +445,10 @@ export class CoCommander {
       this.receipts.set(e.id, { accepted: e.accepted, detail: e.detail });
       if (e.accepted) track("ai_assist", { mode: this.s.mode });
       this.set({ uncertainProposalId: this.s.uncertainProposalId === e.id ? "" : this.s.uncertainProposalId, feed: this.s.feed.map(f => f.proposalId === e.id ? { ...f, state: e.accepted ? "accepted" : "failed" } : f) });
-      this.push(e.accepted ? "done" : "rejected", e.detail || (e.accepted ? "Orders issued" : "Orders refused"));
+      // The engine's receipt ("Queued 1 confirmed player order.") is its own bookkeeping: an order the player accepted
+      // is reported in the order's own words. A refusal keeps the engine's reason.
+      const ordered = this.s.feed.find(f => f.kind === "proposal" && f.proposalId === e.id)?.text;
+      this.push(e.accepted ? "done" : "rejected", e.accepted && ordered ? `Order given: ${ordered}.` : e.detail || (e.accepted ? "Orders issued" : "Orders refused"));
       return;
     }
     if (e.kind !== "status") return;
