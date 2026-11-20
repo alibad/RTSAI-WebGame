@@ -272,7 +272,7 @@ namespace OpenRA.WebSim
                     .Where(a => a != target && a != source && OriginalRa2Rules.Alive(a) && source.Owner.RelationshipWith(a.Owner) == PlayerRelationship.Enemy && fragment.IsValidAgainst(a, source))
                     .OrderBy(a => (a.CenterPosition - target.CenterPosition).HorizontalLengthSquared).ThenBy(a => a.ActorID).Take(Count).ToArray();
                 foreach (var victim in candidates)
-                    Beam(source, fragment, target.CenterPosition, victim, args.DamageModifiers);
+                    Beam(source, fragment, target.CenterPosition, victim, args.DamageModifiers, OriginalRa2Laser.Style.Fragment, Lift, Lift);
             }
             if (Mode == "PrismTower")
             {
@@ -282,6 +282,10 @@ namespace OpenRA.WebSim
             }
             if (Mode is "Drone" or "Squid" or "IvanBomb") return null;
             if (Mode == "Temporal") return TemporalBeam.Create(args);
+            // RA2's house-coloured laser (the simulation is LaserZap's; see OriginalRa2Laser). It lands on the target's
+            // body rather than the ground point under it.
+            if (Mode is "Comet" or "PrismTower")
+                return new OriginalRa2Laser(args, Mode == "PrismTower" ? OriginalRa2Laser.Style.Tower : OriginalRa2Laser.Style.Tank, 15, default, Lift);
             var laser = new LaserZapInfo();
             OriginalRa2Rules.Set(laser, nameof(laser.UsePlayerColor), Mode is "PrismTower" or "Comet");
             OriginalRa2Rules.Set(laser, nameof(laser.Width), new WDist(Mode == "PrismTower" ? 70 : 50));
@@ -289,14 +293,19 @@ namespace OpenRA.WebSim
             OriginalRa2Rules.Set(laser, nameof(laser.ZOffset), 2047);
             return laser.Create(args);
         }
-        internal static void Beam(Actor source, WeaponInfo weapon, WPos start, Actor target, int[] modifiers)
+        /// <summary>How far above a unit's centre (ground level) a laser is drawn to land: on its body.</summary>
+        internal static readonly WVec Lift = new(0, 0, 192);
+
+        internal static void Beam(Actor source, WeaponInfo weapon, WPos start, Actor target, int[] modifiers,
+            OriginalRa2Laser.Style style = OriginalRa2Laser.Style.Fragment, WVec drawFrom = default, WVec drawTo = default)
         {
             var args = new ProjectileArgs { SourceActor = source, Source = start, CurrentSource = () => start,
                 GuidedTarget = Target.FromActor(target), PassiveTarget = target.CenterPosition,
                 CurrentMuzzleFacing = () => WAngle.Zero, Facing = WAngle.Zero, Weapon = weapon,
                 DamageModifiers = modifiers ?? [], InaccuracyModifiers = [], RangeModifiers = [] };
-            var laser = OriginalRa2Rules.Set(new LaserZapInfo(), nameof(LaserZapInfo.UsePlayerColor), true);
-            var beam = weapon.Projectile?.Create(args) ?? laser.Create(args);
+            // A laser weapon (the split beams, the support beams) draws as RA2's laser, living as long as its LaserZap would.
+            var zap = weapon.Projectile as LaserZapInfo ?? (weapon.Projectile == null ? new LaserZapInfo() : null);
+            var beam = zap != null ? new OriginalRa2Laser(args, style, zap.Duration, drawFrom, drawTo) : weapon.Projectile.Create(args);
             source.World.AddFrameEndTask(w => w.Add(beam));
         }
     }
@@ -330,10 +339,18 @@ namespace OpenRA.WebSim
                     if (!donor.TraitsImplementing<AttackBase>().Any(a => !a.IsTraitDisabled && !a.IsTraitPaused) ||
                         donor.TraitsImplementing<Armament>().Any(a => !a.IsTraitDisabled && a.IsReloading)) continue;
                     state.Support(donor, Info.Cooldown); seen.Add(donor); network.Enqueue(donor);
-                    OriginalRa2ActionInfo.Beam(donor, weapon, donor.CenterPosition, node, []);
+                    // Drawn crystal to crystal, as RA2 aims it (PrismSupportHeight), from where each tower fires.
+                    OriginalRa2ActionInfo.Beam(donor, weapon, donor.CenterPosition, node, [], OriginalRa2Laser.Style.Support, Crystal(donor), Crystal(node));
                 }
             }
             return seen.Count - 1;
+        }
+
+        static WVec Crystal(Actor tower)
+        {
+            foreach (var a in tower.TraitsImplementing<Armament>())
+                if (!a.IsTraitDisabled && a.Barrels.Length > 0) return a.MuzzleOffset(tower, a.Barrels[0]);
+            return new WVec(0, 0, 2500);
         }
     }
 
