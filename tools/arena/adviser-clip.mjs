@@ -64,14 +64,56 @@ if (adviser) {
   const ok = await page.evaluate(() => {
     const cc = window.game.cc, A = window.__adviserPreview;
     if (typeof cc.browserChoice !== "function" || !A?.nextAdvice) return false;
-    cc.browserChoice = (observation) => A.nextAdvice({ ...observation, techTree: A.adviserTreeFor(observation) });
+    // As web/src/cocommander.ts does in the working tree: the enemy-base memory, and an applied card that changed
+    // nothing offered again after 20 game seconds.
+    const memory = A.EnemyBaseMemory ? new A.EnemyBaseMemory() : null;
+    let held = "", heldAt = 0;
+    cc.browserChoice = (observation) => {
+      if (cc.browserSuppressed !== held) { held = cc.browserSuppressed; heldAt = observation.tick; }
+      if (held && observation.tick - heldAt > 25 * 20) { cc.browserSuppressed = ""; held = ""; }
+      return A.nextAdvice({ ...(memory ? memory.recall(observation) : observation), techTree: A.adviserTreeFor(observation) });
+    };
     return true;
   });
   if (!ok) throw new Error("--adviser: the page's adviser could not be replaced");
 }
+// The adviser looks once a game second, as it does for a player at normal speed, however fast the film runs.
+await page.evaluate(() => { window.game.cc.pollEvery = function () { return 1000 / Math.max(1, Math.min(4, this.pace.speed)); }; });
 await page.evaluate((sc) => window.game.start(JSON.stringify(sc)), scenario);
 await page.waitForFunction(() => ["playing", "error"].includes(window.store.getState().phase), null, { timeout: 300000, polling: 250 });
 if ((await page.evaluate(() => window.store.getState().phase)) !== "playing") throw new Error("did not start: " + await page.evaluate(() => window.store.getState().error));
+// The working tree's reading of the engine's observation too, when the bundle has it (rally points the live page skips).
+await page.evaluate(() => {
+  const A = window.__adviserPreview, client = window.game.client;
+  if (A?.decodeAdviserObservation) client.adviserObserve = async function () { const o = A.decodeAdviserObservation(await this.adviserRpc("Observe")); this.lastAdviserTick = o.tick; return o; };
+});
+
+// A whole game: the camera follows the fighting. The snapshots then carry the whole map (they carry only what is in
+// view otherwise), and every 1.5 s the camera goes to the player's units that are out away from the base, or home.
+if (scene === "game") await page.evaluate(() => {
+  const g = window.game;
+  const send = g.sendView.bind(g);
+  g.sendView = function () { this.client.send({ type: "view", x0: -100000, y0: -100000, x1: 100000, y1: 100000 }); };
+  g.sendView(true);
+  let away = false;
+  window.__follow = () => {
+    const s = g.client.cur; if (!s) return;
+    const mine = s.actors.filter((a) => a.owner === s.header.localPlayer && !(a.flags & 16));
+    const base = mine.filter((a) => a.flags & 8);
+    if (!base.length) return;
+    const hx = base.reduce((t, a) => t + a.sx, 0) / base.length, hy = base.reduce((t, a) => t + a.sy, 0) / base.length;
+    const b = g.info.bounds, diag = Math.hypot(b[2] - b[0], b[3] - b[1]);
+    const out = mine.filter((a) => !(a.flags & 8) && Math.hypot(a.sx - hx, a.sy - hy) > diag * 0.15);
+    if (out.length >= 4) {
+      // The middle of the largest group: the unit with the most others near it, and those near it.
+      const lead = out.reduce((best, a) => { const n = out.filter((o) => Math.hypot(a.sx - o.sx, a.sy - o.sy) < diag * 0.06).length; return n > best.n ? { a, n } : best; }, { a: out[0], n: 0 }).a;
+      const group = out.filter((o) => Math.hypot(lead.sx - o.sx, lead.sy - o.sy) < diag * 0.06);
+      g.lookAt(group.reduce((t, a) => t + a.sx, 0) / group.length, group.reduce((t, a) => t + a.sy, 0) / group.length); away = true;
+    } else if (away) { g.lookAt(hx, hy); away = false; }
+  };
+  void send;
+});
+let lastFollow = 0;
 
 // A caption strip of our own (the film's, not the game's) and a pointer, since a recording shows no mouse cursor.
 await page.evaluate(({ title }) => {
@@ -120,7 +162,7 @@ const click = async (locator) => {
   await page.mouse.down(); await sleep(90); await page.mouse.up();
   return true;
 };
-const kindOf = (text) => /to the attackers/.test(text) ? "defend" : /to the enemy base/.test(text) ? "attack" : /to scout|to find the enemy/.test(text) ? "scout" : /^Deploy/.test(text) ? "deploy" : /^Place/.test(text) ? "place" : /^Build/.test(text) ? "build" : /^Train/.test(text) ? "train" : /scout|explore/i.test(text) ? "scout" : "other";
+const kindOf = (text) => /to the attackers/.test(text) ? "defend" : /to the enemy base|join the attack/.test(text) ? "attack" : /^Attack the |next enemy building/.test(text) ? "press" : /rally point/.test(text) ? "rally" : /to scout|to find the enemy|toward the enemy/.test(text) ? "scout" : /^Deploy/.test(text) ? "deploy" : /^Place/.test(text) ? "place" : /^Build/.test(text) ? "build" : /^Train/.test(text) ? "train" : /scout|explore/i.test(text) ? "scout" : "other";
 
 // scout: before the fix the adviser only talks ("scout-talk"); with --adviser the moment is its scouting card.
 const MOMENT = { opening: null, defend: "defend", scout: adviser ? "scout" : "scout-talk", attack: "attack" }[scene];
@@ -133,11 +175,13 @@ await say(scene === "opening" ? "A new player who clicks Apply on everything the
 while (!done) {
   await sleep(250);
   const gs = await gameSeconds();
+  if (scene === "game" && Date.now() - lastFollow > 1500) { lastFollow = Date.now(); await page.evaluate(() => window.__follow?.()); }
   const st = await page.evaluate(() => { const s = window.store.getState(), p = window.game.cc.pending(); return { phase: s.phase, pending: p ? { id: p.id, proposalId: p.proposalId, text: p.text, commands: p.commands?.length ?? 0 } : null, line: [...s.cc.feed].reverse().find((f) => f.kind === "ai")?.text ?? "" }; });
   if (scene === "game" && Date.now() - lastStats > 1500) {
     lastStats = Date.now();
     stats = await page.evaluate(() => window.game.command({ cmd: "stats" })).catch(() => stats);
-    const win = stats?.players?.[0]?.win;
+    // The player's own result can lag a tick behind the computer's defeat.
+    const win = stats?.players?.[0]?.win === "Undefined" && stats.players.slice(1).every((p) => p.win === "Lost") ? "Won" : stats?.players?.[0]?.win;
     if (win === "Won" || win === "Lost" || gs > maxGame) {
       outcome = win === "Won" ? "win" : win === "Lost" ? "loss" : "no winner";
       await setPace(false);
@@ -189,6 +233,9 @@ while (!done) {
   const receipt = await page.waitForFunction((id) => { const r = window.game.cc.receipts.get(id); return r ? { accepted: !!r.accepted, detail: r.detail ?? "" } : null; }, st.pending.proposalId, { timeout: 15000, polling: 100 })
     .then((h) => h.jsonValue()).catch(() => null);
   cards.push({ game: Math.round(gs), kind, text: st.pending.text, commands: st.pending.commands, accepted: receipt?.accepted ?? null, detail: receipt?.detail ?? "no receipt in 15 s" });
+  // A whole game: the turning points get a caption line (rally points, defences, refineries, factories, attacks, defence).
+  if (scene === "game" && (["attack", "press", "rally", "defend"].includes(kind) || /Bunker|Box|Gun|Tower|Emplacement|Autocannon|Turret|Refinery|Factory/.test(st.pending.text))
+    && !(kind === cards.at(-2)?.kind && kind !== "build" && cards.at(-2).game > Math.round(gs) - 20)) await say(`${clock(gs)} · ${st.pending.text}`, kind === "defend" ? "bad" : kind === "attack" || kind === "press" ? "ask" : "");
   if (isMoment) await say(receipt?.accepted ? `Applied. The engine accepted ${st.pending.commands} order${st.pending.commands === 1 ? "" : "s"}.` : `Applied, but the engine ${receipt ? `refused: ${receipt.detail}` : "did not answer"}.`, receipt?.accepted ? "" : "bad");
   lastCardAt = Date.now();
   if (scene === "opening") { if (kind === "place" && /factory/i.test(st.pending.text)) { await sleep(5000); reason = "the factory is placed"; done = true; } }
@@ -203,12 +250,16 @@ const webm = await video.path();
 
 // The cut: fast stretches are shortened four times more (the last 2 s of each are kept as they were, to arrive gently).
 const parts = [];
-const unreached = reason.startsWith("not reached") || reason.startsWith("game over");
+// A whole game is kept whole: its fast stretches are shortened to about 50 s together, so the base, the army, the
+// attacks and the result all show. A moment that never came keeps only the end.
+const unreached = reason.startsWith("not reached") || (reason.startsWith("game over") && scene !== "game");
+const fastTotal = marks.filter((m) => m.fast).reduce((sum, m) => sum + (m.to - m.from) / 1000, 0);
+const squeeze = scene === "game" ? Math.max(4, Math.ceil(fastTotal / 50)) : 4;
 for (const m of marks) {
   // A moment that never came: only the last 14 s of the fast-forward are kept before the closing line.
   const from = Math.max(m.from / 1000, unreached && m.fast ? m.to / 1000 - 14 : 0), to = m.to / 1000;
   if (to - from < 0.2) continue;
-  if (m.fast && to - from > 4) { parts.push({ from, to: to - 2, rate: 4 }); parts.push({ from: to - 2, to, rate: 1 }); } else parts.push({ from, to, rate: 1 });
+  if (m.fast && to - from > 4) { parts.push({ from, to: to - 2, rate: squeeze }); parts.push({ from: to - 2, to, rate: 1 }); } else parts.push({ from, to, rate: 1 });
 }
 const filter = parts.map((p, i) => `[0:v]trim=start=${p.from.toFixed(2)}:end=${p.to.toFixed(2)},setpts=(PTS-STARTPTS)/${p.rate}[v${i}]`).join(";") + `;${parts.map((_, i) => `[v${i}]`).join("")}concat=n=${parts.length}:v=1:a=0,fps=30[v]`;
 const mp4 = path.join(out, `${name}.mp4`);
