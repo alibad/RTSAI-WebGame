@@ -108,7 +108,7 @@
 .sk-footer .menu-utility { position: static; min-width: 0; }
 .sk-footer .scr-cta.gbtn-lg { flex: 0 0 auto; height: 52px; }
 /* Who the match is against (flags, nation, AI level), right beside Start; a press scrolls to the Opponents panel. */
-.sk-versus { display: inline-flex; align-items: center; gap: 8px; min-width: 0; margin-left: auto; padding: 6px 8px; border-radius: 6px; color: #f5efe4; font-size: 13px; }
+.sk-versus { display: inline-flex; align-items: center; gap: 8px; min-width: 0; margin-inline-start: auto; padding: 6px 8px; border-radius: 6px; color: #f5efe4; font-size: 13px; }
 .sk-versus span { font-size: 11px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--hud-accent-dim); }
 .sk-versus img, .sk-versus > span:not(:first-child) { flex: none; width: 22px; height: 14px; border-radius: 2px; box-shadow: 0 0 0 1px #000; }
 .sk-versus b { overflow: hidden; font-weight: 700; white-space: nowrap; text-overflow: ellipsis; }
