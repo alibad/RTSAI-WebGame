@@ -158,6 +158,24 @@ class Voices(unittest.TestCase):
             V.clip_file('a-very-long-project-clip-name.wav')
         self.assertIsNone(V.clip_file('a-very-long-project-clip-name.wav', strict=False))
 
+    def test_ra2_death_sound_facts(self):
+        # tools/data/ra2-death-sounds.json is read from the same rules.ini as the retail facts.
+        facts = json.loads(V.DEATH_FACTS.read_text(encoding='utf-8'))
+        retail = json.loads((Path(__file__).resolve().parent / 'data/ra2-retail.json').read_text(encoding='utf-8'))
+        self.assertEqual(facts['sourceSha256']['rules.ini'], retail['sourceSha256'])
+        self.assertEqual(facts['buildingDieSound'], 'BuildingGenericDie')
+        for actor in ('htnk', 'mtnk', 'apoc', 'harv', 'fv'):
+            self.assertEqual(facts['actors'][actor]['dieSound'], 'GenVehicleDie', actor)
+        self.assertEqual(facts['actors']['gapowr']['dieSound'], 'PowerPlantDie')
+        self.assertEqual(facts['sounds']['GenVehicleDie']['clips'], [f'vgendie{c}.wav' for c in 'abcdef'])
+        self.assertEqual(facts['animations']['TWLT070'], 'Explosion09')
+        for s in facts['sounds'].values():
+            for c in s['clips']:
+                self.assertTrue(P.allowed_audio(c), c)
+        for c in ('rtsai-explode-small.wav', 'ra2|audio/sfx/rtsai-explode-medium.wav'):
+            self.assertTrue(V.STAND_IN_DEATH.search('ra2|audio/sfx/' + c.split('/')[-1]), c)
+        self.assertIsNone(V.STAND_IN_DEATH.search('ra2|web/ea/audio/vgendiea.wav'))
+
     def test_clip_allowlist(self):
         for ok in ('igisea.wav', 'idogatta.wav', 'vsquat1a.wav'):
             self.assertTrue(P.allowed_audio(ok), ok)
@@ -474,8 +492,9 @@ class GeneratedVoices(unittest.TestCase):
             for t in actor.children:
                 kind = E.trait_type(t.key)
                 if kind == 'GrantConditionOnFaction':
-                    self.assertTrue(t.key.startswith('GrantConditionOnFaction@' + V.CONDITION), f'{key}.{t.key}')
-                    self.assertTrue(t.val('Condition').startswith(V.CONDITION), key)
+                    condition = V.DEATH_CONDITION if t.key == 'GrantConditionOnFaction@' + V.DEATH_CONDITION else V.CONDITION
+                    self.assertTrue(t.key.startswith('GrantConditionOnFaction@' + condition), f'{key}.{t.key}')
+                    self.assertTrue(t.val('Condition').startswith(condition), key)
                     self.assertTrue(set(E.split_list(t.val('Factions'))) <= set(E.COUNTRIES), f'{key}: {t.val("Factions")}')
                     self.assertEqual({c.key for c in t.children}, {'Condition', 'Factions'}, key)
                 elif kind in V.VOICE_TRAITS:
@@ -483,6 +502,20 @@ class GeneratedVoices(unittest.TestCase):
                     if t.val('VoiceSet'):
                         self.assertIn(t.val('VoiceSet'), self.voices, f'{key}.{t.key}')
                         self.assertTrue(t.val('VoiceSet').startswith('Ea'), key)
+                elif kind == 'FireWarheadsOnDeath':
+                    # RA2's death sounds: the death trait off for the original countries, its twin (the same trait
+                    # with a sound-only twin weapon) on for them.
+                    if t.key.endswith(V.DEATH_CONDITION):
+                        self.assertTrue(t.val('Weapon').startswith(V.DEATH_PREFIX), f'{key}.{t.key}')
+                        self.assertTrue(t.val('RequiresCondition').startswith(V.DEATH_CONDITION), f'{key}.{t.key}')
+                    else:
+                        self.assertEqual({c.key for c in t.children}, {'RequiresCondition'}, f'{key}.{t.key}')
+                        self.assertTrue(t.val('RequiresCondition').startswith('!' + V.DEATH_CONDITION), f'{key}.{t.key}')
+                elif kind == 'FallsToEarth':
+                    # The wreck of an aircraft only the original countries field: its crash with RA2's sound.
+                    self.assertEqual({c.key for c in t.children}, {'Explosion'}, f'{key}.{t.key}')
+                    self.assertTrue(t.val('Explosion').startswith(V.DEATH_PREFIX), f'{key}.{t.key}')
+                    self.assertIn(key.lower(), self.summary['deaths'])
                 else:
                     self.fail(f'{key}.{t.key}: not a voice trait')
 
@@ -490,10 +523,13 @@ class GeneratedVoices(unittest.TestCase):
         for key, actor in self.rules.items():
             grants = [t for t in actor.children if t.key.startswith('GrantConditionOnFaction@')]
             twins = [t for t in actor.children if '@' in t.key and E.trait_type(t.key) in V.VOICE_TRAITS]
+            grants = [g for g in grants if g.val('Condition') != V.DEATH_CONDITION]
             if key in V.EVERY_FACTION_ACTORS:
                 self.assertEqual(grants, [], key)
                 self.assertEqual([t.key for t in actor.children], ['RTSAIVoiced'], key)
                 continue
+            if not twins and key in self.summary['deaths']:
+                continue  # only RA2's death sound (a vehicle or a building that has no voice of its own)
             self.assertTrue(grants and twins, key)
             granted = set()
             for g in grants:
@@ -534,9 +570,44 @@ class GeneratedVoices(unittest.TestCase):
             used |= {x[len(V.AUDIO_PREFIX):] for x in sounds(w) if x.startswith(V.AUDIO_PREFIX)}
         self.assertEqual(used, played)
 
+    def test_original_countries_die_with_ra2s_own_sounds(self):
+        # The owner heard the standalone game's synthesised explosion when a tank or a building died (20 Nov 2026).
+        deaths = self.summary['deaths']
+        for actor in ('htnk', 'mtnk', 'apoc', 'gapowr', 'napowr', 'gapile', 'nahand'):
+            self.assertIn(actor, deaths, actor)
+        clips = lambda xs: {x[len(V.AUDIO_PREFIX):] for x in xs}
+        for actor in ('htnk', 'mtnk', 'apoc'):
+            d = deaths[actor][0]
+            self.assertEqual(d['events']['die'], ['GenVehicleDie'], actor)
+            self.assertEqual(clips(d['die']), {f'vgendie{c}.wav' for c in 'abcdef'}, actor)
+            self.assertTrue(clips(d['explosion']) >= {'gexpifva.wav', 'gexp11a.wav', 'gexp14a.wav', 'gexp15a.wav'}, actor)
+        self.assertEqual(deaths['gapowr'][0]['events']['die'], ['BuildingGenericDie', 'PowerPlantDie'])
+        self.assertEqual(deaths['gapile'][0]['events']['die'], ['BuildingGenericDie'])
+        # Aircraft: no death cry in RA2, only the explosion of their wreck hitting the ground.
+        for wreck, plane in (('orcahusk', 'orca'), ('zephusk', 'zep')):
+            d = deaths[wreck][0]
+            self.assertEqual((d['trait'], d['wreckOf'], d['die']), ('FallsToEarth', plane, []), wreck)
+            self.assertTrue(d['explosion'], wreck)
+        for actor, specs in deaths.items():
+            self.assertNotRegex(actor, r'^r2', actor)  # the modern countries keep their own
+            rules = self.rules[actor]
+            if any(s['trait'] != 'FallsToEarth' for s in specs):
+                grant = rules.get('GrantConditionOnFaction@' + V.DEATH_CONDITION)
+                self.assertEqual(set(E.split_list(grant.val('Factions'))) - set(E.COUNTRIES), set(), actor)
+            for s in specs:
+                twin = self.weapons[s['twin']]
+                sounds = [x for w in twin.children if E.trait_type(w.key) == 'Warhead' for x in E.split_list(w.val('ImpactSounds') or '')]
+                self.assertTrue(sounds, s['twin'])
+                for x in sounds:
+                    self.assertTrue(x.startswith(V.AUDIO_PREFIX), f'{s["twin"]}: {x}')
+        for twin, source in self.summary['deathWeapons'].items():
+            self.assertTrue(twin.startswith(V.DEATH_PREFIX) and twin.startswith(V.DEATH_PREFIX + source.lower()), twin)
+
     def test_weapons_overlay_sets_sounds_only(self):
         fields = set(V.WEAPON_SOUND_FIELDS)
         for key, w in self.weapons.items():
+            if key in self.summary.get('deathWeapons', {}):
+                continue  # a whole twin of a death weapon, checked against its source by the generator
             for c in w.children:
                 if E.trait_type(c.key) == 'Warhead':
                     self.assertEqual({x.key for x in c.children}, set(V.WARHEAD_SOUND_FIELDS) & {x.key for x in c.children}, f'{key}.{c.key}')

@@ -1,0 +1,4046 @@
+{
+ "schema": 1,
+ "source": "Original retail RA2 rules.ini, art.ini and sound.ini extracted with OpenRA.Utility from installed ra2.mix/language.mix; base game, not Yuri expansion. Names only, no audio. Written by tools/ra2-death-sounds.py.",
+ "sourceSha256": {
+  "rules.ini": "fd1e95cea0306ea78049dc81c8cd816e18c28c496872a1ff02edd50bd082062f",
+  "art.ini": "b477f861063a9509e87b7836b78190204c73bea5ea5595a842c456f5920ea223",
+  "sound.ini": "0bae295685bbe7e83d7fbd765d25825df392695676b9e73fa456a5c4305bf6f5"
+ },
+ "buildingDieSound": "BuildingGenericDie",
+ "actors": {
+  "aegis": {
+   "kind": "vehicle",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "amcv": {
+   "kind": "vehicle",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": "GenVehicleDie"
+  },
+  "ammocrat": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "amradr": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "apoc": {
+   "kind": "vehicle",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": "GenVehicleDie"
+  },
+  "asw": {
+   "kind": "aircraft",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "atesla": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "beag": {
+   "kind": "aircraft",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "bluelamp": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "bus": {
+   "kind": "vehicle",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": "GenVehicleDie"
+  },
+  "caairp": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "caarmr": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "caarmy01": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "caarmy02": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "caarmy03": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "caarmy04": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "cabarn02": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "cabhut": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "cabunk01": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "cabunk02": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "cachig01": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "cachig02": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "cachig03": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "cachig04": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "cachig05": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "cachig06": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "cacity01": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "cacity02": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "cacity03": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "cacity04": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "cacolo01": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "cacufgl": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": "BuildingMetalDamaged"
+  },
+  "caeur04": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "caeur1": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "caeur2": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "caeuro05": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "cafarm01": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "cafarm02": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "cafarm06": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "cafncb": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "cafncp": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "cafncw": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "cafrfgl": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": "BuildingMetalDamaged"
+  },
+  "cafrma": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "cafrmb": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": "BuildingMetalDamaged"
+  },
+  "cagard01": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "cagas01": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "cagefgl": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": "BuildingMetalDamaged"
+  },
+  "cahosp": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "cahse01": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "cahse02": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "cahse03": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "cahse04": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "cahse05": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "cahse06": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "cahse07": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "caind01": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "cakrmw": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "calab": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "calbfgl": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": "BuildingMetalDamaged"
+  },
+  "calit01e": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "calit01n": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "calit01s": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "calit01w": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "calit02l": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "calit02r": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "calit03e": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "calit03n": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "calit03s": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "calit03w": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "camex01": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "camex02": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "camex03": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "camex04": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "camex05": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "camiam01": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "camiam02": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "camiam03": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "camiam04": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "camiam05": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "camiam06": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "camiam07": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "camiam08": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "camisc01": {
+   "kind": "building",
+   "explosions": [
+    "BRRLEXP2"
+   ],
+   "dieSound": ""
+  },
+  "camisc02": {
+   "kind": "building",
+   "explosions": [
+    "BRRLEXP1"
+   ],
+   "dieSound": ""
+  },
+  "camisc03": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": "BuildingMetalDamaged"
+  },
+  "camisc04": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": "BuildingMetalDamaged"
+  },
+  "camisc05": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": "BuildingMetalDamaged"
+  },
+  "camisc06": {
+   "kind": "building",
+   "explosions": [
+    "MININUKE"
+   ],
+   "dieSound": ""
+  },
+  "camov01": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "camov02": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "camsc01": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "camsc02": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "camsc03": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "camsc04": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "camsc05": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "camsc06": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "camsc07": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "camsc08": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "camsc09": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "camsc10": {
+   "kind": "building",
+   "explosions": [
+    "MININUKE",
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "camsc11": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "camsc12": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "camsc12a": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "camsc13": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "canewy01": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "canewy04": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": "MonumentCrumble"
+  },
+  "canewy05": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "canewy06": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "canewy07": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "canewy08": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "canewy10": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "canewy11": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "canewy12": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "canewy13": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "canewy14": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "canewy15": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "canewy16": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "canewy17": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "canewy18": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "canewy20": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "canewy21": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "canwy05": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "canwy09": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "canwy22": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "canwy23": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "canwy24": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "canwy25": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "canwy26": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "caoild": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "caoutp": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "capark01": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "capark02": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "capark03": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "capars01": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": "MonumentCrumble"
+  },
+  "capars02": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "capars04": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "capars05": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "capars06": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "capars07": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "capars08": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "capars09": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "capars10": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": "MonumentCrumble"
+  },
+  "capars11": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": "MonumentCrumble"
+  },
+  "capars12": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": "MonumentCrumble"
+  },
+  "capars13": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": "MonumentCrumble"
+  },
+  "capars14": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": "MonumentCrumble"
+  },
+  "capofgl": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": "BuildingMetalDamaged"
+  },
+  "capol01e": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "capol01n": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "capol01s": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": "BuildingMetalDamaged"
+  },
+  "capol01w": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": "BuildingMetalDamaged"
+  },
+  "caprs03": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": "MonumentCrumble"
+  },
+  "car": {
+   "kind": "vehicle",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": "GenVehicleDie"
+  },
+  "cargoplane": {
+   "kind": "aircraft",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "carrier": {
+   "kind": "vehicle",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "carufgl": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": "BuildingMetalDamaged"
+  },
+  "carus01": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": "MonumentCrumble"
+  },
+  "carus02a": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "carus02b": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "carus02c": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "carus02d": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "carus02e": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "carus02f": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "carus02g": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "carus03": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "carus04": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "carus05": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "carus06": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "carus07": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "carus08": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "carus09": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "carus10": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "carus11": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "casin01e": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": "BuildingMetalDamaged"
+  },
+  "casin01n": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": "BuildingMetalDamaged"
+  },
+  "casin01s": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "casin01w": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": "BuildingMetalDamaged"
+  },
+  "caskfgl": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": "BuildingMetalDamaged"
+  },
+  "castl01": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "castl02": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "castl03": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "castl04": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "castl05a": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "castl05b": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "castl05c": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "castl05d": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "castl05e": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "castl05f": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "castl05g": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "castl05h": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "castrt01": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "castrt02": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "castrt03": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "castrt04": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "castrt05": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "caswst01": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "catech01": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "catexs01": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "catexs02": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "catexs03": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "catexs04": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "catexs05": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "catexs06": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "catexs07": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "catexs08": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "cathosp": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "cats01": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "caukfgl": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": "BuildingMetalDamaged"
+  },
+  "causfgl": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": "BuildingMetalDamaged"
+  },
+  "cawa2a": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "cawa2b": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "cawa2c": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "cawa2d": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "cawash01": {
+   "kind": "building",
+   "explosions": [],
+   "dieSound": "MonumentCrumble"
+  },
+  "cawash03": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "cawash04": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "cawash05": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "cawash06": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": "MonumentCrumble"
+  },
+  "cawash07": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "cawash08": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "cawash09": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "cawash10": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "cawash11": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "cawash13": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "cawash14": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": "MonumentCrumble"
+  },
+  "cawash15": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "cawash16": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "cawash17": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "cawash18": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "cawash19": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "cawsh12": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": "MonumentCrumble"
+  },
+  "cawt01": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "cdest": {
+   "kind": "vehicle",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "city01": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "city02": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "city03": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "city04": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "city05": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "city06": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "cmin": {
+   "kind": "vehicle",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": "GenVehicleDie"
+  },
+  "cmon": {
+   "kind": "vehicle",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": "GenVehicleDie"
+  },
+  "cona": {
+   "kind": "vehicle",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": "GenVehicleDie"
+  },
+  "cop": {
+   "kind": "vehicle",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": "PoliceCarDie"
+  },
+  "cruise": {
+   "kind": "vehicle",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": "GenVehicleDie"
+  },
+  "deathdummy": {
+   "kind": "vehicle",
+   "explosions": [],
+   "dieSound": ""
+  },
+  "dest": {
+   "kind": "vehicle",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "dlph": {
+   "kind": "vehicle",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": "DolphinDie"
+  },
+  "dmisl": {
+   "kind": "aircraft",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "dred": {
+   "kind": "vehicle",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "dron": {
+   "kind": "vehicle",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": "TerrorDroneDie"
+  },
+  "dtruck": {
+   "kind": "vehicle",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": "DemoTruckDie"
+  },
+  "euroc": {
+   "kind": "vehicle",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": "GenVehicleDie"
+  },
+  "fv": {
+   "kind": "vehicle",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": "GenVehicleDie"
+  },
+  "gaairc": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "gacnst": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "gacsph": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "gadept": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "gadumy": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "gagap": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "gagreen": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "galite": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "gaorep": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "gapile": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "gapill": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "gapowr": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60",
+    "gtpowexp"
+   ],
+   "dieSound": "PowerPlantDie"
+  },
+  "garefn": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "gasand": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "gaspysat": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "gatech": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "gawall": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "gaweap": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "gaweat": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "gayard": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "grenlamp": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "gtgcan": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "harv": {
+   "kind": "vehicle",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": "GenVehicleDie"
+  },
+  "hind": {
+   "kind": "vehicle",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "hornet": {
+   "kind": "aircraft",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "horv": {
+   "kind": "vehicle",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": "GenVehicleDie"
+  },
+  "howi": {
+   "kind": "vehicle",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "htk": {
+   "kind": "vehicle",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": "GenVehicleDie"
+  },
+  "htnk": {
+   "kind": "vehicle",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": "GenVehicleDie"
+  },
+  "hyd": {
+   "kind": "vehicle",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": "GenSmallWaterDie"
+  },
+  "inblulmp": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "ingalite": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "ingrnlmp": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "inoranlamp": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "inpurplamp": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "inredlmp": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "inyelwlamp": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "lcrf": {
+   "kind": "vehicle",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": "GenVehicleDie"
+  },
+  "limo": {
+   "kind": "vehicle",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": "GenVehicleDie"
+  },
+  "ltnk": {
+   "kind": "vehicle",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": "GenVehicleDie"
+  },
+  "mayan": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "mgtk": {
+   "kind": "vehicle",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": "GenVehicleDie"
+  },
+  "mtnk": {
+   "kind": "vehicle",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": "GenVehicleDie"
+  },
+  "naclon": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "nacnst": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "nadept": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "naflak": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "nahand": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "nairon": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "nalasr": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "namisl": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "nanrct": {
+   "kind": "building",
+   "explosions": [],
+   "dieSound": ""
+  },
+  "napowr": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60",
+    "tstlexp"
+   ],
+   "dieSound": "PowerPlantDie"
+  },
+  "napsis": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "napsya": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": "PsychicAmplifierDie"
+  },
+  "napsyb": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": "PsychicAmplifierDie"
+  },
+  "naradr": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "narefn": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "nasam": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "natech": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "nawall": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "naweap": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "nayard": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "neglamp": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "negred": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "orca": {
+   "kind": "aircraft",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "pdplane": {
+   "kind": "aircraft",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "pick": {
+   "kind": "vehicle",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": "GenVehicleDie"
+  },
+  "propa": {
+   "kind": "vehicle",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": "GenVehicleDie"
+  },
+  "ptruck": {
+   "kind": "vehicle",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": "GenVehicleDie"
+  },
+  "purplamp": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "redlamp": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "sapc": {
+   "kind": "vehicle",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": "GenVehicleDie"
+  },
+  "shad": {
+   "kind": "vehicle",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "smcv": {
+   "kind": "vehicle",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": "GenVehicleDie"
+  },
+  "snodaylamp": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "snoduslamp": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "snomorlamp": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "snonitlamp": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "sqd": {
+   "kind": "vehicle",
+   "explosions": [],
+   "dieSound": "SquidDie"
+  },
+  "sref": {
+   "kind": "vehicle",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": "GenVehicleDie"
+  },
+  "stang": {
+   "kind": "vehicle",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": "GenVehicleDie"
+  },
+  "sub": {
+   "kind": "vehicle",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": "GenSmallWaterDie"
+  },
+  "suvb": {
+   "kind": "vehicle",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": "GenVehicleDie"
+  },
+  "suvw": {
+   "kind": "vehicle",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": "GenVehicleDie"
+  },
+  "taxi": {
+   "kind": "vehicle",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": "GenVehicleDie"
+  },
+  "temdaylamp": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "temduslamp": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "temmorlamp": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "temnitlamp": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "tesla": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "tnkd": {
+   "kind": "vehicle",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": "GenVehicleDie"
+  },
+  "trucka": {
+   "kind": "vehicle",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": "GenVehicleDie"
+  },
+  "truckb": {
+   "kind": "vehicle",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": "GenVehicleDie"
+  },
+  "tstlamp": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "ttnk": {
+   "kind": "vehicle",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": "GenVehicleDie"
+  },
+  "tug": {
+   "kind": "vehicle",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": "GenVehicleDie"
+  },
+  "v3": {
+   "kind": "vehicle",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": "GenVehicleDie"
+  },
+  "v3rocket": {
+   "kind": "aircraft",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "vlad": {
+   "kind": "vehicle",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "wini": {
+   "kind": "vehicle",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": "GenVehicleDie"
+  },
+  "xcomet": {
+   "kind": "vehicle",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "yelwlamp": {
+   "kind": "building",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  },
+  "zep": {
+   "kind": "vehicle",
+   "explosions": [
+    "TWLT070",
+    "S_BANG48",
+    "S_BRNL58",
+    "S_CLSN58",
+    "S_TUMU60"
+   ],
+   "dieSound": ""
+  }
+ },
+ "animations": {
+  "BRRLEXP1": "ExplosionBarrel",
+  "BRRLEXP2": "ExplosionBarrel",
+  "MININUKE": "",
+  "S_BANG48": "Explosion11",
+  "S_BRNL58": "Explosion12",
+  "S_CLSN58": "Explosion14",
+  "S_TUMU60": "Explosion15",
+  "TWLT070": "Explosion09",
+  "gtpowexp": "",
+  "tstlexp": ""
+ },
+ "sounds": {
+  "BuildingGenericDie": {
+   "clips": [
+    "bgendiea.wav",
+    "bgendieb.wav",
+    "bgendiec.wav",
+    "bgendied.wav",
+    "bgendiee.wav",
+    "bgendief.wav"
+   ]
+  },
+  "BuildingMetalDamaged": {
+   "clips": [
+    "bmetdama.wav",
+    "bmetdamb.wav",
+    "bmetdamc.wav"
+   ]
+  },
+  "DemoTruckDie": {
+   "clips": [
+    "vdemdiea.wav"
+   ]
+  },
+  "DolphinDie": {
+   "clips": [
+    "vdoldiea.wav",
+    "vdoldieb.wav"
+   ]
+  },
+  "Explosion09": {
+   "clips": [
+    "gexpifva.wav",
+    "gexpifvb.wav",
+    "gexpifvc.wav"
+   ]
+  },
+  "Explosion11": {
+   "clips": [
+    "gexp11a.wav"
+   ]
+  },
+  "Explosion12": {
+   "clips": [
+    "gexp14a.wav",
+    "gexp14b.wav",
+    "gexp14c.wav",
+    "gexp14d.wav"
+   ]
+  },
+  "Explosion14": {
+   "clips": [
+    "gexp14a.wav",
+    "gexp14b.wav",
+    "gexp14c.wav",
+    "gexp14d.wav"
+   ]
+  },
+  "Explosion15": {
+   "clips": [
+    "gexp15a.wav"
+   ]
+  },
+  "ExplosionBarrel": {
+   "clips": [
+    "gexpbara.wav",
+    "gexpbarb.wav",
+    "gexpbarc.wav"
+   ]
+  },
+  "GenSmallWaterDie": {
+   "clips": [
+    "gnavsina.wav"
+   ]
+  },
+  "GenVehicleDie": {
+   "clips": [
+    "vgendiea.wav",
+    "vgendieb.wav",
+    "vgendiec.wav",
+    "vgendied.wav",
+    "vgendiee.wav",
+    "vgendief.wav"
+   ]
+  },
+  "MonumentCrumble": {
+   "clips": [
+    "gmondiea.wav"
+   ]
+  },
+  "PoliceCarDie": {
+   "clips": [
+    "gcopdiea.wav"
+   ]
+  },
+  "PowerPlantDie": {
+   "clips": [
+    "bpowdiea.wav",
+    "bpowdieb.wav"
+   ]
+  },
+  "PsychicAmplifierDie": {
+   "clips": [
+    "bpsydiea.wav"
+   ]
+  },
+  "SquidDie": {
+   "clips": [
+    "vsqudiea.wav"
+   ]
+  },
+  "TerrorDroneDie": {
+   "clips": [
+    "vterdiea.wav",
+    "vterdieb.wav"
+   ]
+  }
+ }
+}

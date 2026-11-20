@@ -254,6 +254,16 @@ pistols, the Desolator, …) play their original fire and impact sounds (`Report
 the warheads' `ImpactSounds`). A weapon a modern faction can also fire keeps the project's sounds: the G.I.'s and the
 Conscript's guns (modern factions field `e1`/`e2` in missions), the destroyer's, the harvester's, building explosions.
 
+Their vehicles, ships, aircraft wrecks and buildings also die with RA2's own sounds (since 20 November 2026, after the
+owner heard the stand-ins): the standalone game's death sounds (`audio/sfx/rtsai-explode-*.wav`) are synthesised,
+because it ships no EA audio. `tools/data/ra2-death-sounds.json` records what RA2 plays (from the player's `rules.ini`,
+`art.ini` and `sound.ini`, written by `tools/ra2-death-sounds.py`): one of the explosion sounds of the actor's
+`Explosion=` animations, its `DieSound=` (every vehicle `GenVehicleDie`), and for a building `BuildingGenericDie`, the
+crumble. The death weapons are shared with the modern factions, so each gets a twin (`ea-death-*`, in `ea-weapons.yaml`)
+that differs only in its sounds (the generator checks it), and the death trait a twin behind the sound-only condition
+`ea-death` for the nine countries (`ea-audio.yaml`); the wrecks of aircraft only they field take it directly. The modern
+factions keep the project's death sounds.
+
 521 clips, 6.1 MB raw, kept exactly as Westwood stored them (IMA-ADPCM WAV, which the engine decodes), fetched one by
 one when first played. EVA, building sounds and music are unchanged (project audio).
 

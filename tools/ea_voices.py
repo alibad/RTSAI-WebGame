@@ -21,7 +21,10 @@ The dog's bite (weapon DogJaw, shared by every faction) gets its original sounds
 original-country actors fire (the Apocalypse's cannons, Tesla bolts, the Prism, ...; a weapon any modern faction can
 fire, e.g. the G.I.'s, which modern factions field in missions, keeps the project's sounds): Report, StartBurstReport,
 AfterFireSound and the warheads' ImpactSounds. Weapons inheriting a changed one keep theirs.
-Nothing here changes the simulation: voices, a voice-only condition and weapon sounds.
+Their vehicles, aircraft, ships and buildings also die with RA2's own sounds (tools/data/ra2-death-sounds.json) instead
+of the standalone game's synthesised ones: a twin of the death weapon that differs only in its sounds, behind a
+death-sound-only condition for the original countries. Modern factions keep theirs.
+Nothing here changes the simulation: voices, voice- and sound-only conditions and weapon sounds.
 """
 from __future__ import annotations
 
@@ -46,6 +49,17 @@ VOICE_TRAITS = ('Voiced', 'RTSAIVoiced')
 EVERY_FACTION_ACTORS = ('dog',)
 # Weapons every faction shares whose original sounds replace the project's: the dog's bite.
 EVERY_FACTION_WEAPONS = ('DogJaw',)
+# Red Alert 2's own death sounds (tools/data/ra2-death-sounds.json, written by tools/ra2-death-sounds.py from the
+# player's rules.ini, art.ini and sound.ini). The original countries' vehicles, aircraft, ships and buildings die with
+# them, not with the standalone game's synthesised stand-ins (RTSAI-Mod tools/standalone-sfx.py), which the owner heard
+# as "some very weird sound" when a tank or a building was destroyed (20 November 2026).
+DEATH_FACTS = Path(__file__).resolve().parent / 'data/ra2-death-sounds.json'
+DEATH_CONDITION = 'ea-death'
+DEATH_PREFIX = 'ea-death-'
+STAND_IN_DEATH = re.compile(r'(^|\|)audio/sfx/rtsai-explode-[a-z0-9-]+\.wav$', re.I)
+# The project's explosions are drawn after RA2's animations of the same name; an actor RA2 gives no Explosion= list
+# (the Nuclear Reactor, which RA2 blows up with a nuke) sounds like the explosions it is drawn with.
+EXPLOSION_ANIMS = (('twlt', 'TWLT070'), ('bang', 'S_BANG48'), ('brnl', 'S_BRNL58'), ('clsn', 'S_CLSN58'), ('tumu', 'S_TUMU60'))
 
 
 class VoiceError(E.GenerationError):
@@ -249,8 +263,140 @@ class VoiceGenerator:
             if files:
                 clips |= files
                 self.weapons[weapon.key] = {'sounds': sounds, 'firedBy': ['original countries']}
+        self.deaths = self._plan_deaths()
+        clips |= {c for specs in self.deaths.values() for s in specs for c in s['explosion'] + s['die']}
         self.clips = sorted(clips)
         return self
+
+    def _plan_deaths(self):
+        """Original-art actors whose death weapon plays a standalone stand-in sound, with RA2's own death sounds for them:
+        the sound of one of its Explosion= animations (as RA2 picks one), and its DieSound= on top (every vehicle's
+        GenVehicleDie, a building's BuildingGenericDie crumble and its own, if any)."""
+        facts = json.loads(DEATH_FACTS.read_text(encoding='utf-8'))
+        self.death_facts = facts
+        weapons = {k.lower(): k for k in self.cur_weapons}
+
+        def clips(events):
+            out = []
+            for e in events:
+                for c in facts['sounds'].get(e, {}).get('clips', []):
+                    if c not in out:
+                        out.append(c)
+            return out
+        def stand_in(weapon):
+            return weapon is not None and any(STAND_IN_DEATH.search(x) for v in weapon_sounds(self.cur_weapons[weapon]).values()
+                                              for x in E.split_list(v))
+
+        def spec(trait, weapon, ra2, **extra):
+            die = ([facts['buildingDieSound']] if ra2['kind'] == 'building' and facts['buildingDieSound'] else []) + \
+                  ([ra2['dieSound']] if ra2['dieSound'] else [])
+            explosions = [facts['animations'].get(a, '') for a in ra2['explosions']]
+            if not clips(explosions):
+                drawn = [x.lower() for w in self.cur_weapons[weapon].children if E.trait_type(w.key) == 'Warhead'
+                         for x in E.split_list(w.val('Explosions') or '')]
+                explosions = [facts['animations'].get(anim, '') for part, anim in EXPLOSION_ANIMS if any(part in x for x in drawn)]
+            return {'trait': trait, 'weapon': weapon, 'kind': ra2['kind'], **extra,
+                    'events': {'explosion': sorted({e for e in explosions if e}), 'die': die},
+                    'explosion': clips(explosions), 'die': clips(die)}
+        deaths = {}
+        for name in sorted(self.art.actors):
+            ra2 = facts['actors'].get(name)
+            if ra2 is None:
+                continue
+            for key, trait in E.traits(self.art.cur[name], 'FireWarheadsOnDeath'):
+                weapon = weapons.get((trait.val('Weapon') or '').lower())
+                if stand_in(weapon):
+                    deaths.setdefault(name, []).append(spec(key, weapon, ra2))
+            # An aircraft's wreck falls and explodes on the ground (FallsToEarth): RA2's sound of its explosion.
+            for _, trait in E.traits(self.art.cur[name], 'SpawnActorOnDeath'):
+                husk = (trait.val('Actor') or '').lower()
+                falls = self.art.cur[husk].get('FallsToEarth') if husk in self.art.cur else None
+                weapon = weapons.get((falls.val('Explosion') or '').lower()) if falls is not None else None
+                if stand_in(weapon):
+                    deaths.setdefault(husk, []).append(spec('FallsToEarth', weapon, ra2, wreckOf=name))
+        return deaths
+
+    @staticmethod
+    def _without_sounds(weapon):
+        """A weapon without its sounds or the death cry's warhead: what must not change between a weapon and its twin."""
+        w = weapon.clone()
+        w.key = ''
+        w.children = [c for c in w.children if c.key not in WEAPON_SOUND_FIELDS and c.key != 'Inherits'
+                      and not c.key.startswith('Inherits@') and c.key != 'Warhead@' + DEATH_CONDITION]
+        for c in w.children:
+            if E.trait_type(c.key) == 'Warhead':
+                c.children = [x for x in c.children if x.key not in WARHEAD_SOUND_FIELDS]
+        return E.dump([w])
+
+    def _deaths(self, present, rules):
+        """The original countries' death sounds: per weapon and sound set, a twin of the death weapon that differs from it
+        only in its sounds, and per actor a twin of its death trait for the original countries (condition ea-death).
+        Extends `rules` (the actors' voice rules) in place; returns (weapons, summary)."""
+        effective = {k.lower(): v for k, v in E.merge([list(self.art.cur.values()), self.art.rules_nodes]).items()}
+        by_actor = {n.key.lower(): n for n in rules}
+        twins, weapons, summary = {}, [], {}
+        for name, specs in sorted(self.deaths.items()):
+            for spec in specs:
+                trait = effective[name].get(spec['trait'])
+                if trait is None:
+                    continue
+                wreck = spec['trait'] == 'FallsToEarth'
+                if wreck and not (self.art.owners.get(name) and self.art.owners[name] <= set(E.COUNTRIES)):
+                    continue  # a wreck the modern countries' aircraft leave too: FallsToEarth has no condition to twin
+                condition = trait.val('RequiresCondition') or ''
+                if '!' + E.CONDITION in condition.replace(' ', ''):
+                    continue  # it does not fire for the original countries (an original twin does)
+                explosion = [AUDIO_PREFIX + c for c in spec['explosion'] if c in present]
+                die = [AUDIO_PREFIX + c for c in spec['die'] if c in present]
+                if not explosion and not die:
+                    continue  # RA2 lacks every clip: the project's sound stays
+                self.used |= {c for c in spec['explosion'] + spec['die'] if c in present}
+                signature = json.dumps([spec['weapon'].lower(), explosion, die])
+                twin = twins.get(signature)
+                if twin is None:
+                    n = sum(1 for s in twins if json.loads(s)[0] == spec['weapon'].lower())
+                    twin = DEATH_PREFIX + spec['weapon'].lower() + (f'-{n + 1}' if n else '')
+                    twins[signature] = twin
+                    w = self.cur_weapons[spec['weapon']].clone()
+                    w.key = twin
+                    w.children = [c for c in w.children if c.key != 'Inherits' and not c.key.startswith('Inherits@')]
+                    for c in w.children:
+                        if E.trait_type(c.key) == 'Warhead' and explosion and any(
+                                STAND_IN_DEATH.search(x) for x in E.split_list(c.val('ImpactSounds') or '')):
+                            c.get('ImpactSounds').value = ', '.join(explosion)
+                    if die:
+                        w.children.append(E.Node('Warhead@' + DEATH_CONDITION, 'CreateEffect', [
+                            E.Node('ImpactSounds', ', '.join(die)), E.Node('ValidTargets', 'Ground, Water, Air'),
+                            E.Node('ImpactActors', 'false')]))
+                    if self._without_sounds(w) != self._without_sounds(self.cur_weapons[spec['weapon']]):
+                        raise VoiceError(f'{twin}: differs from {spec["weapon"]} in more than its sounds')
+                    weapons.append(w)
+                node = by_actor.get(name)
+                if node is None:
+                    node = E.Node(self.art.cur[name].key)
+                    rules.append(node)
+                    by_actor[name] = node
+                if wreck:
+                    # Only the original countries' aircraft leave this wreck: its explosion is theirs alone.
+                    node.children.append(E.Node('FallsToEarth', None, [E.Node('Explosion', twin)]))
+                    summary.setdefault(name, []).append({'trait': 'FallsToEarth', 'weapon': spec['weapon'], 'twin': twin,
+                                                         'kind': spec['kind'], 'wreckOf': spec['wreckOf'],
+                                                         'events': spec['events'], 'explosion': explosion, 'die': die})
+                    continue
+                if node.get('GrantConditionOnFaction@' + DEATH_CONDITION) is None:
+                    node.children.append(E.Node('GrantConditionOnFaction@' + DEATH_CONDITION, None, [
+                        E.Node('Condition', DEATH_CONDITION), E.Node('Factions', ', '.join(self.art.actors[name]['countries']))]))
+                key = spec['trait']
+                node.children.append(E.Node(key, None, [E.Node('RequiresCondition', E.both('!' + DEATH_CONDITION, condition))]))
+                body = [c.clone() for c in trait.children if c.key not in ('Weapon', 'RequiresCondition')]
+                for c in body:
+                    if c.key == 'EmptyWeapon' and (c.value or '').lower() == spec['weapon'].lower():
+                        c.value = twin
+                body += [E.Node('Weapon', twin), E.Node('RequiresCondition', E.both(DEATH_CONDITION, condition))]
+                node.children.append(E.Node(key + ('-' if '@' in key else '@') + DEATH_CONDITION, None, body))
+                summary.setdefault(name, []).append({'trait': key, 'weapon': spec['weapon'], 'twin': twin, 'kind': spec['kind'],
+                                                     'events': spec['events'], 'explosion': explosion, 'die': die})
+        return weapons, summary
 
     def original_weapons(self):
         """Weapons only actors the original countries own fire (skirmish reachability and mission placements), with the
@@ -377,6 +523,8 @@ class VoiceGenerator:
             if node.children:
                 weapons.append(node)
                 weapon_summary[weapon] = {'firedBy': spec['firedBy'], 'sounds': changed}
+        death_weapons, death_summary = self._deaths(present, rules)
+        weapons += death_weapons
         # Weapons that inherit a changed one keep their own sounds.
         before = self.cur_weapons
         after = E.merge(self.cur_weapon_sources + [[w.clone() for w in weapons]])
@@ -409,7 +557,10 @@ class VoiceGenerator:
         self.weapon_nodes = weapons
         self.summary = {'schema': 1, 'countries': list(E.COUNTRIES), 'everyFaction': list(EVERY_FACTION_ACTORS),
                         'clips': sorted(self.used), 'absent': sorted(absent & set(self.clips)), 'actors': actor_summary,
-                        'weapons': weapon_summary, 'skipped': dict(sorted(self.skipped.items()))}
+                        'weapons': weapon_summary, 'skipped': dict(sorted(self.skipped.items())),
+                        'deaths': death_summary, 'deathWeapons': {w.key: next(s['weapon'] for d in death_summary.values() for s in d
+                                                                              if s['twin'] == w.key) for w in death_weapons},
+                        'deathFactsSha256': self.death_facts['sourceSha256']}
         self._validate()
         return self
 
