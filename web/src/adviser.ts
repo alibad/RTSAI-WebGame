@@ -212,6 +212,33 @@ export function searchGoal(snapshot: AdviserObservation, from?: { x: number; y: 
   return null;
 }
 
+/**
+ * The enemy buildings the player has seen, kept after they drop out of sight (the observation's own remembered list
+ * comes back empty in skirmish), so an army sent home to defend can go back to the enemy base. One is forgotten once
+ * its cell is in sight again without it. One memory per match.
+ */
+export class EnemyBaseMemory {
+  private seen = new Map<number, AdviserActor>();
+  private lastTick = -1;
+  recall(observation: AdviserObservation): AdviserObservation {
+    if (observation.tick < this.lastTick) this.seen.clear();
+    this.lastTick = observation.tick;
+    const visible = new Set(observation.visibleEnemyBuildings.map(building => building.actorId));
+    for (const building of observation.visibleEnemyBuildings) this.seen.set(building.actorId, building);
+    for (const [id, building] of this.seen) if (!visible.has(id) && inSight(observation, building.cellX, building.cellY)) this.seen.delete(id);
+    const known = new Set([...visible, ...(observation.rememberedEnemyBuildings ?? []).map(building => building.actorId)]);
+    const extra = [...this.seen.values()].filter(building => !known.has(building.actorId));
+    return extra.length ? { ...observation, rememberedEnemyBuildings: [...(observation.rememberedEnemyBuildings ?? []), ...extra] } : observation;
+  }
+}
+
+/** Whether a cell is in the player's sight now (the engine's grid, channel 4); false when the grid is not there. */
+export function inSight(snapshot: AdviserObservation, x: number, y: number): boolean {
+  const w = snapshot.mapWidth, h = snapshot.mapHeight, map = snapshot.spatial, channels = map?.channels ?? 0;
+  if (!map || channels < 5 || map.bytes.length < w * h * channels * 4 || x < 0 || y < 0 || x >= w || y >= h) return false;
+  return new DataView(map.bytes.buffer, map.bytes.byteOffset, map.bytes.byteLength).getFloat32(((y * w + x) * channels + 4) * 4, true) >= 1;
+}
+
 /** Whether land units can stand on a cell (the engine's grid, channel 3); true when the grid is not there. */
 export function landReachable(snapshot: AdviserObservation, x: number, y: number): boolean {
   const w = snapshot.mapWidth, h = snapshot.mapHeight, map = snapshot.spatial, channels = map?.channels ?? 0;
@@ -244,8 +271,8 @@ export function frontCell(snapshot: AdviserObservation, index: number, out = 8):
   return { x: Math.max(0, Math.min(w - 1, Math.round(hx + dx * out - dy * side))), y: Math.max(0, Math.min(h - 1, Math.round(hy + dy * out + dx * side))) };
 }
 
-/** An army worth sending: at least 8 fighters together worth 7,000 credits (about seven tanks and some infantry). */
-export const WAVE_UNITS = 8, WAVE_VALUE = 7000;
+/** An army worth sending: at least 10 fighters together worth 10,000 credits (about ten tanks and some infantry). */
+export const WAVE_UNITS = 10, WAVE_VALUE = 10000;
 /** The engine takes at most 12 orders in one request (CompanionBridge MaxCommandsPerRequest). */
 export const MAX_ORDERS = 12;
 
@@ -275,15 +302,19 @@ export function nextAdvice(snapshot: AdviserObservation, options: { buildFocus?:
   const order = (item: string) => tree[baseType(item)]?.order ?? 0;
   const availableFor = (role: string) => available.filter(item => roles(item).includes(role) && !item.endsWith("f"))
     .sort((a, b) => order(a) - order(b) || available.indexOf(a) - available.indexOf(b))[0];
-  const basicUnit = (items: string[], queue: string, word: "tank" | "infantry") => items.find(item => {
-    const entry = tree[baseType(item)];
-    // A queue must be known from native/generated metadata. Avoid guessing that
-    // a cheap structure is infantry when metadata is unavailable.
-    if (entry?.queue?.toLowerCase() !== queue.toLowerCase()) return false;
-    const shown = name(item).toLowerCase();
-    return word === "tank" ? shown.includes("tank") : !["engineer", "dog", "spy", "medic", "technician"].some(skip => shown.includes(skip))
-      && ((entry.cost ?? Infinity) <= 400 || ["e1", "e2"].includes(baseType(item)));
-  });
+  const basicUnit = (items: string[], queue: string, word: "tank" | "infantry") => {
+    const fits = (item: string, test: (shown: string, cost: number) => boolean) => {
+      const entry = tree[baseType(item)];
+      // A queue must be known from native/generated metadata. Avoid guessing that
+      // a cheap structure is infantry when metadata is unavailable.
+      return entry?.queue?.toLowerCase() === queue.toLowerCase() && test(name(item).toLowerCase(), entry.cost ?? Infinity);
+    };
+    if (word === "infantry") return items.find(item => fits(item, (shown, cost) => !["engineer", "dog", "spy", "medic", "technician"].some(skip => shown.includes(skip))
+      && (cost <= 400 || ["e1", "e2"].includes(baseType(item)))));
+    // Countries without a tank (Lebanon, Yemen) field armed trucks: their first fighting vehicle.
+    return items.find(item => fits(item, shown => shown.includes("tank")))
+      ?? items.find(item => fits(item, (shown, cost) => cost <= 1000 && !/harvester|miner|construction|\baa\b|drone|carrier|transport/.test(shown)));
+  };
   const roster = Object.keys(tree).sort((a, b) => order(a) - order(b));
   const advise = (text: string, summary: string, commands: AdviserCommand[], key: string): AdviserAdvice => ({ text, summary, commands, key });
   const build = (item: string): AdviserCommand[] => [{ action: "build", item_type: item }];
@@ -400,7 +431,7 @@ export function nextAdvice(snapshot: AdviserObservation, options: { buildFocus?:
   if (fighters.length && !targets.length) {
     // Looking for the enemy base is an order like any other: one cheap scout, or, once there is an army of 12, the
     // fighters together. One order at a time: while any fighter is busy (out looking, or fighting), nobody new is sent.
-    // A ready army (12 idle fighters worth 7,000 credits) searches whatever a few others are doing; a single scout only
+    // A ready army (12 idle fighters worth 10,000 credits) searches whatever a few others are doing; a single scout only
     // goes when nobody is out.
     const waiting = fighters.filter(unit => unit.idle);
     const army = waiting.length >= 12 && value(waiting) >= WAVE_VALUE;
@@ -457,16 +488,26 @@ export function nextAdvice(snapshot: AdviserObservation, options: { buildFocus?:
       `Attack-move ${n} unit${n === 1 ? "" : "s"} to the next enemy building`,
       pressing.map(unit => ({ action: "attack_move", actor_id: unit.actorId, target_x: target.cellX, target_y: target.cellY })), "press");
   }
-  // An attack is a wave: the idle fighters go together once there are 8 or more worth 7,000 credits. A smaller army
+  // An attack is a wave: the idle fighters go together once there are 10 or more worth 10,000 credits. A smaller army
   // stays home with the defences; units already fighting are left to it.
-  // One card carries at most 12 orders (the engine refuses more): the strongest 12 go first, and the rest follow on
-  // the next card while what is left is still an army.
+  // One card carries at most 12 orders (the engine refuses more): the strongest 12 go first, and the rest join them.
   const wave = fighters.filter(unit => unit.idle && !inside.includes(unit));
   const price = (unit: AdviserActor) => tree[baseType(unit.kind)]?.cost ?? 0;
   const attackers = [...wave].sort((a, b) => price(b) - price(a) || a.actorId - b.actorId).slice(0, MAX_ORDERS), target = attackers.length ? nearest(attackers) : undefined;
   if (target && wave.length >= WAVE_UNITS && value(wave) >= WAVE_VALUE) {
     return advise(`Your ${wave.length} combat units are a real army now (${value(wave)} credits); attack-move them to the enemy base together.`,
       `Attack-move ${attackers.length} units to the enemy base`, attackers.map(unit => ({ action: "attack_move", actor_id: unit.actorId, target_x: target.cellX, target_y: target.cellY })), "attack");
+  }
+  // An attack under way (4 or more fighters busy nearer the enemy base than our own): the units at home join it rather
+  // than wait for a wave of their own, so the attack does not run out.
+  const own = snapshot.buildings;
+  if (own.length && wave.length >= 3) {
+    const hx = own.reduce((sum, b) => sum + b.cellX, 0) / own.length, hy = own.reduce((sum, b) => sum + b.cellY, 0) / own.length;
+    const closest = (unit: AdviserActor) => Math.min(...targets.map(target => distanceSquared(unit, target)));
+    const out = fighters.filter(unit => !unit.idle && closest(unit) < (unit.cellX - hx) ** 2 + (unit.cellY - hy) ** 2);
+    const front = out.length >= 4 ? nearest(out) : undefined;
+    if (front) return advise(`Your attack is under way with ${out.length} units; send the ${wave.length} at home to join it.`,
+      `Send ${attackers.length} units to join the attack`, attackers.map(unit => ({ action: "attack_move", actor_id: unit.actorId, target_x: front.cellX, target_y: front.cellY })), "join");
   }
   return null;
 }

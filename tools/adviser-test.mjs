@@ -5,7 +5,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { execFileSync } from 'node:child_process';
-import { nextAdvice, assessThreat, desiredHarvesterCount } from '../web/src/adviser.ts';
+import { nextAdvice, assessThreat, desiredHarvesterCount, EnemyBaseMemory } from '../web/src/adviser.ts';
 
 const repo = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const companion = path.join(process.env.OPENRA_AI_ROOT ?? path.resolve(repo, '../RTSAI-Mod/companion'), 'services/companion/src');
@@ -109,13 +109,17 @@ for profile, data in load()['profiles'].items():
         add(prefix+'spend-defence-poor',{**base,'cash':2000,'buildings':drop_one(defence,drop_one(defence,base['buildings'])),'production':busy},items)
       if tank:
         tanks=[actor(tank,i+300,12+(i%6),12+i//6,True) for i in range(16)]
-        add(prefix+'sweep',{**base,'units':tanks[:12],'production':busy},items)
+        add(prefix+'sweep',{**base,'units':tanks,'production':busy},items)
         # One unit busy somewhere does not hold back a ready army.
-        add(prefix+'sweep-one-busy',{**base,'units':tanks[:12]+[actor(tank,399,80,80,True,False)],'production':busy},items)
+        add(prefix+'sweep-one-busy',{**base,'units':tanks+[actor(tank,399,80,80,True,False)],'production':busy},items)
         # An attack is a wave of ready fighters worth 7,000 credits; at most 12 orders, the strongest first.
-        add(prefix+'remembered-base',{**base,'units':tanks[:10],'production':busy,'remembered_enemy_buildings':[target]},items)
+        add(prefix+'remembered-base',{**base,'units':tanks,'production':busy,'remembered_enemy_buildings':[target]},items)
         add(prefix+'wave-of-16',{**base,'units':tanks+wave,'production':busy,'visible_enemy_buildings':[target]},items)
         add(prefix+'wave-too-small',{**base,'units':tanks[:4]+wave[:4],'production':busy,'visible_enemy_buildings':[target]},items)
+        # An attack under way: the units at home join it.
+        fighting=[actor(tank,i+450,66+i,66,True,False) for i in range(5)]
+        add(prefix+'join',{**base,'units':fighting+tanks[:4],'production':busy,'visible_enemy_buildings':[target]},items)
+        add(prefix+'join-too-few-out',{**base,'units':fighting[:3]+tanks[:4],'production':busy,'visible_enemy_buildings':[target]},items)
         # Idle in the enemy base: on to the next building; standing on the only (remembered) one: nothing to repeat.
         other=actor(next(iter(roles.values())),1001,70,86)
         inside=[actor(tank,i+400,78+i%3,78+i//3,True) for i in range(5)]
@@ -135,12 +139,12 @@ for profile, data in load()['profiles'].items():
                 st.pack_into('<f',out,i+16,1.0 if sight(x,y) else (0.5 if seen(x,y) else 0.0))
             return base64.b64encode(bytes(out)).decode()
           spatial=lambda g:{'spatial_map':g,'spatial_channels':12}
-          army_home=[actor(tank,i+500,14+i%4,14+i//4,True) for i in range(12)]
+          army_home=[actor(tank,i+500,14+i%4,14+i//4,True) for i in range(16)]
           # Never seen beyond the lake: the mirror point is water, so the first land place nobody has seen.
           add(prefix+'search-unseen',{**base,'units':army_home,'production':busy,**spatial(grid(lambda x,y:x<40 and y<40))},items)
           # All seen, the army at home and in sight there: the sweep goes on from where the army stands.
           add(prefix+'search-sweep',{**base,'units':army_home,'production':busy,**spatial(grid(lambda x,y:True, lambda x,y:x<30 and y<30))},items)
-          away=[actor(tank,i+500,50+i%4,10+i//4,True) for i in range(12)]
+          away=[actor(tank,i+500,50+i%4,10+i//4,True) for i in range(16)]
           add(prefix+'search-sweep-away',{**base,'units':away,'production':busy,**spatial(grid(lambda x,y:True, lambda x,y:40<=x<=64 and y<24))},items)
           # An enemy in sight on land: the army goes after it; one on the lake is left alone.
           add(prefix+'hunt',{**base,'units':army_home,'production':busy,'visible_enemies':[actor(infantry,950,40,70,True)],**spatial(grid(lambda x,y:True))},items)
@@ -197,7 +201,7 @@ for (const test of parity) {
   assert.equal(JSON.stringify(input), before, `${test.label}: observation must not mutate`);
   if (actual) keys.add(actual.key);
 }
-for (const key of ['deploy','place','defend','build:power','build:refinery','build:barracks','build:factory','build:radar','build:defence','rally','train:harvester','train:tank','scout','sweep','hunt','attack','press','done'])
+for (const key of ['deploy','place','defend','build:power','build:refinery','build:barracks','build:factory','build:radar','build:defence','rally','train:harvester','train:tank','scout','sweep','hunt','attack','press','join','done'])
   assert(keys.has(key), `Parity cases must cover ${key}`);
 // The new rules do what they say, not only the same thing on both sides.
 const expect = (suffix, check) => { const cases = parity.filter(t => t.label.endsWith(':' + suffix)); assert(cases.length, `no ${suffix} case`); for (const t of cases) check(t.expected, t.label); };
@@ -211,6 +215,18 @@ expect('hunt-not-on-water', (a, l) => assert.notEqual(a?.key, 'hunt', l));
 expect('press-attack', (a, l) => { if (a?.key === 'press') assert(a.commands.every(c => c.action === 'attack' && c.target_actor_id), l); });
 expect('wave-of-16', (a, l) => { if (a?.key === 'attack') assert.equal(a.commands.length, 12, l); });
 expect('place-defence-known', (a, l) => { assert.equal(a?.key, 'place', l); assert(a.commands[0].target_x >= 18 && a.commands[0].target_y <= 16, `${l}: toward the enemy at 70,20 (${a.commands[0].target_x},${a.commands[0].target_y})`); });
+// The enemy-base memory: a building seen stays known out of sight, and is forgotten once its cell is in sight without it.
+{
+  const fog = (inSightAt) => { const b = new Uint8Array(20 * 20 * 5 * 4), v = new DataView(b.buffer); for (let y = 0; y < 20; y++) for (let x = 0; x < 20; x++) v.setFloat32(((y * 20 + x) * 5 + 4) * 4, inSightAt(x, y) ? 1 : 0.5, true); return { channels: 5, bytes: b }; };
+  const obs = (tick, visible, sight) => ({ tick, mapWidth: 20, mapHeight: 20, visibleEnemyBuildings: visible, rememberedEnemyBuildings: [], spatial: fog(sight) });
+  const yard = { actorId: 7, kind: 'nacnst', cellX: 15, cellY: 15, idle: false, canAttack: false };
+  const memory = new EnemyBaseMemory();
+  memory.recall(obs(100, [yard], () => true));
+  assert.deepEqual(memory.recall(obs(200, [], () => false)).rememberedEnemyBuildings.map(b => b.actorId), [7], 'seen once, kept out of sight');
+  assert.equal(memory.recall(obs(300, [], (x, y) => x === 15 && y === 15)).rememberedEnemyBuildings.length, 0, 'its cell in sight without it: forgotten');
+  memory.recall(obs(400, [yard], () => true));
+  assert.equal(memory.recall(obs(10, [], () => false)).rememberedEnemyBuildings.length, 0, 'a new match starts empty');
+}
 assert.deepEqual([desiredHarvesterCount(64,64),desiredHarvesterCount(96,96),desiredHarvesterCount(128,128),desiredHarvesterCount(129,128)], [2,3,4,5]);
 // No queue metadata: never misidentify a low-cost structure as infantry.
 const unknown = observation(parity[0]);

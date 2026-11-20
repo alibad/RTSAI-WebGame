@@ -54,7 +54,9 @@ try {
     const ok = await page.evaluate(() => {
       const cc = window.game.cc, A = window.__adviserPreview;
       if (typeof cc.browserChoice !== "function" || !A?.nextAdvice) return false;
-      cc.browserChoice = (observation) => A.nextAdvice({ ...observation, techTree: A.adviserTreeFor(observation) });
+      // As web/src/cocommander.ts browserChoice does (with the enemy-base memory when the bundle has it).
+      const memory = A.EnemyBaseMemory ? new A.EnemyBaseMemory() : null;
+      cc.browserChoice = (observation) => A.nextAdvice({ ...(memory ? memory.recall(observation) : observation), techTree: A.adviserTreeFor(observation) });
       return true;
     });
     if (!ok) throw new Error("--adviser: the page's adviser could not be replaced");
@@ -132,7 +134,8 @@ try {
   const cards = await page.evaluate(() => window.__cards);
   // The engine's answer to every applied card: accepted, or refused and why.
   const receipts = await page.evaluate(() => [...window.game.cc.receipts.values()].map((r) => [r.accepted ? 1 : 0, r.detail ?? ""]));
-  const win = stats.players[0].win;
+  // The player's own result can lag a tick behind the computer's defeat.
+  const win = stats.players[0].win === "Undefined" && stats.players.slice(1).every((p) => p.win === "Lost") ? "Won" : stats.players[0].win;
   const rec = await page.evaluate((m) => window.game.client.request({ type: "record", map: m }), map).catch(() => null);
   if (rec) { fs.mkdirSync(path.join(out, "replays"), { recursive: true }); fs.writeFileSync(path.join(out, "replays", `${name}.json`), JSON.stringify({ scenario, log: rec.log, tick: rec.tick })); }
   result = { name, faction, enemy, skill, map, seed, speed, adviser: adviser || null, bundle: bundle || null,

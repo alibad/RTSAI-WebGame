@@ -7,7 +7,7 @@ import type { CompanionEngineEvent } from "./sim/protocol";
 import { store } from "./store";
 import type { AudioEngine } from "./audio";
 import { createAudioContext } from "./audio-context";
-import { nextAdvice, assessThreat, type AdviserAdvice, type AdviserThreat, type AdviserCommand, type AdviserObservation } from "./adviser";
+import { nextAdvice, assessThreat, EnemyBaseMemory, type AdviserAdvice, type AdviserThreat, type AdviserCommand, type AdviserObservation } from "./adviser";
 import { MissionMemory, missionAdvice, parseMissionMap, type MissionAdvice, type MissionMap, type MissionSpec } from "./mission-adviser";
 import type { AdviserActionReceipt } from "./sim/adviser-rpc";
 import adviserTree from "./adviser-tree.json";
@@ -118,6 +118,8 @@ export class CoCommander {
   private receipts = new Map<string, { accepted: boolean; detail: string }>();
   private browserProposals = new Map<string, string>();
   private browserSuppressed = "";
+  /** Enemy buildings seen in this match, kept after they drop out of sight (skirmish adviser). */
+  private enemyBase = new EnemyBaseMemory();
   /** The tick the held card was applied (-1: the player declined it). */
   private browserAppliedTick = -1;
   private browserLastLine = "";
@@ -141,7 +143,7 @@ export class CoCommander {
 
   endMatch() {
     this.matchRevision++; this.strategyRevision++; this.requestRevision++;
-    this.browserProposals.clear(); this.browserSuppressed = ""; this.browserLastLine = ""; this.browserDeciding = false; this.browserReady = false;
+    this.browserProposals.clear(); this.enemyBase = new EnemyBaseMemory(); this.browserSuppressed = ""; this.browserLastLine = ""; this.browserDeciding = false; this.browserReady = false;
     this.browserNotBeforeTick = 0;
     this.mission = null;
     this.interrupt(); this.receipts.clear();
@@ -290,12 +292,12 @@ export class CoCommander {
   private browserChoice(observation: AdviserObservation): AdviserAdvice | null {
     const s = store.get(), live = s.ui?.mission;
     const spec = live ? s.setup?.missions?.find((m) => m.id === live.id) as unknown as MissionSpec | undefined : undefined;
-    if (!live || !spec) return nextAdvice({ ...observation, techTree: adviserTreeFor(observation) });
+    if (!live || !spec) return nextAdvice({ ...this.enemyBase.recall(observation), techTree: adviserTreeFor(observation) });
     if (this.mission?.id !== live.id) this.loadMission(live.id);
     const map = this.mission?.map;
     // The map is read once, a moment after the start; without its places the skirmish adviser still runs the base.
     if (!map) return null;
-    if (!map.actors.length) return nextAdvice({ ...observation, techTree: adviserTreeFor(observation) });
+    if (!map.actors.length) return nextAdvice({ ...this.enemyBase.recall(observation), techTree: adviserTreeFor(observation) });
     return missionAdvice(observation, { spec, live, map, memory: this.mission!.memory, techTree: adviserTree, catalog: s.catalog });
   }
 
