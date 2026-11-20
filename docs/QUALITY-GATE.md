@@ -45,5 +45,12 @@ Firebase emulators and the website and are run by hand when multiplayer or saved
   the browser tests in "browser" change in the same commit.
 - A test whose feature was retired is deleted (the Scenario workshop test went with the Scenario workshop).
 - New checks go into `tools/quality-gate.json`, not into a second runner.
+- Run the browser step when this PC is not saturated. On 20 November 2026, with eight sessions filming and the
+  processor at 100%, the WebKit part of `cross-browser-test.mjs` failed twice on the page that was live (no ticks in 8
+  seconds, then no match within 120 seconds); at 91% WebKit started a match on the same page in 34 seconds and ticked
+  at the usual 25 a second. A failure under load is still a failure: run the step again when the machine is quieter.
+- A browser test that blocks every non-local address cannot load a released page, whose runtime and data come from
+  the CDN. Give it `RTSAI_TEST_ASSET_ORIGIN` (see `earth-editor-browser-test.mjs`) instead of serving a second copy
+  of the game locally.
 - Running the whole gate on every commit is too slow; run `--only typecheck,unit` while working and the whole gate
   before a release or at the end of a day's work.
