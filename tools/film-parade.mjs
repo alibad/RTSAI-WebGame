@@ -43,6 +43,9 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 // y = 15 + v * 15, so two v rows are one cell down the screen and the 1280 x 720 view is 21 cells by 48 v rows.
 const STAGES = {
   land: { map: opt("map", "web-arena"), centre: null /* the map's middle */ },
+  // The same grass with four player slots: a row that stands beside Westwood's originals needs a third, allied player
+  // to own them (an original unit owned by a modern country is drawn and voiced with the modern stand-ins).
+  land4: { map: "web-arena-four", centre: null },
   water: { map: "ra2-little-big-lake", centre: { u: 20, v: 70 }, power: { u: 8, v: 126 }, keep: { u: 10, v: 20 }, shore: { u: 29, v: 72 }, yard: { u: 14, v: 55 } },
 };
 
@@ -284,10 +287,12 @@ async function voiceSetOf(name) {
 const voiceSince = (t) => g((t) => { const a = window.__parade.audio.find((x) => x.t >= t && x.relative); return a ? { t: a.t, seconds: window.game.audio.sources?.get(a.source)?.duration ?? 1.2 } : null; }, t);
 
 /** Starts a battle from placements, paused, camera on the stage at 1x, art on the GPU. Returns the camera centre cell. */
-async function startBattle(st, faction, enemy, placements) {
+async function startBattle(st, faction, enemy, placements, ally = null) {
   const slots = setupMaps.find((m) => m.id === st.map)?.slots ?? [];
   const scenario = { map: st.map, seed: 20261120, sandbox: true, bare: true,
-    players: [{ slot: slots[0] ?? "Multi0", faction, color: "2A6FDB" }, { slot: slots[1] ?? "Multi1", faction: enemy, color: "D83A2E", bot: "webidle" }],
+    players: [{ slot: slots[0] ?? "Multi0", faction, color: "2A6FDB", team: ally ? 1 : 0 }, { slot: slots[1] ?? "Multi1", faction: enemy, color: "D83A2E", bot: "webidle", team: ally ? 2 : 0 },
+      // The ally (placements with side 2) wears the player's colour and does nothing by itself.
+      ...(ally ? [{ slot: slots[2] ?? "Multi2", faction: ally, color: "2A6FDB", bot: "webidle", team: 1 }] : [])],
     options: { explored: "True", fog: "False", crates: "False", shortgame: "False", startingcash: "0" }, placements };
   await g(({ scenario, map }) => {
     window.game.sandbox.configure({ map });
@@ -309,8 +314,7 @@ async function startBattle(st, faction, enemy, placements) {
 }
 
 /** Where the land stage's middle is (the map's own middle), asked once. */
-async function landCentre() {
-  const st = STAGES.land;
+async function landCentre(st, first) {
   if (st.centre) return;
   st.centre = { u: 30, v: 60 };
   await startBattle(st, "america", "russia", [{ id: "gapowr", side: 0, u: 30, v: 60 }]);
@@ -320,7 +324,7 @@ async function landCentre() {
   st.power = { u: st.centre.u - 8, v: st.centre.v + 34 };
   st.keep = { u: st.centre.u - 24, v: st.centre.v - 40 };
   log(`land stage: ${st.map}, centre cell ${st.centre.u},${st.centre.v}`);
-  if (!flag("cold-audio")) {
+  if (first && !flag("cold-audio")) {
     // The first battle's start asked for the sounds: wait until they stop arriving.
     const t = Date.now();
     while (Date.now() - t < 600000 && (audioFiles < 50 || Date.now() - audioLast < 5000)) await sleep(500);
@@ -340,10 +344,11 @@ function canHit(unit, type, airborne) {
  */
 async function unitTake(faction, country, enemy, row, takeDir, heard) {
   const water = row.kind === "ships";
-  const st = water ? STAGES.water : STAGES.land;
+  const refs = water ? [] : (row.refs ?? []);
+  const st = water ? STAGES.water : refs.length ? STAGES.land4 : STAGES.land;
   const c = st.centre;
   for (const name of row.units) await voiceSetOf(name);
-  const names = [...row.units.filter((u) => cloaks[u]), ...row.units.filter((u) => !cloaks[u]), ...(row.refs ?? [])];
+  const names = [...row.units.filter((u) => cloaks[u]), ...row.units.filter((u) => !cloaks[u]), ...refs];
   const n = names.length;
   const fixed = row.kind === "defenses";
   const gap = water ? (n > 4 ? 2 : 3) : n > 7 ? 2 : 3; // cells between neighbours: 8 across the frame, 6 at sea
@@ -351,7 +356,7 @@ async function unitTake(faction, country, enemy, row, takeDir, heard) {
   // Low in the frame at the start, a third up after the walk; targets near the top. Defences stand where they fire.
   const vStart = c.v + (fixed ? 4 : 13), vEnd = c.v + (fixed ? 4 : 6), vTargets = c.v - (fixed ? 4 : row.kind === "infantry" ? 2 : 6);
   const placements = [];
-  names.forEach((name, i) => placements.push({ id: name, side: 0, u: u0 + gap * i, v: vStart, facing: 384 }));
+  names.forEach((name, i) => placements.push({ id: name, side: refs.includes(name) ? 2 : 0, u: u0 + gap * i, v: vStart, facing: 384, ...(refs.includes(name) ? { order: "hold" } : {}) }));
   // The other side's dummies: buildings (ground), engineers (infantry), a miner (vehicle), transports (sea), and two
   // airships that lift off and drift across the row (air). None of them shoots back.
   const dummies = [];
@@ -374,17 +379,19 @@ async function unitTake(faction, country, enemy, row, takeDir, heard) {
   for (let i = 0; i < 6; i++) placements.push({ id: power, side: 0, u: st.power.u + 4 * (i % 3), v: st.power.v + 8 * Math.floor(i / 3) });
   placements.push({ id: "napowr", side: 1, u: st.keep.u, v: st.keep.v });
 
-  await startBattle(st, faction, enemy, placements);
+  await startBattle(st, faction, enemy, placements, refs.length ? ALLY : null);
   const all = await actors();
-  const pool = all.filter((a) => a.own);
+  const pool = all.filter((a) => a.own), strangers = all.filter((a) => !a.own);
   const live = [];
-  const report = names.map((name) => ({ unit: name, label: label(name), ref: (row.refs ?? []).includes(name), combat: !!unitOf[name]?.combat, spawned: false }));
+  const report = names.map((name) => ({ unit: name, label: label(name), ref: refs.includes(name), combat: !!unitOf[name]?.combat, spawned: false }));
   names.forEach((name, i) => {
     const [wx, wy] = cellPx(u0 + gap * i, vStart);
-    const a = pool.filter((x) => x.type === name).sort((p, q) => Math.hypot(p.sx - wx, p.sy - wy) - Math.hypot(q.sx - wx, q.sy - wy))[0];
-    if (a && Math.hypot(a.sx - wx, a.sy - wy) < 200) { pool.splice(pool.indexOf(a), 1); live.push({ name, i, id: a.id }); report[i].spawned = true; }
+    const from = refs.includes(name) ? strangers : pool;
+    const a = from.filter((x) => x.type === name).sort((p, q) => Math.hypot(p.sx - wx, p.sy - wy) - Math.hypot(q.sx - wx, q.sy - wy))[0];
+    if (a && Math.hypot(a.sx - wx, a.sy - wy) < 200) { from.splice(from.indexOf(a), 1); live.push({ name, i, id: a.id, ref: refs.includes(name) }); report[i].spawned = true; }
   });
-  const others = all.filter((a) => !a.own);
+  const mine = live.filter((p) => !p.ref);
+  const others = strangers;
   for (const d of dummies) {
     const [wx, wy] = cellPx(d.u, d.v);
     const e = others.filter((a) => a.type === d.type).sort((p, q) => Math.hypot(p.sx - wx, p.sy - wy) - Math.hypot(q.sx - wx, q.sy - wy))[0];
@@ -393,7 +400,7 @@ async function unitTake(faction, country, enemy, row, takeDir, heard) {
   const yard = row.yard ? all.find((a) => a.own && a.type === row.yard) : null;
   // The stage's ground level (the lake lies above the map's zero): heights are measured from it.
   const groundZ = Math.min(...all.map((a) => a.z));
-  const tags = live.map((p) => ({ id: p.id, label: label(p.name) + (report[p.i].ref ? " (original)" : ""), ref: report[p.i].ref, cloaks: !!cloaks[p.name], dy: unitOf[p.name]?.kind === "aircraft" ? 28 : fixed ? 30 : 24 }));
+  const tags = live.map((p) => ({ id: p.id, label: p.ref ? REF_LABEL[p.name] ?? `Westwood's ${label(p.name)}` : label(p.name), ref: p.ref, cloaks: !!cloaks[p.name], dy: unitOf[p.name]?.kind === "aircraft" ? 28 : fixed ? 30 : 24 }));
   if (yard) tags.push({ id: yard.id, label: label(row.yard), dy: 40 });
   await g(({ tags, flagId, country, title }) => { const P = window.__parade; P.setTags(tags); P.caption(flagId, country, title, ""); }, { tags, flagId: faction, country, title: row.title });
 
@@ -404,7 +411,7 @@ async function unitTake(faction, country, enemy, row, takeDir, heard) {
   // paused: the order holds from the first tick (no long-range unit gets a shot off at the dummies first), and the
   // voice that answers a group, its first unit's, starts with the game, on camera. That is the first unit's line.
   const tGroup = await pageNow();
-  await g(async (ids) => { await window.game.select(ids); await window.game.command({ cmd: "stance", stance: "holdfire" }); }, live.map((p) => p.id));
+  await g(async (ids) => { await window.game.select(ids); await window.game.command({ cmd: "stance", stance: "holdfire" }); }, mine.map((p) => p.id));
   await g(() => window.game.setPaused(false));
   const tStart = await pageNow();
   const clock = await gameClock();
@@ -425,6 +432,7 @@ async function unitTake(faction, country, enemy, row, takeDir, heard) {
     const t = await pageNow();
     const at = await g(async (id) => { const gm = window.game; window.__parade.focus(id); await gm.select([id]); const a = gm.client.cur.actors.find((x) => x.id === id); return a ? gm.toClient(a.sx, a.sy) : null; }, p.id);
     if (at) lens.push({ t, x: at[0], y: at[1] });
+    if (p.ref) { report[p.i].t = t; await sleep(1100); continue; }
     const free = t >= voiceUntil;
     await sleep(320);
     let voice = await voiceSince(t);
@@ -444,7 +452,7 @@ async function unitTake(faction, country, enemy, row, takeDir, heard) {
   // 2. A dog-leg: three short legs, so every unit shows several facings and its moving frames.
   if (!fixed) {
     await step("move");
-    for (const p of live) {
+    for (const p of mine) {
       const u = u0 + gap * p.i;
       const legs = [[u + 1, vStart - 3], [u - 1, vStart - 5], [u, vEnd]].map(([a, b]) => cellPx(a, b));
       const t = await pageNow();
@@ -458,7 +466,7 @@ async function unitTake(faction, country, enemy, row, takeDir, heard) {
     await g(() => window.game.select([]));
     await sleep(1200);
     // Until they stand still again (idle), at most 5 s more.
-    await until((ids) => { const s = window.game.client.cur; return ids.every((id) => { const a = s.actors.find((x) => x.id === id); return !a || (a.flags & 4) !== 0; }); }, live.map((p) => p.id), 5000, 150);
+    await until((ids) => { const s = window.game.client.cur; return ids.every((id) => { const a = s.actors.find((x) => x.id === id); return !a || (a.flags & 4) !== 0; }); }, mine.map((p) => p.id), 5000, 150);
     await sleep(200);
   }
   // 3. Fire: each at a target it can hit (the nearest of the first kind it can: ground before air).
@@ -467,7 +475,7 @@ async function unitTake(faction, country, enemy, row, takeDir, heard) {
   const results = () => g(() => window.store.getState().ui?.sandbox ?? null);
   const before = await results();
   const kinds = water ? ["lcrf", "gapowr", "zep"] : ["gapowr", "cmin", "engineer", "zep"];
-  for (const p of live) {
+  for (const p of mine) {
     const unit = unitOf[p.name], me = now0.find((x) => x.id === p.id);
     let target = null;
     if (unit?.combat && me) {
@@ -625,10 +633,14 @@ const MODERN = new Set(["china", "iran", "turkey", "saudi", "israel", "yemen", "
 // Roster entries that never stand on the field by themselves: the Refinery Purifier is an upgrade plugged into the
 // refinery (it removes itself as soon as it is placed).
 const NOT_STANDING = new Set(["gapurifier"]);
-// Westwood's originals stood beside a modern country's row, for the "reads like the original at 1x" bar.
-const REFS = { infantry: ["e1"], vehicles: ["mtnk"], ships: ["dest"], defenses: ["gapill"] };
+// Westwood's originals stood beside a modern country's row, for the "reads like the original at 1x" bar. They are an
+// allied America's (so the game draws the original art), stand still and say nothing: they are not the player's.
+const REFS = { infantry: ["e1"], vehicles: ["mtnk"] };
+const REF_LABEL = { e1: "Westwood's G.I.", mtnk: "Westwood's Grizzly" };
+const ALLY = "america";
 const chunk = (list, n) => { const parts = Math.ceil(list.length / n), size = Math.ceil(list.length / parts); const o = []; for (let i = 0; i < list.length; i += size) o.push(list.slice(i, i + size)); return o; };
-await landCentre();
+await landCentre(STAGES.land, true);
+if (wanted.some((w) => MODERN.has(w.faction))) await landCentre(STAGES.land4, false);
 
 for (const { faction, units: onlyUnits } of wanted) {
   const roster = catalog.rosters[faction];
@@ -656,7 +668,7 @@ for (const { faction, units: onlyUnits } of wanted) {
   const rows = [];
   for (const kind of ["infantry", "vehicles", "ships", "defenses"]) {
     if (onlyRows.length && !onlyRows.includes(kind)) continue;
-    const refs = MODERN.has(faction) ? REFS[kind].filter((r) => !groups[kind].includes(r)) : [];
+    const refs = MODERN.has(faction) ? (REFS[kind] ?? []).filter((r) => !groups[kind].includes(r)) : [];
     if (!groups[kind].length) continue;
     const parts = chunk(groups[kind], (kind === "ships" ? 6 : 8) - refs.length);
     parts.forEach((units, k) => rows.push({ kind, title: titles[kind] + (parts.length > 1 ? ` ${k + 1}/${parts.length}` : ""), units, refs: k === 0 ? refs : [], yard: kind === "ships" && k === 0 ? yard : undefined }));
