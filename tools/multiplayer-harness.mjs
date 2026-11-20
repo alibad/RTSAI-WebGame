@@ -270,5 +270,18 @@ export async function order(player, types, [x, y]) {
   }, [types, x, y]);
 }
 
+/** Sells every building the local player owns, through the sell mode of the HUD (how a player gives up today). */
+export async function sellEverything(player) {
+  const buildings = (await army(player)).filter(a => a.building);
+  for (const b of buildings) {
+    await player.page.evaluate(() => window.game.command({ cmd: 'mode', mode: 'sell' }));
+    await player.page.waitForFunction(() => window.store.getState().ui?.mode === 'sell', null, { timeout: 5000 }).catch(() => {});
+    await player.page.evaluate(([x, y]) => window.game.modeClick(x, y, 0), [b.x, b.y]);
+    await sleep(400);
+  }
+  await player.page.evaluate(() => window.game.command({ cmd: 'mode', mode: 'none' }));
+  return buildings.length;
+}
+
 /** "Won", "Lost" or "Undefined": the local player's result as the engine reports it. */
 export const outcome = player => player.page.evaluate(() => window.store.getState().ui?.win ?? 'Undefined');

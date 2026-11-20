@@ -445,10 +445,16 @@ const SCENARIOS = {
     cut('The game tries every route for 20 seconds', 3);
     facts.secondsUntilTold = await secondsUntilAlert(guest, 'onnect', 80);
     facts.waited = +(now() - from).toFixed(1);
-    cut('Player 2 is told why. Player 1 is told nothing: the lobby still waits for friends');
-    await sleep(9000);
+    cut('Player 2 is told. What Player 1, still waiting in the lobby, is told');
+    await sleep(7000);
     facts.guest = await alerts(guest);
-    facts.host = (await host.page.getByRole('dialog').innerText().catch(() => '')).replace(/\s+/g, ' ').slice(0, 400);
+    // The host's own route search gives up some seconds later (up to 40): its lobby says so then, where it does.
+    cut('Player 1’s lobby, a little later', 4);
+    const told = await host.page.getByRole('status').filter({ hasText: 'get through' }).waitFor({ timeout: 45000 }).then(() => true, () => false);
+    cut(told ? 'Player 1 is told that a friend did not get through' : 'Player 1 is told nothing: the lobby still waits for friends');
+    await sleep(8000);
+    facts.hostTold = told;
+    facts.host = (await host.page.getByRole('dialog').getByRole('status').allInnerTexts().catch(() => [])).join(' | ');
     stop();
   },
 

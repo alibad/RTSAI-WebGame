@@ -184,6 +184,21 @@ try {
     pass('feedbackReachesWebsite');
   } else receipt.checks.website = 'not checked: set RTSAI_TEST_WEBSITE=1 with the website on this origin (events counted, feedback delivered)';
 
+  // Bravo gives up by selling its construction yard: it is out, while the other two (and Bravo's AI ally) fight on.
+  // Its result screen names the others as the lobby did and says what leaving now would do.
+  assert.equal(await H.sellEverything(bravo), 1);
+  const defeat = bravo.page.getByRole('dialog', { name: 'Defeat' });
+  await defeat.waitFor({ timeout: 60000 });
+  await defeat.getByRole('note').filter({ hasText: 'still fighting' }).waitFor({ timeout: 15000 });
+  await defeat.getByRole('button', { name: 'Leave match', exact: true }).waitFor();
+  for (const name of ['Player 1', 'Player 2']) await defeat.getByText(name, { exact: true }).waitFor();
+  assert.equal(await defeat.getByText('Commander', { exact: true }).count(), 0, 'no player is called "Commander"');
+  assert.deepEqual(await Promise.all([host, alpha].map(H.outcome)), ['Undefined', 'Undefined'], 'the others play on');
+  await bravo.page.screenshot({ path: `${out}/6c-defeated-while-others-play.png` });
+  report = await H.syncReport(players);
+  assert.deepEqual(report.errors.flat(), []); assert.equal(report.mismatch, null);
+  pass('defeatedPlayerWarnedBeforeLeaving');
+
   // A guest closes the tab: the others are told at once that the player left, and every world stops.
   const closedAt = Date.now();
   await bravo.page.close();
