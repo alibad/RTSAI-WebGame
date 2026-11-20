@@ -4,6 +4,8 @@ import fs from 'node:fs';
 import { chromium } from '../web/node_modules/playwright-core/index.mjs';
 import { browserExecutable, browserArgs } from './browser-launch.mjs';
 const base = process.env.RTSAI_TEST_URL ?? 'http://127.0.0.1:38669/';
+// RTSAI_TEST_ASSET_ORIGIN: the CDN host of a static page's runtime and data, when they are not served beside it.
+const assets = process.env.RTSAI_TEST_ASSET_ORIGIN ? new URL(process.env.RTSAI_TEST_ASSET_ORIGIN).hostname : '';
 const out = process.env.RTSAI_TEST_OUT ?? 'artifacts/earth-region';
 fs.mkdirSync(out, { recursive: true });
 const browser = await chromium.launch({ executablePath: browserExecutable(), args: browserArgs(), headless: true });
@@ -16,7 +18,7 @@ try {
     await page.route('**/*', route => {
       const url = new URL(route.request().url());
       if (url.pathname.endsWith('/api/overpass')) return route.fulfill({ status: 200, contentType: 'application/json', body: '{"elements":[]}' });
-      if (['127.0.0.1', 'localhost', 'server.arcgisonline.com'].includes(url.hostname) || ['blob:', 'data:'].includes(url.protocol)) return route.continue();
+      if (['127.0.0.1', 'localhost', 'server.arcgisonline.com', assets].includes(url.hostname) || ['blob:', 'data:'].includes(url.protocol)) return route.continue();
       return route.abort();
     });
     await page.goto(`${base}?profile=public&mode=editor`);

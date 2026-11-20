@@ -4,14 +4,18 @@ import fs from 'node:fs';
 import { chromium } from '../web/node_modules/playwright-core/index.mjs';
 import { browserExecutable, browserArgs } from './browser-launch.mjs';
 const base=process.env.RTSAI_TEST_URL??'http://127.0.0.1:38669/';
+// RTSAI_TEST_ASSET_ORIGIN: the CDN host of a static page's runtime and data, when they are not served beside it.
+const assets=process.env.RTSAI_TEST_ASSET_ORIGIN?new URL(process.env.RTSAI_TEST_ASSET_ORIGIN).hostname:'';
 const out=process.env.RTSAI_TEST_OUT??'artifacts/simulator-placement'; fs.mkdirSync(out,{recursive:true});
 const browser=await chromium.launch({executablePath:browserExecutable(),args:browserArgs(),headless:true});
-const receipt={scope:'Real native WASM actor placement and movement categories; buildings completed before ticking; both modes',modes:[],passed:false};
+const receipt={scope:'Real native WASM actor placement and movement categories; buildings completed before ticking; isometric game',modes:[],passed:false};
 try {
- for(const profile of ['public','public-classic']) {
+ // Isometric only. Classic has been the real Classic game since 15 October 2026: its units have other names (ah64sa,
+ // no Bradley) and its arena another shoreline, so these ids and click positions do not apply there.
+ for(const profile of ['public']) {
   const page=await browser.newPage({viewport:{width:1440,height:1000}}),errors=[];
   page.on('pageerror',e=>errors.push(String(e)));
-  await page.route('**/*',r=>{const u=new URL(r.request().url());return ['127.0.0.1','localhost'].includes(u.hostname)||['blob:','data:'].includes(u.protocol)?r.continue():r.abort();});
+  await page.route('**/*',r=>{const u=new URL(r.request().url());return ['127.0.0.1','localhost',assets].includes(u.hostname)||['blob:','data:'].includes(u.protocol)?r.continue():r.abort();});
   await page.goto(`${base}?profile=${profile}&mode=simulator`);
   await page.waitForFunction(()=>window.store.getState().sandbox?.units?.length>0,null,{timeout:180000});
   const catalog=await page.evaluate(()=>window.store.getState().sandbox.units);
@@ -65,5 +69,5 @@ try {
   receipt.modes.push({profile,completed:placed,run,restored,checks:['movement categories','category-scoped search','stale placement cleared','no building on water','completed paused building','same footprint after Fight','completed after Edit']});
   await page.close();
  }
- receipt.passed=true; console.log('PASS simulator categories, scoped search, completed buildings and edit/run/edit preservation in both modes');
+ receipt.passed=true; console.log('PASS simulator categories, scoped search, completed buildings and edit/run/edit preservation (isometric)');
 }finally{await browser.close();fs.writeFileSync(`${out}/receipt.json`,JSON.stringify(receipt,null,2));}

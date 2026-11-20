@@ -4,6 +4,8 @@ import fs from 'node:fs';
 import { chromium } from '../web/node_modules/playwright-core/index.mjs';
 import { browserExecutable, browserArgs } from './browser-launch.mjs';
 const base = process.env.RTSAI_TEST_URL || 'http://127.0.0.1:3490/';
+// RTSAI_TEST_ASSET_ORIGIN: the CDN host of a static page's runtime and data, when they are not served beside it.
+const assets = process.env.RTSAI_TEST_ASSET_ORIGIN ? new URL(process.env.RTSAI_TEST_ASSET_ORIGIN).hostname : '';
 const out = process.env.RTSAI_TEST_OUT || 'artifacts/themed-pickers';
 fs.mkdirSync(out, { recursive: true });
 const browser = await chromium.launch({ executablePath: browserExecutable(), args: browserArgs(), headless: true });
@@ -14,7 +16,7 @@ try {
     page.setDefaultTimeout(180000);
     await context.route('**/*', route => {
       const u = new URL(route.request().url());
-      return ['127.0.0.1', 'localhost'].includes(u.hostname) || ['blob:', 'data:'].includes(u.protocol) ? route.continue() : route.abort();
+      return ['127.0.0.1', 'localhost', assets].includes(u.hostname) || ['blob:', 'data:'].includes(u.protocol) ? route.continue() : route.abort();
     });
     await page.goto(`${base}?profile=public&mode=skirmish`);
     await page.getByRole('button', { name: 'Settings', exact: true }).click();
