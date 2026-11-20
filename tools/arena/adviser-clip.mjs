@@ -134,7 +134,16 @@ while (!done) {
   const gs = await gameSeconds();
   const st = await page.evaluate(() => { const s = window.store.getState(), p = window.game.cc.pending(); return { phase: s.phase, pending: p ? { id: p.id, proposalId: p.proposalId, text: p.text, commands: p.commands?.length ?? 0 } : null, line: [...s.cc.feed].reverse().find((f) => f.kind === "ai")?.text ?? "" }; });
   if (st.phase !== "playing") { reason = `the game left play (${st.phase})`; break; }
-  if (gs > maxGame) { reason = `not reached by ${clock(maxGame)} of game time`; break; }
+  if (gs > maxGame) {
+    // The moment never came: that is the finding. The clip is the last stretch and a closing line.
+    reason = `not reached by ${clock(maxGame)} of game time`;
+    await setPace(false);
+    const kinds = cards.reduce((m, c) => { m[c.kind] = (m[c.kind] ?? 0) + 1; return m; }, {});
+    await say(`${clock(gs)} · ${cards.length} recommendations applied (${Object.entries(kinds).map(([k, n]) => `${n} ${k}`).join(", ")}).`, "note");
+    await say(scene === "attack" ? `The adviser never recommended an attack. "${st.line}"` : `The adviser never got to it. "${st.line}"`, "bad");
+    await sleep(9000);
+    break;
+  }
   // The adviser talks about scouting but has nothing to apply.
   // Once there is an army (5:00): the adviser talks about scouting but has nothing to apply.
   if (!st.pending && MOMENT === "scout-talk" && gs >= 300 && /haven't found the enemy base/.test(st.line)) {
@@ -179,8 +188,10 @@ const webm = await video.path();
 
 // The cut: fast stretches are shortened four times more (the last 2 s of each are kept as they were, to arrive gently).
 const parts = [];
+const unreached = reason.startsWith("not reached");
 for (const m of marks) {
-  const from = m.from / 1000, to = m.to / 1000;
+  // A moment that never came: only the last 14 s of the fast-forward are kept before the closing line.
+  const from = Math.max(m.from / 1000, unreached && m.fast ? m.to / 1000 - 14 : 0), to = m.to / 1000;
   if (to - from < 0.2) continue;
   if (m.fast && to - from > 4) { parts.push({ from, to: to - 2, rate: 4 }); parts.push({ from: to - 2, to, rate: 1 }); } else parts.push({ from, to, rate: 1 });
 }
