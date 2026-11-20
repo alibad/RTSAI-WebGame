@@ -40,12 +40,14 @@ function OperationCard({ sandbox }: { sandbox: Sandbox }) {
   const op = useStore((s) => s.sandbox?.operation);
   if (!op) return null;
   const [summary, ...rest] = op.situation.length > 2 ? op.situation : ["", ...op.situation];
+  // On a laptop-height window the briefing starts folded, so the forces and Begin operation are on screen with it.
+  const roomy = typeof window === "undefined" || window.innerHeight >= 1000;
   return (
     <section className="sim-op hud-inset" aria-label="Operation briefing" data-testid="sim-operation">
       <header><Target size={14} aria-hidden="true" /><span className="menu-eyebrow">Operation</span>
         <button type="button" onClick={() => sandbox.dropOperation()} title="Keep the forces, drop the objectives">Free battle</button></header>
       <h3>{op.title}</h3>
-      {rest.map((p, i) => <p key={i}>{p}</p>)}
+      <details open={roomy || undefined} data-testid="sim-op-brief"><summary>Briefing</summary>{rest.map((p, i) => <p key={i}>{p}</p>)}</details>
       {summary && <details><summary>About the place</summary><p>{summary}</p></details>}
       <ul aria-label="Objectives">
         {op.objectives.map((o, i) => <li key={i} data-bonus={o.secondary || undefined}><Diamond size={9} aria-hidden="true" />{o.text}{o.secondary && <em>Bonus</em>}</li>)}
@@ -144,7 +146,7 @@ function EditPanel({ game, sandbox }: { game: Game; sandbox: Sandbox }) {
   };
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-2">
+    <div className="sim-edit flex min-h-0 flex-1 flex-col gap-2">
       <MapCard game={game} sandbox={sandbox} />
       {st.operation && <OperationCard sandbox={sandbox} />}
       <div className="grid grid-cols-2 gap-2">
@@ -169,7 +171,7 @@ function EditPanel({ game, sandbox }: { game: Game; sandbox: Sandbox }) {
       </div>
       <input value={query} onChange={(e) => { setQuery(e.target.value); setHover(null); patch({ brush: null }); }} placeholder={`Find ${category}…`} aria-label="Search this category"
         className="h-8 rounded-md border border-input bg-field px-2.5 text-[13px] outline-none focus-visible:border-ring" />
-      <div className="sim-roster no-scrollbar grid min-h-0 flex-1 auto-rows-max content-start grid-cols-3 gap-[3px] overflow-y-auto" onMouseLeave={() => setHover(null)}>
+      <div className="sim-roster no-scrollbar grid auto-rows-max content-start grid-cols-3 gap-[3px] overflow-y-auto" onMouseLeave={() => setHover(null)}>
         {units.length === 0 && <p className="col-span-3 p-3 text-sm text-[var(--muted-foreground)]" role="status">No {category} match your search.</p>}
         {units.map((u) => (
           <button key={u.name} type="button" title={u.label} draggable data-unit={u.name} data-sfx-hover aria-pressed={st.brush === u.name}
