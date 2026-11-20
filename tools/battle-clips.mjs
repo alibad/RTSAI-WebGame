@@ -11,6 +11,9 @@
 //
 //   --pack <web-bundle.pack>   answer the page's data bundle from this file: a copy of the live bundle with a rules
 //                              change under test, so a proposed fix is filmed on the live build before any data build
+//   --runtime <_framework dir>  answer the page's runtime (public/aot/_framework/*) from a local publish of
+//                              sim/OpenRA.WebSim.Browser, so a simulation or drawing change is filmed on the live page
+//                              and data before any runtime release
 //   --bars selected|damaged|all   whose health bars show (default damaged: every unit that has been hit; a grid row
 //                              can say "bars" for itself)
 //
@@ -83,6 +86,18 @@ if (packFile) {
   await page.route(/\/public\/web-bundle\.pack(\?.*)?$/, (route) => route.fulfill({ status: 200, contentType: "application/octet-stream",
     headers: { "access-control-allow-origin": "*", "cross-origin-resource-policy": "cross-origin" }, body }));
   log(`data bundle answered from ${packFile} (a rules change under test, not the live data)`);
+}
+// --runtime: a simulation change under test. The worker loads dotnet.js and the assemblies from the runtime root.
+const runtimeDir = opt("runtime", "");
+if (runtimeDir) {
+  const types = { ".js": "text/javascript", ".mjs": "text/javascript", ".wasm": "application/wasm", ".json": "application/json" };
+  await page.route(/\/public\/aot\/_framework\/[^?]+(\?.*)?$/, (route) => {
+    const file = path.join(path.resolve(runtimeDir), decodeURIComponent(new URL(route.request().url()).pathname.split("/_framework/")[1]));
+    if (!fs.existsSync(file)) return route.fulfill({ status: 404, body: "" });
+    return route.fulfill({ status: 200, contentType: types[path.extname(file)] ?? "application/octet-stream",
+      headers: { "access-control-allow-origin": "*", "cross-origin-resource-policy": "cross-origin" }, body: fs.readFileSync(file) });
+  });
+  log(`runtime answered from ${runtimeDir} (a simulation change under test, not the live runtime)`);
 }
 let errors = [];
 page.on("pageerror", (e) => errors.push(String(e.stack ?? e).slice(0, 400)));
