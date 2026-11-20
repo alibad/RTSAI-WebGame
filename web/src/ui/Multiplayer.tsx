@@ -67,8 +67,12 @@ function MatchBar({ view, session }: { view: SessionView; session: MultiplayerSe
     {details && <div className="mp-popover mp-network-details">
       <h2 className="scr-label"><Radio size={13} aria-hidden="true" />Connection details</h2>
       <dl><div><dt>You are</dt><dd>Player {view.you}</dd></div><div><dt>Simulation frame</dt><dd className="digits">{view.frame}</dd></div>
-        {view.delay > 0 && <div><dt>Orders run after</dt><dd className="digits">{view.delay * 40} ms</dd></div>}</dl>
-      <p>Orders travel directly between players{view.host ? '; your game relays them to everyone.' : ' through the host.'}</p>
+        {view.delay > 0 && <div><dt>Orders run after</dt><dd className="digits">{view.delay * 40} ms</dd></div>}
+        {view.relayed.length > 0 && <div><dt>Through the relay</dt><dd>{view.relayed.map(c => `Player ${c}`).join(', ')}</dd></div>}</dl>
+      <p>{view.host ? 'Every player’s orders come to your game, which passes them on to everyone.' : 'Your orders go to the host, who passes them on to everyone.'}
+        {view.relayed.length > 0 && (view.relayed.length > 1
+          ? ' Your network can’t reach some players directly, so those lines go through a relay server.'
+          : ` Your network can’t reach ${view.host ? `Player ${view.relayed[0]}` : 'the host'} directly, so that line goes through a relay server.`)}</p>
       <GameButton variant="ghost" size="sm" onClick={() => setDetails(false)}>Close details</GameButton>
     </div>}
     {waiting && <div role="status" className="mp-popover mp-match-waiting">

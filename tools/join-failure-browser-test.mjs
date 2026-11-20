@@ -24,6 +24,8 @@ const files = {
     .replace(/import \{[^}]*\} from '\.\/net\/matchmaker';/, `const { answerJoin, closeMatch, createMatch, joinMatch, removeJoin, watchJoins } = window.__test.matchmaker;`)
     .replace(/import \{ track \} from '\.\/net\/track';/, `const track = (name, props) => window.__test.tracked.push({ name, props });`)
     .replace(/import \{ savedMap \} from '\.\/net\/saved-maps';/, `const savedMap = async () => null;`)
+    // No relay function here: the public address servers only, as when the relay can't be had.
+    .replace(/import \{ iceServers \} from '\.\/net\/relay';/, `const iceServers = async () => window.__test.iceServers ?? (await import('/peer.js')).STUN_SERVERS;`)
     .replace("from './peer';", "from './peer.js';")
     .replace('OPEN_WAIT_MS = 20000', 'OPEN_WAIT_MS = 3000')),
   '/index.html': '<!doctype html><title>join failure</title>',
@@ -59,7 +61,7 @@ try {
       T.tracked.length = 0; T.answer = answer;
       const s = T.session();
       // Give up half a second into the direct connection, as a player pressing Cancel would.
-      if (leaveWhileConnecting) s.subscribe(() => { if (s.snapshot().status === 'Connecting directly…') setTimeout(() => s.leave(false), 500); });
+      if (leaveWhileConnecting) s.subscribe(() => { if (s.snapshot().status === 'Connecting to your host…') setTimeout(() => s.leave(false), 500); });
       await s.join('ABCDEF');
       await new Promise((r) => setTimeout(r, 4000)); // past the direct line's wait: nothing late may appear
       const result = { view: s.snapshot(), tracked: structuredClone(T.tracked) };
@@ -97,6 +99,18 @@ try {
   assert.match(p.shown, /Couldn't connect directly/);
   noAddress(p);
   console.log('PASS direct line never opens:', JSON.stringify(p));
+
+  // 2b. The same with the relay on offer (a relay address nothing answers on): the guest reads that not even the relay
+  // got through, and the report says the relay was offered.
+  await page.evaluate(() => { window.__test.iceServers = [{ urls: ['turn:192.0.2.9:3478?transport=udp'], username: 'test', credential: 'test' }]; });
+  r = await run('deadHost');
+  await page.evaluate(() => { delete window.__test.iceServers; });
+  assert.equal(r.tracked.length, 1, JSON.stringify(r.tracked));
+  assert.equal(r.tracked[0].props.relay, true);
+  assert.match(r.view.error, /not even through the relay.*try another network/);
+  assert.equal(p.relay, false, 'without the relay on offer, the report says so');
+  noAddress(r.tracked[0].props);
+  console.log('PASS relay offered and still no line:', r.view.error);
 
   // 3. A real host: the line opens, the guest says hello, nothing is reported.
   r = await run('realHost');

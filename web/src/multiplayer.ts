@@ -7,6 +7,7 @@ import { buildIdentity } from './sim/build-identity';
 import { answerJoin, closeMatch, createMatch, joinMatch, removeJoin, watchJoins } from './net/matchmaker';
 import { track } from './net/track';
 import { savedMap } from './net/saved-maps';
+import { iceServers } from './net/relay';
 import { DirectPeer, MAX_INPUT_DELAY, MAX_TEAM, PeerLockstep, inputDelay, peerColors, peerMap, peerOptions, routeSummary, validatePeerScenario, type PeerEvent, type PeerScenario } from './peer';
 
 export type Seat = { faction: string; team: number; ready: boolean };
@@ -44,14 +45,18 @@ export type SessionView = {
   waiting: number; waitingFor: number[];
   /** That wait is at the very start: those players' games have not sent their first orders (still loading). */
   waitingToStart: boolean;
+  /** The players whose line to this browser goes through the relay (their networks can't reach each other directly). */
+  relayed: number[];
 };
 
-const idle: SessionView = { stage: 'idle', host: false, room: '', you: 0, lobby: null, chat: [], status: '', error: '', frame: 0, camera: false, remote: [], mapLoading: false, delay: 0, waiting: 0, waitingFor: [], waitingToStart: false };
+const idle: SessionView = { stage: 'idle', host: false, room: '', you: 0, lobby: null, chat: [], status: '', error: '', frame: 0, camera: false, remote: [], mapLoading: false, delay: 0, waiting: 0, waitingFor: [], waitingToStart: false, relayed: [] };
 const ANSWER_WAIT_MS = 45000, OPEN_WAIT_MS = 20000, HELLO_WAIT_MS = 20000;
 /** A running match that has not moved for this long says so on screen (the line itself gives up after 15 s). */
 const STALL_NOTICE_MS = 1500;
 /** What a guest reads when no direct line opens: ICE gave up (usually after about 15 s) or the wait ran out. */
 const NO_DIRECT_LINE = "Couldn't connect directly to your host. Some networks block direct connections; try another network, such as a phone hotspot.";
+/** The same, when the relay was on offer too: neither a direct line nor the relay got through. */
+const NO_LINE_AT_ALL = "Couldn't connect to your host, not even through the relay. Some networks block these connections; try another network, such as a phone hotspot.";
 /** What the host reads when a friend's browser answered the invite but no direct line opened (the host can't tell a
  *  blocked network from a friend who gave up, so it claims neither). */
 const FRIEND_BLOCKED = 'A friend opened your invite but didn’t get through. If it happens again, they should try another network, such as a phone hotspot.';
@@ -80,7 +85,7 @@ const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 const message = (e: unknown) => e instanceof Error ? e.message : String(e);
 class Cancelled extends Error {}
 
-type Guest = { key: string; peer: DirectPeer; seated: boolean; timer?: ReturnType<typeof setTimeout> };
+type Guest = { key: string; peer: DirectPeer; seated: boolean; timer?: ReturnType<typeof setTimeout>; route?: 'direct' | 'relay' | null };
 
 export class MultiplayerSession {
   private view: SessionView = idle;
@@ -92,6 +97,8 @@ export class MultiplayerSession {
   private guests: Guest[] = [];
   private seats: Seat[] = [];
   private hostPeer: DirectPeer | null = null;
+  /** Guest: how its line to the host runs, once open. */
+  private hostRoute: 'direct' | 'relay' | null = null;
   private media: MediaStream | null = null;
   private unwatch: (() => void) | null = null;
   private pendingJoin: { cancel: () => Promise<void> } | null = null;
@@ -137,6 +144,7 @@ export class MultiplayerSession {
       if (!map) throw Error('This game has no multiplayer maps.');
       this.version = await this.fingerprint(); this.guard(turn);
       const room = await createMatch(this.version); this.guard(turn);
+      void iceServers(); // ready before the first guest's offer arrives
       this.seats = [{ faction: this.freeFaction(), team: 0, ready: true }];
       this.set({ stage: 'lobby', room, you: 1, status: '', lobby: { revision: 1, map: map.id, mapUid: map.uid, players: this.seats, ai: [] } });
       track('multiplayer_created');
@@ -157,14 +165,19 @@ export class MultiplayerSession {
   }
 
   private async admit(turn: number, key: string, offer: string) {
-    const peer = new DirectPeer(), guest: Guest = { key, peer, seated: false };
+    const servers = await iceServers();
+    if (turn !== this.generation) return;
+    const peer = new DirectPeer(servers), guest: Guest = { key, peer, seated: false };
     this.guests.push(guest);
     peer.onMessage = m => {
       try { this.fromGuest(guest, m); }
       catch (e) { if (this.view.stage === 'playing') this.stop(message(e)); else this.dropGuest(guest, message(e)); }
     };
     peer.onClose = reason => this.dropGuest(guest, reason);
-    peer.onOpen = () => { if (this.media) void peer.share(this.media); };
+    peer.onOpen = () => {
+      if (this.media) void peer.share(this.media);
+      void peer.route().then(route => { guest.route = route; if (turn === this.generation) this.showRoutes(); });
+    };
     peer.onMedia = () => this.refreshMedia();
     guest.timer = setTimeout(() => { if (!guest.seated) this.dropGuest(guest, 'did not finish connecting'); }, HELLO_WAIT_MS + OPEN_WAIT_MS);
     try {
@@ -176,6 +189,12 @@ export class MultiplayerSession {
 
   private client(guest: Guest) { return this.guests.filter(g => g.seated).indexOf(guest) + 2; }
 
+  /** Which players' lines to this browser go through the relay: the host's seated guests, or a guest's host (Player 1). */
+  private showRoutes() {
+    const relayed = this.view.host ? this.guests.filter(g => g.seated && g.route === 'relay').map(g => this.client(g)) : this.hostRoute === 'relay' ? [1] : [];
+    if (relayed.join() !== this.view.relayed.join()) this.set({ relayed });
+  }
+
   private fromGuest(guest: Guest, m: Record<string, unknown>) {
     const lobby = this.view.lobby;
     if (m.kind === 'hello') {
@@ -185,6 +204,7 @@ export class MultiplayerSession {
       clearTimeout(guest.timer); guest.seated = true; void removeJoin(this.view.room, guest.key);
       this.seats = [...this.seats, { faction: this.freeFaction(), team: 0, ready: false }];
       this.publish(false, `Player ${this.client(guest)} joined.`);
+      this.showRoutes();
       return;
     }
     if (!guest.seated || !lobby) throw Error('Handshake required');
@@ -242,6 +262,7 @@ export class MultiplayerSession {
     if (this.view.stage !== 'lobby') return;
     this.seats = this.seats.filter((_, i) => i !== client - 1);
     this.publish(false, `Player ${client} ${reason === 'left' ? 'left' : 'disconnected'}.`);
+    this.showRoutes();
   }
 
   /**
@@ -319,7 +340,7 @@ export class MultiplayerSession {
       for (const g of guests) g.peer.send({ kind: 'start', version: this.version, scenario, you: this.client(g), delay });
       // Late joiners can no longer be admitted; the matchmaker forgets the match.
       this.unwatch?.(); this.unwatch = null; void closeMatch(this.view.room);
-      track('multiplayer_started', { players: this.seats.length, ai: lobby.ai.length, map: map.title, delay, ping: Math.round(oneWay[0] * 2) });
+      track('multiplayer_started', { players: this.seats.length, ai: lobby.ai.length, map: map.title, delay, ping: Math.round(oneWay[0] * 2), relayed: guests.filter(g => g.route === 'relay').length });
       this.launch(scenario, 1, delay);
     } catch (e) { this.set({ status: message(e) }); }
   }
@@ -337,14 +358,20 @@ export class MultiplayerSession {
     const failed = (shown: string) => { if (peer && step) this.joinFailed(peer, step, since, shown); step = null; };
     try {
       this.setup;
+      const servers = iceServers(); // asked at once: it runs while the build is identified
       this.version = await this.fingerprint(); this.guard(turn);
-      const direct = peer = new DirectPeer(); this.hostPeer = direct;
+      const direct = peer = new DirectPeer(await servers); this.hostPeer = direct; this.guard(turn);
+      const noLine = direct.relayOffered ? NO_LINE_AT_ALL : NO_DIRECT_LINE;
       let opened: () => void = () => {};
       const open = new Promise<void>(resolve => { opened = resolve; });
-      direct.onOpen = () => { opened(); if (this.media) void direct.share(this.media); };
+      direct.onOpen = () => {
+        opened();
+        if (this.media) void direct.share(this.media);
+        void direct.route().then(route => { if (turn !== this.generation) return; this.hostRoute = route; this.showRoutes(); });
+      };
       direct.onClose = reason => {
         if (turn !== this.generation) return;
-        const shown = this.view.stage !== 'connecting' ? `Lost connection to the host. ${reason}` : step === 'direct' ? NO_DIRECT_LINE : "Couldn't connect to your host.";
+        const shown = this.view.stage !== 'connecting' ? `Lost connection to the host. ${reason}` : step === 'direct' ? noLine : "Couldn't connect to your host.";
         failed(shown); this.fail(shown);
       };
       direct.onMessage = m => { try { this.fromHost(m); } catch (e) { this.stop(message(e)); } };
@@ -356,10 +383,10 @@ export class MultiplayerSession {
       this.set({ status: 'Waiting for your host to answer…' });
       step = 'answer'; since = Date.now();
       const answer = await joined.answer(ANSWER_WAIT_MS); this.guard(turn);
-      this.set({ status: 'Connecting directly…' });
+      this.set({ status: 'Connecting to your host…' });
       step = 'direct'; since = Date.now();
       await direct.accept(answer);
-      const timeout = sleep(OPEN_WAIT_MS).then(() => { throw Error(NO_DIRECT_LINE); });
+      const timeout = sleep(OPEN_WAIT_MS).then(() => { throw Error(noLine); });
       await Promise.race([open, timeout]); this.guard(turn);
       step = null;
       direct.send({ kind: 'hello', version: this.version });
@@ -379,7 +406,7 @@ export class MultiplayerSession {
     const yours = routeSummary(peer.pc.localDescription?.sdp), host = routeSummary(peer.pc.remoteDescription?.sdp);
     track('game_error', {
       where: 'network', message: `Multiplayer join failed: ${JOIN_STEPS[step]}`, side: 'guest', shown: shown.slice(0, 160),
-      network: connection?.type ?? 'unknown', speed: connection?.effectiveType ?? 'unknown', seconds: Math.round((Date.now() - since) / 1000),
+      network: connection?.type ?? 'unknown', speed: connection?.effectiveType ?? 'unknown', seconds: Math.round((Date.now() - since) / 1000), relay: peer.relayOffered,
       your_routes: yours.routes, your_nat: yours.nat, ...(step === 'direct' ? { host_routes: host.routes, host_nat: host.nat, ice: peer.pc.iceConnectionState } : {}),
     });
   }
@@ -543,6 +570,7 @@ export class MultiplayerSession {
     this.closeAll();
     this.seats = [];
     this.lastChanges = { client: 1, from: 0 };
+    this.hostRoute = null;
     this.set({ ...idle });
     return this.generation;
   }

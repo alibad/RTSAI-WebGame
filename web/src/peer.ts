@@ -156,7 +156,10 @@ export class PeerLockstep {
   }
 }
 
-const ICE_SERVERS: RTCIceServer[] = [{ urls: ['stun:stun.l.google.com:19302', 'stun:stun.cloudflare.com:3478'] }];
+/** Public address discovery only: enough for most home networks. The relay (net/relay.ts) is added when it can be had. */
+export const STUN_SERVERS: RTCIceServer[] = [{ urls: ['stun:stun.l.google.com:19302', 'stun:stun.cloudflare.com:3478'] }];
+/** Whether these servers include a relay (TURN with credentials). */
+export const hasRelay = (servers: RTCIceServer[]) => servers.some(s => typeof s.credential === 'string');
 
 /** One direct connection: a reliable ordered data channel, plus audio/video senders that stay empty until a camera starts. */
 export class DirectPeer {
@@ -173,7 +176,10 @@ export class DirectPeer {
   private closed = false;
   private lastMessage = Date.now();
   private heartbeat: ReturnType<typeof setInterval> | null = null;
-  constructor(iceServers: RTCIceServer[] = ICE_SERVERS) {
+  /** Whether this connection may use the relay (TURN) when no direct route exists. */
+  readonly relayOffered: boolean;
+  constructor(iceServers: RTCIceServer[] = STUN_SERVERS) {
+    this.relayOffered = hasRelay(iceServers);
     this.pc = new RTCPeerConnection({ iceServers });
     // Remote tracks exist from the start but stay muted until the other side shares a camera.
     this.pc.ontrack = e => {
@@ -185,6 +191,20 @@ export class DirectPeer {
     this.pc.ondatachannel = e => this.attach(e.channel);
   }
   get open() { return !this.closed && this.channel?.readyState === 'open'; }
+  /** How the open line runs: 'relay' when either end goes through a TURN relay, else 'direct' (null: not known). */
+  async route(): Promise<'direct' | 'relay' | null> {
+    try {
+      const stats = await this.pc.getStats();
+      type Pair = { localCandidateId?: string; remoteCandidateId?: string; nominated?: boolean; selected?: boolean; state?: string };
+      let pair: Pair | undefined;
+      stats.forEach(s => { if (s.type === 'transport' && s.selectedCandidatePairId) pair = stats.get(s.selectedCandidatePairId); });
+      // Firefox marks the pair itself.
+      if (!pair) stats.forEach(s => { if (s.type === 'candidate-pair' && (s.selected || (s.nominated && s.state === 'succeeded'))) pair ??= s; });
+      if (!pair) return null;
+      const ends = [stats.get(pair.localCandidateId ?? ''), stats.get(pair.remoteCandidateId ?? '')];
+      return ends.some(end => end?.candidateType === 'relay') ? 'relay' : 'direct';
+    } catch { return null; }
+  }
   private fail(reason: string) { if (this.closed) return; this.close(); this.onClose(reason); }
   private attach(channel: RTCDataChannel) {
     this.channel = channel;
@@ -225,10 +245,23 @@ export class DirectPeer {
   /** Waits for ICE gathering (a complete description saves trickle round trips through the matchmaker). */
   private async description() {
     if (this.pc.iceGatheringState !== 'complete') await new Promise<void>((resolve, reject) => {
+      let grace: ReturnType<typeof setTimeout> | null = null;
+      const done = () => {
+        clearTimeout(timer); if (grace) clearTimeout(grace);
+        this.pc.removeEventListener('icegatheringstatechange', check); this.pc.removeEventListener('icecandidate', check);
+      };
       // A blocked public STUN endpoint must not prevent same-network connections.
-      const timer = setTimeout(() => { this.pc.removeEventListener('icegatheringstatechange', changed); if (this.pc.localDescription?.sdp.includes('a=candidate:')) resolve(); else reject(Error('No connection route found. Try another network.')); }, 8000);
-      const changed = () => { if (this.pc.iceGatheringState === 'complete') { clearTimeout(timer); this.pc.removeEventListener('icegatheringstatechange', changed); resolve(); } };
-      this.pc.addEventListener('icegatheringstatechange', changed);
+      const timer = setTimeout(() => { done(); if (this.pc.localDescription?.sdp.includes('a=candidate:')) resolve(); else reject(Error('No connection route found. Try another network.')); }, 8000);
+      // Enough to connect from anywhere: a relay route when the relay is on offer, else a public one. Gathering on the
+      // computer's other network adapters (VPNs, virtual ones; a browser uses them all once a camera was allowed) can
+      // take 8 seconds to give up, on each side of a join; half a second more catches the routes still on their way.
+      const enough = () => (this.relayOffered ? / typ relay /.test(this.pc.localDescription?.sdp ?? '') : / typ srflx /.test(this.pc.localDescription?.sdp ?? ''));
+      const check = () => {
+        if (this.pc.iceGatheringState === 'complete') { done(); resolve(); }
+        else if (!grace && enough()) grace = setTimeout(() => { done(); resolve(); }, 500);
+      };
+      this.pc.addEventListener('icegatheringstatechange', check);
+      this.pc.addEventListener('icecandidate', check);
     });
     return this.pc.localDescription!.sdp;
   }
