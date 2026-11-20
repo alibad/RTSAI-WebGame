@@ -648,6 +648,26 @@
   .oc-board { padding: 6px 12px; }
   .oc-table td { padding-top: 5px; padding-bottom: 5px; }
 }
+/* Laptop windows (601 to 880 px tall): everything from the title to the buttons fits without scrolling. On 1366x768 and
+   1280x720 screens the buttons were under the fold, with nothing to say the screen scrolls. The emblem, the title and
+   the rows size from the window's height; under 720 px the army chart gives way. */
+@media (min-height: 601px) and (max-height: 880px) {
+  .oc-root { padding: 14px 24px; }
+  .oc-stage { gap: clamp(8px, 1.7vh, 16px); }
+  .oc-emblem { width: clamp(40px, 7vh, 64px); height: clamp(40px, 7vh, 64px); border-radius: 10px; }
+  .oc-emblem svg { width: 46%; height: 46%; }
+  .oc-title { font-size: clamp(46px, 10vh, 84px); }
+  .oc-tile { padding: 10px 12px 9px; gap: 4px; }
+  .oc-tile b { font-size: 24px; }
+  .oc-board { padding: 8px 16px 10px; }
+  .oc-table td { padding-top: 6px; padding-bottom: 6px; }
+  .oc-chart { margin-top: 8px; }
+  .oc-chart svg { height: clamp(40px, 7vh, 72px); }
+}
+@media (min-height: 601px) and (max-height: 719px) { .oc-chart { display: none; } }
+/* Any window the result still runs longer than (a big multiplayer table): the buttons stay at the bottom edge while the
+   rest scrolls under them. */
+.oc-actions { position: sticky; bottom: 0; z-index: 1; padding: 8px 0 10px; background: linear-gradient(180deg, rgba(4, 6, 4, 0), rgba(4, 6, 4, .88) 42%); }
 
 /* ------------------------------------------------------------------ beside a campaign operation's objectives (Missions.tsx .mh-panel, top left) */
 :root { --mission-hud-top: 68px; --mh-w: min(316px, calc(100vw - var(--sidebar-w) - 24px)); }
