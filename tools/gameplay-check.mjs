@@ -9,7 +9,9 @@
 //    pass, any other fails. Classic too when the bundle's public-classic sibling (or --classic-pack) is there;
 //  - the faction catalog's copies all match the master (RTSAI-Mod tools/sync-faction-catalog.py --check).
 //   node tools/gameplay-check.mjs --pack <data>/public/web-bundle.pack [--classic-pack <pack>] [--work <dir>]
-//        [--factions a,b] [--skip-effects]
+//        [--factions a,b] [--skip-effects] [--skip-weapons]
+//  - weapon fidelity (tools/weapon-fidelity.mjs): every armed unit fires each weapon in the engine; how it fires, flies,
+//    lands and looks is held to thresholds and to Red Alert 2. --skip-weapons leaves it out.
 // Builds the native runner from the pinned engine (RTSAI-Mod origin/main mod.config, staged by release-play in its work
 // folder) and origin/main's mod sources, and a second one against the desktop engine (canonical OpenRA fork/main),
 // unpacks the bundle with its art, and exits non-zero on any failure. Reports land in <work>/gameplay-check/; a receipt
@@ -74,6 +76,19 @@ const factions = opt("factions") ? ["--factions", opt("factions")] : [];
 if (!argv.includes("--skip-effects")) {
   check("effectsaudit (deaths and impacts, every faction)", ["effectsaudit", "--root", vfs, "--out", path.join(out, "effectsaudit.json"), ...factions]);
   check("effectstest (rendered deaths, falling aircraft)", ["effectstest", "--root", vfs, "--map", "twin-fords"]);
+}
+// How every weapon fires, flies, lands and looks (docs/WEAPON-FIDELITY.md): a finding that is not in
+// tools/data/weapon-fidelity-baseline.json fails, so a release cannot bring a fixed fault back.
+if (!argv.includes("--skip-weapons")) {
+  let text, code = 0;
+  try {
+    text = run(process.execPath, [path.join(repo, "tools", "weapon-fidelity.mjs"), "--websim", websim, "--root", vfs, "--out", path.join(out, "weapon-fidelity")]);
+  } catch (e) { text = String(e.stdout ?? ""); code = e.status ?? 1; }
+  results.weapons = code === 0;
+  if (code !== 0) failed++;
+  const lines = text.trim().split("\n");
+  console.log(`${code === 0 ? "PASS" : "FAIL"} weapon fidelity (every weapon fires, lands and looks as recorded): ${lines.find((l) => /units, .* pairs/.test(l)) ?? lines.at(-1)}`);
+  for (const l of lines.filter((l) => l.startsWith("NEW ")).slice(0, 10)) console.log(`  ${l}`);
 }
 
 // Both games agree. The desktop game is what origin/main builds: canonical OpenRA fork/main's mods/common plus the mod's

@@ -169,7 +169,9 @@ export function analyze(raw, look, baseline = { accepted: {} }) {
       add("hitsMoving", share >= T.movingHitShare, `${Math.round(share * 100)}% within ${T.movingMissPx} px of a target driving across, median miss ${median(moving.map((s) => s.miss))} px`,
         `${facts.projectile}${facts.fields?.Speed ? ` at speed ${facts.fields.Speed}` : ""} aims where the target was`);
     }
-    if (fired && p.trials.every((t) => t.damage === 0) && (facts.damage ?? 0) > 0) add("damage", false, "no damage in any trial", "hits but deals no damage", "the battle-review session's");
+    // A V3 or Dreadnought rocket is an actor, not an effect: the audit stops watching before it lands.
+    const rocket = facts.projectile === "OriginalRa2Rocket";
+    if (fired && !rocket && p.trials.every((t) => t.damage === 0) && (facts.damage ?? 0) > 0) add("damage", false, "no damage in any trial", "hits but deals no damage", "the battle-review session's");
     const muzzles = m.flatMap((x) => x.m.muzzles);
     if (muzzles.length) {
       const none = muzzles.filter((x) => x.kind === "none").length;
