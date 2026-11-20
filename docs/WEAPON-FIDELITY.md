@@ -34,6 +34,7 @@ target never fires back. Every tick it records:
 | beamVisible, beamDuration | a laser reaches 0.25 contrast over at least 3 px and stays lit 8 ticks |
 | beamDrawn | an electric bolt or rad beam draws at all (RA2's are 1 px strands, so no width rule) |
 | sound | the weapon has a firing sound |
+| originalPalette | an original-art shell or trail in a projectile is drawn with an original palette |
 
 RA2's facts are in `tools/data/ra2-weapon-look.json`, read from the player's own `rules.ini` and `art.ini`: each
 weapon's projectile, muzzle animation, laser flags and impact list, each animation's translucency and visible size,
@@ -67,6 +68,10 @@ never add one to make a release pass without saying why. `--write-baseline` rewr
   damage; the Prism Tank's hit is a grey smoke puff, not a fireball; Rhino and Grizzly shells land with RA2's small
   blast; a Kirov bomb with RA2's big one.
 - **Translucent blasts** (generator): 28 original sequences RA2 draws see-through (`Translucent=yes`) were solid.
+- **Original projectile art on the project's palette** (generator): a projectile that left its palette out drew its
+  original sprite or trail with the project's "effect" palette. The Typhoon's torpedo bubbles (RA2's BBBLELRG) became
+  red, green and yellow noise (the owner, 20 Nov: "it doesn't feel like a submarine missile"), and 11 flak shells and
+  3 missile smoke trails were off too. They now use RA2's animation palette.
 
 ## Open, ranked by units (live build, 20 Nov 2026)
 

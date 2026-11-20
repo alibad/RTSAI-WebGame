@@ -22,7 +22,7 @@ function trial(over = {}) {
     ...over,
   };
 }
-const weapons = { "ea-retail-120mmx": { projectile: "Bullet", fields: { Image: "ea-120mm", Speed: "0c682" }, report: ["vapoat1a.wav"], damage: 100 },
+const weapons = { "ea-retail-120mmx": { projectile: "Bullet", fields: { Image: "ea-120mm", Palette: "eaunit", Speed: "0c682" }, report: ["vapoat1a.wav"], damage: 100 },
   "ea-retail-comet": { projectile: "OriginalRa2Action", fields: {}, report: ["vpriatta.wav"], damage: 100 } };
 const run = (trials, baseline) => analyze({ trials, weapons }, look, baseline);
 const failing = (r) => r.findings.map((f) => f.check).sort();
@@ -65,6 +65,11 @@ assert.deepEqual(failing(r), ["beamDuration", "beamVisible"]);
 r = run([beam({ peak: 0.618, width25: 6, width10: 9.5 })]);
 assert.deepEqual(failing(r), []);
 assert.ok(T.beamWidthPx <= 6 && T.beamContrast <= 0.618);
+
+// The Typhoon's bubble trail: original art on the project's "effect" palette fails, on the original palette passes.
+const torpedo = (trailPalette) => ({ ...weapons, "ea-retail-120mmx": { ...weapons["ea-retail-120mmx"], fields: { ...weapons["ea-retail-120mmx"].fields, Palette: "eaunit", TrailImage: "ea-bbblelrg", TrailPalette: trailPalette } } });
+assert.deepEqual(analyze({ trials: [trial()], weapons: torpedo("effect") }, look).findings.map((f) => f.check), ["originalPalette"]);
+assert.deepEqual(analyze({ trials: [trial()], weapons: torpedo("eaeffect") }, look).findings, []);
 
 // A known finding in the baseline does not fail a release; a fixed one is reported as fixed.
 r = run([trial({ muzzles: [], muzzleSequence: null })], { accepted: { "apoc|0|ea-retail-120mmx|muzzleFlash": "open" } });

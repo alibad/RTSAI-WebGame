@@ -79,6 +79,31 @@ class ImpactByDamage(unittest.TestCase):
         self.assertIsNone(R.retail_impact(E, weapon(), {'Damage': '100'}, {'AnimList': 'XGRYMED2', 'EMEffect': 'yes'}, self.files))
 
 
+class ProjectilePalettes(unittest.TestCase):
+    def test_original_trails_and_shells_without_a_palette_get_the_original_one(self):
+        torpedo = E.parse('''ea-retail-subtorpedo:
+	Projectile: Missile
+		Image: ea-missile
+		Palette: shadow
+		TrailImage: ea-bbblelrg
+''')[0].get('Projectile')
+        self.assertEqual(R.original_projectile_palettes(E, torpedo), 1)
+        self.assertEqual(torpedo.val('TrailPalette'), 'eaeffect')  # the bubbles: RA2's animation palette
+        self.assertEqual(torpedo.val('Palette'), 'shadow')  # the torpedo keeps its dark underwater look
+        shell = E.parse('''w:
+	Projectile: Bullet
+		Image: ea-120mm
+''')[0].get('Projectile')
+        self.assertEqual(R.original_projectile_palettes(E, shell), 1)
+        self.assertEqual(shell.val('Palette'), 'eaeffect')
+        modern = E.parse('''w:
+	Projectile: Missile
+		Image: dragon
+		TrailImage: smokey2
+''')[0].get('Projectile')
+        self.assertEqual(R.original_projectile_palettes(E, modern), 0)  # project art keeps the project palette
+
+
 class Translucency(unittest.TestCase):
     def test_translucent_animations_are_drawn_at_half_strength(self):
         images = E.parse('''ea-explosion:

@@ -218,6 +218,12 @@ export function analyze(raw, look, baseline = { accepted: {} }) {
       add("beamDuration", short.length === 0, `lit for ${Math.min(...beams.map((b) => b.litTicks))} ticks`, `${beams[0].type}: gone too fast`);
     }
     if (fired && !(facts.report?.length)) add("sound", false, "no firing sound", "weapon has no Report (firing sound)");
+    // Original art drawn with the project's palette shows as coloured noise (the Typhoon's bubble trail, 20 Nov 2026).
+    for (const [image, palette] of [["Image", "Palette"], ["TrailImage", "TrailPalette"]]) {
+      const img = facts.fields?.[image], pal = facts.fields?.[palette];
+      if (img?.startsWith("ea-")) add("originalPalette", pal?.startsWith("ea") || pal === "shadow", `${image} ${img} drawn with palette ${pal}`,
+        `original art in a projectile drawn with the project's palette (${image})`);
+    }
     const result = { unit: p.unit, level: p.level, weapon: p.weapon, family, kind, factions: [...p.factions].sort(), ra2: ra2.exact ? p.weapon.replace(/^ea-retail-/, "") : `(${ra2.kind})`, checks };
     results.push(result);
     for (const c of checks.filter((c) => !c.pass && c.cause)) {

@@ -124,6 +124,24 @@ def retail_impact(E, weapon, original, warhead, explosions):
     return None
 
 
+# A projectile's sprite and trail fields, each with the palette it is drawn with.
+PROJECTILE_PALETTES = (('Image', 'Palette'), ('TrailImage', 'TrailPalette'))
+
+
+def original_projectile_palettes(E, projectile):
+    """An original-art sprite or trail in a projectile is drawn with the original palette. A field the weapon leaves
+    out draws with its default, "effect", the project's own palette, which turned the Typhoon's bubble trail into
+    red, green and yellow noise behind every torpedo (the owner, 20 Nov 2026: "it doesn't feel like a submarine
+    missile") and drew 11 flak shells and 3 missile smoke trails in the wrong colours. RA2 draws these animations
+    (BBBLELRG, SMOKEY2) with its animation palette. Returns how many fields it set."""
+    changed = 0
+    for field, palette in PROJECTILE_PALETTES:
+        if (projectile.val(field) or '').startswith('ea-') and projectile.get(palette) is None:
+            set_value(E, projectile, palette, 'eaeffect')
+            changed += 1
+    return changed
+
+
 def translucent_sequences(E, images, anims):
     """Red Alert 2 draws an animation that art.ini marks Translucent=yes at half strength (Translucency=25/50/75 sets
     how much shows through). Every impact animation a weapon uses is marked so, and the port drew them all solid, which
@@ -518,6 +536,8 @@ class Retail:
                         set_value(E, parent, palette, 'eaeffect' if old != 'ra' else 'eaunit')
         for field in ('Image', 'TrailImage', 'MissileImage'):
             image(node, field)
+        if node.key == 'Projectile':
+            original_projectile_palettes(E, node)
         if node.value == 'CreateEffect':
             image(node, 'Image', 'explosion')
             trait_palette = node.get('Image')
