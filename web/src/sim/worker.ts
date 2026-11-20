@@ -28,8 +28,10 @@ const soundtrack = new Soundtrack(json => S.Command(json), () => S.UiState());
 let generation = 0;
 let voiceLanguage = "faction";
 let booted = false;
-// Direct multiplayer: frames arrive from the page's lockstep (peerFrame); the worker only reports its own orders.
-let network: { generation: number; frame: number; stopped: boolean } | null = null; // [JSExport] surface of OpenRA.WebSim.Browser.Interop
+// Direct multiplayer: frames arrive from the page's lockstep (peerFrame), ahead of time by the match's input delay,
+// and wait in `queue` for the game's clock; the worker reports its own orders and synchronization hashes.
+type PeerFrame = { frame: number; packets: { client: number; data: string }[] };
+let network: { generation: number; frame: number; stopped: boolean; delay: number; queue: PeerFrame[]; starved: boolean } | null = null; // [JSExport] surface of OpenRA.WebSim.Browser.Interop
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let runtimeApi: any = null;
 let base = "/";
@@ -326,7 +328,7 @@ function start(scenario: string, startPaused = false, companion: boolean | "brow
   browserAdviser = false;
   const spec = JSON.parse(scenario);
   replayEnd = spec.webReplay?.readonly ? spec.webReplay.end : null;
-  network = spec.network?.peer ? { generation, frame: 0, stopped: false } : null;
+  network = spec.network?.peer ? { generation, frame: 0, stopped: false, delay: Number(spec.network.delay) || 0, queue: [], starved: false } : null;
   // The co-commander's CompanionBridge is created with the world: enable it first, connect the relay after.
   const controllable = !network && !spec.multiplayer && !spec.webReplay?.readonly
     && Array.isArray(spec.players) && spec.players.some((p: { bot?: string }) => !p.bot);
@@ -418,7 +420,23 @@ function tickOnce() {
   }
 }
 
-function networkTick() {
+/**
+ * One beat of a direct match: the next frame the lockstep released (its orders were issued `delay` frames ago), then
+ * this engine's orders for the frame after and its hash of the one just played. One frame a beat keeps the game's
+ * speed; an engine that fell behind the others (more frames waiting than the delay explains) plays two.
+ */
+function networkStep() {
+  if (!network || network.stopped) return;
+  const budget = network.queue.length > network.delay + 1 ? 2 : 1;
+  let played = 0;
+  while (played < budget && network.queue.length) {
+    const next = network.queue.shift()!;
+    if (next.frame !== network.frame + 1) throw Error("Missing direct peer frame");
+    for (const packet of next.packets) S.NetworkInject(packet.client, next.frame, packet.data);
+    tickOnce(); network.frame = next.frame; played++;
+    post({ type: "networkStatus", frame: next.frame, latency: 0 });
+  }
+  network.starved = played === 0;
   const events = JSON.parse(S.NetworkPoll());
   if (events.length) post({ type: "peerOut", events });
 }
@@ -428,8 +446,9 @@ function loop() {
   if (!running) return;
   const now = performance.now();
   if (network) {
-    if (!network.stopped) networkTick();
-    nextTick = now + tickMs;
+    networkStep();
+    // The game's clock, without drift; after a stall (or a frame played early, below) it starts again from now.
+    nextTick = now - nextTick > 200 || now < nextTick ? now + tickMs : nextTick + tickMs;
   } else if (!paused) {
     let n = 0;
     while (now >= nextTick && n < 2) {
@@ -536,10 +555,10 @@ self.onmessage = async (e: MessageEvent<ToWorker>) => {
         break;
       case "peerFrame":
         if (!network || network.stopped || !running) break;
-        if (m.frame !== network.frame + 1) throw Error("Missing direct peer frame");
-        for (const packet of m.packets) S.NetworkInject(packet.client, m.frame, packet.data);
-        tickOnce(); network.frame = m.frame;
-        post({ type: "networkStatus", frame: m.frame, latency: 0 });
+        network.queue.push({ frame: m.frame, packets: m.packets });
+        // The clock found nothing to play on its last beat (a slow line): play this frame now instead of at the
+        // next beat, and count the beats from here.
+        if (network.starved && timer) { clearTimeout(timer); nextTick = performance.now() + tickMs; loop(); }
         break;
       case "peerStop":
         if (network) { network.stopped = true; stopLoop(); post({ type: "networkStatus", frame: network.frame, latency: 0, error: m.error }); }

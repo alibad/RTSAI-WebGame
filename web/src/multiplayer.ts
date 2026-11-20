@@ -7,7 +7,7 @@ import { buildIdentity } from './sim/build-identity';
 import { answerJoin, closeMatch, createMatch, joinMatch, removeJoin, watchJoins } from './net/matchmaker';
 import { track } from './net/track';
 import { savedMap } from './net/saved-maps';
-import { DirectPeer, MAX_TEAM, PeerLockstep, peerColors, peerMap, peerOptions, routeSummary, validatePeerScenario, type PeerEvent, type PeerScenario } from './peer';
+import { DirectPeer, MAX_INPUT_DELAY, MAX_TEAM, PeerLockstep, inputDelay, peerColors, peerMap, peerOptions, routeSummary, validatePeerScenario, type PeerEvent, type PeerScenario } from './peer';
 
 export type Seat = { faction: string; team: number; ready: boolean };
 export type AiSeat = { faction: string; bot: string; team: number };
@@ -38,10 +38,16 @@ export type SessionView = {
   status: string; error: string; frame: number; camera: boolean; remote: RemoteMedia[];
   /** A guest is fetching the host's saved map; Ready waits for it. */
   mapLoading: boolean;
+  /** Playing: how many frames after a player gives an order it runs (the match's input delay; a frame is 40 ms). */
+  delay: number;
+  /** Playing: the match has not moved for this many seconds (0: it is running), and whose orders it is waiting for. */
+  waiting: number; waitingFor: number[];
 };
 
-const idle: SessionView = { stage: 'idle', host: false, room: '', you: 0, lobby: null, chat: [], status: '', error: '', frame: 0, camera: false, remote: [], mapLoading: false };
+const idle: SessionView = { stage: 'idle', host: false, room: '', you: 0, lobby: null, chat: [], status: '', error: '', frame: 0, camera: false, remote: [], mapLoading: false, delay: 0, waiting: 0, waitingFor: [] };
 const ANSWER_WAIT_MS = 45000, OPEN_WAIT_MS = 20000, HELLO_WAIT_MS = 20000;
+/** A running match that has not moved for this long says so on screen (the line itself gives up after 15 s). */
+const STALL_NOTICE_MS = 1500;
 /** The network steps of a guest's join, as the failure report names them. */
 const JOIN_STEPS = { route: 'no connection route found', answer: 'the host never answered', direct: 'the direct line never opened' };
 type JoinStep = keyof typeof JOIN_STEPS;
@@ -82,12 +88,16 @@ export class MultiplayerSession {
   private media: MediaStream | null = null;
   private unwatch: (() => void) | null = null;
   private pendingJoin: { cancel: () => Promise<void> } | null = null;
+  private lastFrameAt = 0;
+  private stallWatch: ReturnType<typeof setInterval> | null = null;
 
   constructor(private game: Game) {
     game.client.on('peerOut', m => this.outgoing(m.events));
     game.client.on('networkStatus', m => {
       if (this.view.stage !== 'playing') return;
-      if (m.error) this.stop(m.error); else this.set({ frame: m.frame });
+      if (m.error) return this.stop(m.error);
+      this.lastFrameAt = performance.now();
+      this.set({ frame: m.frame, ...(this.view.waiting ? { waiting: 0, waitingFor: [] } : {}) });
     });
     // Leaving the world from the game menu leaves the match too.
     useStore.subscribe((s, prev) => { if (s.phase === 'setup' && prev.phase !== 'setup' && this.view.stage === 'playing') this.leave(false); });
@@ -101,7 +111,8 @@ export class MultiplayerSession {
 
   private async fingerprint() {
     const profile = useStore.getState().profile, runtime = new URLSearchParams(location.search).get('runtime') || 'aot';
-    return 'p2p-1:' + await buildIdentity(profile, runtime);
+    // p2p-2: orders run a few frames after they are issued (the match's input delay); p2p-1 waited for every frame.
+    return 'p2p-2:' + await buildIdentity(profile, runtime);
   }
 
   // ------------------------------------------------------------------------------------------------ host
@@ -273,11 +284,14 @@ export class MultiplayerSession {
           return s.bot ? { bot: s.bot, ...common } : { client: i + 1, ...common };
         }) };
       validatePeerScenario(scenario, this.setup);
-      for (const g of guests) g.peer.send({ kind: 'start', version: this.version, scenario, you: this.client(g) });
+      // The slowest path between two players, one way: a guest to the host, or guest to guest through the host.
+      const oneWay = guests.map(g => (g.peer.rtt ?? 160) / 2).sort((a, b) => b - a);
+      const delay = inputDelay(oneWay.length > 1 ? oneWay[0] + oneWay[1] : oneWay[0]);
+      for (const g of guests) g.peer.send({ kind: 'start', version: this.version, scenario, you: this.client(g), delay });
       // Late joiners can no longer be admitted; the matchmaker forgets the match.
       this.unwatch?.(); this.unwatch = null; void closeMatch(this.view.room);
-      track('multiplayer_started', { players: this.seats.length, ai: lobby.ai.length, map: map.title });
-      this.launch(scenario, 1);
+      track('multiplayer_started', { players: this.seats.length, ai: lobby.ai.length, map: map.title, delay, ping: Math.round(oneWay[0] * 2) });
+      this.launch(scenario, 1, delay);
     } catch (e) { this.set({ status: message(e) }); }
   }
 
@@ -359,14 +373,14 @@ export class MultiplayerSession {
     } else if (m.kind === 'chat') {
       this.addChat(`Player ${Number(m.client) | 0}`, this.chatText(m.text));
     } else if (m.kind === 'start') {
-      if (this.view.stage !== 'lobby' || m.version !== this.version) throw Error('Invalid start request');
+      if (this.view.stage !== 'lobby' || m.version !== this.version || !Number.isInteger(m.delay) || (m.delay as number) < 1 || (m.delay as number) > MAX_INPUT_DELAY) throw Error('Invalid start request');
       const scenario = validatePeerScenario(m.scenario, this.setup), lobby = this.view.lobby!, you = this.view.you;
       const humans = scenario.players.filter(p => 'client' in p), bots = scenario.players.filter(p => 'bot' in p);
       const agreed = m.you === you && scenario.map === lobby.map && humans.length === lobby.players.length && lobby.players.every((s, i) => s.faction === humans[i].faction && s.team === humans[i].team)
         && bots.length === lobby.ai.length && lobby.ai.every((a, i) => a.faction === bots[i].faction && a.team === bots[i].team && a.bot === (bots[i] as { bot: string }).bot);
       if (!agreed || !lobby.players[you - 1].ready) throw Error('Match settings changed after you were ready. Start a new match.');
       if (useStore.getState().phase !== 'setup') throw Error('Another world is already open. Return to the main menu before joining a match.');
-      this.launch(scenario, you);
+      this.launch(scenario, you, m.delay as number);
     } else if (m.kind === 'events') {
       const client = m.client as number;
       if (this.view.stage !== 'playing' || !this.lock || client === this.view.you) throw Error('Invalid relayed orders');
@@ -422,13 +436,21 @@ export class MultiplayerSession {
 
   // ------------------------------------------------------------------------------------------------ match
 
-  private launch(scenario: PeerScenario, you: number) {
+  private launch(scenario: PeerScenario, you: number, delay: number) {
     const humans = scenario.players.filter(p => 'client' in p).length;
-    this.lock = new PeerLockstep(humans, frame => this.game.client.send({ type: 'peerFrame', ...frame }));
+    const lock = this.lock = new PeerLockstep(humans, frame => this.game.client.send({ type: 'peerFrame', ...frame }), delay);
     this.unwatch?.(); this.unwatch = null;
-    this.set({ stage: 'playing', you, frame: 0, status: '' });
+    this.lastFrameAt = 0;
+    this.set({ stage: 'playing', you, frame: 0, status: '', delay, waiting: 0, waitingFor: [] });
+    // A match that stands still says whose orders it is waiting for, instead of a frozen screen (before the first
+    // frame the loading screen is still up).
+    this.stallWatch = setInterval(() => {
+      if (this.lock !== lock || this.view.stage !== 'playing' || !this.lastFrameAt) return;
+      const still = performance.now() - this.lastFrameAt, waiting = still > STALL_NOTICE_MS ? Math.floor(still / 1000) : 0;
+      if (waiting !== this.view.waiting) this.set({ waiting, waitingFor: waiting ? lock.waitingFor() : [] });
+    }, 500);
     useStore.getState().set({ cc: { ...useStore.getState().cc, enabled: false } });
-    this.game.start(JSON.stringify({ ...scenario, localClient: you, network: { peer: true } }));
+    this.game.start(JSON.stringify({ ...scenario, localClient: you, network: { peer: true, delay } }));
   }
 
   private outgoing(events: PeerEvent[]) {
@@ -478,6 +500,8 @@ export class MultiplayerSession {
     if (this.view.stage !== 'playing') void this.pendingJoin?.cancel();
     this.pendingJoin = null;
     for (const g of this.guests) clearTimeout(g.timer);
+    if (this.stallWatch) clearInterval(this.stallWatch);
+    this.stallWatch = null;
     for (const p of this.peers()) { p.onClose = () => {}; p.close(); }
     this.guests = []; this.hostPeer = null; this.lock = null;
     this.media?.getTracks().forEach(t => t.stop()); this.media = null;

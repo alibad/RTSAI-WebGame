@@ -134,6 +134,7 @@
 .mp-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--hud-yellow); }
 .mp-dot.online { background: var(--hud-green); box-shadow: 0 0 10px rgba(87, 211, 107, .6); animation: mp-pulse 2.4s ease-in-out infinite; }
 .mp-dot.offline { background: var(--hud-red); }
+.mp-dot.waiting { background: var(--hud-yellow); box-shadow: 0 0 10px rgba(231, 180, 47, .6); animation: mp-pulse 1s ease-in-out infinite; }
 @keyframes mp-pulse { 50% { opacity: .45; } }
 .mp-popover { width: min(320px, calc(100vw - 32px)); padding: 14px; border-radius: 10px; border: 1px solid var(--hud-edge-hi); background: linear-gradient(180deg, rgba(34, 39, 43, .97), rgba(24, 29, 32, .97)); box-shadow: 0 16px 40px rgba(0, 0, 0, .55); animation: settings-pop .18s ease-out; }
 .mp-network-details h2 { margin-bottom: 10px; }
@@ -144,6 +145,10 @@
 .mp-network-details p { margin: 10px 0 8px; color: #85917c; font-size: 11px; line-height: 1.6; }
 .mp-match-error { display: flex; gap: 10px; border-color: #7a3a2e; background: linear-gradient(180deg, rgba(56, 26, 18, .97), rgba(24, 13, 10, .97)); color: #f6d6cc; line-height: 1.5; }
 .mp-match-error-icon { display: grid; place-items: center; flex: none; width: 30px; height: 30px; border-radius: 50%; background: rgba(239, 91, 63, .16); color: #ff9c86; }
+.mp-match-waiting { display: flex; gap: 10px; border-color: #6d5a22; background: linear-gradient(180deg, rgba(48, 40, 16, .97), rgba(22, 19, 10, .97)); color: #efe3bd; line-height: 1.5; }
+.mp-match-waiting-icon { display: grid; place-items: center; flex: none; width: 30px; height: 30px; border-radius: 50%; background: rgba(231, 180, 47, .16); color: var(--hud-yellow); }
+.mp-match-waiting strong { color: #fff2c9; font-size: 13px; }
+.mp-match-waiting p { margin: 3px 0 0; font-size: 12px; }
 .mp-match-error strong { color: #ffe1d9; font-size: 13px; }
 .mp-match-error p { margin: 3px 0 10px; font-size: 12px; }
 
@@ -175,7 +180,7 @@
 }
 @media (prefers-reduced-motion: reduce) {
   .mp-launch, .mp-choice-art, .mp-player, .mp-error, .mp-popover { animation: none; transition: none; }
-  .mp-dot.online, .mp-empty-pulse, .mp-launch[data-lobby="true"]::after { animation: none; }
+  .mp-dot.online, .mp-dot.waiting, .mp-empty-pulse, .mp-launch[data-lobby="true"]::after { animation: none; }
 }
 
 /* Game chrome tokens on top of the kit palette: a dark gunmetal frame with the gold accent. */

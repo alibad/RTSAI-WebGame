@@ -6,24 +6,60 @@ import { pathToFileURL } from 'node:url';
 const out = path.resolve('artifacts/peer-unit');
 fs.mkdirSync(out, { recursive: true });
 execFileSync(process.execPath, ['web/node_modules/typescript/bin/tsc', 'web/src/peer.ts', '--target', 'ES2022', '--module', 'ESNext', '--skipLibCheck', '--outDir', out]);
-const { PeerLockstep, DirectPeer, peerOptions, peerColors, validatePeerScenario, checkSdp, routeSummary } = await import(pathToFileURL(path.join(out, 'peer.js')));
+const { PeerLockstep, DirectPeer, MAX_INPUT_DELAY, inputDelay, peerOptions, peerColors, validatePeerScenario, checkSdp, routeSummary } = await import(pathToFileURL(path.join(out, 'peer.js')));
 
-// ---- lockstep: two players
-const order = frame => ({ kind: 'orders', frame, data: 'AAAA' });
+// ---- lockstep: two players, no input delay. A frame needs every player's orders; the engines' reports are compared
+// as they arrive and never hold a frame back.
+const order = (frame, data = 'AAAA') => ({ kind: 'orders', frame, data });
 const hash = (frame, value = 123) => ({ kind: 'hash', frame, hash: value, defeat: '0' });
 const completed = [], peer = new PeerLockstep(2, frame => completed.push(frame));
 peer.receive(2, [order(1)]); assert.equal(completed.length, 0);
+assert.deepEqual(peer.waitingFor(), [1]);
 peer.receive(1, [order(1)]); assert.equal(completed.length, 1);
 assert.deepEqual(completed[0].packets.map(p => p.client), [1, 2]);
 peer.receive(1, [order(2)]); peer.receive(2, [order(2)]);
-assert.equal(completed.length, 1, 'cannot advance before previous hashes match');
-peer.receive(1, [hash(1)]); assert.equal(completed.length, 1);
-peer.receive(2, [hash(1)]); assert.equal(completed.length, 2);
+assert.equal(completed.length, 2, 'frames do not wait for the reports');
+peer.receive(1, [hash(1)]); assert.equal(peer.checked, 0);
+peer.receive(2, [hash(1)]); assert.equal(peer.checked, 1);
 peer.receive(1, [hash(2)]);
-assert.throws(() => peer.receive(2, [hash(2, 124)]), /Synchronization mismatch/);
+assert.throws(() => peer.receive(2, [hash(2, 124)]), /Synchronization mismatch at frame 2/);
 assert.equal(completed.length, 2, 'mismatch cannot advance');
 assert.equal(peer.stopped, true);
 assert.throws(() => peer.receive(2, [hash(2)]), /match stopped/);
+
+// ---- input delay: the orders issued at frame n run at frame n + delay, so they travel while earlier frames play
+const delayed = [], late = new PeerLockstep(2, frame => delayed.push(frame), 3);
+assert.equal(late.delay, 3);
+late.receive(1, [order(1, 'AAAA')]);
+assert.deepEqual(delayed.map(f => f.frame), [1, 2, 3], 'the first frames run without orders');
+assert.ok(delayed.every(f => f.packets.length === 2 && f.packets.every(p => p.data === '')));
+assert.deepEqual(late.waitingFor(), [2], 'frame 4 waits for player 2');
+late.receive(2, [order(1, 'BBBB')]);
+assert.deepEqual(delayed.at(-1), { frame: 4, packets: [{ client: 1, data: 'AAAA' }, { client: 2, data: 'BBBB' }] });
+late.receive(1, [order(2), order(3), order(4)]);
+assert.equal(late.frame, 4, 'a player ahead of the other still waits for it');
+late.receive(2, [order(2), order(3)]);
+assert.equal(late.frame, 6);
+assert.deepEqual(late.waitingFor(), [2]);
+late.receive(1, [order(1, 'AAAA')]);   // a repeat of a frame already played is ignored
+assert.throws(() => late.receive(2, [order(12)]), /Invalid peer frame/, 'no engine can be that far ahead');
+// Reports arrive later than the frames they describe; the first difference names its frame.
+const reported = new PeerLockstep(2, () => {}, 2);
+for (let f = 1; f <= 6; f++) { reported.receive(1, [order(f)]); reported.receive(2, [order(f)]); }
+assert.equal(reported.frame, 8); assert.equal(reported.checked, 0);
+for (let f = 1; f <= 4; f++) { reported.receive(1, [hash(f)]); reported.receive(2, [hash(f)]); }
+assert.equal(reported.checked, 4);
+reported.receive(2, [hash(6)]); reported.receive(1, [hash(6)]); assert.equal(reported.checked, 4, 'frame 5 is still open');
+reported.receive(1, [hash(5)]);
+assert.throws(() => reported.receive(2, [hash(5, 9)]), /Synchronization mismatch at frame 5/);
+// An engine that stops reporting stops the match instead of running unchecked.
+const silent = new PeerLockstep(2, () => {});
+assert.throws(() => { for (let f = 1; f <= 300; f++) { silent.receive(1, [order(f)]); silent.receive(2, [order(f)]); } }, /stopped reporting/);
+assert.equal(silent.frame, 251);
+assert.throws(() => new PeerLockstep(2, () => {}, MAX_INPUT_DELAY + 1), /input delay/);
+assert.throws(() => new PeerLockstep(2, () => {}, -1), /input delay/);
+// The delay for a line: 40 ms frames, one frame of room. Nearby players get the floor of two frames.
+assert.deepEqual([0, 20, 40, 41, 75, 100, 150, 5000, NaN].map(inputDelay), [2, 2, 2, 3, 3, 4, 5, MAX_INPUT_DELAY, 3]);
 const fresh = (n = 2) => new PeerLockstep(n, () => {});
 assert.throws(() => fresh().receive(3, [order(1)]), /Invalid peer packet/);
 assert.throws(() => fresh().receive(0, [order(1)]), /Invalid peer packet/);
@@ -42,9 +78,10 @@ assert.throws(() => new PeerLockstep(1, () => {}), /player count/);
 const three = [], trio = new PeerLockstep(3, f => three.push(f));
 trio.receive(1, [order(1)]); trio.receive(3, [order(1)]); assert.equal(three.length, 0);
 trio.receive(2, [order(1)]); assert.deepEqual(three.map(f => f.packets.map(p => p.client)), [[1, 2, 3]]);
-for (const c of [1, 2, 3]) trio.receive(c, [order(2)]);
-trio.receive(1, [hash(1)]); trio.receive(2, [hash(1)]); assert.equal(three.length, 1, 'third hash still missing');
-trio.receive(3, [hash(1)]); assert.equal(three.length, 2);
+trio.receive(1, [order(2)]); trio.receive(2, [order(2)]); assert.deepEqual(trio.waitingFor(), [3]);
+trio.receive(3, [order(2)]); assert.equal(three.length, 2);
+trio.receive(1, [hash(1)]); trio.receive(2, [hash(1)]); assert.equal(trio.checked, 0, 'third report still missing');
+trio.receive(3, [hash(1)]); assert.equal(trio.checked, 1);
 trio.receive(1, [hash(2)]); trio.receive(2, [hash(2)]);
 assert.throws(() => trio.receive(3, [hash(2, 7)]), /Synchronization mismatch at frame 2/);
 
@@ -98,4 +135,4 @@ assert.deepEqual(routeSummary(null), { routes: 'none', nat: 'no public route' })
 assert(!JSON.stringify([home, carrier]).match(/\d+\.\d+\.\d+\.\d+|\.local/), 'no address leaves the summary');
 
 // Matchmaking itself is Firestore; its access rules are tested in RTSAI-Web (tools/firestore-rules-test.mjs).
-console.log('PASS N-player lockstep, scenarios with AI, connection hygiene, and failed-join route summaries.');
+console.log('PASS N-player lockstep with input delay, scenarios with AI, connection hygiene, and failed-join route summaries.');

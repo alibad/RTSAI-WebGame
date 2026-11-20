@@ -74,17 +74,45 @@ export function routeSummary(sdp: string | null | undefined) {
   return { routes: [...kinds].sort().join(',') || 'none', nat };
 }
 
+/** The longest input delay a match may run with: 12 frames, about half a second. */
+export const MAX_INPUT_DELAY = 12;
+/** An engine that fell this many frames behind without sending a synchronization report has stopped reporting. */
+const UNCHECKED_LIMIT = 250;
+
 /**
- * Lockstep barrier for clients 1..count. A frame is released once every client's orders for it have arrived and the
- * previous frame's synchronization reports all agree. Any malformed, conflicting or mismatching input stops it for good.
+ * How many frames ahead orders are sent, for players whose slowest path (one way, in ms: guest to host, or guest to
+ * guest through the host) takes `oneWayMs`. A frame is 40 ms; the delay leaves one frame of room for jitter, so the
+ * match keeps the game's own speed. Nearby players get 2 frames (80 ms, below what a hand notices); OpenRA's own
+ * default is 3.
+ */
+export function inputDelay(oneWayMs: number) {
+  return Math.min(MAX_INPUT_DELAY, Math.max(2, Math.ceil(((Number.isFinite(oneWayMs) ? oneWayMs : 80) + 40) / 40)));
+}
+
+/**
+ * Lockstep barrier for clients 1..count, with an input delay. The orders a client's engine issues while it is at
+ * frame n run at frame n + delay in every world (the first `delay` frames run without orders). So a frame's orders
+ * are already travelling while the frames before it play, and the match keeps the game's speed as long as a message
+ * crosses in less than delay + 1 frames; a slower line holds frames back until its orders arrive, never skips them.
+ * The engines' synchronization reports are compared as they arrive, without holding frames back: the first frame
+ * whose reports differ stops the match and is named. Any malformed, conflicting or mismatching input stops it for good.
  */
 export class PeerLockstep {
+  /** The last frame released to the engine. */
   frame = 0;
+  /** Every frame up to this one had the same synchronization report from every client. */
+  checked = 0;
   stopped = false;
   private orders = new Map<number, Map<number, string>>();
   private hashes = new Map<number, Map<number, string>>();
-  constructor(private count: number, private completed: (frame: PeerFrame) => void) {
+  constructor(private count: number, private completed: (frame: PeerFrame) => void, readonly delay = 0) {
     if (!Number.isInteger(count) || count < 2 || count > peerColors.length) throw Error('Invalid peer player count');
+    if (!Number.isInteger(delay) || delay < 0 || delay > MAX_INPUT_DELAY) throw Error('Invalid peer input delay');
+  }
+  /** The clients whose orders the next frame is still waiting for (empty while frames flow). */
+  waitingFor() {
+    const issued = this.frame + 1 - this.delay, got = issued < 1 ? null : this.orders.get(issued);
+    return issued < 1 ? [] : Array.from({ length: this.count }, (_, i) => i + 1).filter(c => !got?.has(c));
   }
   receive(client: number, events: PeerEvent[]) {
     if (this.stopped) throw Error('Peer match stopped. Start a new match.');
@@ -94,35 +122,37 @@ export class PeerLockstep {
     if (!Number.isInteger(client) || client < 1 || client > this.count || !Array.isArray(events) || events.length > 16) throw Error('Invalid peer packet');
     for (const e of events) {
       if (!e || typeof e !== 'object') throw Error('Invalid peer event');
-      if (!Number.isInteger(e.frame) || e.frame < 1 || e.frame > this.frame + 2) throw Error('Invalid peer frame');
+      // No engine can be further ahead: it needs this client's orders, which are issued one frame at a time.
+      if (!Number.isInteger(e.frame) || e.frame < 1 || e.frame > this.frame + this.delay + 2) throw Error('Invalid peer frame');
       if (e.kind === 'orders') {
-        if (e.frame <= this.frame) continue;
+        if (e.frame + this.delay <= this.frame) continue;
         if (typeof e.data !== 'string' || e.data.length > 131072 || !/^([A-Za-z0-9+/]{4})*([A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(e.data)) throw Error('Invalid peer orders');
         let packets = this.orders.get(e.frame);
         if (!packets) this.orders.set(e.frame, packets = new Map());
         if (packets.has(client) && packets.get(client) !== e.data) throw Error('Conflicting peer orders');
         packets.set(client, e.data);
       } else if (e.kind === 'hash') {
-        if (e.frame < this.frame) continue;
+        if (e.frame <= this.checked) continue;
         if (!Number.isInteger(e.hash) || e.hash < -2147483648 || e.hash > 2147483647 || typeof e.defeat !== 'string' || !/^\d{1,20}$/.test(e.defeat)) throw Error('Invalid peer synchronization report');
         let hashes = this.hashes.get(e.frame);
         if (!hashes) this.hashes.set(e.frame, hashes = new Map());
         if (hashes.has(client) && hashes.get(client) !== `${e.hash}:${e.defeat}`) throw Error('Conflicting peer synchronization report');
         hashes.set(client, `${e.hash}:${e.defeat}`);
         if (hashes.size === this.count && new Set(hashes.values()).size !== 1) throw Error(`Synchronization mismatch at frame ${e.frame}. Match stopped.`);
+        // Reports complete in frame order per client, so the checked mark moves over every finished frame.
+        while (this.hashes.get(this.checked + 1)?.size === this.count) this.hashes.delete(++this.checked);
       } else throw Error('Unknown peer event');
     }
-    // Several frames can become ready at once when a late packet arrives.
+    // Several frames can become ready at once: the first `delay` frames, and whenever a late packet arrives.
     for (;;) {
-      if (this.frame && this.hashes.get(this.frame)?.size !== this.count) return;
-      const next = this.orders.get(this.frame + 1);
-      if (next?.size !== this.count) return;
-      const previous = this.frame;
-      this.frame++;
-      this.orders.delete(this.frame);
-      this.hashes.delete(previous);
-      this.completed({ frame: this.frame, packets: [...next].sort(([a], [b]) => a - b).map(([client, data]) => ({ client, data })) });
+      const next = this.frame + 1, issued = next - this.delay;
+      const packets = issued < 1 ? null : this.orders.get(issued);
+      if (issued >= 1 && packets?.size !== this.count) break;
+      this.frame = next;
+      if (packets) this.orders.delete(issued);
+      this.completed({ frame: next, packets: Array.from({ length: this.count }, (_, i) => ({ client: i + 1, data: packets?.get(i + 1) ?? '' })) });
     }
+    if (this.frame - this.checked > UNCHECKED_LIMIT) throw Error('A player’s game stopped reporting its state. Match stopped.');
   }
 }
 
@@ -137,6 +167,9 @@ export class DirectPeer {
   onOpen: () => void = () => {};
   onClose: (reason: string) => void = () => {};
   onMedia: () => void = () => {};
+  /** Round trip to the other side in ms (the lowest of the last few pings), or null before the first answer. */
+  rtt: number | null = null;
+  private pings: number[] = [];
   private closed = false;
   private lastMessage = Date.now();
   private heartbeat: ReturnType<typeof setInterval> | null = null;
@@ -157,10 +190,13 @@ export class DirectPeer {
     this.channel = channel;
     channel.onopen = () => {
       this.lastMessage = Date.now();
+      const ping = () => { try { this.send({ kind: 'ping', t: performance.now() }); } catch { this.fail('The direct connection closed.'); } };
       this.heartbeat = setInterval(() => {
         if (Date.now() - this.lastMessage > 15000) return this.fail('No response for 15 seconds.');
-        try { this.send({ kind: 'ping' }); } catch { this.fail('The direct connection closed.'); }
+        ping();
       }, 3000);
+      // The first answers come at once, so a match that starts right after a join already knows the distance.
+      for (const wait of [0, 400, 800]) setTimeout(() => { if (this.open) ping(); }, wait);
       this.onOpen();
     };
     channel.onclose = () => this.fail('The direct connection closed.');
@@ -171,8 +207,12 @@ export class DirectPeer {
         const value = JSON.parse(e.data);
         if (!value || typeof value !== 'object' || Array.isArray(value) || typeof value.kind !== 'string') throw Error('Invalid peer message');
         this.lastMessage = Date.now();
-        if (value.kind === 'ping') { this.send({ kind: 'pong' }); return; }
-        if (value.kind === 'pong') return;
+        if (value.kind === 'ping') { this.send({ kind: 'pong', t: value.t }); return; }
+        if (value.kind === 'pong') {
+          const took = performance.now() - value.t;
+          if (typeof value.t === 'number' && took >= 0 && took < 15000) { this.pings = [...this.pings, took].slice(-5); this.rtt = Math.min(...this.pings); }
+          return;
+        }
         this.onMessage(value);
       } catch (error) { this.fail(error instanceof Error ? error.message : String(error)); }
     };

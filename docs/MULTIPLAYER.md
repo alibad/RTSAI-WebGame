@@ -34,9 +34,23 @@ in-match chat (Enter) and an optional camera and microphone are included.
   - The rules live in RTSAI-Web `firestore.rules` and are tested by RTSAI-Web `tools/firestore-rules-test.mjs`.
 - **Star topology.** Each guest connects to the host. The host runs the lobby and relays every player's order and
   hash events to the others, so every world receives identical frames.
-- **Lockstep** (`PeerLockstep` in `web/src/peer.ts`). A frame is released when all N players' orders for it have
-  arrived and the previous frame's SyncHash reports all agree. Malformed, conflicting or mismatching input stops the
-  match for everyone, with the frame number. Bots run on the host (client 1), as in OpenRA.
+- **Lockstep with an input delay** (`PeerLockstep` in `web/src/peer.ts`, since 20 Nov 2026).
+  - The orders a player's engine issues at frame n run at frame n + delay in every world, and the first `delay`
+    frames run without orders. So a frame's orders are already travelling while the frames before it play, and the
+    match keeps the game's own speed (25 frames a second) as long as a message crosses in less than delay + 1 frames.
+    A slower line holds frames back until its orders arrive; it never skips or guesses one.
+  - The host picks the delay when it starts the match, from the pings it measured in the lobby (`inputDelay`): the
+    slowest path one way (guest to host, or guest to guest through the host) plus one 40 ms frame of room, at least
+    2 frames (80 ms) and at most 12. OpenRA's own default is 3 frames. "Connection details" shows it in ms.
+  - Before this, a frame waited for every player's orders for that same frame and for the previous frame's hashes, so
+    each frame cost a round trip: measured with two players, 59% of game speed at 100 ms ping, 40% at 150 ms and
+    24% at 300 ms (`tools/multiplayer-speed-probe.mjs`).
+  - The engines' SyncHash reports are compared as they arrive and no longer hold frames back. The first frame whose
+    reports differ stops the match for everyone and is named. Malformed or conflicting input stops it too.
+  - The engine worker (`web/src/sim/worker.ts`) keeps the released frames in a short queue and plays one per 40 ms
+    beat; an engine that fell behind the others plays two.
+  - Bots run on the host (client 1), as in OpenRA.
+  - The match's version string starts with `p2p-2`: a page with the older lockstep (`p2p-1`) is told to reload.
 - **Random maps.** The lobby carries the request that made a random map (seed, player count, landscape;
   `Lobby.generated`), not the map. Each guest's browser makes the map from it with the engine's map generator, which
   is deterministic: the same request gives the same map and the same uid (the preview's colours are drawn from the
@@ -49,6 +63,9 @@ in-match chat (Enter) and an optional camera and microphone are included.
   checks the match's version before joining, and the host checks again over the direct channel.
 - **Disconnects.** A guest leaving the lobby frees the seat. During a match, anyone leaving or going silent for
   15 seconds stops the match for everyone with the reason on screen. There is no reconnection.
+- **A match that stands still says so.** When no frame has played for 1.5 seconds, the match bar turns amber and
+  names whose orders the match is waiting for ("Waiting for Player 2…"), and from 5 seconds on counts toward the
+  15 at which the line gives up.
 - **Networks.** Public STUN servers (Google, Cloudflare) find routes. There is no TURN relay. Some strict networks
   cannot connect directly, and the game then suggests trying another network.
 - **Failed joins are reported** (since 1 Nov 2026), so we learn how many players a relay would help. A guest whose

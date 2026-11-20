@@ -5,7 +5,7 @@ import { FeedbackSlot } from './feedback/slot';
 import { Flag } from './Flag';
 import { OptionSelect, SearchSelect, Swatch, type Option } from '../components/ui/fields';
 import { MatchChat } from './MatchChat';
-import { Check, ChevronDown, Copy, Crown, Dices, LogIn, Map as MapIcon, MessageSquare, Plus, Radio, TriangleAlert, Users, Video, VideoOff, X } from 'lucide-react';
+import { Check, ChevronDown, Copy, Crown, Dices, Hourglass, LogIn, Map as MapIcon, MessageSquare, Plus, Radio, TriangleAlert, Users, Video, VideoOff, X } from 'lucide-react';
 import { MultiplayerSession, inviteLink, type RemoteMedia, type SessionView } from '../multiplayer';
 import { GameButton } from './kit/game';
 import { orderMaps, mapCollection } from './MapStrip';
@@ -38,20 +38,35 @@ function LobbyChat({ view, say }: { view: SessionView; say: (text: string) => Pr
   </div>;
 }
 
+/** Whose orders a standing match is waiting for, in the player's words. */
+function waitingText(view: SessionView) {
+  const others = view.waitingFor.filter(c => c !== view.you);
+  if (others.length === 1) return `Waiting for Player ${others[0]}`;
+  if (others.length > 1) return `Waiting for Players ${others.slice(0, -1).join(', ')} and ${others.at(-1)}`;
+  return view.waitingFor.includes(view.you) ? 'Your game is catching up' : 'Waiting for the other players';
+}
+
 function MatchBar({ view, session }: { view: SessionView; session: MultiplayerSession }) {
   const [details, setDetails] = useState(false), stopped = view.stage === 'stopped';
+  // The match has not moved for a moment: say whose game it is waiting for, so nobody watches a frozen screen.
+  const waiting = !stopped && view.waiting > 0;
   return <section aria-label="Multiplayer controls" className="mp-match" data-ui-sfx>
     <div className="mp-match-bar">
       <span className="mp-match-name"><Users size={13} aria-hidden="true" />Multiplayer</span>
       <button type="button" className="mp-match-connection" aria-label="Connection details" aria-expanded={details} onClick={() => setDetails(!details)}>
-        <span className={`mp-dot ${stopped ? 'offline' : 'online'}`} /><span>{stopped ? 'Match stopped' : 'Connected'}</span><ChevronDown size={12} aria-hidden="true" />
+        <span className={`mp-dot ${stopped ? 'offline' : waiting ? 'waiting' : 'online'}`} /><span>{stopped ? 'Match stopped' : waiting ? 'Waiting' : 'Connected'}</span><ChevronDown size={12} aria-hidden="true" />
       </button>
     </div>
     {details && <div className="mp-popover mp-network-details">
       <h2 className="scr-label"><Radio size={13} aria-hidden="true" />Connection details</h2>
-      <dl><div><dt>You are</dt><dd>Player {view.you}</dd></div><div><dt>Simulation frame</dt><dd className="digits">{view.frame}</dd></div></dl>
+      <dl><div><dt>You are</dt><dd>Player {view.you}</dd></div><div><dt>Simulation frame</dt><dd className="digits">{view.frame}</dd></div>
+        {view.delay > 0 && <div><dt>Orders run after</dt><dd className="digits">{view.delay * 40} ms</dd></div>}</dl>
       <p>Orders travel directly between players{view.host ? '; your game relays them to everyone.' : ' through the host.'}</p>
       <GameButton variant="ghost" size="sm" onClick={() => setDetails(false)}>Close details</GameButton>
+    </div>}
+    {waiting && <div role="status" className="mp-popover mp-match-waiting">
+      <span className="mp-match-waiting-icon" aria-hidden="true"><Hourglass size={16} /></span>
+      <div><strong>{waitingText(view)}…</strong><p>The match is paused for everyone and continues as soon as {view.waitingFor.includes(view.you) && view.waitingFor.length === 1 ? 'it has' : 'they answer'}. {view.waiting >= 5 ? `No answer for ${view.waiting} seconds; it stops at 15.` : ''}</p></div>
     </div>}
     {stopped && <div role="alert" className="mp-popover mp-match-error">
       <span className="mp-match-error-icon" aria-hidden="true"><TriangleAlert size={16} /></span>
