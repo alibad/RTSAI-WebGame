@@ -437,7 +437,9 @@ async function unitTake(faction, country, enemy, row, takeDir, heard) {
   // paused: the order holds from the first tick (no long-range unit gets a shot off at the dummies first), and the
   // voice that answers a group, its first unit's, starts with the game, on camera. That is the first unit's line.
   const tGroup = await pageNow();
-  await g(async (ids) => { await window.game.select(ids); await window.game.command({ cmd: "stance", stance: "holdfire" }); }, mine.map((p) => p.id));
+  // --cold-audio leaves the row unboxed (and free to fire): each unit's selection on camera is then the page's first
+  // request for its voice, which is what that option is there to show.
+  if (!flag("cold-audio")) await g(async (ids) => { await window.game.select(ids); await window.game.command({ cmd: "stance", stance: "holdfire" }); }, mine.map((p) => p.id));
   await g(() => window.game.setPaused(false));
   const tStart = await pageNow();
   const clock = await gameClock();
@@ -545,7 +547,9 @@ async function unitTake(faction, country, enemy, row, takeDir, heard) {
     // A unit with nothing to shoot at stays where it is (the row's order would send an engineer into the building).
     if (!target) { if (!fixed) await g(async (id) => { const gm = window.game; await gm.select([id]); await gm.command({ cmd: "stop" }); }, p.id); continue; }
     p.target = { id: target.d.id, hp: target.a.hp };
-    await g(async ({ id, x, y }) => { const gm = window.game; await gm.select([id]); gm["click"](x, y, 2, 0); }, { id: p.id, x: target.a.sx, y: target.a.sy });
+    // An airship drifts towards the row while the orders are given: the click goes where it is now.
+    const at = target.d.air ? (await actors()).find((x) => x.id === target.d.id) ?? target.a : target.a;
+    await g(async ({ id, x, y }) => { const gm = window.game; await gm.select([id]); gm["click"](x, y, 2, 0); }, { id: p.id, x: at.sx, y: at.sy });
     await sleep(90);
   }
   await g(() => window.game.select([]));
