@@ -1339,6 +1339,12 @@ export class Game {
     const ctrl = e.ctrlKey || e.metaKey, alt = e.altKey, shift = e.shiftKey;
     const done = () => e.preventDefault();
 
+    // The battle simulator's setup: Ctrl+Z / Ctrl+Y take a placement back and put it on again.
+    if (this.sandbox?.state.mode === "edit" && store.get().phase === "playing" && ctrl && !alt && !(e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement)) {
+      if (k === "z" && !shift) { void this.sandbox.undo(); return done(); }
+      if (k === "y" || (k === "z" && shift)) { void this.sandbox.redo(); return done(); }
+    }
+
     // The map editor's keys: Delete removes the selection, Ctrl+Z / Ctrl+Y undo and redo, Esc drops the brush.
     if (this.editor?.active) {
       if (e.code === "Space") return done();

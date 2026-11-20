@@ -265,8 +265,12 @@ function FieldCursor({ game, brush, radius }: { game: Game; brush: string; radiu
 
 function Editing({ game, editor, test }: { game: Game; editor: EditorController; test: (map: string) => void }) {
   const st = useStore((s) => s.editor)!;
+  // Opened from a battle (the simulator's "Edit map"): the way out is back to that battle.
+  const battle = useStore((s) => s.battleReturn);
   useEffect(() => { game.canvas.style.cursor = st.tool === "pan" ? "grab" : ""; return () => { game.canvas.style.cursor = ""; }; }, [game, st.tool]);
-  const back = () => { if (!st.dirty || confirm("Leave without saving?")) editor.close(); };
+  const back = () => { if (!st.dirty || confirm(battle ? "Go back to the battle without these changes?" : "Leave without saving?")) { if (battle) test(battle.setup.map); else editor.close(); } };
+  // Unchanged ground goes back as the same map; changed ground as a saved copy in the player's maps.
+  const toBattle = async () => { const id = st.dirty || !st.saved && st.map !== battle?.setup.map ? await editor.save() : st.saved ?? battle?.setup.map ?? st.map; if (id) testSaved(id); };
   // A battle needs a start position for each side.
   const testSaved = (id: string) => {
     const players = useStore.getState().setup?.maps.find((m) => m.id === id)?.players ?? 0;
@@ -276,7 +280,7 @@ function Editing({ game, editor, test }: { game: Game; editor: EditorController;
   return (
     <>
       <header className="ed-top hud-panel" data-ui-sfx>
-        <button type="button" className="hud-tool" aria-label="Close the map" data-tip="Close the map" onClick={back}><ArrowLeft /></button>
+        <button type="button" className="hud-tool" aria-label={battle ? "Back to the battle without changes" : "Close the map"} data-tip={battle ? "Back to the battle without changes" : "Close the map"} onClick={back}><ArrowLeft /></button>
         <input className="ed-title" value={st.title} onChange={(e) => editor.setTitle(e.target.value)} aria-label="Map name" data-testid="ed-title" />
         <span className="ed-size digits">{st.catalog?.size.join(" × ")}</span>
         <span className="ed-sep" />
@@ -288,7 +292,9 @@ function Editing({ game, editor, test }: { game: Game; editor: EditorController;
         <span className="ed-sep" />
         <GameButton size="sm" icon={<Save size={14} />} onClick={() => void editor.save()} data-testid="ed-save">{st.saving ? "Saving…" : st.dirty || !st.saved ? "Save" : "Saved"}</GameButton>
         <GameButton size="sm" icon={<Download size={14} />} onClick={() => void editor.download()}>Download map</GameButton>
-        <GameButton size="sm" variant="primary" icon={<Swords size={14} />} onClick={() => void editor.save().then((id) => { if (id) testSaved(id); })} data-testid="ed-test">Test in simulator</GameButton>
+        {battle
+          ? <GameButton size="sm" variant="primary" icon={<Swords size={14} />} onClick={() => void toBattle()} data-testid="ed-back-battle">Back to the battle</GameButton>
+          : <GameButton size="sm" variant="primary" icon={<Swords size={14} />} onClick={() => void editor.save().then((id) => { if (id) testSaved(id); })} data-testid="ed-test">Test in simulator</GameButton>}
       </header>
       {st.error && <p className="ed-error ed-error-float" role="alert">{st.error}</p>}
       <nav className="ed-tools hud-panel" aria-label="Tools">
@@ -303,7 +309,7 @@ function Editing({ game, editor, test }: { game: Game; editor: EditorController;
   );
 }
 
-export function MapEditor({ game, exit, test, mission, play, earthFirst = false }: { game: Game; exit: () => void; test: (map: string) => void; mission: (m: MissionSpec) => void; play: (map: string, you: string, enemy: string) => void; earthFirst?: boolean }) {
+export function MapEditor({ game, exit, test, mission, play, earthFirst = false, openMap = null }: { game: Game; exit: () => void; test: (map: string) => void; mission: (m: MissionSpec) => void; play: (map: string, you: string, enemy: string) => void; earthFirst?: boolean; openMap?: string | null }) {
   const [editor] = useState(() => (game.editor ??= new EditorController(game)));
   const st = useStore((s) => s.editor);
   const phase = useStore((s) => s.phase);
@@ -318,8 +324,17 @@ export function MapEditor({ game, exit, test, mission, play, earthFirst = false 
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [editor]);
+  // A map handed in (the simulator's "Edit map") opens at once, once the battle's world has closed.
+  const opened = useRef<string | null>(null);
+  useEffect(() => {
+    if (!openMap) { opened.current = null; return; }
+    if (opened.current === openMap || phase !== "setup" || !st || st.map || st.opening) return;
+    opened.current = openMap;
+    void editor.open({ map: openMap });
+  }, [openMap, phase, st, editor]);
   if (!st) return null;
   const editing = !!st.map && phase === "playing";
+  if (openMap && !editing && !st.error) return <div className="ed-root"><div className="ed-opening" role="status"><span className="spinner" />Opening the battlefield in the map editor…</div></div>;
   return (
     <div className="ed-root" style={{ "--ed-palette-w": "300px" } as CSSProperties}>
       {editing ? <Editing game={game} editor={editor} test={test} /> : <StartScreen game={game} editor={editor} mission={mission} play={play} earthFirst={earthFirst} />}

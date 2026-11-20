@@ -11,6 +11,14 @@
 .sk-map-random-choose svg { flex: none; }
 .sk-map-random small.is-error { padding: 0 6px 5px; color: #ff9d8f; }
 
+/* ---- the simulator's battlefield card (ui/Simulator.tsx MapCard): pick another, or edit this one */
+.sim-map-pick { display: flex; min-width: 0; flex: 1; align-items: center; gap: 10px; text-align: left; }
+.sim-map-pick:focus-visible { outline: 2px solid var(--hud-accent); outline-offset: 2px; }
+.sim-map-acts { display: flex; flex: none; flex-direction: column; align-items: flex-end; gap: 1px; }
+.sim-map-acts button { display: inline-flex; align-items: center; gap: 4px; padding: 3px 5px; border-radius: 4px; font-size: 11px; color: var(--hud-accent); transition: background .12s; }
+.sim-map-acts button:hover { background: rgb(var(--command-accent-rgb) / .14); }
+.sim-map-acts button:focus-visible { outline: 2px solid var(--hud-accent); outline-offset: 1px; }
+
 /* ---- shared dialog shell */
 .rm-scrim { position: fixed; inset: 0; z-index: 70; display: grid; place-items: center; padding: 16px; background: rgba(0, 0, 0, .6); backdrop-filter: blur(3px); animation: settings-fade .16s ease-out; }
 .rm-panel { display: flex; width: min(860px, 100%); max-height: calc(100dvh - 32px); flex-direction: column; gap: 12px; padding: 16px; border-radius: 12px; overflow-y: auto; }

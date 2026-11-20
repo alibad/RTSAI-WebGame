@@ -7,7 +7,8 @@ import { create } from "zustand";
 import type { CatalogQueue, LazyStats, SetupData, StartInfo, UiState } from "./sim/protocol";
 import type { SandboxState } from "./sandbox";
 import type { EditorState } from "./editor";
-import type { MissionSpec } from "./mission";
+import type { MissionSpec, Operation } from "./mission";
+import type { BattleSetup } from "./battle-setups";
 
 export type Phase = "boot" | "setup" | "loading" | "playing" | "error";
 
@@ -81,6 +82,11 @@ export interface Store {
   editor: EditorState | null;
   /** A mission from the Earth studio, waiting for the battle simulator to place it (App.tsx). */
   pendingMission: MissionSpec | null;
+  /**
+   * The battle the map editor was opened from (the simulator's "Edit map"): its whole setup, laid out again on the
+   * changed map when the editor hands back. Null when the editor was opened from the menu.
+   */
+  battleReturn: { setup: Omit<BattleSetup, "id" | "name" | "savedAt">; operation: Operation | null } | null;
   /** ?shot=1: project art only (screenshots that may leave this machine): no terrain, map previews or EA cameos. */
   publicShot: boolean;
   /** The WebGL context: ok; lost (waiting for the browser); restoring (rebuilding, sheets on their way); failed. */
@@ -140,6 +146,7 @@ export const useStore = create<Store>((set) => ({
   sandbox: null,
   editor: null,
   pendingMission: null,
+  battleReturn: null,
   publicShot: new URLSearchParams(typeof location !== "undefined" ? location.search : "").get("shot") === "1",
   graphics: "ok",
   reviewOpen: false,

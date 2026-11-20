@@ -156,6 +156,8 @@ export default function App() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [game, setGame] = useState<Game | null>(null);
   const [earthFirst, setEarthFirst] = useState(() => ["earth", "map-studio"].includes(new URLSearchParams(location.search).get("mode") ?? ""));
+  /** The map the editor opens on arrival: the battle simulator's "Edit map" (editMapFromBattle). */
+  const [editMap, setEditMap] = useState<string | null>(null);
   const [mode, setMode] = useState<"home" | "skirmish" | "missions" | "simulator" | "editor">(() => {
     const mode = new URLSearchParams(location.search).get("mode");
     // The old Scenario workshop and the Studio's encounters open the battle simulator; the old map studio, the editor.
@@ -206,6 +208,17 @@ export default function App() {
     const sb = new Sandbox(game, cfg);
     game.sandbox = sb;
     void (async () => {
+      // Back from the map editor ("Edit map"): the same battle on the changed ground.
+      const back = useStore.getState().battleReturn;
+      if (back) {
+        useStore.getState().set({ battleReturn: null });
+        try {
+          const { missing } = await sb.restore(back.setup);
+          if (back.operation) sb.configure({ operation: back.operation });
+          if (missing) sb.say(`${missing} ${missing === 1 ? "unit" : "units"} found no room on the changed ground and stayed out.`);
+          return;
+        } catch (e) { console.warn("the battle could not be laid out again:", e); }
+      }
       if (mission) {
         useStore.getState().set({ pendingMission: null });
         const c = await game.catalog();
@@ -237,7 +250,22 @@ export default function App() {
     useStore.getState().set({ sandbox: null });
     setMode("home");
   };
-  const exitEditor = () => { game?.editor?.close(); setMode("home"); };
+  const exitEditor = () => { game?.editor?.close(); useStore.getState().set({ battleReturn: null }); setEditMap(null); setMode("home"); };
+  // "Edit map" in the simulator: the battle is kept whole, the editor opens on its map, and its "Back to the battle"
+  // lays the battle out again on the changed ground (the owner's pick: change the ground from the battle, 16 Nov 2026).
+  const editMapFromBattle = async () => {
+    const sb = game?.sandbox;
+    if (!game || !sb) return;
+    const setup = await sb.snapshot();
+    useStore.getState().set({ battleReturn: { setup, operation: sb.state.operation } });
+    sb.stopPlayback();
+    game.sandbox = null;
+    game.quit();
+    useStore.getState().set({ sandbox: null });
+    setEarthFirst(false);
+    setEditMap(setup.map);
+    setMode("editor");
+  };
   const openEditor = (earth = false) => { setEarthFirst(earth); setMode("editor"); };
   const playEarth = (id: string, you: string, enemy: string) => {
     const setup = useStore.getState().setup;
@@ -259,6 +287,10 @@ export default function App() {
   // "Test in simulator": the saved map opens in the battle simulator.
   const testInSimulator = (map: string) => {
     try { localStorage.setItem("rtsai.sim-map", JSON.stringify(map)); } catch { /* private mode */ }
+    // A battle waiting to come back takes the map the editor hands over (a saved copy when the ground changed).
+    const back = useStore.getState().battleReturn;
+    if (back && back.setup.map !== map) useStore.getState().set({ battleReturn: { ...back, setup: { ...back.setup, map, gen: undefined, own: true } } });
+    setEditMap(null);
     game?.editor?.close();
     setMode("simulator");
   };
@@ -318,8 +350,8 @@ export default function App() {
   return (
     <div className="fixed inset-0" data-playing={playing || undefined} style={simEditing ? ({ "--sidebar-w": "340px" } as React.CSSProperties) : editorMode ? ({ "--sidebar-w": "0px" } as React.CSSProperties) : undefined}>
       <canvas ref={canvasRef} className="stage" tabIndex={0} style={{ right: playing ? "var(--sidebar-w)" : 0, width: playing ? "calc(100% - var(--sidebar-w))" : "100%", visibility: playing ? "visible" : "hidden" }} />
-      {game && playing && !uiHidden && !editorMode && (sandboxMode ? <Simulator game={game} exit={exitSimulator} /> : <Hud game={game} />)}
-      {game && editorMode && phase !== "boot" && <MapEditor game={game} exit={exitEditor} test={testInSimulator} mission={startMission} play={playEarth} earthFirst={earthFirst} />}
+      {game && playing && !uiHidden && !editorMode && (sandboxMode ? <Simulator game={game} exit={exitSimulator} editMap={() => void editMapFromBattle()} /> : <Hud game={game} />)}
+      {game && editorMode && phase !== "boot" && <MapEditor game={game} exit={exitEditor} test={testInSimulator} mission={startMission} play={playEarth} earthFirst={earthFirst} openMap={editMap} />}
       {game && phase === "setup" && !sandboxMode && !editorMode && <>
         {mode !== "skirmish" && <div className="menu-utility" data-ui-sfx><MatchLibrary game={game} /><GameSettings game={game} /><FeedbackSlot kind="menu" /></div>}
         {mode === "home" ? <MainMenu onSkirmish={() => setMode("skirmish")} onCampaign={() => setMode("missions")} onSimulator={() => setMode("simulator")} onEditor={() => openEditor()} /> : <>

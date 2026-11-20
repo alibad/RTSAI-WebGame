@@ -5,7 +5,7 @@
 
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { createPortal } from "react-dom";
-import { Anchor, ArrowLeft, Building2, Castle, Diamond, Eraser, EyeOff, Map as MapIcon, MousePointerClick, Pause, Plane, Play, Radio, RotateCcw, Shield, ShieldCheck, SkipBack, Sparkles, StepForward, Swords, Target, Trash2, Truck, Undo2, Users, X } from "lucide-react";
+import { Anchor, ArrowLeft, Building2, Castle, Diamond, Eraser, EyeOff, Map as MapIcon, MousePointerClick, Pause, Pencil, Plane, Play, Radio, Redo2, RotateCcw, Shield, ShieldCheck, SkipBack, Sparkles, StepForward, Swords, Target, Trash2, Truck, Undo2, Users, X } from "lucide-react";
 import type { Game } from "../game";
 import { AI_SKILLS, type AiSkill, type Sandbox, type SandboxOrder, type SimUnit } from "../sandbox";
 import { planBattle } from "../battle-plan";
@@ -72,7 +72,7 @@ function Seg<T extends string | number>({ value, options, onChange, label }: { v
 }
 
 /** The battlefield: its preview and name; Change opens the map strip (any map, or a new random one). */
-function MapCard({ game, sandbox }: { game: Game; sandbox: Sandbox }) {
+function MapCard({ game, sandbox, editMap }: { game: Game; sandbox: Sandbox; editMap: () => void }) {
   const st = useStore((s) => s.sandbox)!;
   const setup = useStore((s) => s.setup);
   const previews = useStore((s) => s.previews);
@@ -81,11 +81,17 @@ function MapCard({ game, sandbox }: { game: Game; sandbox: Sandbox }) {
   useEffect(() => { game.preview(st.map); }, [game, st.map]);
   return (
     <>
-      <button type="button" className="sim-map hud-inset" onClick={() => setOpen(true)} data-testid="sim-map">
-        <span className="sim-map-art">{previews[st.map] ? <img src={previews[st.map]} alt="" draggable={false} /> : <MapIcon size={22} />}</span>
-        <span className="sim-map-text"><span className="menu-eyebrow">Battlefield</span><b>{map?.title ?? "Open arena"}</b></span>
-        <span className="sim-map-change">Change</span>
-      </button>
+      {/* Two things to do with the battlefield: pick another, or change this one's ground and come back (App editMapFromBattle). */}
+      <div className="sim-map hud-inset">
+        <button type="button" className="sim-map-pick" onClick={() => setOpen(true)} title="Choose another battlefield" data-testid="sim-map">
+          <span className="sim-map-art">{previews[st.map] ? <img src={previews[st.map]} alt="" draggable={false} /> : <MapIcon size={22} />}</span>
+          <span className="sim-map-text"><span className="menu-eyebrow">Battlefield</span><b>{map?.title ?? "Open arena"}</b></span>
+        </button>
+        <span className="sim-map-acts">
+          <button type="button" onClick={() => setOpen(true)}>Change</button>
+          <button type="button" onClick={editMap} title="Change this map's ground in the map editor, then come back to this battle" data-testid="sim-edit-map"><Pencil size={11} aria-hidden="true" />Edit map</button>
+        </span>
+      </div>
       {open && (
         <div className="sim-maps" role="dialog" aria-label="Choose a battlefield" onClick={() => setOpen(false)}>
           <div className="sim-maps-panel hud-panel" onClick={(e) => e.stopPropagation()}>
@@ -98,7 +104,7 @@ function MapCard({ game, sandbox }: { game: Game; sandbox: Sandbox }) {
   );
 }
 
-function EditPanel({ game, sandbox }: { game: Game; sandbox: Sandbox }) {
+function EditPanel({ game, sandbox, editMap }: { game: Game; sandbox: Sandbox; editMap: () => void }) {
   const st = useStore((s) => s.sandbox)!;
   const icons = useStore((s) => s.icons);
   const phase = useStore((s) => s.phase);
@@ -147,8 +153,8 @@ function EditPanel({ game, sandbox }: { game: Game; sandbox: Sandbox }) {
   };
 
   return (
-    <div className="sim-edit flex min-h-0 flex-1 flex-col gap-2">
-      <MapCard game={game} sandbox={sandbox} />
+    <div className="sim-edit flex min-h-0 flex-1 flex-col gap-1.5">
+      <MapCard game={game} sandbox={sandbox} editMap={editMap} />
       <BattleSetups game={game} sandbox={sandbox} />
       {st.operation && <OperationCard sandbox={sandbox} />}
       <div className="grid grid-cols-2 gap-2">
@@ -292,7 +298,7 @@ function PlacementMark({ game }: { game: Game }) {
   );
 }
 
-export function Simulator({ game, exit }: { game: Game; exit: () => void }) {
+export function Simulator({ game, exit, editMap }: { game: Game; exit: () => void; editMap: () => void }) {
   const st = useStore((s) => s.sandbox);
   const sandbox = game.sandbox;
   if (!st || !sandbox) return null;
@@ -310,6 +316,8 @@ export function Simulator({ game, exit }: { game: Game; exit: () => void }) {
       <nav className="hud-bar" aria-label="Game controls" data-ui-sfx>
         <button type="button" className="hud-tool" aria-label="Main menu" data-tip="Main menu" onClick={exit}><ArrowLeft /></button>
         <GameMenu game={game} />
+        <button type="button" className="hud-tool" aria-label="Undo" data-tip="Undo · Ctrl+Z" disabled={!st.canUndo} onClick={() => void sandbox.undo()} data-testid="sim-undo"><Undo2 /></button>
+        <button type="button" className="hud-tool" aria-label="Redo" data-tip="Redo · Ctrl+Y" disabled={!st.canRedo} onClick={() => void sandbox.redo()} data-testid="sim-redo"><Redo2 /></button>
         <GridToggle game={game} />
         <RangesToggle />
         <BoardToggle />
@@ -318,7 +326,7 @@ export function Simulator({ game, exit }: { game: Game; exit: () => void }) {
       <BattleBoard game={game} />
       <Inspector game={game} />
       <div className="sb-hint"><div className="hud-card">
-        <MousePointerClick />{st.pickDestination !== null ? "Click the battlefield to set the destination" : armed ? <span>Click to place <b>{armed}</b> · right-click or Esc stops</span> : "Pick something, then click the battlefield · or drag it there · right-click removes"}
+        <MousePointerClick />{st.notice ? <span data-testid="sim-notice">{st.notice}</span> : st.pickDestination !== null ? "Click the battlefield to set the destination" : armed ? <span>Click to place <b>{armed}</b> · right-click or Esc stops</span> : "Pick something, then click the battlefield · or drag it there · right-click removes"}
       </div></div>
       <PlacementMark game={game} />
       <aside className="hud-panel sb-side sim-panel" style={{ width: "var(--sidebar-w)" }} onContextMenu={(e) => e.preventDefault()} data-ui-sfx>
@@ -326,7 +334,7 @@ export function Simulator({ game, exit }: { game: Game; exit: () => void }) {
           <b>Battle simulator</b>
           {developerTools && <span className="menu-eyebrow"><Shield size={11} /> Real engine</span>}
         </div>
-        <EditPanel game={game} sandbox={sandbox} />
+        <EditPanel game={game} sandbox={sandbox} editMap={editMap} />
       </aside>
       <RotateHint onExit={exit} />
     </>

@@ -93,6 +93,11 @@ export interface SandboxState {
   operation: Operation | null;
   /** The last click with the brush: where (world px), how many it placed, or why it placed nothing. */
   placed: { x: number; y: number; created: number; blocked: string; at: number } | null;
+  /** The setup's undo and redo (ui/Simulator.tsx, Ctrl+Z and Ctrl+Y): whether there is a step to take. */
+  canUndo: boolean;
+  canRedo: boolean;
+  /** One line the setup has to tell (units that found no room after the map changed), until the next change. */
+  notice: string | null;
 }
 
 function b64urlDecode(s: string) {
@@ -165,6 +170,7 @@ export class Sandbox {
         ],
         fa: cfg.fa, fb: cfg.fb, units: [], rosters: {}, map: cfg.map ?? ARENA, skill: cfg.skill ?? "normal", money: cfg.money ?? 0, fog: cfg.fog ?? false,
         recordLen: 0, replay: null, playing: false, speed: 1, paused: false, pickDestination: null, operation: null, placed: null,
+        canUndo: false, canRedo: false, notice: null,
       },
     });
     // The engine draws the armed brush at the cursor (sim SandboxPlacement): a building's green and red footprint and
@@ -320,8 +326,10 @@ export class Sandbox {
   /** Places the brush at a world pixel. It answers with a sound and a mark where it landed, or why it couldn't. */
   async spawn(type: string, wx: number, wy: number, side: 0 | 1 = this.state.side) {
     const st = this.state;
+    await this.checkpoint();
     const r = await this.game.command<{ created?: number; blocked?: string; x?: number; y?: number }>({ cmd: "spawn", type, player: side, x: Math.round(wx), y: Math.round(wy), count: st.count, level: st.sides[side].level });
     const created = r.created ?? 0;
+    if (!created) this.forget();
     this.patch({ placed: { x: r.x ?? wx, y: r.y ?? wy, created, blocked: created ? "" : r.blocked ?? "Can't place it here", at: performance.now() } });
     uiTone(created ? "place" : "deny");
     this.game.client.send({ type: "refresh" });
@@ -357,17 +365,20 @@ export class Sandbox {
   }
 
   async remove(id: number) {
+    await this.checkpoint();
     await this.game.command({ cmd: "remove", id });
     this.game.client.send({ type: "refresh" });
   }
 
   async clearSide(side: 0 | 1 | -1) {
+    await this.checkpoint();
     const r = await this.game.command<{ spawns: { id: number; player: number }[] }>({ cmd: "placements" });
     for (const s of r.spawns ?? []) if (side < 0 || s.player === side) await this.game.command({ cmd: "remove", id: s.id });
     this.game.client.send({ type: "refresh" });
   }
 
   setFaction(side: 0 | 1, faction: string) {
+    this.clearHistory();
     this.patch({ ...(side === 0 ? { fa: faction } : { fb: faction }), brush: null, pickDestination: null });
     this.collect().then((p) => this.edit(p));
   }
@@ -375,6 +386,7 @@ export class Sandbox {
   /** Another battlefield: the placements belong to the old map's cells, so the new one starts empty. */
   setMap(map: string) {
     if (map === this.state.map) return;
+    this.clearHistory();
     this.patch({ map, operation: null });
     this.urlPlacements = [];
     this.game.prepare(map);
@@ -391,10 +403,75 @@ export class Sandbox {
 
   /** Replaces everything placed with a plan (the "describe it" planner, an Earth mission), then shows it. */
   async plan(fa: string, fb: string, placements: Placement[]) {
+    if (fa === this.state.fa && fb === this.state.fb) await this.checkpoint(); else this.clearHistory();
     this.patch({ fa, fb, operation: null });
     this.urlPlacements = placements;
     await this.edit(placements);
   }
+
+  // ---------------------------------------------------------------- undo and redo (the setup only)
+
+  private past: Placement[][] = [];
+  private future: Placement[][] = [];
+  private stepping = false;
+
+  /** What is on the field now, kept before a change so the change can be taken back. */
+  private async checkpoint() {
+    if (this.state.mode !== "edit" || store.get().phase !== "playing") return;
+    this.past.push(await this.collect());
+    if (this.past.length > 80) this.past.shift();
+    this.future = [];
+    this.patch({ canUndo: true, canRedo: false, notice: null });
+  }
+
+  /** The last checkpoint's change came to nothing (a refused placement). */
+  private forget() {
+    this.past.pop();
+    this.patch({ canUndo: this.past.length > 0 });
+  }
+
+  private clearHistory() {
+    this.past = []; this.future = [];
+    if (store.get().sandbox) this.patch({ canUndo: false, canRedo: false, notice: null });
+  }
+
+  async undo() { await this.rewind(this.past, this.future); }
+  async redo() { await this.rewind(this.future, this.past); }
+
+  private async rewind(from: Placement[][], to: Placement[][]) {
+    if (this.stepping || this.state.mode !== "edit" || store.get().phase !== "playing" || !from.length) return;
+    this.stepping = true;
+    try {
+      to.push(await this.collect());
+      await this.apply(from.pop()!);
+      this.patch({ canUndo: this.past.length > 0, canRedo: this.future.length > 0, placed: null, notice: null });
+      uiTone("place");
+    } finally { this.stepping = false; }
+  }
+
+  /**
+   * Brings the field to `target`. Units are taken out and put back in place (no new world, so it is instant); when a
+   * building has to come back, the editing world is rebuilt from the placements instead (a building is reported by
+   * its corner, and only a scenario placement puts it back exactly there).
+   */
+  private async apply(target: Placement[]) {
+    const r = await this.game.command<{ spawns: { id: number; type: string; player: number; x: number; y: number; level: number; health: number }[] }>({ cmd: "placements" });
+    const key = (type: string, side: number, u: number, v: number, level?: number, health?: number) => `${type}|${side}|${u}|${v}|${level ?? 0}|${health ?? 100}`;
+    const want = new Map<string, Placement[]>();
+    for (const p of target) { const k = key(p.id, p.side, p.u, p.v, p.level, p.health); want.set(k, [...(want.get(k) ?? []), p]); }
+    const extra: number[] = [];
+    for (const s of r.spawns ?? []) { const left = want.get(key(s.type, s.player, s.x, s.y, s.level, s.health)); if (left?.length) left.pop(); else extra.push(s.id); }
+    const missing = [...want.values()].flat();
+    const fixed = (id: string) => { const u = this.state.units.find((x) => x.name === id); return !u || u.kind === "building" || u.kind === "defense" || !!u.footprint; };
+    this.urlPlacements = target;
+    if (missing.some((p) => fixed(p.id))) { await this.edit(target); return; }
+    for (const id of extra) await this.game.command({ cmd: "remove", id });
+    for (const p of missing) await this.game.command({ cmd: "spawn", type: p.id, player: p.side, u: p.u, v: p.v, count: 1, level: p.level ?? 0, health: p.health ?? 100 });
+    this.game.client.send({ type: "refresh" });
+  }
+
+  /** A line for the setup's hint bar (cleared by the next change). */
+  say(notice: string | null) { this.patch({ notice }); }
 
   /** The setup as it stands, to keep or to share (battle-setups.ts): the map, both sides' settings and every placed unit. */
   async snapshot(): Promise<Omit<BattleSetup, "id" | "name" | "savedAt">> {
@@ -417,6 +494,7 @@ export class Sandbox {
       if (!s.gen) throw Error("This battle's map is no longer in this browser.");
       map = await this.game.generateMap(JSON.parse(s.gen));
     }
+    this.clearHistory();
     this.patch({ map, fa: s.fa, fb: s.fb, skill: s.skill, money: s.money, fog: s.fog, sides: s.sides, operation: null, brush: null, pickDestination: null });
     this.game.prepare(map);
     await this.edit(s.placements);
