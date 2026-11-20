@@ -195,7 +195,10 @@ export default function App() {
   // The battle simulator (also ?mode=sandbox, the Studio's encounters, with their placements in the URL).
   const sandboxMode = mode === "simulator";
   useEffect(() => {
-    if (!game || !sandboxMode || phase !== "setup" || game.sandbox) return;
+    if (!game || !sandboxMode || phase !== "setup") return;
+    // A battle's world closed under the simulator (a watched replay's exit, any "leave the match"): back to its setup
+    // with the same forces. Without this the page stays on the loading screen with nothing to press (found 20 Nov 2026).
+    if (game.sandbox) { if (game.sandbox.state.mode === "run") game.sandbox.backToEdit(); return; }
     const cfg = parseSandboxUrl(new URLSearchParams(location.search));
     cfg.map ??= cfg.placements.length ? ARENA : simulatorMap(useStore.getState().setup?.maps ?? []);
     // A mission from the Earth studio: its map, its nations, both sides placed, and money to build with.

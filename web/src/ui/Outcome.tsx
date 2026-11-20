@@ -3,7 +3,7 @@
 // continue, watch the match back, or keep its replay.
 
 import { useEffect, useRef, useState } from "react";
-import { Building2, Check, Clock, Coins, Crosshair, Film, Save, Skull, Star, Trophy } from "lucide-react";
+import { Building2, Check, Clock, Coins, Crosshair, Film, RotateCcw, Save, Skull, Star, Trophy } from "lucide-react";
 import type { Game } from "../game";
 import type { GameStats } from "../sim/protocol";
 import { useStore } from "../store";
@@ -68,9 +68,11 @@ export function Outcome({ game }: { game: Game }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const actions = useRef<HTMLDivElement>(null);
+  // The simulator's "Look at the battle": the result steps aside for the timeline and the battle board under it.
+  const [aside, setAside] = useState(false);
   const over = win === "Won" || win === "Lost";
   useEffect(() => {
-    if (!over) { setStats(null); setSaved(""); setError(""); return; }
+    if (!over) { setStats(null); setSaved(""); setError(""); setAside(false); return; }
     game.command<GameStats>({ cmd: "stats" }).then(setStats).catch(() => setStats(null));
   }, [over, game]);
   useEffect(() => {
@@ -78,7 +80,7 @@ export function Outcome({ game }: { game: Game }) {
     const t = setTimeout(() => actions.current?.querySelector<HTMLButtonElement>(".gbtn-primary")?.focus({ preventScroll: true }), 1200);
     return () => clearTimeout(t);
   }, [over]);
-  if (!over) return null;
+  if (!over || aside) return null;
 
   const won = win === "Won";
   const scenario = parseScenario(game.scenarioJson);
@@ -154,10 +156,19 @@ export function Outcome({ game }: { game: Game }) {
         </> : <div className="oc-skeleton" />}
 
         <div ref={actions} className="oc-actions">
-          {canKeep && <GameButton icon={<Film size={16} />} disabled={busy} onClick={() => void watch()} data-sfx-hover>Watch replay</GameButton>}
+          {/* The simulator replays its own battle on its timeline; a second replay world would sit under that bar. */}
+          {canKeep && (game.sandbox && !mission
+            ? <GameButton icon={<Film size={16} />} onClick={() => setAside(true)} data-sfx-hover data-testid="oc-look">Look at the battle</GameButton>
+            : <GameButton icon={<Film size={16} />} disabled={busy} onClick={() => void watch()} data-sfx-hover>Watch replay</GameButton>)}
           {canKeep && <GameButton variant="ghost" icon={saved ? <Check size={16} /> : <Save size={16} />} disabled={busy || !!saved} onClick={() => void keep()}>{saved || "Save replay"}</GameButton>}
           {mission && game.sandbox
             ? <GameButton onClick={() => void game.sandbox!.backToEdit()}>Back to the simulator</GameButton>
+            // A battle in the simulator ends back at its setup, or runs again: "Continue" would close the world under it.
+            : game.sandbox
+            ? <>
+              <GameButton icon={<RotateCcw size={16} />} onClick={() => void game.sandbox!.run()} data-sfx-hover data-testid="oc-rerun">Run again</GameButton>
+              <GameButton variant="primary" size="lg" onClick={() => void game.sandbox!.backToEdit()} data-sfx-hover data-testid="oc-setup">Back to setup</GameButton>
+            </>
             : mission
             ? <GameButton onClick={() => game.quit()}>Campaign menu</GameButton>
             : <GameButton variant="primary" size="lg" onClick={() => game.quit()} data-sfx-hover>Continue</GameButton>}
