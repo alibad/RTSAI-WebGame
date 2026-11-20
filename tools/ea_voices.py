@@ -23,8 +23,16 @@ fire, e.g. the G.I.'s, which modern factions field in missions, keeps the projec
 AfterFireSound and the warheads' ImpactSounds. Weapons inheriting a changed one keep theirs.
 Their vehicles, aircraft, ships and buildings also die with RA2's own sounds (tools/data/ra2-death-sounds.json) instead
 of the standalone game's synthesised ones: a twin of the death weapon that differs only in its sounds, behind a
-death-sound-only condition for the original countries. Modern factions keep theirs.
-Nothing here changes the simulation: voices, voice- and sound-only conditions and weapon sounds.
+death-sound-only condition for the original countries. Modern factions keep theirs. The cry (RA2's DieSound=) is the twin's
+Report, which the engine plays once per death; a warhead would play it on every cell of a building. A building's own
+crumble (SoundOnDamageTransition, which cannot tell owners apart) moves into the project's death weapon as its Report, so
+the modern countries hear it once as before and the original countries hear RA2's cry alone.
+Their other sounds are RA2's too: building, selling, damage, cloaking, crushing, deploying, chronoshifts, the Tesla
+coil's charge, Yuri's control and the superweapons. A trait field naming one of the standalone game's stand-ins (RTSAI-Mod
+tools/standalone-sfx.py synthesises one under each EA file name the rules expected) names the bundled original instead,
+where RA2 has it, on actors only the original countries field and on traits only they enable (ea-art). A trait that the
+modern countries' copy of a shared actor enables too keeps the stand-in (summary sharedTraitSounds).
+Nothing here changes the simulation: voices, voice- and sound-only conditions and weapon and trait sounds.
 """
 from __future__ import annotations
 
@@ -56,10 +64,17 @@ EVERY_FACTION_WEAPONS = ('DogJaw',)
 DEATH_FACTS = Path(__file__).resolve().parent / 'data/ra2-death-sounds.json'
 DEATH_CONDITION = 'ea-death'
 DEATH_PREFIX = 'ea-death-'
+# The project's own death weapon with a building's crumble as its Report (the modern countries' side of a shared building).
+PROJECT_DEATH_PREFIX = 'project-death-'
 STAND_IN_DEATH = re.compile(r'(^|\|)audio/sfx/rtsai-explode-[a-z0-9-]+\.wav$', re.I)
 # The project's explosions are drawn after RA2's animations of the same name; an actor RA2 gives no Explosion= list
 # (the Nuclear Reactor, which RA2 blows up with a nuke) sounds like the explosions it is drawn with.
 EXPLOSION_ANIMS = (('twlt', 'TWLT070'), ('bang', 'S_BANG48'), ('brnl', 'S_BRNL58'), ('clsn', 'S_CLSN58'), ('tumu', 'S_TUMU60'))
+# The standalone game's synthesised stand-ins (RTSAI-Mod tools/standalone-sfx.py: one under each EA file name the rules
+# expected), mounted from this folder of mods/rtsai. A bare trait sound that resolves there stands in for RA2's clip.
+STAND_IN_AUDIO = 'standalone/audio/'
+# Conditions only the original countries' actors have: a trait that requires one is theirs alone.
+ORIGINAL_ONLY_CONDITIONS = ('ea-art', CONDITION, DEATH_CONDITION)
 
 
 class VoiceError(E.GenerationError):
@@ -265,8 +280,130 @@ class VoiceGenerator:
                 self.weapons[weapon.key] = {'sounds': sounds, 'firedBy': ['original countries']}
         self.deaths = self._plan_deaths()
         clips |= {c for specs in self.deaths.values() for s in specs for c in s['explosion'] + s['die']}
+        self._stand_ins = {}
+        retail = getattr(getattr(self.art, 'retail', None), 'rules', None) or []
+        self.trait_sounds, self.shared_trait_sounds = self._plan_trait_sounds(self._effective(retail))
+        clips |= {c for fields in self.trait_sounds.values() for cs in fields.values() for c in cs}
         self.clips = sorted(clips)
         return self
+
+    # -- trait sounds (building, selling, damage, cloaking, Yuri's control, superweapons, ...)
+
+    def _effective(self, *sources):
+        """The current rules with later files on top (inheritance and removals applied): {actor (lower case): Node}."""
+        return {k.lower(): v for k, v in E.merge([list(self.art.cur.values())] + [[n.clone() for n in s] for s in sources]).items()}
+
+    def _stand_in(self, clip):
+        """A bare file name that resolves to one of the standalone game's synthesised stand-ins."""
+        if clip not in self._stand_ins:
+            found = next((p for p in self.art.packages if (p / clip).is_file()), None)
+            rel = found.relative_to(self.art.mod_root / 'mods/rtsai').as_posix() + '/' if found is not None else ''
+            self._stand_ins[clip] = rel.startswith(STAND_IN_AUDIO)
+        return self._stand_ins[clip]
+
+    def _stand_in_fields(self, trait):
+        """{field: [clip, ...]} of a trait's fields that name stand-ins only (voices have their own twins)."""
+        if E.trait_type(trait.key) in VOICE_TRAITS or trait.key.startswith('-'):
+            return {}
+        out = {}
+        for f in trait.children:
+            if f.children or not f.value or f.key.startswith('-'):
+                continue
+            clips = [clip_file(x, strict=False) for x in E.split_list(f.value)]
+            if clips and None not in clips and all(self._stand_in(c) for c in clips):
+                out[f.key] = clips
+        return out
+
+    @staticmethod
+    def original_only_trait(condition):
+        """A trait condition only the original countries' actors meet: a plain conjunction requiring one of theirs."""
+        cond = (condition or '').replace(' ', '')
+        if not cond or '||' in cond or '!(' in cond:
+            return False
+        terms = cond.replace('(', '').replace(')', '').split('&&')
+        return any(t == c or (c == CONDITION and t.startswith(c + '-')) for t in terms for c in ORIGINAL_ONLY_CONDITIONS)
+
+    def _plan_trait_sounds(self, effective):
+        """({actor: {(trait, field): [clip]}} the original countries hear: actors only they field and traits only they
+        enable; {actor: [trait.field]} shared actors keep with the project's stand-ins)."""
+        countries = set(E.COUNTRIES)
+        mine, shared = {}, {}
+        for name in sorted(effective):
+            owners = self.art.owners.get(name, set())
+            if name.startswith('^') or not owners & countries:
+                continue
+            for t in effective[name].children:
+                fields = self._stand_in_fields(t)
+                if not fields:
+                    continue
+                if owners <= countries or self.original_only_trait(t.val('RequiresCondition')):
+                    mine.setdefault(name, {}).update({(t.key, f): c for f, c in fields.items()})
+                else:
+                    shared.setdefault(name, []).extend(f'{t.key}.{f}' for f in fields)
+        return mine, shared
+
+    def _trait_sounds(self, present, rules):
+        """Each planned trait sound names RA2's clips (present) instead of the stand-ins (a building's crumble is the
+        death sounds' part: _deaths). Extends `rules` in place; returns the summary."""
+        mine, _ = self._plan_trait_sounds(self._effective(self.art.rules_nodes))
+        planned = {c for fields in self.trait_sounds.values() for cs in fields.values() for c in cs}
+        late = sorted({c for fields in mine.values() for cs in fields.values() for c in cs} - planned)
+        if late:
+            raise VoiceError(f'stand-in sounds the plan missed (the original-art rules add them): {late}')
+        by_actor = {n.key.lower(): n for n in rules}
+        summary = {}
+        for name, fields in sorted(mine.items()):
+            for (key, field), clips in sorted(fields.items()):
+                if (key, field) in self.crumbles.get(name, {}):
+                    continue  # its death weapon's twins play the crumble now
+                originals = [AUDIO_PREFIX + c for c in clips if c in present]
+                if not originals:
+                    continue  # RA2 lacks every clip: the project's sound stays
+                node = by_actor.get(name)
+                if node is None:
+                    node = E.Node(self.art.cur[name].key if name in self.art.cur else name)
+                    rules.append(node)
+                    by_actor[name] = node
+                child(node, key).children.append(E.Node(field, ', '.join(originals)))
+                self.used |= {c for c in clips if c in present}
+                summary.setdefault(name, {})[f'{key}.{field}'] = originals
+        return summary
+
+    def _validate_trait_sounds(self, death_summary):
+        # The rules as the engine merges them: the files themselves (inheritance between actors intact) and the overlays,
+        # this file last. A removal of a key that is not there is refused here as the engine refuses it.
+        try:
+            effective = {k.lower(): v for k, v in E.merge(self._web_rule_sources() + [[n.clone() for n in self.rules_nodes]]).items()}
+        except ValueError as e:
+            raise VoiceError(f'the original-sound rules do not merge with the game\'s: {e}') from e
+        mine, _ = self._plan_trait_sounds(effective)
+        left = {f'{a}.{k}.{f}': c for a, fields in mine.items() for (k, f), c in fields.items() if set(c) & self.present}
+        if left:
+            raise VoiceError(f'original-country trait sounds still name stand-ins RA2 has: {left}')
+        for name, specs in death_summary.items():
+            if not any(s['die'] for s in specs):
+                continue
+            for key, t in E.traits(effective.get(name, E.Node(name)), 'SoundOnDamageTransition'):
+                if t.val('DestroyedSounds'):
+                    raise VoiceError(f'{name}.{key}: a crumble beside RA2\'s death cry ({t.val("DestroyedSounds")})')
+            cries = [s for s in specs if s['die']]
+            if len(cries) > 1:
+                raise VoiceError(f'{name}: {len(cries)} death traits cry')
+        # The crumble moved, never doubled or lost: an actor whose project death weapon carries it has no other, and one
+        # that had a crumble still has one (for the modern countries).
+        def crumbles_on_death(actor):
+            return any((t.val('Weapon') or '') in self.crumble_weapons for _, t in E.traits(actor, 'FireWarheadsOnDeath'))
+
+        def destroyed(actor):
+            return any(t.val('DestroyedSounds') for _, t in E.traits(actor, 'SoundOnDamageTransition'))
+        for name, actor in self.art.cur.items():
+            if name.startswith('^') or name not in effective:
+                continue
+            now = effective[name]
+            if crumbles_on_death(now) and destroyed(now):
+                raise VoiceError(f'{name}: its crumble plays twice')
+            if destroyed(actor) and not destroyed(now) and not crumbles_on_death(now):
+                raise VoiceError(f'{name}: lost its crumble')
 
     def _plan_deaths(self):
         """Original-art actors whose death weapon plays a standalone stand-in sound, with RA2's own death sounds for them:
@@ -335,7 +472,10 @@ class VoiceGenerator:
         effective = {k.lower(): v for k, v in E.merge([list(self.art.cur.values()), self.art.rules_nodes]).items()}
         by_actor = {n.key.lower(): n for n in rules}
         twins, weapons, summary = {}, [], {}
+        self.crumbles, self.crumble_weapons = {}, {}
+        crumble_twins, removals = {}, {}
         for name, specs in sorted(self.deaths.items()):
+            cried = False
             for spec in specs:
                 trait = effective[name].get(spec['trait'])
                 if trait is None:
@@ -347,10 +487,12 @@ class VoiceGenerator:
                 if '!' + E.CONDITION in condition.replace(' ', ''):
                     continue  # it does not fire for the original countries (an original twin does)
                 explosion = [AUDIO_PREFIX + c for c in spec['explosion'] if c in present]
-                die = [AUDIO_PREFIX + c for c in spec['die'] if c in present]
+                # RA2 cries once per death: one death trait carries the cry.
+                die = [] if cried else [AUDIO_PREFIX + c for c in spec['die'] if c in present]
                 if not explosion and not die:
                     continue  # RA2 lacks every clip: the project's sound stays
-                self.used |= {c for c in spec['explosion'] + spec['die'] if c in present}
+                cried = cried or bool(die)
+                self.used |= {c for c in spec['explosion'] + (spec['die'] if die else []) if c in present}
                 signature = json.dumps([spec['weapon'].lower(), explosion, die])
                 twin = twins.get(signature)
                 if twin is None:
@@ -365,9 +507,11 @@ class VoiceGenerator:
                                 STAND_IN_DEATH.search(x) for x in E.split_list(c.val('ImpactSounds') or '')):
                             c.get('ImpactSounds').value = ', '.join(explosion)
                     if die:
-                        w.children.append(E.Node('Warhead@' + DEATH_CONDITION, 'CreateEffect', [
-                            E.Node('ImpactSounds', ', '.join(die)), E.Node('ValidTargets', 'Ground, Water, Air'),
-                            E.Node('ImpactActors', 'false')]))
+                        # The engine plays a death weapon's Report once, at the actor's centre (FireWarheadsOnDeath);
+                        # a warhead's sounds play on every cell a building's Footprint death covers (nine cries).
+                        if w.val('Report'):
+                            raise VoiceError(f'{spec["weapon"]}: a Report of its own; RA2\'s death cry has no place')
+                        w.children.insert(0, E.Node('Report', ', '.join(die)))
                     if self._without_sounds(w) != self._without_sounds(self.cur_weapons[spec['weapon']]):
                         raise VoiceError(f'{twin}: differs from {spec["weapon"]} in more than its sounds')
                     weapons.append(w)
@@ -387,7 +531,39 @@ class VoiceGenerator:
                     node.children.append(E.Node('GrantConditionOnFaction@' + DEATH_CONDITION, None, [
                         E.Node('Condition', DEATH_CONDITION), E.Node('Factions', ', '.join(self.art.actors[name]['countries']))]))
                 key = spec['trait']
-                node.children.append(E.Node(key, None, [E.Node('RequiresCondition', E.both('!' + DEATH_CONDITION, condition))]))
+                project = E.Node(key, None, [E.Node('RequiresCondition', E.both('!' + DEATH_CONDITION, condition))])
+                node.children.append(project)
+                crumble = None
+                if die:
+                    # A building's crumble (SoundOnDamageTransition, which has no condition to tell owners apart) plays
+                    # beside RA2's cry: it moves into the project's own death weapon, so the modern countries hear the
+                    # same once, and the original countries hear RA2's cry alone.
+                    crumbles = [(k, t.val('DestroyedSounds')) for k, t in E.traits(effective[name], 'SoundOnDamageTransition')
+                                if t.val('DestroyedSounds')]
+                    if len(crumbles) > 1:
+                        raise VoiceError(f'{name}: several crumbles {crumbles}')
+                    if crumbles:
+                        skey, sounds = crumbles[0]
+                        sig = json.dumps([spec['weapon'].lower(), E.split_list(sounds)])
+                        ptwin = crumble_twins.get(sig)
+                        if ptwin is None:
+                            n = sum(1 for s in crumble_twins if json.loads(s)[0] == spec['weapon'].lower())
+                            ptwin = PROJECT_DEATH_PREFIX + spec['weapon'].lower() + (f'-{n + 1}' if n else '')
+                            crumble_twins[sig] = ptwin
+                            pw = self.cur_weapons[spec['weapon']].clone()
+                            pw.key = ptwin
+                            pw.children = [c for c in pw.children if c.key != 'Inherits' and not c.key.startswith('Inherits@')]
+                            if pw.val('Report'):
+                                raise VoiceError(f'{spec["weapon"]}: a Report of its own; the crumble has no place')
+                            pw.children.insert(0, E.Node('Report', sounds))
+                            if self._without_sounds(pw) != self._without_sounds(self.cur_weapons[spec['weapon']]):
+                                raise VoiceError(f'{ptwin}: differs from {spec["weapon"]} in more than its sounds')
+                            weapons.append(pw)
+                            self.crumble_weapons[ptwin] = spec['weapon']
+                        removals[name] = skey
+                        project.children.append(E.Node('Weapon', ptwin))
+                        self.crumbles[name] = {(skey, 'DestroyedSounds'): E.split_list(sounds)}
+                        crumble = {'from': f'{skey}.DestroyedSounds', 'sounds': E.split_list(sounds), 'projectTwin': ptwin}
                 body = [c.clone() for c in trait.children if c.key not in ('Weapon', 'RequiresCondition')]
                 for c in body:
                     if c.key == 'EmptyWeapon' and (c.value or '').lower() == spec['weapon'].lower():
@@ -395,8 +571,51 @@ class VoiceGenerator:
                 body += [E.Node('Weapon', twin), E.Node('RequiresCondition', E.both(DEATH_CONDITION, condition))]
                 node.children.append(E.Node(key + ('-' if '@' in key else '@') + DEATH_CONDITION, None, body))
                 summary.setdefault(name, []).append({'trait': key, 'weapon': spec['weapon'], 'twin': twin, 'kind': spec['kind'],
-                                                     'events': spec['events'], 'explosion': explosion, 'die': die})
+                                                     'events': spec['events'], 'explosion': explosion, 'die': die,
+                                                     **({'crumble': crumble} if crumble else {})})
+        # The crumble's removal (MiniYaml resolves an actor's own nodes after what it inherits, and refuses to remove a
+        # key that is not there): an actor that inherits a building which removes it already (amradr: Inherits gaairc)
+        # has none left, unless its own rules name the crumble again.
+        parents, own = self._raw_inheritance()
+        for name, skey in sorted(removals.items()):
+            seen, stack, inherited = set(), list(parents.get(name, ())), False
+            while stack and not inherited:
+                p = stack.pop()
+                if p not in seen:
+                    seen.add(p)
+                    inherited = p in removals
+                    stack.extend(parents.get(p, ()))
+            if inherited and name not in own:
+                for s in summary[name]:
+                    if s.get('crumble'):
+                        s['crumble']['removedBy'] = 'inherited'
+                continue
+            child(by_actor[name], skey).children.append(E.Node('-DestroyedSounds'))
         return weapons, summary
+
+    def _web_rule_sources(self):
+        """The public game's rule files, parsed, in the order the engine loads them (Bundle.WebModYaml): the mod's with
+        the web content inserted, then the original-art overlays at the end (ea-art.yaml, ea-modern-preserve.yaml)."""
+        if getattr(self, '_raw_sources', None) is None:
+            rtsai = (self.art.mod_root / 'mods/rtsai/mod.yaml').read_text(encoding='utf-8')
+            rules, _, _ = E.web_lists(rtsai)
+            self._raw_sources = [E.parse(self.art.files.path(e).read_text(encoding='utf-8'), str(self.art.files.path(e)))
+                                 for e in rules]
+        retail = getattr(self.art, 'retail', None)
+        return self._raw_sources + [[n.clone() for n in self.art.rules_nodes],
+                                    [n.clone() for n in getattr(retail, 'modern_rules', None) or []]]
+
+    def _raw_inheritance(self):
+        """({actor: {concrete parents}} as the rule files name them, {actors whose own rules name a crumble})."""
+        parents, own = {}, set()
+        for source in self._web_rule_sources():
+            for n in source:
+                for c in n.children:
+                    if (c.key == 'Inherits' or c.key.startswith('Inherits@')) and c.value and not c.value.startswith('^'):
+                        parents.setdefault(n.key.lower(), set()).add(c.value.lower())
+                    if E.trait_type(c.key) == 'SoundOnDamageTransition' and c.get('DestroyedSounds') is not None:
+                        own.add(n.key.lower())
+        return parents, own
 
     def original_weapons(self):
         """Weapons only actors the original countries own fire (skirmish reachability and mission placements), with the
@@ -525,6 +744,7 @@ class VoiceGenerator:
                 weapon_summary[weapon] = {'firedBy': spec['firedBy'], 'sounds': changed}
         death_weapons, death_summary = self._deaths(present, rules)
         weapons += death_weapons
+        trait_summary = self._trait_sounds(present, rules)
         # Weapons that inherit a changed one keep their own sounds.
         before = self.cur_weapons
         after = E.merge(self.cur_weapon_sources + [[w.clone() for w in weapons]])
@@ -559,9 +779,15 @@ class VoiceGenerator:
                         'clips': sorted(self.used), 'absent': sorted(absent & set(self.clips)), 'actors': actor_summary,
                         'weapons': weapon_summary, 'skipped': dict(sorted(self.skipped.items())),
                         'deaths': death_summary, 'deathWeapons': {w.key: next(s['weapon'] for d in death_summary.values() for s in d
-                                                                              if s['twin'] == w.key) for w in death_weapons},
-                        'deathFactsSha256': self.death_facts['sourceSha256']}
+                                                                              if s['twin'] == w.key) for w in death_weapons
+                                        if w.key not in self.crumble_weapons},
+                        'deathFactsSha256': self.death_facts['sourceSha256'],
+                        'crumbleWeapons': dict(sorted(self.crumble_weapons.items())),
+                        'traitSounds': trait_summary,
+                        'sharedTraitSounds': {k: kept for k, v in sorted(self.shared_trait_sounds.items())
+                                              if (kept := sorted(f for f in v if tuple(f.rsplit('.', 1)) not in self.crumbles.get(k, {})))}}
         self._validate()
+        self._validate_trait_sounds(death_summary)
         return self
 
     def _current_files(self, c: VoiceSet, phrases, phrase, faction):

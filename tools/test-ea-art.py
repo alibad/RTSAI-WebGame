@@ -52,6 +52,19 @@ class MiniYaml(unittest.TestCase):
         self.assertIsNone(t.val('Old'))
         self.assertEqual(t.val('New'), '2')
 
+    def test_a_later_file_removes_an_inherited_field(self):
+        # How the original countries' buildings drop the stand-in crumble their death twin replaces.
+        tree = self.merged('^Base:\n\tT:\n\t\tA: 1\n\t\tD: x\nunit:\n\tInherits: ^Base\n', 'unit:\n\tT:\n\t\t-D:\n')
+        t = tree['unit'].get('T')
+        self.assertEqual([c.key for c in t.children], ['A'])
+
+    def test_an_actor_cannot_remove_what_the_actor_it_inherits_removed(self):
+        # amradr inherits gaairc: the engine refuses amradr's own removal of gaairc's crumble (20 Nov 2026).
+        with self.assertRaises(ValueError):
+            self.merged('^B:\n\tT:\n\t\tD: x\np:\n\tInherits: ^B\nc:\n\tInherits: p\n', 'p:\n\tT:\n\t\t-D:\nc:\n\tT:\n\t\t-D:\n')
+        tree = self.merged('^B:\n\tT:\n\t\tD: x\np:\n\tInherits: ^B\nc:\n\tInherits: p\n', 'p:\n\tT:\n\t\t-D:\n')
+        self.assertIsNone(tree['c'].get('T').get('D'))
+
     def test_empty_value_does_not_override(self):
         tree = self.merged('unit:\n\tT: value\n', 'unit:\n\tT:\n\t\tChild: 1\n')
         self.assertEqual(tree['unit'].get('T').value, 'value')
@@ -201,6 +214,13 @@ class Voices(unittest.TestCase):
         for c in ('rtsai-explode-small.wav', 'ra2|audio/sfx/rtsai-explode-medium.wav'):
             self.assertTrue(V.STAND_IN_DEATH.search('ra2|audio/sfx/' + c.split('/')[-1]), c)
         self.assertIsNone(V.STAND_IN_DEATH.search('ra2|web/ea/audio/vgendiea.wav'))
+
+    def test_traits_only_the_original_countries_enable(self):
+        only = V.VoiceGenerator.original_only_trait
+        for cond in ('ea-art', 'ea-art && !moving', '(ea-art && x)', 'x && ea-death', 'ea-voice-america'):
+            self.assertTrue(only(cond), cond)
+        for cond in (None, '', '!ea-art', 'x || ea-art', '!(x && ea-art)', 'ea-artillery', 'rank-veteran'):
+            self.assertFalse(only(cond), cond)
 
     def test_clip_allowlist(self):
         for ok in ('igisea.wav', 'idogatta.wav', 'vsquat1a.wav'):
@@ -542,13 +562,32 @@ class GeneratedVoices(unittest.TestCase):
                         self.assertTrue(t.val('Weapon').startswith(V.DEATH_PREFIX), f'{key}.{t.key}')
                         self.assertTrue(t.val('RequiresCondition').startswith(V.DEATH_CONDITION), f'{key}.{t.key}')
                     else:
-                        self.assertEqual({c.key for c in t.children}, {'RequiresCondition'}, f'{key}.{t.key}')
+                        # The project's death trait: off for the original countries; a shared building's carries its
+                        # crumble in a project twin of its weapon.
+                        self.assertTrue({c.key for c in t.children} <= {'RequiresCondition', 'Weapon'}, f'{key}.{t.key}')
                         self.assertTrue(t.val('RequiresCondition').startswith('!' + V.DEATH_CONDITION), f'{key}.{t.key}')
+                        if t.val('Weapon'):
+                            self.assertIn(t.val('Weapon'), self.summary['crumbleWeapons'], f'{key}.{t.key}')
+                elif kind == 'SoundOnDamageTransition':
+                    listed = self.summary.get('traitSounds', {}).get(key.lower(), {})
+                    for c in t.children:
+                        if c.key == '-DestroyedSounds':
+                            self.assertTrue(any(s.get('crumble') for s in self.summary['deaths'][key.lower()]), key)
+                        else:
+                            self.assertEqual(self.clips(c.value), listed.get(f'{t.key}.{c.key}'), f'{key}.{t.key}.{c.key}')
                 elif kind == 'FallsToEarth':
                     # The wreck of an aircraft only the original countries field: its crash with RA2's sound.
                     self.assertEqual({c.key for c in t.children}, {'Explosion'}, f'{key}.{t.key}')
                     self.assertTrue(t.val('Explosion').startswith(V.DEATH_PREFIX), f'{key}.{t.key}')
                     self.assertIn(key.lower(), self.summary['deaths'])
+                elif any(k.rsplit('.', 1)[0] == t.key for k in self.summary.get('traitSounds', {}).get(key.lower(), {})):
+                    # A trait sound of an actor or trait only the original countries have: RA2's clips.
+                    listed = self.summary['traitSounds'][key.lower()]
+                    for c in t.children:
+                        field = f'{t.key}.{c.key}'
+                        self.assertIn(field, listed, f'{key}: {field}')
+                        self.assertEqual(self.clips(c.value), listed[field], f'{key}: {field}')
+                        self.assertTrue(all(x.startswith(V.AUDIO_PREFIX) for x in listed[field]), f'{key}: {field}')
                 else:
                     self.fail(f'{key}.{t.key}: not a voice trait')
 
@@ -561,8 +600,8 @@ class GeneratedVoices(unittest.TestCase):
                 self.assertEqual(grants, [], key)
                 self.assertEqual([t.key for t in actor.children], ['RTSAIVoiced'], key)
                 continue
-            if not twins and key in self.summary['deaths']:
-                continue  # only RA2's death sound (a vehicle or a building that has no voice of its own)
+            if not twins and (key in self.summary['deaths'] or key.lower() in self.summary.get('traitSounds', {})):
+                continue  # only RA2's death or trait sounds (a vehicle or a building that has no voice of its own)
             self.assertTrue(grants and twins, key)
             granted = set()
             for g in grants:
@@ -601,7 +640,58 @@ class GeneratedVoices(unittest.TestCase):
                 yield from sounds(c)
         for w in self.weapons.values():
             used |= {x[len(V.AUDIO_PREFIX):] for x in sounds(w) if x.startswith(V.AUDIO_PREFIX)}
+        for fields in self.summary.get('traitSounds', {}).values():
+            used |= {x[len(V.AUDIO_PREFIX):] for v in fields.values() for x in v}
         self.assertEqual(used, played)
+
+    def test_original_countries_hear_ra2s_trait_sounds(self):
+        # Yuri's control, the superweapons, chronoshifts and the buildings only they field played the standalone game's
+        # stand-ins under RA2's file names.
+        sounds = self.summary['traitSounds']
+        ea = lambda *clips: [V.AUDIO_PREFIX + c for c in clips]
+        self.assertEqual(sounds['yuri']['MindController.Sounds'], ea('iyurat1a.wav'))
+        self.assertEqual(sounds['tesla']['AttackTesla.ChargeAudio'], ea('btespow.wav'))
+        self.assertEqual(sounds['nairon']['OriginalRa2IronCurtainPower@retail.OnFireSound'], ea('siroon.wav'))
+        self.assertEqual(sounds['gacsph']['OriginalRa2ChronoshiftPower@retail.EndChargeSound'], ea('schropen.wav'))
+        for building in ('atesla', 'gapill', 'gaweat'):
+            self.assertEqual(sounds[building]['Building.BuildSounds'], ea('uplace.wav'), building)
+            self.assertEqual(sounds[building]['Sellable.SellSounds'], ea('uselbuil.wav'), building)
+            self.assertTrue(sounds[building]['SoundOnDamageTransition.DamagedSounds'], building)
+        for actor in sounds:
+            self.assertNotRegex(actor, r'^r2', actor)  # the modern countries keep their own
+            for field in sounds[actor]:
+                self.assertFalse(field.endswith('.DestroyedSounds'), f'{actor}: {field}')  # the crumble is the deaths'
+        # A trait that a modern faction's copy of a shared actor enables too keeps the project's sound.
+        for actor, fields in self.summary['sharedTraitSounds'].items():
+            self.assertFalse(set(fields) & set(sounds.get(actor, {})), actor)
+        self.assertIn('Building.BuildSounds', self.summary['sharedTraitSounds']['gapile'])
+
+    def test_a_building_cries_once(self):
+        # A building's death weapon fires on every cell of its footprint: RA2's cry is the twin's Report (played once,
+        # at its centre), never a warhead; its own crumble left SoundOnDamageTransition for the project's twin weapon.
+        deaths = self.summary['deaths']
+        for twin in self.summary['deathWeapons']:
+            self.assertIsNone(self.weapons[twin].get('Warhead@' + V.DEATH_CONDITION), twin)
+        for actor in ('gapile', 'gapowr', 'napowr', 'nahand', 'gacnst'):
+            cries = [s for s in deaths[actor] if s['die']]
+            self.assertEqual(len(cries), 1, actor)
+            report = self.clips(self.weapons[cries[0]['twin']].val('Report'))
+            self.assertEqual(report, cries[0]['die'], actor)
+            crumble = cries[0]['crumble']
+            self.assertEqual(crumble['from'], 'SoundOnDamageTransition.DestroyedSounds', actor)
+            self.assertNotIn('removedBy', crumble, actor)
+            self.assertIsNotNone(self.rules[actor].get('SoundOnDamageTransition').get('-DestroyedSounds'), actor)
+            project = self.rules[actor].get(cries[0]['trait'])
+            self.assertEqual(project.val('Weapon'), crumble['projectTwin'], actor)
+            # The modern countries hear the same crumble as before, once.
+            self.assertEqual(self.clips(self.weapons[crumble['projectTwin']].val('Report')), crumble['sounds'], actor)
+            self.assertFalse([x for x in crumble['sounds'] if 'web/ea' in x], actor)
+        self.assertEqual(self.clips(self.weapons[deaths['gapowr'][0]['crumble']['projectTwin']].val('Report')),
+                         ['bpowdiea.wav', 'bpowdieb.wav'])
+        # amradr inherits gaairc, whose removal it takes over: its own would be refused by the engine.
+        amradr = next(s for s in deaths['amradr'] if s['die'])
+        self.assertEqual(amradr['crumble']['removedBy'], 'inherited')
+        self.assertIsNone((self.rules['amradr'].get('SoundOnDamageTransition') or E.Node('x')).get('-DestroyedSounds'))
 
     def test_original_countries_die_with_ra2s_own_sounds(self):
         # The owner heard the standalone game's synthesised explosion when a tank or a building died (20 Nov 2026).
@@ -629,7 +719,8 @@ class GeneratedVoices(unittest.TestCase):
                 self.assertEqual(set(E.split_list(grant.val('Factions'))) - set(E.COUNTRIES), set(), actor)
             for s in specs:
                 twin = self.weapons[s['twin']]
-                sounds = [x for w in twin.children if E.trait_type(w.key) == 'Warhead' for x in E.split_list(w.val('ImpactSounds') or '')]
+                sounds = self.clips(twin.val('Report')) + [
+                    x for w in twin.children if E.trait_type(w.key) == 'Warhead' for x in E.split_list(w.val('ImpactSounds') or '')]
                 self.assertTrue(sounds, s['twin'])
                 for x in sounds:
                     self.assertTrue(x.startswith(V.AUDIO_PREFIX), f'{s["twin"]}: {x}')
@@ -639,7 +730,7 @@ class GeneratedVoices(unittest.TestCase):
     def test_weapons_overlay_sets_sounds_only(self):
         fields = set(V.WEAPON_SOUND_FIELDS)
         for key, w in self.weapons.items():
-            if key in self.summary.get('deathWeapons', {}):
+            if key in self.summary.get('deathWeapons', {}) or key in self.summary.get('crumbleWeapons', {}):
                 continue  # a whole twin of a death weapon, checked against its source by the generator
             for c in w.children:
                 if E.trait_type(c.key) == 'Warhead':

@@ -262,7 +262,19 @@ because it ships no EA audio. `tools/data/ra2-death-sounds.json` records what RA
 crumble. The death weapons are shared with the modern factions, so each gets a twin (`ea-death-*`, in `ea-weapons.yaml`)
 that differs only in its sounds (the generator checks it), and the death trait a twin behind the sound-only condition
 `ea-death` for the nine countries (`ea-audio.yaml`); the wrecks of aircraft only they field take it directly. The modern
-factions keep the project's death sounds.
+factions keep the project's death sounds. The cry is the twin's `Report`, which the engine plays once per death: a
+building's death weapon fires on every cell of its footprint, so a warhead would cry nine times. A building's own crumble
+(`SoundOnDamageTransition` `DestroyedSounds`, which has no condition to tell owners apart) moves into a twin of the
+project's death weapon (`project-death-*`, its `Report`), so the modern countries hear it once as before and the original
+countries hear RA2's cry alone.
+
+Their other sounds are RA2's too: every trait field that names one of the standalone game's stand-ins
+(`mods/rtsai/standalone/audio`, synthesised by RTSAI-Mod `tools/standalone-sfx.py` under each EA file name the rules
+expected) names the bundled original, where RA2 has it, on actors only the nine countries field and on traits only they
+enable (`ea-art`): Yuri's control, the Tesla coil's and Prism's charge, the superweapons, chronoshifts, cloaking,
+take-offs, paradrops, and placing, selling and damaging the buildings only they build (`traitSounds` in `ea-audio.json`).
+The base buildings, the G.I. and the MCV are shared with the modern countries, and `Building`, `SoundOnDamageTransition`
+and their other sound traits have no condition to tell owners apart: they keep the stand-ins (`sharedTraitSounds`).
 
 521 clips, 6.1 MB raw, kept exactly as Westwood stored them (IMA-ADPCM WAV, which the engine decodes), fetched one by
 one when first played. EVA, building sounds and music are unchanged (project audio).
