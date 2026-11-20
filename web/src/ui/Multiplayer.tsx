@@ -54,7 +54,7 @@ function MatchBar({ view, session }: { view: SessionView; session: MultiplayerSe
     <div className="mp-match-bar">
       <span className="mp-match-name"><Users size={13} aria-hidden="true" />Multiplayer</span>
       <button type="button" className="mp-match-connection" aria-label="Connection details" aria-expanded={details} onClick={() => setDetails(!details)}>
-        <span className={`mp-dot ${stopped ? 'offline' : waiting ? 'waiting' : 'online'}`} /><span>{stopped ? 'Match stopped' : waiting ? 'Waiting' : 'Connected'}</span><ChevronDown size={12} aria-hidden="true" />
+        <span className={`mp-dot ${stopped ? 'offline' : waiting ? 'waiting' : 'online'}`} /><span>{stopped ? (view.error ? 'Match stopped' : 'Match over') : waiting ? 'Waiting' : 'Connected'}</span><ChevronDown size={12} aria-hidden="true" />
       </button>
     </div>
     {details && <div className="mp-popover mp-network-details">
@@ -68,7 +68,7 @@ function MatchBar({ view, session }: { view: SessionView; session: MultiplayerSe
       <span className="mp-match-waiting-icon" aria-hidden="true"><Hourglass size={16} /></span>
       <div><strong>{waitingText(view)}…</strong><p>The match is paused for everyone and continues as soon as {view.waitingFor.includes(view.you) && view.waitingFor.length === 1 ? 'it has' : 'they answer'}. {view.waiting >= 5 ? `No answer for ${view.waiting} seconds; it stops at 15.` : ''}</p></div>
     </div>}
-    {stopped && <div role="alert" className="mp-popover mp-match-error">
+    {stopped && view.error && <div role="alert" className="mp-popover mp-match-error">
       <span className="mp-match-error-icon" aria-hidden="true"><TriangleAlert size={16} /></span>
       <div><strong>Match stopped</strong><p>{view.error}</p><GameButton variant="primary" size="sm" onClick={() => session.dismiss()}>Return to menu</GameButton></div>
     </div>}

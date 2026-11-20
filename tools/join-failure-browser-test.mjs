@@ -92,7 +92,9 @@ try {
   assert.equal(p.host_nat, 'new port per server');
   assert(['new', 'checking', 'failed', 'disconnected'].includes(p.ice), p.ice);
   assert(p.seconds >= 2 && p.seconds <= 6, `seconds ${p.seconds}`);
-  assert.match(r.view.error, /Couldn't connect/);
+  // However the failure is noticed (the wait runs out, or ICE gives up first), the guest reads what to try next.
+  assert.match(r.view.error, /Couldn't connect directly to your host.*try another network/);
+  assert.match(p.shown, /Couldn't connect directly/);
   noAddress(p);
   console.log('PASS direct line never opens:', JSON.stringify(p));
 

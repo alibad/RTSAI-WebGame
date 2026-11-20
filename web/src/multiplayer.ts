@@ -48,6 +48,11 @@ const idle: SessionView = { stage: 'idle', host: false, room: '', you: 0, lobby:
 const ANSWER_WAIT_MS = 45000, OPEN_WAIT_MS = 20000, HELLO_WAIT_MS = 20000;
 /** A running match that has not moved for this long says so on screen (the line itself gives up after 15 s). */
 const STALL_NOTICE_MS = 1500;
+/** What a guest reads when no direct line opens: ICE gave up (usually after about 15 s) or the wait ran out. */
+const NO_DIRECT_LINE = "Couldn't connect directly to your host. Some networks block direct connections; try another network, such as a phone hotspot.";
+/** What the host reads when a friend's browser answered the invite but no direct line opened (the host can't tell a
+ *  blocked network from a friend who gave up, so it claims neither). */
+const FRIEND_BLOCKED = 'A friend opened your invite but didn’t get through. If it happens again, they should try another network, such as a phone hotspot.';
 /** The network steps of a guest's join, as the failure report names them. */
 const JOIN_STEPS = { route: 'no connection route found', answer: 'the host never answered', direct: 'the direct line never opened' };
 type JoinStep = keyof typeof JOIN_STEPS;
@@ -100,7 +105,10 @@ export class MultiplayerSession {
       this.set({ frame: m.frame, ...(this.view.waiting ? { waiting: 0, waitingFor: [] } : {}) });
     });
     // Leaving the world from the game menu leaves the match too.
-    useStore.subscribe((s, prev) => { if (s.phase === 'setup' && prev.phase !== 'setup' && this.view.stage === 'playing') this.leave(false); });
+    // A match another player already ended ("stopped") is cleared the same way, so it isn't found again at the menu.
+    useStore.subscribe((s, prev) => { if (s.phase === 'setup' && prev.phase !== 'setup' && (this.view.stage === 'playing' || this.view.stage === 'stopped')) this.leave(false); });
+    // So does closing or reloading the tab: the others are told at once, not after 15 seconds of silence.
+    window.addEventListener('pagehide', () => { if (this.view.stage === 'lobby' || this.view.stage === 'playing') this.leave(false); });
   }
 
   subscribe = (listener: () => void) => { this.listeners.add(listener); return () => { this.listeners.delete(listener); }; };
@@ -195,7 +203,7 @@ export class MultiplayerSession {
       if (this.view.stage !== 'playing' || !this.lock) throw Error('Match has not started');
       this.lock.receive(client, m.events as PeerEvent[]);
       for (const g of this.seated()) if (g !== guest) this.trySend(g.peer, { kind: 'events', client, events: m.events });
-    } else if (m.kind === 'leave') this.dropGuest(guest, 'left');
+    } else if (m.kind === 'leave') this.dropGuest(guest, guest.seated ? 'left' : '');
     else if (m.kind === 'stop' && this.view.stage === 'playing') this.stop(typeof m.reason === 'string' ? m.reason.slice(0, 300) : `Player ${client} stopped the match.`);
     else if (m.kind === 'stop') this.dropGuest(guest, 'left');
     else throw Error('Unknown message');
@@ -217,18 +225,27 @@ export class MultiplayerSession {
     clearTimeout(guest.timer); guest.peer.close();
     this.guests = this.guests.filter(g => g !== guest);
     this.refreshMedia();
-    if (!client) return;
+    if (!client) {
+      // Never seated: its browser reached the matchmaker, but no direct line opened. (A guest that was turned away
+      // comes here without a reason: it was told why.)
+      if (reason && this.view.stage === 'lobby') this.set({ status: FRIEND_BLOCKED, chat: [...this.view.chat, { id: crypto.randomUUID(), author: '', text: FRIEND_BLOCKED }].slice(-100) });
+      return;
+    }
     if (this.view.stage === 'playing') return this.stop(`Player ${client} ${reason === 'left' ? 'left the match' : 'lost connection'}. The match stopped.`);
     if (this.view.stage !== 'lobby') return;
     this.seats = this.seats.filter((_, i) => i !== client - 1);
     this.publish(false, `Player ${client} ${reason === 'left' ? 'left' : 'disconnected'}.`);
   }
 
-  /** New lobby revision to everyone. Settings changes clear readiness; joins and leaves do not. */
+  /**
+   * The lobby to everyone. Settings changes clear readiness and start a new revision; joins, leaves and a player's
+   * Ready do not. A guest's Ready names the revision it agreed to, so one that crosses a settings change is not
+   * applied, while one that crosses another player's join or Ready still counts (it used to be dropped silently).
+   */
   private publish(clearReady: boolean, note?: string) {
     const lobby = this.view.lobby!;
     if (clearReady) this.seats = this.seats.map((s, i) => ({ ...s, ready: i === 0 }));
-    const next = { ...lobby, revision: lobby.revision + 1, players: this.seats };
+    const next = { ...lobby, revision: lobby.revision + (clearReady ? 1 : 0), players: this.seats };
     this.set({ lobby: next, ...(note ? { chat: [...this.view.chat, { id: crypto.randomUUID(), author: '', text: note }].slice(-100) } : {}) });
     for (const g of this.seated()) this.sendLobby(g);
   }
@@ -315,7 +332,7 @@ export class MultiplayerSession {
       direct.onOpen = () => { opened(); if (this.media) void direct.share(this.media); };
       direct.onClose = reason => {
         if (turn !== this.generation) return;
-        const shown = this.view.stage === 'connecting' ? "Couldn't connect to your host." : `Lost connection to the host. ${reason}`;
+        const shown = this.view.stage !== 'connecting' ? `Lost connection to the host. ${reason}` : step === 'direct' ? NO_DIRECT_LINE : "Couldn't connect to your host.";
         failed(shown); this.fail(shown);
       };
       direct.onMessage = m => { try { this.fromHost(m); } catch (e) { this.stop(message(e)); } };
@@ -330,7 +347,7 @@ export class MultiplayerSession {
       this.set({ status: 'Connecting directly…' });
       step = 'direct'; since = Date.now();
       await direct.accept(answer);
-      const timeout = sleep(OPEN_WAIT_MS).then(() => { throw Error("Couldn't connect directly to your host. Some networks block direct connections; try another network, such as a phone hotspot."); });
+      const timeout = sleep(OPEN_WAIT_MS).then(() => { throw Error(NO_DIRECT_LINE); });
       await Promise.race([open, timeout]); this.guard(turn);
       step = null;
       direct.send({ kind: 'hello', version: this.version });
@@ -466,12 +483,15 @@ export class MultiplayerSession {
   stop(reason: string, notify = true) {
     if (this.view.stage === 'idle' || this.view.stage === 'stopped') return;
     const playing = this.view.stage === 'playing';
+    // Once this player's result is on screen (Victory or Defeat), the other player going back to the menu is how a
+    // match ends, not something that went wrong: the line closes without an error over the result.
+    const win = useStore.getState().ui?.win, decided = playing && (win === 'Won' || win === 'Lost') && !/Synchronization mismatch|Invalid peer|Conflicting peer/.test(reason);
     if (/Synchronization mismatch|Invalid peer|Conflicting peer/.test(reason)) track('game_error', { where: 'multiplayer', message: reason.slice(0, 200) });
     if (notify) for (const p of this.peers()) this.trySend(p, { kind: 'stop', reason });
     if (playing) { this.game.cancelPendingStart(); this.game.client.send({ type: 'peerStop', error: reason }); }
     this.closeAll();
     // Failing to get in at all returns to the start screen; an ended lobby or match stays "stopped" until dismissed.
-    this.set({ stage: playing || this.view.stage === 'lobby' ? 'stopped' : 'idle', error: reason, status: '' });
+    this.set({ stage: playing || this.view.stage === 'lobby' ? 'stopped' : 'idle', error: decided ? '' : reason, status: '', waiting: 0, waitingFor: [] });
   }
 
   private fail(reason: string) {

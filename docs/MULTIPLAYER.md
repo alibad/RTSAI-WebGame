@@ -63,11 +63,24 @@ in-match chat (Enter) and an optional camera and microphone are included.
   checks the match's version before joining, and the host checks again over the direct channel.
 - **Disconnects.** A guest leaving the lobby frees the seat. During a match, anyone leaving or going silent for
   15 seconds stops the match for everyone with the reason on screen. There is no reconnection.
+  - Closing or reloading the tab says goodbye first (`pagehide`), so the others read "Player 3 left the match" at
+    once. Before 20 Nov 2026 a closed tab was only noticed by the 15-second silence check.
+  - Once a player's own result is on screen (Victory or Defeat), the other player going back to the menu ends the
+    match quietly: the bar reads "Match over", with no error over the result.
+- **Ready.** A guest's Ready names the lobby settings it agreed to. A settings change (map, AI, anyone's nation or
+  team) clears everyone's Ready; a join, a leave or another player's Ready does not, and no longer swallows a Ready
+  that was on its way.
 - **A match that stands still says so.** When no frame has played for 1.5 seconds, the match bar turns amber and
   names whose orders the match is waiting for ("Waiting for Player 2…"), and from 5 seconds on counts toward the
   15 at which the line gives up.
 - **Networks.** Public STUN servers (Google, Cloudflare) find routes. There is no TURN relay. Some strict networks
-  cannot connect directly, and the game then suggests trying another network.
+  cannot connect directly.
+  - The guest then reads "Couldn't connect directly to your host. Some networks block direct connections; try
+    another network, such as a phone hotspot", whichever way the failure is noticed. (Until 20 Nov 2026 that advice
+    showed only when the 20-second wait ran out; the browser usually gives up first, and the guest read just
+    "Couldn't connect to your host".)
+  - The host's lobby says "A friend opened your invite but didn't get through…" instead of only waiting for
+    friends. The host can't tell a blocked network from a friend who gave up, so it claims neither.
 - **Failed joins are reported** (since 1 Nov 2026), so we learn how many players a relay would help. A guest whose
   join fails on the network sends one `game_error` event: `where: network`, which the weekly digest groups under
   network errors. Its message names the step:
