@@ -25,8 +25,11 @@ try {
     ], options: { explored: 'True', fog: 'False', crates: 'False', shortgame: 'False', startingunits: 'none' },
     spawns: [{ type: 'dog', player: 0, x: 24, y: 70 }, { type: 'e1', player: 0, x: 28, y: 70 },
       { type: 'gacnst', player: 0, x: 20, y: 60 }, { type: 'nacnst', player: 1, x: 70, y: 60 }] };
-    if (profile === 'public-classic') scenario.spawns.forEach(s => { s.y -= 30; if (s.player === 1) s.x = 60; });
-    await page.evaluate(s => window.game.start(JSON.stringify(s)), scenario);
+    // Classic has been the real Classic game since 15 October 2026: its own maps, countries and units. The isometric
+    // scenario above cannot start there, so Classic plays the gate's Classic skirmish and orders one of its own soldiers.
+    const classic = profile === 'public-classic';
+    const start = classic ? JSON.parse(fs.readFileSync(new URL('../scenarios/skirmish-classic.json', import.meta.url), 'utf8')) : scenario;
+    await page.evaluate(s => window.game.start(JSON.stringify(s)), start);
     await page.waitForFunction(() => ['playing', 'error'].includes(window.store.getState().phase), null, { timeout: 180000 });
     assert.equal(await page.evaluate(() => window.store.getState().phase), 'playing');
     await page.evaluate(() => {
@@ -37,11 +40,13 @@ try {
       g.client.on('ordered', m => window.orderAudio.orders.push(m.count));
       g.client.send({ type: 'view', x0: -100000, y0: -100000, x1: 100000, y1: 100000 });
     });
-    await page.waitForFunction(() => window.game.client.cur?.actors.some(a => window.game.client.strings[a.type] === 'dog'));
+    const units = classic ? ['e1', 'e3', 'dog', '1tnk', '2tnk', 'jeep'] : ['dog'];
+    await page.evaluate(names => { window.orderUnit = () => { const c = window.game.client, cur = c.cur; return cur?.actors.find(a => a.owner === cur.header.localPlayer && names.includes(c.strings[a.type])); }; }, units);
+    await page.waitForFunction(() => !!window.orderUnit(), null, { timeout: 60000 });
     for (let i = 0; i < 12; i++) {
       const ordered = await page.evaluate(async i => {
-        const g = window.game, dog = g.client.cur.actors.find(a => g.client.strings[a.type] === 'dog');
-        if (!dog) return { error: 'Dog missing from current view', actors: g.client.cur.actors.map(a => ({ ...a, name: g.client.strings[a.type] })), cam: g.cam };
+        const g = window.game, dog = window.orderUnit();
+        if (!dog) return { error: 'The unit to order is missing from the current view', actors: g.client.cur.actors.map(a => ({ ...a, name: g.client.strings[a.type] })), cam: g.cam };
         await g.client.request({ type: 'select', ids: [dog.id], additive: false });
         g.lookAt(dog.sx, dog.sy);
         g.client.send({ type: 'click', x: dog.sx + (i % 2 ? -100 : 100), y: dog.sy, button: 2, mods: 0, t: performance.now() });

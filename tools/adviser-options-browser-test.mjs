@@ -41,6 +41,7 @@ try {
     await page.locator('.sk-cc').screenshot({ path: `${out}/${name}-off.png` });
     await toggle.click(); assert.equal(await toggle.getAttribute('aria-checked'), 'true');
     await page.getByRole('button', { name: 'Settings', exact: true }).click();
+    await page.getByRole('tab', { name: 'Adviser', exact: true }).click(); // the adviser setting has its own tab
     const orders = page.getByRole('radiogroup', { name: 'Adviser orders', exact: true });
     await orders.scrollIntoViewIfNeeded();
     const dialog = await page.getByRole('dialog').boundingBox();
