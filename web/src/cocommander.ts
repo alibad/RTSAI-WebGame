@@ -11,6 +11,7 @@ import { nextAdvice, assessThreat, type AdviserAdvice, type AdviserThreat, type 
 import { MissionMemory, missionAdvice, parseMissionMap, type MissionAdvice, type MissionMap, type MissionSpec } from "./mission-adviser";
 import type { AdviserActionReceipt } from "./sim/adviser-rpc";
 import adviserTree from "./adviser-tree.json";
+import { adviserTreeFor } from "./adviser-tree";
 import { track } from "./net/track";
 import { companionDeveloperTools } from "./companion-policy";
 
@@ -287,12 +288,12 @@ export class CoCommander {
   private browserChoice(observation: AdviserObservation): AdviserAdvice | null {
     const s = store.get(), live = s.ui?.mission;
     const spec = live ? s.setup?.missions?.find((m) => m.id === live.id) as unknown as MissionSpec | undefined : undefined;
-    if (!live || !spec) return nextAdvice({ ...observation, techTree: adviserTree });
+    if (!live || !spec) return nextAdvice({ ...observation, techTree: adviserTreeFor(observation) });
     if (this.mission?.id !== live.id) this.loadMission(live.id);
     const map = this.mission?.map;
     // The map is read once, a moment after the start; without its places the skirmish adviser still runs the base.
     if (!map) return null;
-    if (!map.actors.length) return nextAdvice({ ...observation, techTree: adviserTree });
+    if (!map.actors.length) return nextAdvice({ ...observation, techTree: adviserTreeFor(observation) });
     return missionAdvice(observation, { spec, live, map, memory: this.mission!.memory, techTree: adviserTree, catalog: s.catalog });
   }
 
