@@ -1,0 +1,102 @@
+{
+  "by": "battle review session, 20 Nov 2026",
+  "build": { "label": "live /play, released 16 Nov 2026", "page": "a6e9eea", "runtime": "rt-93fcc127b22e", "data": "data-ada60803287d" },
+  "clips": [
+    { "id": "battles-america-russia-tanks", "title": "Tank line against tank line",
+      "why": "Do the tanks close in, turn their turrets, fire, and leave a proper death when they go?",
+      "classes": ["vehicle"], "mode": { "id": "attack-move", "label": "Attack-move" },
+      "a": { "faction": "america", "units": [{ "id": "mtnk", "count": 6 }, { "id": "fv", "count": 2 }] },
+      "b": { "faction": "russia", "units": [{ "id": "htnk", "count": 6 }, { "id": "htk", "count": 2 }] } },
+
+    { "id": "battles-england-iraq-dugin", "title": "Dug-in G.I.s against a conscript rush",
+      "why": "Do the G.I.s deploy behind sandbags and hold, and do infantry on both sides fall properly?",
+      "classes": ["infantry"], "mode": { "id": "deployed", "label": "Deployed" },
+      "a": { "faction": "england", "units": [{ "id": "e1", "count": 8, "order": "hold", "deploy": true }, { "id": "snipe", "count": 2, "order": "hold" }] },
+      "b": { "faction": "iraq", "units": [{ "id": "e2", "count": 12 }, { "id": "shk", "count": 3 }] } },
+
+    { "id": "battles-cuba-france-siege", "camera": "all", "title": "V3 launchers shell a gun line",
+      "why": "Do the rockets launch, arc and land with a blast, and do the Grand Cannon and Prism Tower answer?",
+      "classes": ["vehicle", "defence"], "mode": { "id": "siege", "label": "Long-range siege" }, "gap": 26, "seconds": 34,
+      "a": { "faction": "cuba", "units": [{ "id": "v3", "count": 4 }, { "id": "htnk", "count": 2 }] },
+      "b": { "faction": "france", "units": [{ "id": "gapill", "count": 2 }, { "id": "atesla", "count": 1 }, { "id": "gtgcan", "count": 1 }, { "id": "gapowr", "count": 2, "rows": 2 }] } },
+
+    { "id": "battles-korea-libya-airstrike", "title": "Black Eagles strike an armoured column",
+      "why": "Do the jets fly in and release their missiles, and does the flak answer in the air?",
+      "classes": ["aircraft", "vehicle"], "mode": { "id": "air-strike", "label": "Air strike" }, "gap": 22,
+      "a": { "faction": "korea", "units": [{ "id": "beag", "count": 4 }] },
+      "b": { "faction": "libya", "units": [{ "id": "htnk", "count": 4 }, { "id": "htk", "count": 2 }, { "id": "dtruck", "count": 1 }] } },
+
+    { "id": "battles-russia-germany-kirov", "title": "Kirov airships into an air defence",
+      "why": "Do Patriots and IFVs fire up at the airships, do the bombs fall and blast, and how does a Kirov die?",
+      "classes": ["aircraft", "defence"], "mode": { "id": "anti-air", "label": "Anti-air" }, "gap": 14, "seconds": 36,
+      "a": { "faction": "russia", "units": [{ "id": "zep", "count": 2 }] },
+      "b": { "faction": "germany", "units": [{ "id": "fv", "count": 3 }, { "id": "tnkd", "count": 2 }, { "id": "nasam", "count": 2 }, { "id": "gapowr", "count": 1 }] } },
+
+    { "id": "battles-america-cuba-naval", "title": "Destroyers against submarines",
+      "why": "Do the ships turn and fire on the water, do the submarines surface and torpedo, and how do ships sink?",
+      "classes": ["ship"], "mode": { "id": "naval", "label": "Naval" }, "map": "harbor-line", "centre": [32, 15], "gap": 16, "seconds": 34,
+      "a": { "faction": "america", "units": [{ "id": "dest", "count": 3, "rows": 3 }, { "id": "aegis", "count": 1 }] },
+      "b": { "faction": "cuba", "units": [{ "id": "sub", "count": 2, "rows": 2 }, { "id": "hyd", "count": 2, "rows": 2 }, { "id": "dred", "count": 1 }] } },
+
+    { "id": "battles-libya-france-mindcontrol", "title": "Yuri turns a tank platoon",
+      "why": "Does the mind control show its link, and do the taken tanks change side and fight their own?",
+      "classes": ["special", "infantry"], "mode": { "id": "special", "label": "Mind control" }, "gap": 10,
+      "a": { "faction": "libya", "units": [{ "id": "yuri", "count": 2 }, { "id": "htnk", "count": 2 }] },
+      "b": { "faction": "france", "units": [{ "id": "mtnk", "count": 4 }, { "id": "mgtk", "count": 1 }] } },
+
+    { "id": "battles-china-iran-armour", "title": "Modern armour: Qilin against Karrar",
+      "why": "The new tanks and rocket artillery: do they look right moving, firing and dying?",
+      "classes": ["vehicle"], "mode": { "id": "attack-move", "label": "Attack-move" }, "gap": 14,
+      "a": { "faction": "china", "units": [{ "id": "r2qilin", "count": 5 }, { "id": "r2mantis", "count": 1 }, { "id": "r2phl", "count": 2 }] },
+      "b": { "faction": "iran", "units": [{ "id": "r2karrar", "count": 5 }, { "id": "htk", "count": 1 }, { "id": "r2fajr", "count": 2 }] } },
+
+    { "id": "battles-iran-saudi-siege", "camera": "all", "title": "Fajr rockets on a Saudi strongpoint",
+      "why": "Do the rocket salvos fly and land on the towers, and do the towers and tanks answer?",
+      "classes": ["vehicle", "defence"], "mode": { "id": "siege", "label": "Long-range siege" }, "gap": 24, "seconds": 34,
+      "a": { "faction": "iran", "units": [{ "id": "r2fajr", "count": 4 }, { "id": "r2coast", "count": 1 }] },
+      "b": { "faction": "saudi", "units": [{ "id": "r2m1a2s", "count": 2 }, { "id": "r2saguard", "count": 2 }, { "id": "r2satow", "count": 2 }, { "id": "gapowr", "count": 1 }] } },
+
+    { "id": "battles-saudi-yemen-airstrike", "title": "F-15s and Apaches over technicals",
+      "why": "Do the jets and helicopters attack from the air, and do the ZU-23 guns fire back at them?",
+      "classes": ["aircraft", "vehicle"], "mode": { "id": "air-strike", "label": "Air strike" }, "gap": 22,
+      "a": { "faction": "saudi", "units": [{ "id": "r2f15sa", "count": 3 }, { "id": "r2ah64sa", "count": 2 }] },
+      "b": { "faction": "yemen", "units": [{ "id": "r2technical", "count": 4 }, { "id": "r2yzu", "count": 2 }, { "id": "r2yzunest", "count": 1 }, { "id": "napowr", "count": 1 }] } },
+
+    { "id": "battles-yemen-israel-drones", "title": "Drones and missiles into an air shield",
+      "why": "Do the interceptors shoot the drones down, and do the ones that get through hit something?",
+      "classes": ["aircraft", "defence"], "mode": { "id": "anti-air", "label": "Anti-air" }, "gap": 22, "seconds": 34,
+      "a": { "faction": "yemen", "units": [{ "id": "r2samad", "count": 4 }, { "id": "r2ymlr", "count": 2 }] },
+      "b": { "faction": "israel", "units": [{ "id": "r2merkava", "count": 2 }, { "id": "r2ilshield", "count": 2 }, { "id": "r2ilbattery", "count": 2 }, { "id": "gapowr", "count": 1 }] } },
+
+    { "id": "battles-turkey-lebanon-naval", "title": "A frigate group against fast boats",
+      "why": "The new ships: do they move on the water, fire guns and missiles, and sink properly?",
+      "classes": ["ship"], "mode": { "id": "naval", "label": "Naval" }, "map": "harbor-line", "centre": [32, 15], "gap": 16, "seconds": 34,
+      "a": { "faction": "turkey", "units": [{ "id": "r2poyraz", "count": 2, "rows": 2 }, { "id": "r2ege", "count": 2, "rows": 2 }, { "id": "r2marmara", "count": 1 }] },
+      "b": { "faction": "lebanon", "units": [{ "id": "r2hzskiff", "count": 3, "rows": 3 }, { "id": "r2hzmissileboat", "count": 2, "rows": 2 }] } },
+
+    { "id": "battles-lebanon-israel-ambush", "title": "Missile teams and FPV drones ambush armour",
+      "why": "Infantry that holds its ground: do the missiles and the small drones fly out and hit the tanks?",
+      "classes": ["infantry", "vehicle", "special"], "mode": { "id": "defence", "label": "Hold ground" }, "gap": 14,
+      "a": { "faction": "lebanon", "units": [{ "id": "r2hzrifle", "count": 8, "order": "hold" }, { "id": "r2hzat", "count": 3, "order": "hold" }, { "id": "r2hzfpv", "count": 3, "order": "hold" }] },
+      "b": { "faction": "israel", "units": [{ "id": "r2merkava", "count": 3 }, { "id": "r2namer", "count": 2 }, { "id": "r2ilrifle", "count": 6 }] } },
+
+    { "id": "battles-turkey-china-turrets", "title": "A turret line under assault",
+      "why": "Do the turrets turn and fire at the right targets, and do attackers die to them properly?",
+      "classes": ["defence", "vehicle", "infantry"], "mode": { "id": "defence", "label": "Hold ground" }, "gap": 16, "seconds": 32,
+      "a": { "faction": "turkey", "units": [{ "id": "r2trrifle", "count": 4, "order": "hold" }, { "id": "r2hisar", "count": 2 }, { "id": "r2boran", "count": 2 }, { "id": "gapowr", "count": 1 }] },
+      "b": { "faction": "china", "units": [{ "id": "r2qilin", "count": 4 }, { "id": "r2zbd", "count": 2 }, { "id": "r2cnrifle", "count": 6 }] } },
+
+    { "id": "battles-germany-cuba-focus", "title": "One order: everyone on the Apocalypse",
+      "why": "A direct attack order on one target: do all the guns turn on it, and does it die with weight?",
+      "classes": ["vehicle"], "mode": { "id": "direct", "label": "Direct attack" }, "gap": 12,
+      "script": [{ "at": 0.4, "do": "attack", "target": "apoc" }, { "at": 1.2, "do": "deselect" }],
+      "a": { "faction": "germany", "units": [{ "id": "tnkd", "count": 4, "order": "hold" }, { "id": "mtnk", "count": 3, "order": "hold" }] },
+      "b": { "faction": "cuba", "units": [{ "id": "apoc", "count": 2, "rows": 2 }, { "id": "htnk", "count": 2 }] } },
+
+    { "id": "battles-russia-korea-tesla", "title": "Tesla coils and troopers hold a line",
+      "why": "Do the coils charge and arc, do the troopers feed them, and do the tanks die to lightning properly?",
+      "classes": ["defence", "infantry"], "mode": { "id": "defence", "label": "Hold ground" }, "gap": 16, "seconds": 32,
+      "a": { "faction": "russia", "units": [{ "id": "shk", "count": 3, "order": "hold" }, { "id": "tesla", "count": 2 }, { "id": "napowr", "count": 1 }] },
+      "b": { "faction": "korea", "units": [{ "id": "mtnk", "count": 5 }, { "id": "fv", "count": 2 }] } }
+  ]
+}
