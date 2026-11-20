@@ -95,6 +95,8 @@ export class MultiplayerSession {
   private media: MediaStream | null = null;
   private unwatch: (() => void) | null = null;
   private pendingJoin: { cancel: () => Promise<void> } | null = null;
+  /** Host: who made the latest settings changes (1: the host), and the lobby revision before the first of them. */
+  private lastChanges = { client: 1, from: 0 };
   private lastFrameAt = 0;
   private stallWatch: ReturnType<typeof setInterval> | null = null;
 
@@ -192,10 +194,13 @@ export class MultiplayerSession {
       if (m.faction !== undefined) { if (!this.setup.factions.some(f => f.id === m.faction && !f.random)) throw Error('Invalid faction'); next.faction = m.faction as string; }
       if (m.team !== undefined) { if (!Number.isInteger(m.team) || (m.team as number) < 0 || (m.team as number) > MAX_TEAM) throw Error('Invalid team'); next.team = m.team as number; }
       this.seats = this.seats.map((s, i) => i === seat ? next : s);
-      this.publish(true);
+      this.publish(true, undefined, client);
     } else if (m.kind === 'ready' && this.view.stage === 'lobby') {
       if (typeof m.ready !== 'boolean') throw Error('Invalid ready state');
-      if (m.revision === lobby.revision) { this.seats = this.seats.map((s, i) => i === seat ? { ...s, ready: m.ready as boolean } : s); this.publish(false); }
+      // The settings this Ready agreed to are still the lobby's: nothing changed since, or only this player's own
+      // nation or team did (its Ready was sent after them, on the same ordered line).
+      const agreed = m.revision === lobby.revision || (this.lastChanges.client === client && Number.isInteger(m.revision) && (m.revision as number) >= this.lastChanges.from);
+      if (agreed) { this.seats = this.seats.map((s, i) => i === seat ? { ...s, ready: m.ready as boolean } : s); this.publish(false); }
       else this.sendLobby(guest);
     } else if (m.kind === 'chat') {
       const text = this.chatText(m.text);
@@ -242,11 +247,16 @@ export class MultiplayerSession {
   /**
    * The lobby to everyone. Settings changes clear readiness and start a new revision; joins, leaves and a player's
    * Ready do not. A guest's Ready names the revision it agreed to, so one that crosses a settings change is not
-   * applied, while one that crosses another player's join or Ready still counts (it used to be dropped silently).
+   * applied, while one that crosses another player's join or Ready still counts (it used to be dropped silently),
+   * and so does one sent right after that guest's own change of nation or team.
    */
-  private publish(clearReady: boolean, note?: string) {
+  private publish(clearReady: boolean, note?: string, by = 1) {
     const lobby = this.view.lobby!;
-    if (clearReady) this.seats = this.seats.map((s, i) => ({ ...s, ready: i === 0 }));
+    if (clearReady) {
+      // The latest run of settings changes that all came from one player starts at this revision.
+      if (this.lastChanges.client !== by) this.lastChanges = { client: by, from: lobby.revision };
+      this.seats = this.seats.map((s, i) => ({ ...s, ready: i === 0 }));
+    }
     const next = { ...lobby, revision: lobby.revision + (clearReady ? 1 : 0), players: this.seats };
     this.set({ lobby: next, ...(note ? { chat: [...this.view.chat, { id: crypto.randomUUID(), author: '', text: note }].slice(-100) } : {}) });
     for (const g of this.seated()) this.sendLobby(g);
@@ -532,6 +542,7 @@ export class MultiplayerSession {
   private reset() {
     this.closeAll();
     this.seats = [];
+    this.lastChanges = { client: 1, from: 0 };
     this.set({ ...idle });
     return this.generation;
   }
