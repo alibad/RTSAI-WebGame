@@ -3,7 +3,10 @@
 // caption strip saying what was recommended, what the engine answered, and what happened.
 //   node tools/arena/adviser-clip.mjs --scene opening|defend|scout|attack --out <folder>
 //        [--faction iran] [--enemy saudi] [--skill normal] [--map ra2-tournament-2B] [--seed 3001] [--url http://127.0.0.1:3464/]
-//        [--bundle <pack>] [--page <built page folder url>] [--name <file name>]
+//        [--bundle <pack>] [--adviser <adviser js>] [--name <file name>] [--label "after the fix"]
+// --adviser previews an adviser change on the live page: a bundle of web/src/adviser.ts and adviser-tree.ts as the
+// global __adviserPreview (esbuild --bundle --format=iife --global-name=__adviserPreview) takes the place of the
+// page's own skirmish adviser. Everything else, the engine included, is the live game.
 // Scenes: opening (the first cards up to the factory), defend (until "enemies are at your base" is applied), scout
 // (until the adviser says to scout), attack (until "attack the enemy base" is applied). The stretch before a scene's
 // moment plays fast and is shortened again in the cut; the moment itself plays near normal speed.
@@ -25,6 +28,7 @@ const url = opt("url", "http://127.0.0.1:3464/");
 const out = path.resolve(opt("out", "."));
 const name = opt("name", `adviser-${scene}-${faction}`);
 const bundle = opt("bundle", "");
+const adviser = opt("adviser", ""), label = opt("label", "");
 const FAST = Number(opt("fast", 6)), SHOW = Number(opt("show", 1.5));
 const maxGame = Number(opt("max", { opening: 300, defend: 720, scout: 720, attack: 1200 }[scene] ?? 600)); // game seconds
 fs.mkdirSync(out, { recursive: true });
@@ -54,6 +58,16 @@ const scenario = { map, seed, options, players: [{ slot: "Multi0", faction, colo
   { slot: "Multi1", faction: enemy, color: "FF4848", bot: s.bot, ...(s.handicap ? { handicap: s.handicap } : {}), ...(s.cash ? { cash: s.cash } : {}) }] };
 // The player's own choices on the setup screen: the built-in adviser on, Auto off (every order is applied by a click).
 await page.evaluate(() => { const cc = window.game.cc; cc.setEnabled(true); cc.setMode("browser"); cc.setAuto(false); });
+if (adviser) {
+  await page.addScriptTag({ path: path.resolve(adviser) });
+  const ok = await page.evaluate(() => {
+    const cc = window.game.cc, A = window.__adviserPreview;
+    if (typeof cc.browserChoice !== "function" || !A?.nextAdvice) return false;
+    cc.browserChoice = (observation) => A.nextAdvice({ ...observation, techTree: A.adviserTreeFor(observation) });
+    return true;
+  });
+  if (!ok) throw new Error("--adviser: the page's adviser could not be replaced");
+}
 await page.evaluate((sc) => window.game.start(JSON.stringify(sc)), scenario);
 await page.waitForFunction(() => ["playing", "error"].includes(window.store.getState().phase), null, { timeout: 300000, polling: 250 });
 if ((await page.evaluate(() => window.store.getState().phase)) !== "playing") throw new Error("did not start: " + await page.evaluate(() => window.store.getState().error));
@@ -84,7 +98,7 @@ await page.evaluate(({ title }) => {
     say(text, kind = "") { const l = document.getElementById("ac-lines"), d = document.createElement("div"); d.className = kind; d.textContent = text; l.append(d); while (l.children.length > 3) l.firstChild.remove(); },
     speed(text) { document.getElementById("ac-speed").textContent = text; },
   };
-}, { title: `Built-in adviser · ${factionName(faction)} (you) vs ${s.label} (${factionName(enemy)})` });
+}, { title: `Built-in adviser${label ? ` · ${label}` : ""} · ${factionName(faction)} (you) vs ${s.label} (${factionName(enemy)})` });
 
 const marks = []; // the cut: { from, to (ms of the recording), fast }
 let markFrom = Date.now() - t0, fastNow = true;
@@ -105,9 +119,10 @@ const click = async (locator) => {
   await page.mouse.down(); await sleep(90); await page.mouse.up();
   return true;
 };
-const kindOf = (text) => /to the attackers/.test(text) ? "defend" : /to the enemy base/.test(text) ? "attack" : /^Deploy/.test(text) ? "deploy" : /^Place/.test(text) ? "place" : /^Build/.test(text) ? "build" : /^Train/.test(text) ? "train" : /scout|explore/i.test(text) ? "scout" : "other";
+const kindOf = (text) => /to the attackers/.test(text) ? "defend" : /to the enemy base/.test(text) ? "attack" : /to scout|to find the enemy/.test(text) ? "scout" : /^Deploy/.test(text) ? "deploy" : /^Place/.test(text) ? "place" : /^Build/.test(text) ? "build" : /^Train/.test(text) ? "train" : /scout|explore/i.test(text) ? "scout" : "other";
 
-const MOMENT = { opening: null, defend: "defend", scout: "scout-talk", attack: "attack" }[scene];
+// scout: before the fix the adviser only talks ("scout-talk"); with --adviser the moment is its scouting card.
+const MOMENT = { opening: null, defend: "defend", scout: adviser ? "scout" : "scout-talk", attack: "attack" }[scene];
 const cards = [];
 let done = false, reason = "", momentAt = null, lastCardAt = Date.now();
 await setPace(scene !== "opening");
@@ -121,8 +136,9 @@ while (!done) {
   if (st.phase !== "playing") { reason = `the game left play (${st.phase})`; break; }
   if (gs > maxGame) { reason = `not reached by ${clock(maxGame)} of game time`; break; }
   // The adviser talks about scouting but has nothing to apply.
-  if (!st.pending && /haven't found the enemy base/.test(st.line)) {
-    if (MOMENT === "scout-talk" && momentAt === null) {
+  // Once there is an army (5:00): the adviser talks about scouting but has nothing to apply.
+  if (!st.pending && MOMENT === "scout-talk" && gs >= 300 && /haven't found the enemy base/.test(st.line)) {
+    if (momentAt === null) {
       momentAt = gs;
       await setPace(false);
       await say(`${clock(gs)} · Adviser: "${st.line}"`, "ask");
@@ -136,7 +152,6 @@ while (!done) {
       await sleep(3500);
       reason = "moment filmed"; break;
     }
-    continue;
   }
   // The opening waits for each building: those waits play fast.
   if (!st.pending) { if (scene === "opening" && !fastNow && Date.now() - lastCardAt > 1800) await setPace(true); continue; }
@@ -176,6 +191,6 @@ const seconds = Number(execFileSync("ffprobe", ["-v", "error", "-show_entries", 
 execFileSync("ffmpeg", ["-y", "-loglevel", "error", "-ss", String(Math.max(0, seconds - 8)), "-i", mp4, "-frames:v", "1", "-q:v", "3", path.join(out, `${name}.jpg`)]);
 fs.rmSync(tmp, { recursive: true, force: true });
 const result = { scene, name, faction, enemy, skill, map, seed, reached: reason === "moment filmed" || reason === "the factory is placed", reason, momentAtGameSeconds: momentAt === null ? null : Math.round(momentAt),
-  seconds: Math.round(seconds), video: mp4, cards, refused: cards.filter((c) => c.accepted === false).length, feed: all.filter((f) => f.kind !== "proposal").map((f) => `${f.kind}: ${f.text}`), errors, bundle: bundle || null, filmedAt: new Date().toISOString() };
+  seconds: Math.round(seconds), video: mp4, cards, refused: cards.filter((c) => c.accepted === false).length, feed: all.filter((f) => f.kind !== "proposal").map((f) => `${f.kind}: ${f.text}`), errors, bundle: bundle || null, adviser: adviser || null, filmedAt: new Date().toISOString() };
 fs.writeFileSync(path.join(out, `${name}.json`), JSON.stringify(result, null, 1));
 console.log("RESULT " + JSON.stringify({ ...result, feed: result.feed.length, cards: cards.length }));

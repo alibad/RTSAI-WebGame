@@ -52,7 +52,7 @@ function side(r, k) {
   const trickles = visits.filter((v) => v.peak <= 2).length;
   // Money: starting cash and any difficulty bonus, plus everything earned, less what stands on the map (beyond the
   // free start) and what was lost. Selling, repairs and half-built items make it an estimate.
-  const start = Number(r.cash ?? 5000) + (SKILLS[skill]?.cash ?? 0);
+  const start = Number(r.cash ?? 5000); // a difficulty's extra credits arrive as income, so "earned" already has them
   const startValue = minutes[0]?.value ?? 0;
   const bank = r.timeline.map((e) => { const m = minutes.findLast((x) => x.game * TPS <= e.tick) ?? minutes[0]; return { t: e.tick / TPS, bank: start + e.p[k][5] - Math.max(0, (m?.value ?? 0) - startValue) - e.p[k][2] }; });
   const bankPeak = bank.reduce((b, x) => (x.bank > (b?.bank ?? -1e9) ? x : b), null);
