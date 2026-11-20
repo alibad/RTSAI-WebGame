@@ -13,18 +13,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
-
-/** Difficulties: the skirmish screen's AI profiles, and the Battle simulator's skills (web/src/sandbox.ts AI_SKILLS). */
-export const SKILLS = {
-  normal: { label: "Normal AI", where: "skirmish and simulator", bot: "normal" },
-  easy60: { label: "Easy AI (60% firepower)", where: "skirmish", bot: "medium" },
-  rush: { label: "Rush AI", where: "skirmish", bot: "rush" },
-  turtle: { label: "Turtle AI", where: "skirmish", bot: "turtle" },
-  naval: { label: "Naval AI", where: "skirmish", bot: "naval" },
-  easy: { label: "Easy", where: "simulator", bot: "normal", handicap: 50 },
-  hard: { label: "Hard", where: "simulator", bot: "rush", cash: 5000 },
-  brutal: { label: "Brutal", where: "simulator", bot: "rush", cash: 15000 },
-};
+import { SKILLS } from "./skirmish-skills.mjs";
 
 const repo = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 const argv = process.argv.slice(2);
@@ -75,9 +64,10 @@ try {
   // What everything costs and which queue makes it, for reading the census afterwards.
   const catalogFile = path.join(out, "catalog.json");
   if (!fs.existsSync(catalogFile)) {
-    const catalog = await page.evaluate(() => window.game.command({ cmd: "units" })).catch(() => null);
+    // units: name, label, queue, kind, cost; rosters: faction -> what its player can build.
+    const catalog = await page.evaluate(() => window.game.catalog()).catch(() => null);
     fs.mkdirSync(out, { recursive: true });
-    if (catalog && !catalog.error) fs.writeFileSync(catalogFile, JSON.stringify({ catalog, factions: setup.factions, bots: setup.bots }));
+    if (catalog?.units) fs.writeFileSync(catalogFile, JSON.stringify({ units: catalog.units.map((u) => ({ name: u.name, label: u.label, queue: u.queue, kind: u.kind, cost: u.cost, combat: u.combat, modern: u.modern })), rosters: catalog.rosters, factions: setup.factions, bots: setup.bots }));
   }
   await page.evaluate((v) => window.game.client.send({ type: "speed", speed: v }), speed);
 
