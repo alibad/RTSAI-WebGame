@@ -142,6 +142,10 @@ namespace OpenRA.WebSim
 
 			public void Render(WorldRenderer wr)
 			{
+				// A batch of its own, before and after: colour quads otherwise share the sprite batch they fall into, and
+				// the page skips a whole captured batch when one of that batch's sprite sheets has not reached it yet
+				// (a tower's beam vanished while its support beams and hit flare drew, 20 Nov 2026).
+				Game.Renderer.Flush();
 				var cr = Game.Renderer.WorldRgbaColorRenderer;
 				var a = wr.Screen3DPosition(from);
 				var b = wr.Screen3DPosition(to);
@@ -178,6 +182,8 @@ namespace OpenRA.WebSim
 					Glow(cr, b, r * 0.38f, Tint(1f, burst), Tint(0.7f, 0f));
 					Streak(cr, b, new Vector3(r * 1.5f * burst, 0, 0), r * 0.12f, Tint(0.9f, 0.6f * burst), Tint(0.4f, 0f));
 				}
+
+				Game.Renderer.Flush();
 			}
 
 			static void Strip(RgbaColorRenderer cr, Vector3 a, Vector3 b, Vector3 n, float half, Color centre, Color edge)
