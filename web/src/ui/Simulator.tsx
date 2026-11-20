@@ -5,9 +5,9 @@
 
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { createPortal } from "react-dom";
-import { Anchor, ArrowLeft, Building2, Castle, Diamond, Eraser, EyeOff, Map as MapIcon, MousePointerClick, Pause, Pencil, Plane, Play, Radio, Redo2, RotateCcw, Shield, ShieldCheck, SkipBack, Sparkles, StepForward, Swords, Target, Trash2, Truck, Undo2, Users, X } from "lucide-react";
+import { Anchor, ArrowLeft, Building2, Castle, Diamond, Eraser, EyeOff, Map as MapIcon, MousePointerClick, Pause, Pencil, Plane, Play, Redo2, RotateCcw, Shield, ShieldCheck, SkipBack, SkipForward, Sparkles, Split, StepForward, Swords, Target, Trash2, Truck, Undo2, Users, X } from "lucide-react";
 import type { Game } from "../game";
-import { AI_SKILLS, type AiSkill, type Sandbox, type SandboxOrder, type SimUnit } from "../sandbox";
+import { AI_SKILLS, battleStats, type AiSkill, type Sandbox, type SandboxOrder, type SimUnit } from "../sandbox";
 import { planBattle } from "../battle-plan";
 import { useStore } from "../store";
 import { developerTools } from "../developer-tools";
@@ -226,7 +226,7 @@ function EditPanel({ game, sandbox, editMap }: { game: Game; sandbox: Sandbox; e
 
 /** The battle's score while it runs: each side's survivors and health, shots and kills. */
 function Score() {
-  const stats = useStore((s) => s.ui?.sandbox);
+  const stats = useStore(battleStats);
   const st = useStore((s) => s.sandbox)!;
   return (
     <div className="sim-score">
@@ -246,22 +246,33 @@ function Score() {
   );
 }
 
+/**
+ * The battle's timeline. Its right end is now: the battle still being fought (a red "Live" mark). Anywhere left of it
+ * shows that moment of the battle (sandbox.ts scrub); Play runs on from there into the live battle, "Jump to now" goes
+ * straight back, and "Play from here" starts a new battle from the moment on screen.
+ */
 function Timeline({ game, sandbox }: { game: Game; sandbox: Sandbox }) {
   const st = useStore((s) => s.sandbox)!;
   const tick = useStore((s) => s.perf.tick);
   const verify = useStore((s) => s.verify);
+  const [starting, setStarting] = useState(false);
   const len = st.recordLen;
   const pos = st.replay ?? Math.max(0, len - 1);
-  const t = (i: number) => { const s = Math.floor(i * 0.04); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`; };
+  // The clock is the game's own (25 ticks a second), so a moment reads the same however the timeline was recorded.
+  const t = (i: number) => { const s = Math.floor(sandbox.tickAt(i) * 0.04); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`; };
   const live = st.replay === null;
   const running = live ? !st.paused : st.playing;
   const pct = len > 1 ? (pos / (len - 1)) * 100 : 100;
+  const playFromHere = async () => {
+    setStarting(true);
+    try { await sandbox.playFromHere(); } finally { setStarting(false); }
+  };
   return (
     <div className="rp-dock sim-dock">
       <div className="rp-bar" role="group" aria-label="Battle timeline" data-ui-sfx>
         <GameButton size="sm" icon={<Undo2 size={14} />} onClick={() => sandbox.backToEdit()} data-testid="sim-edit">Edit</GameButton>
         <Score />
-        <button type="button" className="rp-btn" aria-label="Back to beginning" data-tip="Back to beginning" data-tip-pos="top" onClick={() => sandbox.scrub(0)}><SkipBack /></button>
+        <button type="button" className="rp-btn" aria-label="Back to beginning" data-tip="Back to beginning" data-tip-pos="top" disabled={pos === 0 && !live} onClick={() => sandbox.scrub(0)}><SkipBack /></button>
         <button type="button" className={cn("rp-play", !running && "is-play")} aria-label={running ? "Pause" : "Play"} onClick={() => (live ? sandbox.setPaused(!st.paused) : st.playing ? sandbox.stopPlayback() : sandbox.playReplay())}>
           {running ? <Pause /> : <Play />}
         </button>
@@ -271,13 +282,16 @@ function Timeline({ game, sandbox }: { game: Game; sandbox: Sandbox }) {
           <input className="rp-range" type="range" min={0} max={Math.max(0, len - 1)} value={pos} onChange={(e) => sandbox.scrub(Number(e.target.value))} aria-label="Replay position" />
           <div className="rp-knob" style={{ left: `${pct}%` }} />
         </div>
-        <span className="rp-time is-total" style={{ minWidth: 74 }}>{t(pos)} / {t(len)}</span>
+        <span className="rp-time is-total" style={{ minWidth: 74 }} data-testid="sim-clock">{t(pos)} / {t(len - 1)}</span>
+        {live
+          ? <span className="flex-none text-[10px] font-extrabold uppercase tracking-[.08em] text-[#ff6b5e]" title={`The battle as it is being fought (tick ${tick})`} data-testid="sim-live"><span aria-hidden="true">● </span>Live</span>
+          : <button type="button" className="rp-btn" aria-label="Jump to now" data-tip="Jump to now: the live battle" data-tip-pos="top" onClick={() => sandbox.goLive()} data-testid="sim-jump-now"><SkipForward /></button>}
         <div className="rp-speeds" role="radiogroup" aria-label="Playback speed">
           {[1, 2, 4].map((s) => (
             <button key={s} type="button" role="radio" aria-checked={st.speed === s} className="rp-speed" onClick={() => sandbox.setSpeed(s)}>{s}×</button>
           ))}
         </div>
-        <GameButton size="sm" variant={live ? "primary" : "secondary"} icon={<Radio size={13} />} onClick={() => sandbox.goLive()} title={`Tick ${tick}`}>Live</GameButton>
+        <GameButton size="sm" icon={starting ? <span className="spinner" /> : <Split size={14} />} disabled={starting || len < 2} onClick={() => void playFromHere()} title="A new battle from this moment: every unit where it stands, with its health and rank" data-testid="sim-play-from-here">Play from here</GameButton>
         <GameButton size="sm" icon={<RotateCcw size={14} />} onClick={() => sandbox.run()}>Rerun</GameButton>
         {developerTools && <GameButton size="sm" icon={<ShieldCheck size={14} />} title={verify || "Replay this run in the native engine and compare"} onClick={() => game.requestVerify()}>Verify</GameButton>}
       </div>

@@ -10,6 +10,7 @@ import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react"
 import { Skull, Swords, X } from "lucide-react";
 import type { Game } from "../game";
 import { useStore } from "../store";
+import { battleStats } from "../sandbox";
 import { SIDE_COLORS } from "../sides";
 import { iconKey } from "../icon-key";
 import { Flag } from "./Flag";
@@ -44,6 +45,18 @@ export function useField(game: Game) {
     setFallen([]);
     if (!info) return;
     const read = () => {
+      // The replay's moment while scrubbing: the field as it was then, without touching the battle's log of losses.
+      const frame = game.sandbox?.replayFrame()?.[0];
+      if (frame) {
+        const sides = sidesOf(frame), alive = new Map<number, FieldUnit>();
+        for (const a of frame.actors) {
+          const side = sides[a.owner];
+          if (side < 0 || a.maxHp <= 0 || a.flags & 16 || a.hp <= 0) continue;
+          alive.set(a.id, { id: a.id, type: game.client.str(a.type), side: side as 0 | 1, hp: a.hp, maxHp: a.maxHp, x: a.sx, y: a.sy, dead: false, building: (a.flags & 8) !== 0 });
+        }
+        setUnits([...roster.current.values()].map((u) => alive.get(u.id) ?? { ...u, dead: true, hp: 0 }));
+        return;
+      }
       const cur = game.client.cur;
       if (!cur) return;
       const sideOf = sidesOf(cur);
@@ -74,7 +87,9 @@ export function useField(game: Game) {
     const t = setInterval(read, 250);
     return () => clearInterval(t);
   }, [game, info, mode]);
-  return { units, fallen };
+  // The replay's moment: only the losses up to then.
+  const at = useStore((s) => (s.sandbox?.replay != null ? s.sandbox.replayStats?.elapsed ?? 0 : null));
+  return { units, fallen: at === null ? fallen : fallen.filter((f) => f.at <= at + 0.05) };
 }
 
 /** Jump the camera to a unit on the field and open its card. */
@@ -84,7 +99,7 @@ export function focusUnit(game: Game, u: FieldUnit) {
 }
 
 function Readout() {
-  const stats = useStore((s) => s.ui?.sandbox);
+  const stats = useStore(battleStats);
   const st = useStore((s) => s.sandbox)!;
   if (!stats) return null;
   const rows: [string, (s: NonNullable<typeof stats>["sides"][number]) => React.ReactNode][] = [

@@ -8,7 +8,7 @@
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { Crosshair, HeartCrack, Skull, X } from "lucide-react";
 import type { Game } from "../game";
-import type { SimUnit } from "../sandbox";
+import { battleStats, type SimUnit } from "../sandbox";
 import { useStore } from "../store";
 import { UnitCard } from "./UnitCard";
 import { Rank } from "./Hud";
@@ -21,7 +21,7 @@ export function Inspector({ game }: { game: Game }) {
   const id = useStore((s) => s.inspect);
   const st = useStore((s) => s.sandbox)!;
   const info = useStore((s) => s.info);
-  const types = useStore((s) => s.ui?.sandbox?.types);
+  const types = useStore((s) => battleStats(s)?.types);
   // The victory or defeat screen covers the battle: the card steps aside with it.
   const over = useStore((s) => s.ui?.win === "Won" || s.ui?.win === "Lost");
   const last = useRef<Seen | null>(null);
@@ -31,7 +31,8 @@ export function Inspector({ game }: { game: Game }) {
     setSeen(null);
     if (id === null || !info) return;
     const read = () => {
-      const cur = game.client.cur;
+      // The replay's moment while scrubbing, else the live battle.
+      const cur = game.sandbox?.replayFrame()?.[0] ?? game.client.cur;
       const a = cur?.actorById.get(id);
       const side = a ? sidesOf(cur!)[a.owner] : -1;
       if (a && (side === 0 || side === 1) && !(a.flags & 16) && a.hp > 0) {

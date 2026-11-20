@@ -108,6 +108,7 @@ export class Game {
   /** Mouse lock (pointer.ts): keeps the mouse inside the game; edge scrolling at the window edges. */
   readonly lock: MouseLock;
   private lastView = "";
+  private lastViewSent = "";
   private frames = 0;
   private fpsT = 0;
   private lastFrame = 0;
@@ -807,7 +808,11 @@ export class Game {
     const key = r.map((v) => Math.round(v / 64)).join(",");
     if (!force && key === this.lastView) return;
     this.lastView = key;
-    this.client.send({ type: "view", x0: r[0], y0: r[1], x1: r[2], y1: r[3] });
+    // A Battle simulator battle has the whole battlefield in every snapshot: its replay shows any moment anywhere.
+    const v = this.sandbox?.fieldView(this.info.bounds) ?? r;
+    const sent = v.join(",");
+    if (force || sent !== this.lastViewSent) this.client.send({ type: "view", x0: v[0], y0: v[1], x1: v[2], y1: v[3] });
+    this.lastViewSent = sent;
     this.radar.bump();
   }
 
