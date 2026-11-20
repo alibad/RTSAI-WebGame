@@ -60,6 +60,8 @@ function actor(f: Fields, building = false): AdviserActor {
   return { actorId: number(f, 1) >>> 0, kind: string(f, 2), cellX: number(f, building ? 17 : 5), cellY: number(f, building ? 18 : 6),
     idle: building ? false : !!number(f, 8), canAttack: building ? number(f, 22) > 0 : !!number(f, 12),
     hpPercent: number(f, building ? 5 : 7), x: number(f, 3), y: number(f, 4),
+    // Production buildings: where new units go (the engine sends -1 for none).
+    ...(building ? { rallyX: f.has(13) ? number(f, 13) : -1, rallyY: f.has(14) ? number(f, 14) : -1 } : {}),
     ...(building ? {} : { canDisguise: !!number(f, 22), canInfiltrate: !!number(f, 23), isDisguised: !!number(f, 20), detectsDisguise: !!number(f, 26),
       // Campaign missions (mission-adviser.ts): speed, cargo, the special orders' valid targets and the current target.
       speed: number(f, 16), stance: number(f, 15), passengers: number(f, 18), canCapture: !!number(f, 29), captureTargets: uints(f, 30),

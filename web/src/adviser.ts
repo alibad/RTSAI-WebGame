@@ -30,6 +30,9 @@ export interface AdviserActor {
   demolishTargets?: number[];
   /** Units: the actor they are attacking (0: none). */
   targetId?: number;
+  /** Production buildings: the rally point's cell (-1: none). */
+  rallyX?: number;
+  rallyY?: number;
 }
 
 /** Generated/native catalog metadata, never a separate hand-written roster. */
@@ -72,7 +75,7 @@ export interface AdviserObservation {
 }
 
 export interface AdviserCommand {
-  action: "deploy" | "place_building" | "build" | "train" | "attack_move" | "move" | "attack" | "capture" | "demolish" | "stop" | "set_stance" | "enter_transport" | "unload";
+  action: "deploy" | "place_building" | "build" | "train" | "attack_move" | "move" | "attack" | "capture" | "demolish" | "stop" | "set_stance" | "enter_transport" | "unload" | "set_rally_point";
   actor_id?: number;
   /** attack, capture, demolish: the target actor. */
   target_actor_id?: number;
@@ -173,21 +176,78 @@ export function assessThreat(snapshot: AdviserObservation): AdviserThreat {
 
 /**
  * Where to look for an enemy base nobody has seen: the far side of the map from our own base (its mirror through the
- * centre), then the mirrors across each axis, then the centre; the first of them still unexplored. Null: all explored.
+ * centre), then the mirrors across each axis, then the centre; the first of them never explored. Then any place never
+ * explored, the farthest from our base first. Once all of it has been seen, the enemy can only be somewhere out of
+ * sight now: a sweep along the rows of the map (every 8 cells, back and forth), from where `from` (the army) stands
+ * on to the next place not in sight. Only cells land units can reach. Null: nowhere to look.
  */
-export function searchGoal(snapshot: AdviserObservation): { x: number; y: number } | null {
+export function searchGoal(snapshot: AdviserObservation, from?: { x: number; y: number }): { x: number; y: number } | null {
   const w = snapshot.mapWidth, h = snapshot.mapHeight, own = snapshot.buildings.length ? snapshot.buildings : snapshot.units;
   if (!own.length || w <= 0 || h <= 0) return null;
   const hx = Math.floor(own.reduce((sum, actor) => sum + actor.cellX, 0) / own.length), hy = Math.floor(own.reduce((sum, actor) => sum + actor.cellY, 0) / own.length);
   const map = snapshot.spatial, channels = map?.channels ?? 0;
   const grid = map && channels >= 5 && map.bytes.length >= w * h * channels * 4 ? new DataView(map.bytes.buffer, map.bytes.byteOffset, map.bytes.byteLength) : null;
-  const explored = (x: number, y: number) => grid !== null && grid.getFloat32(((y * w + x) * channels + 4) * 4, true) >= 1;
+  // The engine's grid: channel 3 land passable (1), channel 4 fog (0 never seen, 0.5 seen before, 1 in sight now).
+  const cell = (x: number, y: number, channel: number) => grid!.getFloat32(((y * w + x) * channels + channel) * 4, true);
+  const explored = (x: number, y: number) => grid !== null && cell(x, y, 4) >= 0.5;
+  const open = (x: number, y: number) => landReachable(snapshot, x, y);
   for (const [x, y] of [[w - 1 - hx, h - 1 - hy], [w - 1 - hx, hy], [hx, h - 1 - hy], [Math.floor(w / 2), Math.floor(h / 2)]]) {
     const cx = Math.max(0, Math.min(w - 1, x)), cy = Math.max(0, Math.min(h - 1, y));
-    if ((cx - hx) ** 2 + (cy - hy) ** 2 > 20 ** 2 && !explored(cx, cy)) return { x: cx, y: cy };
+    if ((cx - hx) ** 2 + (cy - hy) ** 2 > 20 ** 2 && !explored(cx, cy) && open(cx, cy)) return { x: cx, y: cy };
+  }
+  if (!grid) return null;
+  const path: { x: number; y: number }[] = [];
+  for (let row = 0, y = 4; y < h; row++, y += 8) for (let i = 0, n = Math.ceil((w - 4) / 8); i < n; i++) path.push({ x: row % 2 ? 4 + (n - 1 - i) * 8 : 4 + i * 8, y });
+  let best: { x: number; y: number } | null = null, far = 20 ** 2;
+  for (const p of path) {
+    const d = (p.x - hx) ** 2 + (p.y - hy) ** 2;
+    if (d > far && !explored(p.x, p.y) && open(p.x, p.y)) { far = d; best = p; }
+  }
+  if (best || !from || !path.length) return best;
+  const start = path.reduce((k, p, i) => (p.x - from.x) ** 2 + (p.y - from.y) ** 2 < (path[k].x - from.x) ** 2 + (path[k].y - from.y) ** 2 ? i : k, 0);
+  for (let j = 1; j <= path.length; j++) {
+    const p = path[(start + j) % path.length];
+    if (cell(p.x, p.y, 4) < 1 && open(p.x, p.y) && (p.x - from.x) ** 2 + (p.y - from.y) ** 2 >= 12 ** 2) return p;
   }
   return null;
 }
+
+/** Whether land units can stand on a cell (the engine's grid, channel 3); true when the grid is not there. */
+export function landReachable(snapshot: AdviserObservation, x: number, y: number): boolean {
+  const w = snapshot.mapWidth, h = snapshot.mapHeight, map = snapshot.spatial, channels = map?.channels ?? 0;
+  if (!map || channels < 5 || map.bytes.length < w * h * channels * 4 || x < 0 || y < 0 || x >= w || y >= h) return true;
+  return new DataView(map.bytes.buffer, map.bytes.byteOffset, map.bytes.byteLength).getFloat32(((y * w + x) * channels + 3) * 4, true) >= 1;
+}
+
+/** A faction's basic ground defence (Pill Box, Sentry Gun, Gun Bunker, Guard Tower...): never a wall, AA or superweapon. */
+export function isBasicDefence(entry: AdviserTechItem | undefined): boolean {
+  const cost = entry?.cost ?? 0;
+  return !!entry && entry.queue?.toLowerCase() === "support" && cost > 0 && cost <= 800
+    && /pill ?box|sentry|bunker|guard tower|autocannon/i.test(entry.name ?? "") && !/\bair\b|\baa\b|anti-air/i.test(entry.name ?? "");
+}
+
+/**
+ * Where the next defence goes: on the side of the base that faces the enemy (the known enemy building nearest to the
+ * base, else the far side of the map), 8 cells out from the base's middle; each further one 3 cells to one side.
+ */
+export function frontCell(snapshot: AdviserObservation, index: number, out = 8): { x: number; y: number } | null {
+  const own = snapshot.buildings, w = snapshot.mapWidth, h = snapshot.mapHeight;
+  if (!own.length || w <= 0 || h <= 0) return null;
+  const hx = own.reduce((sum, actor) => sum + actor.cellX, 0) / own.length, hy = own.reduce((sum, actor) => sum + actor.cellY, 0) / own.length;
+  const known = [...snapshot.visibleEnemyBuildings, ...(snapshot.rememberedEnemyBuildings ?? [])];
+  const near = known.sort((a, b) => (a.cellX - hx) ** 2 + (a.cellY - hy) ** 2 - ((b.cellX - hx) ** 2 + (b.cellY - hy) ** 2))[0];
+  let dx = (near ? near.cellX : w - 1 - hx) - hx, dy = (near ? near.cellY : h - 1 - hy) - hy;
+  const length = Math.hypot(dx, dy);
+  if (length < 1) return null;
+  dx /= length; dy /= length;
+  const side = [0, 3, -3, 6, -6][index % 5];
+  return { x: Math.max(0, Math.min(w - 1, Math.round(hx + dx * out - dy * side))), y: Math.max(0, Math.min(h - 1, Math.round(hy + dy * out + dx * side))) };
+}
+
+/** An army worth sending: at least 8 fighters together worth 7,000 credits (about seven tanks and some infantry). */
+export const WAVE_UNITS = 8, WAVE_VALUE = 7000;
+/** The engine takes at most 12 orders in one request (CompanionBridge MaxCommandsPerRequest). */
+export const MAX_ORDERS = 12;
 
 export function nextAdvice(snapshot: AdviserObservation, options: { buildFocus?: boolean } = {}): AdviserAdvice | null {
   const tree = snapshot.techTree ?? {};
@@ -237,13 +297,18 @@ export function nextAdvice(snapshot: AdviserObservation, options: { buildFocus?:
   const ready = snapshot.production.find(entry => (entry.progress >= 0.999 || entry.remainingTicks <= 0)
     && (["building", "defense", "support"].includes(entry.queueType.toLowerCase())
       || (!entry.queueType && (tree[baseType(entry.item)]?.kind === "building" || roles(entry.item).length))));
-  if (ready) return advise(`Place the finished ${name(ready.item)} first; the build queue waits until it's down.`,
-    `Place the ${name(ready.item)}`, [{ action: "place_building", item_type: ready.item.toLowerCase() }], "place");
+  const defences = snapshot.buildings.filter(building => isBasicDefence(tree[baseType(building.kind)]));
+  if (ready) {
+    // A defence goes on the side of the base the enemy comes from; anything else wherever the engine finds room.
+    const at = isBasicDefence(tree[baseType(ready.item)]) ? frontCell(snapshot, defences.length) : null;
+    return advise(`Place the finished ${name(ready.item)} first; the build queue waits until it's down.`,
+      `Place the ${name(ready.item)}`, [{ action: "place_building", item_type: ready.item.toLowerCase(), ...(at ? { target_x: at.x, target_y: at.y } : {}) }], "place");
+  }
   if (!options.buildFocus && (snapshot.threatHeated ?? assessThreat(snapshot).heated) && snapshot.visibleEnemies.length) {
     const assets = snapshot.buildings.length ? snapshot.buildings : units;
     const proximity = (enemy: AdviserActor) => assets.length ? Math.min(...assets.map(asset => distanceSquared(enemy, asset))) : 0;
     const contact = [...snapshot.visibleEnemies].sort((a, b) => proximity(a) - proximity(b))[0];
-    const defenders = units.filter(unit => unit.idle && unit.canAttack).sort((a, b) => distanceSquared(a, contact) - distanceSquared(b, contact)).slice(0, 6);
+    const defenders = units.filter(unit => unit.idle && unit.canAttack && !nonCombatTypes.has(baseType(unit.kind))).sort((a, b) => distanceSquared(a, contact) - distanceSquared(b, contact)).slice(0, 12);
     // Revealed maps can expose a large army on a distant coast. Strategic threat
     // alone must not interrupt the opening with an immediate base-defense order.
     if (defenders.length && proximity(contact) <= 20 ** 2) return advise(`Enemies are at your base; send your ${defenders.length} idle fighter${defenders.length === 1 ? "" : "s"} at them now.`,
@@ -253,6 +318,12 @@ export function nextAdvice(snapshot: AdviserObservation, options: { buildFocus?:
   if (snapshot.buildings.length && snapshot.powerDrained > snapshot.powerProvided && !queued.has("power")) {
     const item = availableFor("power");
     if (item) return advise(`Power is short by ${snapshot.powerDrained - snapshot.powerProvided}; build another ${name(item)} so production runs at full speed.`,
+      `Build ${article(name(item))}`, build(item), "build:power");
+  }
+  // Low power makes everything three times slower: a new plant before the next building uses the last of it.
+  if (owned.has("power") && owned.has("factory") && snapshot.powerProvided - snapshot.powerDrained < 50 && !queued.has("power")) {
+    const item = availableFor("power");
+    if (item) return advise(`Power is almost used up (${snapshot.powerProvided - snapshot.powerDrained} left); build another ${name(item)} before the next building.`,
       `Build ${article(name(item))}`, build(item), "build:power");
   }
   for (const role of opening) {
@@ -281,28 +352,72 @@ export function nextAdvice(snapshot: AdviserObservation, options: { buildFocus?:
         `Train 1 ${name(harvester)}`, train(harvester, 1), "train:harvester");
     }
   }
+  // New units gather on the side of the base the enemy comes from, not at the doors (a crowd there blocks the factory).
+  // Only where the engine says where the rally point is: one at the door (within 6 cells) is the default.
+  const staging = owned.has("factory") ? frontCell(snapshot, 0, 5) : null;
+  const doors = (staging ? snapshot.buildings.filter(building => (roles(building.kind).includes("barracks") || roles(building.kind).includes("factory"))
+    && (building.rallyX ?? -1) >= 0 && (building.rallyX! - building.cellX) ** 2 + (building.rallyY! - building.cellY) ** 2 <= 6 ** 2
+    && (building.rallyX! - staging.x) ** 2 + (building.rallyY! - staging.y) ** 2 > 2 ** 2) : []).slice(0, MAX_ORDERS);
+  if (staging && doors.length) return advise(`Set the rally point of your ${[...new Set(doors.map(building => name(building.kind)))].join(" and ")} toward the enemy, so new units gather at the front instead of crowding the doors.`,
+    `Set ${doors.length} rally point${doors.length === 1 ? "" : "s"} toward the enemy`,
+    doors.map(building => ({ action: "set_rally_point", actor_id: building.actorId, target_x: staging.x, target_y: staging.y })), "rally");
+  // The enemy's first raids come at about minute 4: two defences on the side of the base it comes from.
+  const defence = available.filter(item => isBasicDefence(tree[baseType(item)])).sort((a, b) => (tree[baseType(a)]?.cost ?? 0) - (tree[baseType(b)]?.cost ?? 0))[0];
+  const defenceQueued = snapshot.production.some(entry => isBasicDefence(tree[baseType(entry.item)]));
+  if (defence && owned.has("factory") && defences.length < 2 && !defenceQueued) return advise(
+    `Build ${article(name(defence))}: it guards the side of the base the enemy comes from while your army grows.`,
+    `Build ${article(name(defence))}`, build(defence), "build:defence");
   if (!owned.has("radar") && !queued.has("radar")) {
     const item = availableFor("radar");
     if (item) return advise(`Build ${article(name(item))} next: it lights up the minimap and unlocks advanced units.`,
       `Build ${article(name(item))}`, build(item), "build:radar");
+  }
+  const count = (role: string) => snapshot.buildings.filter(building => roles(building.kind).includes(role)).length;
+  if (count("refinery") < 2 && !queued.has("refinery")) {
+    const item = availableFor("refinery");
+    if (item) return advise(`Build a second ${name(item)}: it comes with another harvester, and one refinery can't pay for a factory that never stops.`,
+      `Build ${article(name(item))}`, build(item), "build:refinery");
   }
   const fighters = units.filter(unit => unit.canAttack && !nonCombatTypes.has(baseType(unit.kind)));
   const busy = new Set(snapshot.production.map(entry => entry.queueType.toLowerCase()));
   const tank = basicUnit(available, "Vehicle", "tank"), infantry = basicUnit(available, "Infantry", "infantry");
   if (tank && !busy.has("vehicle")) return advise(`Build up the army: train ${plural(tank)}; you have ${fighters.length} combat unit${fighters.length === 1 ? "" : "s"}.`,
     `Train 3 ${plural(tank)}`, train(tank, 3), "train:tank");
-  if (infantry && !busy.has("infantry") && fighters.length < 8) return advise(`Train more ${plural(infantry)} to protect the base while it grows.`,
+  if (infantry && !busy.has("infantry") && (fighters.length < 8 || snapshot.cash >= 1500)) return advise(`Train more ${plural(infantry)} to protect the base while it grows.`,
     `Train 3 ${plural(infantry)}`, train(infantry, 3), "train:infantry");
+  // Money piling up: a second factory makes tanks faster; more defences hold the base while the army is away.
+  if (snapshot.cash >= 3000 && count("factory") < 2 && !queued.has("factory")) {
+    const item = availableFor("factory");
+    if (item) return advise(`You have ${snapshot.cash} credits unspent; a second ${name(item)} builds tanks faster.`,
+      `Build ${article(name(item))}`, build(item), "build:factory");
+  }
+  if (defence && snapshot.cash >= 2500 && defences.length < 4 && !defenceQueued) return advise(
+    `You have ${snapshot.cash} credits unspent; another ${name(defence)} holds the base while the army is away.`,
+    `Build ${article(name(defence))}`, build(defence), "build:defence");
   if (options.buildFocus) return null;
   const targets = snapshot.visibleEnemyBuildings.length ? snapshot.visibleEnemyBuildings : snapshot.rememberedEnemyBuildings ?? [];
+  const value = (group: AdviserActor[]) => group.reduce((sum, unit) => sum + (tree[baseType(unit.kind)]?.cost ?? 0), 0);
   if (fighters.length && !targets.length) {
     // Looking for the enemy base is an order like any other: one cheap scout, or, once there is an army of 12, the
     // fighters together. One order at a time: while any fighter is busy (out looking, or fighting), nobody new is sent.
-    if (fighters.some(unit => !unit.idle)) return null;
-    const goal = searchGoal(snapshot);
+    // A ready army (12 idle fighters worth 7,000 credits) searches whatever a few others are doing; a single scout only
+    // goes when nobody is out.
+    const waiting = fighters.filter(unit => unit.idle);
+    const army = waiting.length >= 12 && value(waiting) >= WAVE_VALUE;
+    if (!army && waiting.length < fighters.length) return null;
+    const centre = { x: waiting.reduce((sum, unit) => sum + unit.cellX, 0) / waiting.length, y: waiting.reduce((sum, unit) => sum + unit.cellY, 0) / waiting.length };
+    // Enemy units in sight away from the base (a harvester on its way home, a raiding party): the army goes after the
+    // nearest of them; they lead to the rest.
+    const sighted = snapshot.visibleEnemies.filter(enemy => landReachable(snapshot, enemy.cellX, enemy.cellY)).sort((a, b) => (a.cellX - centre.x) ** 2 + (a.cellY - centre.y) ** 2 - ((b.cellX - centre.x) ** 2 + (b.cellY - centre.y) ** 2))[0];
+    if (army && sighted) {
+      const group = [...waiting].sort((a, b) => a.actorId - b.actorId).slice(0, MAX_ORDERS);
+      return advise(`We haven't found the enemy base yet, but there is an enemy ${name(sighted.kind)} in sight; advance ${group.length} units toward it.`,
+        `Advance ${group.length} units toward the enemy ${name(sighted.kind)}`, group.map(unit => ({ action: "attack_move", actor_id: unit.actorId, target_x: sighted.cellX, target_y: sighted.cellY })), "hunt");
+    }
+    const goal = searchGoal(snapshot, centre);
     const price = (unit: AdviserActor) => tree[baseType(unit.kind)]?.cost ?? 99999;
-    if (goal && fighters.length >= 12) {
-      const group = [...fighters].sort((a, b) => a.actorId - b.actorId).slice(0, 12);
+    if (goal && army) {
+      const group = [...waiting].sort((a, b) => a.actorId - b.actorId).slice(0, MAX_ORDERS);
       return advise(`We haven't found the enemy base yet; advance ${group.length} units together across the map to find it.`,
         `Advance ${group.length} units to find the enemy base`, group.map(unit => ({ action: "attack_move", actor_id: unit.actorId, target_x: goal.x, target_y: goal.y })), "sweep");
     }
@@ -313,13 +428,44 @@ export function nextAdvice(snapshot: AdviserObservation, options: { buildFocus?:
     }
     return advise(`We haven't found the enemy base yet; send a scout to explore the ${100 - Math.round(snapshot.exploredPercent)}% of the map still in fog.`, "", [], "scout");
   }
-  // An attack is a wave of fighters that are ready: 8 or more idle ones go together. Units already fighting are left
-  // to it, so the card does not come back every few seconds and fresh units do not trickle in one by one.
-  const wave = fighters.filter(unit => unit.idle);
-  if (wave.length >= 8 && targets.length) {
-    const target = targets[0];
-    const attackers = [...wave].sort((a, b) => a.actorId - b.actorId).slice(0, 12);
-    return advise(`Your ${wave.length} combat units can push now; attack-move them to the enemy base.`,
+  if (!targets.length) return null;
+  // The enemy building nearest to a group, leaving out any the group already stands on (a remembered building that is
+  // gone, or one they have reached): the same order again would change nothing.
+  const nearest = (group: AdviserActor[]) => {
+    const cx = group.reduce((sum, unit) => sum + unit.cellX, 0) / group.length, cy = group.reduce((sum, unit) => sum + unit.cellY, 0) / group.length;
+    return targets.filter(target => (target.cellX - cx) ** 2 + (target.cellY - cy) ** 2 > 4 ** 2)
+      .sort((a, b) => (a.cellX - cx) ** 2 + (a.cellY - cy) ** 2 - ((b.cellX - cx) ** 2 + (b.cellY - cy) ** 2))[0];
+  };
+  // Fighters standing idle inside the enemy base: an attack-move does not make them shoot buildings, so they attack the
+  // nearest building they can see, all together; with none in sight, they go on to the next one remembered.
+  const inside = fighters.filter(unit => unit.idle && targets.some(target => distanceSquared(unit, target) <= 14 ** 2));
+  const pressing = inside.slice(0, MAX_ORDERS);
+  if (pressing.length && snapshot.visibleEnemyBuildings.length) {
+    const cx = pressing.reduce((sum, unit) => sum + unit.cellX, 0) / pressing.length, cy = pressing.reduce((sum, unit) => sum + unit.cellY, 0) / pressing.length;
+    const building = [...snapshot.visibleEnemyBuildings].sort((a, b) => (a.cellX - cx) ** 2 + (a.cellY - cy) ** 2 - ((b.cellX - cx) ** 2 + (b.cellY - cy) ** 2))[0];
+    if ((building.cellX - cx) ** 2 + (building.cellY - cy) ** 2 <= 14 ** 2) {
+      const n = pressing.length;
+      return advise(`Your ${n} unit${n === 1 ? " is" : "s are"} next to the enemy's ${name(building.kind)}; attack it${n === 1 ? "" : " together"}.`,
+        `Attack the ${name(building.kind)} with ${n} unit${n === 1 ? "" : "s"}`,
+        pressing.map(unit => ({ action: "attack", actor_id: unit.actorId, target_actor_id: building.actorId })), "press");
+    }
+  }
+  const onward = pressing.length ? nearest(pressing) : undefined;
+  if (onward) {
+    const target = onward, n = pressing.length;
+    return advise(`Your ${n} unit${n === 1 ? " is" : "s are"} standing in the enemy base; send ${n === 1 ? "it" : "them"} on to the next building.`,
+      `Attack-move ${n} unit${n === 1 ? "" : "s"} to the next enemy building`,
+      pressing.map(unit => ({ action: "attack_move", actor_id: unit.actorId, target_x: target.cellX, target_y: target.cellY })), "press");
+  }
+  // An attack is a wave: the idle fighters go together once there are 8 or more worth 7,000 credits. A smaller army
+  // stays home with the defences; units already fighting are left to it.
+  // One card carries at most 12 orders (the engine refuses more): the strongest 12 go first, and the rest follow on
+  // the next card while what is left is still an army.
+  const wave = fighters.filter(unit => unit.idle && !inside.includes(unit));
+  const price = (unit: AdviserActor) => tree[baseType(unit.kind)]?.cost ?? 0;
+  const attackers = [...wave].sort((a, b) => price(b) - price(a) || a.actorId - b.actorId).slice(0, MAX_ORDERS), target = attackers.length ? nearest(attackers) : undefined;
+  if (target && wave.length >= WAVE_UNITS && value(wave) >= WAVE_VALUE) {
+    return advise(`Your ${wave.length} combat units are a real army now (${value(wave)} credits); attack-move them to the enemy base together.`,
       `Attack-move ${attackers.length} units to the enemy base`, attackers.map(unit => ({ action: "attack_move", actor_id: unit.actorId, target_x: target.cellX, target_y: target.cellY })), "attack");
   }
   return null;
