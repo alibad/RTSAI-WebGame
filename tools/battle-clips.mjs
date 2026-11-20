@@ -9,10 +9,15 @@
 //        [--only id,id] [--seconds 30] [--play https://rtsai.net/play/]
 //   node tools/battle-clips.mjs --probe <map> --unit <actor> [--faction america]     where a unit can be placed
 //
+//   --pack <web-bundle.pack>   answer the page's data bundle from this file: a copy of the live bundle with a rules
+//                              change under test, so a proposed fix is filmed on the live build before any data build
+//   --bars selected|damaged|all   whose health bars show (default damaged: every unit that has been hit; a grid row
+//                              can say "bars" for itself)
+//
 // Writes <out>/<id>.mp4 (1920x1080, 30 fps), <id>.jpg, flags/ and icons/ (each unit's build icon as the game draws
 // it), clips.json (what `node tools/review.mjs add <out>` in RTSAI-Web takes) and report.json (per clip: who fired,
-// who died, what looks wrong). Capture as evals/faction-showdown-20261022/tools/film.mjs: the page's own frames by
-// their timestamps, resampled to a constant frame rate.
+// who died, what looks wrong). The film is drawn afterwards from the simulator's recording of the fight, one frame at
+// a time at game time, so it never stutters, however busy the PC is.
 import fs from "node:fs";
 import path from "node:path";
 import { spawn } from "node:child_process";
@@ -71,6 +76,14 @@ await page.route("**/*", (route) => {
   return ["127.0.0.1", "localhost"].includes(u.hostname) || ["blob:", "data:"].includes(u.protocol) || (u.hostname.endsWith("rtsai-play-cdn.pages.dev") && ["GET", "HEAD"].includes(route.request().method()))
     ? route.continue() : route.abort();
 });
+// --pack: the rules under test (as tools/film-parade.mjs). The page fetches public/web-bundle.pack from the CDN.
+const packFile = opt("pack", "");
+if (packFile) {
+  const body = fs.readFileSync(path.resolve(packFile));
+  await page.route(/\/public\/web-bundle\.pack(\?.*)?$/, (route) => route.fulfill({ status: 200, contentType: "application/octet-stream",
+    headers: { "access-control-allow-origin": "*", "cross-origin-resource-policy": "cross-origin" }, body }));
+  log(`data bundle answered from ${packFile} (a rules change under test, not the live data)`);
+}
 let errors = [];
 page.on("pageerror", (e) => errors.push(String(e.stack ?? e).slice(0, 400)));
 page.on("console", (m) => { if (m.type() === "error" && !/net::ERR_FAILED|Failed to load resource/.test(m.text())) errors.push(m.text().slice(0, 400)); });
@@ -178,80 +191,23 @@ for (const clip of grid.clips) {
   }
 
   // ---- film it
-  // Frames are stored exactly as the page drew them (Motion JPEG, no encoding while the game runs, so nothing is
-  // dropped and the game is not slowed), each shown from its own timestamp; the H.264 file is made afterwards.
-  const file = path.join(out, `${clip.id}.mp4`), raw = path.join(out, `${clip.id}.raw.mkv`);
-  const ff = spawn("ffmpeg", ["-y", "-v", "error", "-f", "image2pipe", "-framerate", String(FPS), "-c:v", "mjpeg", "-i", "-", "-c:v", "copy", raw], { stdio: ["pipe", "inherit", "inherit"] });
-  const queue = [];
-  let last = null, clockMs = null, written = 0, recording = false, busy = false;
-  const write = (buf) => new Promise((r) => { written++; if (ff.stdin.write(buf)) r(); else ff.stdin.once("drain", r); });
-  const pump = async () => {
-    if (busy) return;
-    busy = true;
-    try {
-      while (queue.length) {
-        const { t, buf } = queue.shift();
-        if (clockMs === null) clockMs = t;
-        while (last && clockMs + 1000 / FPS <= t) { await write(last); clockMs += 1000 / FPS; }
-        last = buf;
-      }
-    } finally { busy = false; }
-  };
-  const onFrame = (f) => {
-    if (recording) { queue.push({ t: f.metadata.timestamp * 1000, buf: Buffer.from(f.data, "base64") }); void pump(); }
-    void cdp.send("Page.screencastFrameAck", { sessionId: f.sessionId }).catch(() => {});
-  };
-  cdp.on("Page.screencastFrame", onFrame);
-
-  // The camera: both armies in frame while they stand and approach, then close in on where units are being hit
-  // (and whoever stands near them), so the fight itself fills the picture. "camera": "all" keeps everyone in frame
-  // for the whole clip; "launch" opens on the player's own units until something is hit (long-range fights: first
-  // the launch close up, then the landing).
-  await page.evaluate(({ zoomMin, zoomMax, fightMin, all, launch }) => {
+  // The fight runs live first, unfilmed. The simulator keeps a snapshot of the WHOLE battlefield for every game tick
+  // (web/src/sandbox.ts, the replay), so the film is then drawn from that recording: each frame at its exact game
+  // time (30 a second, between two ticks as the live game draws them), grabbed from the canvas, encoded in order.
+  // A busy PC can no longer drop or repeat a frame, and a game that ran slow still films at its true speed. (Until
+  // 20 Nov 2026 the clips were a screencast of the live run: 16 of the first 17 stuttered, with up to 24% of their
+  // frames held and then jumping; the owner took it for the game.)
+  const file = path.join(out, `${clip.id}.mp4`);
+  const bars = { selected: 0, damaged: 1, all: 2 }[clip.bars ?? opt("bars", "damaged")] ?? 1;
+  await page.evaluate(() => {
     const g = window.game;
     document.documentElement.classList.add("footage-clean");
-    // Snapshots carry only actors in view: ask for the whole map, the camera still shows its own part.
+    // Snapshots carry only actors in view: ask for the whole map (the recording keeps everything).
     g.sendView = function () { this.client.send({ type: "view", x0: -100000, y0: -100000, x1: 100000, y1: 100000 }); };
     g.sendView(true);
-    const hp = new Map(), hit = new Map();
-    let first = true;
-    const frame = () => {
-      const s = g.client.cur, now = performance.now();
-      if (s) {
-        const sides = s.players.map((p, i) => ((p.flags & 4) && !(p.flags & 8) ? i : -1)).filter((i) => i >= 0).slice(0, 2);
-        const live = s.actors.filter((a) => sides.includes(a.owner) && !(a.flags & 16) && a.maxHp > 0);
-        for (const a of live) { const was = hp.get(a.id); if (was !== undefined && a.hp < was) hit.set(a.id, now); hp.set(a.id, a.hp); }
-        // Who was hit in the last moments, and everyone within reach of them.
-        const hot = all ? [] : live.filter((a) => now - (hit.get(a.id) ?? -1e9) < 2600);
-        let shown = live, fight = false;
-        if (launch && !hot.length && !hit.size && !window.store.getState().paused) { shown = live.filter((a) => a.owner === sides[0]); fight = true; }
-        if (hot.length) {
-          const hx = hot.map((a) => a.sx), hy = hot.map((a) => a.sy);
-          const [a0, a1, b0, b1] = [Math.min(...hx) - 380, Math.max(...hx) + 380, Math.min(...hy) - 260, Math.max(...hy) + 260];
-          shown = live.filter((a) => a.sx >= a0 && a.sx <= a1 && a.sy >= b0 && a.sy <= b1);
-          fight = true;
-        }
-        if (shown.length) {
-          const xs = shown.map((a) => a.sx), ys = shown.map((a) => a.sy);
-          const [x0, x1, y0, y1] = [Math.min(...xs), Math.max(...xs), Math.min(...ys), Math.max(...ys)];
-          const fit = Math.min(g.canvas.clientWidth / (x1 - x0 + 240), g.canvas.clientHeight / (y1 - y0 + 180));
-          const zoom = Math.max(fight ? fightMin : zoomMin, Math.min(zoomMax, fit));
-          // Snap while the fight is held on its first tick, then glide.
-          const k = first || window.store.getState().paused ? 1 : 0.028;
-          // Stay on the map where it is larger than the picture: the black beyond its edge is not part of the game.
-          const bounds = window.store.getState().info?.bounds, halfW = g.canvas.clientWidth / zoom / 2, halfH = g.canvas.clientHeight / zoom / 2;
-          const within = (v, lo, hi, half) => (hi - lo > half * 2 ? Math.min(hi - half, Math.max(lo + half, v)) : v);
-          const tx = bounds ? within((x0 + x1) / 2, bounds[0], bounds[2], halfW) : (x0 + x1) / 2, ty = bounds ? within((y0 + y1) / 2, bounds[1], bounds[3], halfH) : (y0 + y1) / 2;
-          g.cam.x += (tx - g.cam.x) * k; g.cam.y += (ty - g.cam.y) * k; g.cam.zoom += (zoom - g.cam.zoom) * k;
-          first = false;
-        }
-      }
-      window.__director = requestAnimationFrame(frame);
-    };
-    window.__director = requestAnimationFrame(frame);
-  }, { zoomMin: clip.zoomMin ?? 0.55, zoomMax: clip.zoomMax ?? 2.2, fightMin: clip.fightMin ?? 1.15, all: clip.camera === "all", launch: clip.camera === "launch" });
+  });
 
-  // Run it as the simulator's own button does, held on its first tick: the film opens on both armies standing.
+  // Run it as the simulator's own button does, held on its first tick, then let it go.
   await page.evaluate(() => {
     const g = window.game;
     window.__held = false;
@@ -262,11 +218,8 @@ for (const clip of grid.clips) {
     g.sandbox.run();
   });
   await page.waitForFunction(() => window.__held === true, null, { timeout: 120000, polling: 50 });
-  await sleep(900); // the camera settles on the two armies
-  await cdp.send("Page.startScreencast", { format: "jpeg", quality: 92, everyNthFrame: 1 });
-  recording = true;
-  const runAt = 1.2;
-  await sleep(runAt * 1000);
+  await sleep(400);
+  const runAt = 1.2; // the film opens on both armies standing, this long
   await page.evaluate(() => window.game.sandbox.setPaused(false));
   const started = Date.now();
 
@@ -290,42 +243,106 @@ for (const clip of grid.clips) {
     else if (step.do === "deselect") await page.evaluate(() => window.game.select([]));
   }
 
-  // Watch it: who is alive, who has fired, until the time is up or one side is gone.
+  // Watch it: who is alive, who has fired, until the time is up or one side is gone. Game time, from the ticks: on a
+  // busy PC the game runs slower than real time, and the film is drawn at game time anyway.
   const seconds = Number(opt("seconds", clip.seconds ?? 28)), timeline = [];
-  let ended = null, stats = null, built0 = null, builtNow = null, tick0 = null, tickNow = null;
-  while ((Date.now() - started) / 1000 < seconds) {
+  let ended = null, stats = null, built0 = null, builtNow = null, tick0 = null, tickNow = null, poses = null;
+  for (;;) {
     await sleep(500);
     const seen = await page.evaluate(() => {
       const g = window.game, s = g.client.cur;
       const sides = s.players.map((p, i) => ((p.flags & 4) && !(p.flags & 8) ? i : -1)).filter((i) => i >= 0).slice(0, 2);
       // Buildings and defences per side: how many stand, and their health.
       const built = sides.map((owner) => { const b = s.actors.filter((a) => a.owner === owner && (a.flags & 8) && a.maxHp > 0 && !(a.flags & 16)); return { alive: b.length, hp: b.reduce((n, a) => n + a.hp, 0) }; });
-      return { stats: window.store.getState().ui?.sandbox ?? null, built, tick: s.header.tick };
+      // Each unit type's body poses (deployed or not, prone or standing), for the units still alive.
+      const poses = sides.map((owner) => { const out = {}; for (const a of s.actors) { if (a.owner !== owner || (a.flags & 16) || (a.flags & 8) || !(a.maxHp > 0)) continue; const t = g.client.strings[a.type], q = g.client.str(a.sequence) || "deployed"; /* an empty pose: deployed, its sandbag body drawn instead (sandbox.ts) */ (out[t] ??= {})[q] = ((out[t] ??= {})[q] ?? 0) + 1; } return out; });
+      return { stats: window.store.getState().ui?.sandbox ?? null, built, tick: s.header.tick, poses };
     });
+    if (!tick0) tick0 = { tick: seen.tick, at: Date.now() };
+    tickNow = { tick: seen.tick, at: Date.now() };
+    const t = (seen.tick - tick0.tick) / 25;
+    if (t >= seconds || (Date.now() - started) / 1000 > seconds * 4 + 30) break;
     stats = seen.stats;
     if (!stats) continue;
-    const t = (Date.now() - started) / 1000;
-    if (!built0) { built0 = seen.built; tick0 = { tick: seen.tick, at: Date.now() }; }
-    builtNow = seen.built; tickNow = { tick: seen.tick, at: Date.now() };
+    if (!built0) built0 = seen.built;
+    builtNow = seen.built;
+    // Poses once the opening orders have played out (a deploy takes a moment) and before the fighting thins the ranks.
+    if (!poses && t >= 3) poses = seen.poses;
     timeline.push({ t: +t.toFixed(1), alive: stats.sides.map((s) => s.alive), shots: stats.sides.map((s) => s.shots), hp: stats.sides.map((s) => s.hp), built: seen.built });
     // Over when a side has nothing left standing: no unit, and no building either.
     if (ended === null && stats.sides.some((s, i) => s.total + built0[i].alive > 0 && s.alive + seen.built[i].alive === 0)) ended = t;
     if (ended !== null && t - ended > 3.5 && t > 10) break;
   }
-  const length = (Date.now() - started) / 1000;
-  // The game runs 25 ticks a second. On a busy machine it falls behind, and the film would show a slow fight.
-  const tps = tick0 && tickNow.at > tick0.at ? +(((tickNow.tick - tick0.tick) * 1000) / (tickNow.at - tick0.at)).toFixed(1) : null;
-  recording = false;
-  await cdp.send("Page.stopScreencast");
-  cdp.off("Page.screencastFrame", onFrame);
-  while (busy || queue.length) await sleep(20);
-  if (last) await write(last);
-  ff.stdin.end();
-  await new Promise((r) => ff.on("close", r));
+  // How fast the game really ran (25 ticks a second is real time). The film is right either way; a slow game only
+  // takes longer to film.
+  const tps = tickNow.at > tick0.at ? +(((tickNow.tick - tick0.tick) * 1000) / (tickNow.at - tick0.at)).toFixed(1) : null;
+  await page.evaluate(() => window.game.sandbox.setPaused(true));
+
+  // Draw the film from the recording. The camera: both armies in frame while they stand and approach, then close in
+  // on where units are being hit (and whoever stands near them), so the fight itself fills the picture. "camera":
+  // "all" keeps everyone in frame; "launch" opens on the player's own units until something is hit (long-range
+  // fights: first the launch close up, then the landing). It glides as the live director did, in game time.
+  const frames = await page.evaluate(({ zoomMin, zoomMax, fightMin, all, launch, bars, fps, hold }) => {
+    const g = window.game, rec = g.sandbox.recording, TICK = 40;
+    g.overlay.statusBars = bars; // the game's own health bars (","): the owner judges by them whether hits land
+    const hp = new Map(), hit = new Map();
+    let seen = -1, first = true;
+    const glide = 1 - Math.pow(1 - 0.028, 60 / fps); // the live director's 0.028 per 60 Hz frame
+    const sidesOf = (s) => s.players.map((p, i) => ((p.flags & 4) && !(p.flags & 8) ? i : -1)).filter((i) => i >= 0).slice(0, 2);
+    window.__filmFrame = (k) => {
+      // Film time: a held opening, then the recording at 25 ticks a second, drawn between ticks.
+      const t = Math.max(0, k / fps - hold), pos = Math.min(rec.length - 1, t * 25), i = Math.min(rec.length - 1, Math.floor(pos)), j = Math.min(rec.length - 1, i + 1);
+      const cur = rec[j], prev = rec[i], frac = j === i ? 1 : pos - i, now = cur.header.tick * TICK;
+      for (let n = seen + 1; n <= j; n++) {
+        const s = rec[n], sides = sidesOf(s);
+        for (const a of s.actors) { if (!sides.includes(a.owner) || (a.flags & 16) || !(a.maxHp > 0)) continue; const was = hp.get(a.id); if (was !== undefined && a.hp < was) hit.set(a.id, s.header.tick * TICK); hp.set(a.id, a.hp); }
+      }
+      seen = Math.max(seen, j);
+      const sides = sidesOf(cur), live = cur.actors.filter((a) => sides.includes(a.owner) && !(a.flags & 16) && a.maxHp > 0);
+      const hot = all ? [] : live.filter((a) => now - (hit.get(a.id) ?? -1e9) < 2600);
+      let shown = live, fight = false;
+      if (launch && !hot.length && !hit.size && t > 0) { shown = live.filter((a) => a.owner === sides[0]); fight = true; }
+      if (hot.length) {
+        const hx = hot.map((a) => a.sx), hy = hot.map((a) => a.sy);
+        const [a0, a1, b0, b1] = [Math.min(...hx) - 380, Math.max(...hx) + 380, Math.min(...hy) - 260, Math.max(...hy) + 260];
+        shown = live.filter((a) => a.sx >= a0 && a.sx <= a1 && a.sy >= b0 && a.sy <= b1);
+        fight = true;
+      }
+      if (shown.length) {
+        const xs = shown.map((a) => a.sx), ys = shown.map((a) => a.sy);
+        const [x0, x1, y0, y1] = [Math.min(...xs), Math.max(...xs), Math.min(...ys), Math.max(...ys)];
+        const fit = Math.min(g.canvas.clientWidth / (x1 - x0 + 240), g.canvas.clientHeight / (y1 - y0 + 180));
+        const zoom = Math.max(fight ? fightMin : zoomMin, Math.min(zoomMax, fit));
+        // Snap during the held opening, then glide.
+        const kk = first || t === 0 ? 1 : glide;
+        // Stay on the map where it is larger than the picture: the black beyond its edge is not part of the game.
+        const bounds = window.store.getState().info?.bounds, halfW = g.canvas.clientWidth / zoom / 2, halfH = g.canvas.clientHeight / zoom / 2;
+        const within = (v, lo, hi, half) => (hi - lo > half * 2 ? Math.min(hi - half, Math.max(lo + half, v)) : v);
+        const tx = bounds ? within((x0 + x1) / 2, bounds[0], bounds[2], halfW) : (x0 + x1) / 2, ty = bounds ? within((y0 + y1) / 2, bounds[1], bounds[3], halfH) : (y0 + y1) / 2;
+        g.cam.x += (tx - g.cam.x) * kk; g.cam.y += (ty - g.cam.y) * kk; g.cam.zoom += (zoom - g.cam.zoom) * kk;
+        first = false;
+      }
+      g.renderer.runModels(cur);
+      g.renderer.render(cur, prev === cur ? null : prev, g.cam, g.overlay, cur.receivedAt + TICK * frac);
+      const copy = document.createElement("canvas");
+      copy.width = g.canvas.width; copy.height = g.canvas.height;
+      copy.getContext("2d").drawImage(g.canvas, 0, 0);
+      return copy.toDataURL("image/jpeg", 0.92).slice("data:image/jpeg;base64,".length);
+    };
+    return Math.round(((rec.length - 1) / 25 + hold) * fps) + 1;
+  }, { zoomMin: clip.zoomMin ?? 0.55, zoomMax: clip.zoomMax ?? 2.2, fightMin: clip.fightMin ?? 1.15, all: clip.camera === "all", launch: clip.camera === "launch", bars, fps: FPS, hold: runAt });
   const vf = ["scale=1920:1080:flags=lanczos:in_range=full:in_color_matrix=bt601:out_range=limited:out_color_matrix=bt709", "format=yuv420p", "setparams=range=tv:color_primaries=bt709:color_trc=bt709:colorspace=bt709"].join(",");
-  await new Promise((r) => spawn("ffmpeg", ["-y", "-v", "error", "-i", raw, "-vf", vf, "-c:v", "libx264", "-preset", "medium", "-crf", String(clip.crf ?? 24), "-pix_fmt", "yuv420p", "-movflags", "+faststart", file], { stdio: "inherit" }).on("close", r));
-  fs.rmSync(raw, { force: true });
-  await page.evaluate(() => { cancelAnimationFrame(window.__director); document.documentElement.classList.remove("footage-clean"); });
+  const ff = spawn("ffmpeg", ["-y", "-v", "error", "-f", "image2pipe", "-framerate", String(FPS), "-c:v", "mjpeg", "-i", "-", "-vf", vf, "-c:v", "libx264", "-preset", "medium", "-crf", String(clip.crf ?? 24), "-pix_fmt", "yuv420p", "-r", String(FPS), "-movflags", "+faststart", file], { stdio: ["pipe", "inherit", "inherit"] });
+  const closed = new Promise((r) => ff.on("close", r));
+  for (let k = 0; k < frames; k++) {
+    const jpeg = Buffer.from(await page.evaluate((k) => window.__filmFrame(k), k), "base64");
+    if (!ff.stdin.write(jpeg)) await new Promise((r) => ff.stdin.once("drain", r));
+  }
+  ff.stdin.end();
+  await closed;
+  const length = frames / FPS - runAt;
+  log(`  filmed ${frames} frames from ${tickNow.tick - tick0.tick} ticks (the game ran at ${tps} ticks a second)`);
+  await page.evaluate(() => { delete window.__filmFrame; document.documentElement.classList.remove("footage-clean"); });
 
   // ---- what looks wrong, from the numbers (the clip is still watched by eye before it is sent)
   const suspects = [], at = (t) => +(Math.min(length, Math.max(0, t)) + runAt).toFixed(1);
@@ -342,13 +359,21 @@ for (const clip of grid.clips) {
     if (stats.sides.every((s) => s.kills === 0) && (!built0 || built0.every((b, i) => b.alive === builtNow[i].alive))) suspects.push({ t: at(length - 2), text: `Nothing was destroyed in ${Math.round(length)} seconds.` });
     stats.sides.forEach((s, i) => { if (s.damageDealt === 0 && builtLost[1 - i] === 0 && s.total + standing(i) > 0) suspects.push({ t: at(length * 0.5), text: `${factionNames[[clip.a, clip.b][i].faction]} did no damage at all.` }); });
   } else suspects.push({ t: 0, text: "The simulator reported no results for this fight." });
+  // A unit ordered to deploy that still stands in an undeployed pose.
+  for (const [i, side] of [clip.a, clip.b].entries())
+    for (const u of side.units.filter((x) => x.deploy)) {
+      const seen = poses?.[i]?.[u.id];
+      if (!seen) continue;
+      const standing = Object.entries(seen).filter(([q]) => q !== "deployed").reduce((n, [, c]) => n + c, 0);
+      if (standing) suspects.push({ t: at(3), text: `${standing} of ${Object.values(seen).reduce((n, c) => n + c, 0)} ${labels[u.id] ?? u.id} ordered to deploy are not deployed (${Object.keys(seen).join(", ")}).` });
+    }
   for (const e of [...new Set(errors)].slice(0, 3)) suspects.push({ t: 0, text: `The page reported an error: ${e.slice(0, 160)}` });
 
   // The poster: the fight at its first kill (or a third of the way in).
   const posterAt = Math.max(1, Math.min(length - 1, (stats?.firstKill ?? length / 3) + runAt + 0.4));
   await new Promise((r) => spawn("ffmpeg", ["-y", "-v", "error", "-ss", posterAt.toFixed(2), "-i", file, "-frames:v", "1", "-vf", "scale=640:-2", "-q:v", "4", path.join(out, `${clip.id}.jpg`)], { stdio: "inherit" }).on("close", r));
 
-  const total = written / FPS;
+  const total = frames / FPS;
   const entry = {
     id: clip.id, title: clip.title, why: clip.why, file: `${clip.id}.mp4`, poster: `${clip.id}.jpg`, seconds: +total.toFixed(1), mode: clip.mode, sides,
     chips: [{ label: "Map", value: cfg.map }, { label: "AI", value: cfg.skill }],
@@ -358,11 +383,11 @@ for (const clip of grid.clips) {
   manifest.clips = [...manifest.clips.filter((c) => c.id !== clip.id), entry];
   // The grid's order is the inbox's order.
   manifest.clips.sort((a, b) => grid.clips.findIndex((c) => c.id === a.id) - grid.clips.findIndex((c) => c.id === b.id));
-  report.clips[clip.id] = { classes: clip.classes, mode: clip.mode.id, factions: [clip.a.faction, clip.b.faction], seconds: +total.toFixed(1), runAt: +runAt.toFixed(2), ticksPerSecond: tps, ended, stats, built: built0 && { start: built0, end: builtNow }, timeline, missing, errors: [...new Set(errors)], suspects };
+  report.clips[clip.id] = { classes: clip.classes, mode: clip.mode.id, factions: [clip.a.faction, clip.b.faction], seconds: +total.toFixed(1), runAt: +runAt.toFixed(2), ticksPerSecond: tps, ended, stats, built: built0 && { start: built0, end: builtNow }, poses, pack: packFile ? path.basename(packFile) : undefined, timeline, missing, errors: [...new Set(errors)], suspects };
   fs.writeFileSync(manifestFile, JSON.stringify(manifest, null, 2));
   fs.writeFileSync(reportFile, JSON.stringify(report, null, 1));
   const line = stats ? stats.sides.map((s, i) => `${[clip.a, clip.b][i].faction} ${s.alive}/${s.total} alive, ${s.shots} shots, ${s.kills} kills${built0 && built0[i].alive ? `, buildings ${builtNow[i].alive}/${built0[i].alive}` : ""}`).join(" | ") : "no stats";
-  if (tps !== null && tps < 23) log(`  SLOW: the game ran at ${tps} ticks a second (25 is normal). Film this one again when the machine is quieter.`);
+  if (tps !== null && tps < 23) log(`  the game ran slow (${tps} ticks a second; 25 is real time): the film is drawn at game time, so it plays at true speed`);
   log(`  ${clock(total)}  ${tps ?? "?"} ticks/s  ${line}${suspects.length ? `\n      suspects: ${suspects.map((s) => s.text).join(" / ")}` : ""}`);
 }
 await browser.close();

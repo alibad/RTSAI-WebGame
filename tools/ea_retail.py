@@ -57,6 +57,24 @@ def restore_spread(E, damage, facts):
     set_value(E, damage, 'DamageCalculationType', 'CenterPosition')
 
 
+def instant_projectile(E, weapon, original):
+    """Retail's Invisible* projectiles hit at once, where the target is. The port's twin of a few such weapons flies an
+    imageless Bullet instead, which lands where the target WAS: a running infantryman then takes only the splash
+    falloff. The Sniper's AWP did about 41 of its 125 damage to a Conscript running in (battle clip, 20 Nov 2026);
+    retail kills it with one shot. Such a projectile becomes InstantHit, keeping only what InstantHit reads.
+    Returns whether the weapon changed."""
+    projectile = weapon.get('Projectile')
+    if projectile is None or projectile.value != 'Bullet' or not original.get('Projectile', '').lower().startswith('invisible'):
+        return False
+    if original.get('Suicide', '').lower() == 'yes':
+        return False  # suicide blasts have their own retail treatment (_weapon)
+    if any(projectile.val(field) for field in ('Image', 'TrailImage')):
+        return False  # a shell the port draws on purpose (the Mirage's): left as it is
+    projectile.value = 'InstantHit'
+    projectile.children = [c for c in projectile.children if c.key in ('Blockable', 'Inaccuracy', 'InaccuracyType', 'Width')]
+    return True
+
+
 def normalize_voices(voices, E):
     # sound.ini's CrazyIvanMove/AttackCommand and TeslaTroopSelect do not name these clips.
     # Kirov has no fear/feedback voice event at all. Keep an explicitly empty phrase so the
@@ -426,6 +444,7 @@ class Retail:
                           round(float(value) * 25 / 15) if source == 'ROF' else value)
         if 'Burst' not in original:
             set_value(E, twin, 'Burst', 1)
+        instant_projectile(E, twin, original)
         warhead = self.baseline['warheads'].get(original.get('Warhead'), {})
         if twin.key in ('ea-retail-demobomb', 'ea-retail-terrorbomb', 'ea-retail-crnuke', 'ea-retail-crterrorbomb'):
             # Retail suicide damage is one radial blast, not the port's extra delayed nuclear rings.

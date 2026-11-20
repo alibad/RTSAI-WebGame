@@ -22,8 +22,16 @@ row, lets the simulator run it, and films the battlefield.
   stands near them, so the fight fills the picture. `"camera": "all"` keeps everyone in frame for the whole clip;
   `"camera": "launch"` opens close on the player's own units until something is hit (long-range fights: first the
   launch, then the landing).
-- The clip opens on both armies standing (the run is held on its first tick for a second), then plays in real time
-  until the row's seconds are up or one side is gone.
+- The clip opens on both armies standing (1.2 seconds on the first tick), then plays the fight at true speed until the
+  row's seconds are up or one side is gone.
+- **The film is drawn from the simulator's recording, not filmed live.** The fight runs first, unfilmed; the
+  simulator keeps a snapshot of the whole battlefield for every tick (its replay). The recorder then draws each film
+  frame at its game time (30 a second, between two ticks as the live game draws them), grabs the canvas and encodes it.
+  A busy PC cannot drop or repeat a frame, and a fight that ran slow still films at its true speed. Until 20 November
+  2026 the clips were a screencast of the live run, and 16 of the first 17 stuttered (up to 24% of their frames held,
+  then jumping); the owner took it for the game.
+- Health bars: `--bars damaged` (the default: every unit that has been hit), `all` or `selected`, or `"bars"` on a row.
+  The owner judges by them whether hits land.
 
 It writes, into the `--out` folder: each clip's `.mp4` (1920x1080, 30 fps) and poster, `flags/`, `icons/` (each unit's
 build icon exactly as the game draws it), `clips.json` (what `node tools/review.mjs add <folder>` in RTSAI-Web takes,
@@ -45,8 +53,15 @@ Put the build in the grid's `build` (page commit, runtime root, data root): it t
 that is not released yet, serve a page built from it instead (`tools/build-public.mjs`, or a `release-play.mjs
 prepare --dry` build) and say so in `build.label`.
 
-`--only id,id` films some rows again; `clips.json` and `report.json` keep the others. One clip takes about three
-minutes. Work in `F:\work\<topic>-<date>\`, not in the repository.
+`--only id,id` films some rows again; `clips.json` and `report.json` keep the others. One clip takes about one and a
+half minutes. Work in `F:\work\<topic>-<date>\`, not in the repository.
+
+**A rules fix before any data build:** `--pack <web-bundle.pack>` answers the page's data bundle from a file, so the
+live page and runtime play with changed rules. Take the live bundle
+(`D:/Builds/RTSAI/ea-build/play-cdn/<data root>/public/web-bundle.pack`), swap in the changed file (for a generator
+change, the generator's output: see the 20 Nov Sniper fix in `tools/ea_retail.py`, checked by applying the changed
+step to the live `ea-retail-weapons.yaml`), and film the row with and without it. Say in the clip's build that it is
+not the live data.
 
 ## The grid's columns
 
@@ -106,8 +121,9 @@ refused, a page error) and from the buildings' health, which the simulator's cou
 verdicts. Look at the frames, drop broken recordings, and rewrite the suspects into what you actually see. Some
 units never "fire" by design (suicide drones, a demolition truck).
 
-The recorder also measures the game's speed while it films (25 ticks a second is normal) and prints `SLOW` when a
-busy machine made the fight run slower than players see it: film that clip again.
+The recorder also notes how fast the game ran (25 ticks a second is real time). The film is right either way; only
+the numbers in the report's timeline are in game seconds. A unit the row tells to `deploy` that is not deployed three
+seconds in becomes a suspect (an empty body pose means deployed: its sandbag body is drawn instead).
 
 ```sh
 ffmpeg -i <clip>.mp4 -vf "fps=1/2.5,scale=960:-1,tile=4x3" -frames:v 1 <clip>-sheet.jpg     # twelve frames on one sheet
