@@ -690,6 +690,14 @@
   /* Sticky makes the panel a stacking context: above the foot bar (z 1), so its fixed launch row stays bright. */
   .cp-detail { position: sticky; top: 72px; z-index: 2; max-height: calc(100dvh - 176px); }
   .cp-detail > .cp-body { min-height: 0; overflow-y: auto; scrollbar-color: #51595f transparent; scrollbar-width: thin; }
+  /* A film showing: the map and chips fold away and the title shrinks to one line, and the film is sized to what is
+     left of the panel, so the whole picture and its "Skip introduction and deploy" row fit a 1280x720 window too
+     (before, 8% of the film was in view there, 19% at 1366x768). */
+  .cp-detail:has(.cp-film-player) > .cp-hero { grid-template-columns: minmax(0, 1fr); gap: 0; padding: 12px 24px 10px; }
+  .cp-detail:has(.cp-film-player) > .cp-hero > .cp-hero-map, .cp-detail:has(.cp-film-player) .cp-hero-sub, .cp-detail:has(.cp-film-player) > .cp-hero .scr-chips { display: none; }
+  .cp-detail:has(.cp-film-player) .cp-hero-text h2 { margin: 2px 0 0; font-size: 24px; }
+  .cp-detail:has(.cp-film-player) .cp-film-player video, .cp-detail:has(.cp-film-player) .cp-film-loading { max-height: clamp(180px, calc(100dvh - 408px), 54vh); }
+  .cp-detail:has(.cp-film-player) .cp-film-loading { margin: 0 auto; }
 }
 
 /* A film the browser would not start by itself (Safari: autoplay only right after a tap): a clear button over it. */

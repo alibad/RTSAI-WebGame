@@ -86,6 +86,14 @@ export function Missions({ game }: { game: Game }) {
     if (!v || !autoplay || !showFilm || (briefing && !filmSrc)) return;
     v.play().catch((e: unknown) => { if ((e as { name?: string })?.name === "NotAllowedError" && video.current === v) setTapToPlay(true); });
   }, [filmSrc, autoplay, showFilm, filmId, briefing, filmPlain]);
+  // The film opens under the briefing text, and on a laptop-size window the briefing column is short: bring the film
+  // into view when it opens (and again when its download arrives), so "Play briefing & deploy" shows the film.
+  const filmBox = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!showFilm) return;
+    const frame = requestAnimationFrame(() => filmBox.current?.scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "nearest" }));
+    return () => cancelAnimationFrame(frame);
+  }, [showFilm, filmId, filmSrc]);
   const filmFailed = () => { if (briefing && !filmPlain && filmSrc?.startsWith("blob:")) setFilmPlain(true); else setFilmError(true); };
   // Captions on, as the default track says: Safari leaves a default track off unless its own caption setting asks (it
   // shows one by itself only for another language), so the page turns them on; the player can still switch them off.
@@ -271,7 +279,7 @@ export function Missions({ game }: { game: Game }) {
                       <span className="cp-film-card-meta"><Film size={13} aria-hidden="true" />{partOpen ? partEyebrow : "Briefing"} · {filmLength(briefing.seconds)}</span>
                     </button>
                   : <GameButton size="sm" icon={showFilm ? <X size={14} /> : <Film size={14} />} onClick={() => { setDeployAfterFilm(false); setShowFilm(!showFilm); }}>{showFilm ? `Close ${filmName}` : `Watch ${filmName}`}</GameButton>}
-                {showFilm && filmId && <div className="cp-film-player">
+                {showFilm && filmId && <div ref={filmBox} className="cp-film-player">
                   {!filmError && briefing && !filmSrc ? <div className="cp-film-loading" role="status"><img src={briefing.poster} alt="" draggable={false} crossOrigin="anonymous" /><span><LoaderCircle size={18} className="spin" aria-hidden="true" /> Loading film…</span></div>
                   : !filmError ? <div className="cp-film-frame"><video ref={video} key={`${filmId}-${deployAfterFilm}-${briefing ? "cdn" : "local"}-${filmPlain}`} controls playsInline preload="metadata" crossOrigin={briefing ? "anonymous" : undefined} poster={briefing?.poster} aria-label={part ? `${partEyebrow}: ${part.title}` : `${mission!.title} story introduction`} onPlay={() => setTapToPlay(false)} onLoadedMetadata={(e) => showCaptions(e.currentTarget)} onEnded={() => { if (deployAfterFilm) deploy(); }} onError={filmFailed}>
                     <source src={briefing ? (filmPlain ? briefing.video : filmSrc!) : `${import.meta.env.BASE_URL}campaign-video/${filmId}.mp4`} type="video/mp4" onError={filmFailed} />
