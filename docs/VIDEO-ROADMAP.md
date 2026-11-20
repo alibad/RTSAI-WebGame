@@ -45,16 +45,21 @@ Lead with an understandable action and result. Keep the desktop UI readable, sho
 
 ## Reproduce and revise locally
 
-With the local server already running on 3491:
+Multiplayer films come from `tools/multiplayer-film.mjs` (since 20 November 2026; it replaces the recorder, renderer
+and narration script of the retired private-room flow). It needs the Firebase emulators and a signed-in game build on
+one origin, as `docs/MULTIPLAYER.md` ("Checks") describes:
 
 ```powershell
-node tools/record-multiplayer-video.mjs
-$env:RTSAI_FFMPEG = (Get-Command ffmpeg).Source
-node tools/render-multiplayer-video.mjs
-$env:HF_HOME = 'D:/AI Models/huggingface'
-& C:/Users/Admin/Code/AI/chatterbox/.venv/Scripts/python.exe tools/narrate-multiplayer.py
+$env:RTSAI_TEST_URL = 'http://127.0.0.1:3520/play/'
+node tools/multiplayer-film.mjs --scenario happy --clips <folder> --work <folder>      # menu to result screen
+node tools/multiplayer-film.mjs --scenario four|ai|browsers|leave|drop|blocked|speed ...
+node tools/multiplayer-film.mjs --recut <work>/<id> --id <new id> --cuts 0-6 --speed 8=30 ...   # cut again, no replay
 ```
 
-Capture uses the existing Playwright Chromium installation. Rendering uses local FFmpeg and installed Windows Segoe UI fonts. Recording overwrites these generated review outputs; save an approved revision separately before regenerating. The raw recordings include engine startup and waiting time. The edited cuts remove most waiting and retain the real flow and normal-speed gameplay. The shot list is editable, so the cuts can be revised without recording everything again.
+Every player's window is recorded on one clock (the screencast's own timestamps) and cut side by side with a caption
+per step; stretches shown faster than real time say so on screen. Rendering uses local FFmpeg and the installed
+Segoe UI fonts. The cut list (`cuts.json`) is kept beside the recordings, so a film can be cut again, shortened or
+re-captioned without playing the match again. There is no narration step: the owner's voice comes from the
+narrate-video skill when a film needs one.
 
 

@@ -42,10 +42,13 @@ function instrument({ hostRoutesOnly, net }) {
     const n = mp.net;
     if (n.hold) { mp.held.push([this, data]); return; }
     const wait = n.delay + Math.random() * n.jitter;
-    if (wait <= 0 && !this.__due) return send.call(this, data);
+    // With no ping and nothing still held back, the message goes out at once, as it does without the shim (a
+    // farewell sent just before the line closes must not be left waiting in the page).
+    if (wait <= 0 && !this.__waiting) return send.call(this, data);
     // Never overtake an earlier message: a reliable ordered channel doesn't.
     const due = this.__due = Math.max(performance.now() + wait, this.__due ?? 0);
-    setTimeout(() => deliver(this, data), due - performance.now());
+    this.__waiting = (this.__waiting ?? 0) + 1;
+    setTimeout(() => { this.__waiting--; deliver(this, data); }, due - performance.now());
   };
   mp.release = () => { mp.net.hold = false; for (const [channel, data] of mp.held.splice(0)) deliver(channel, data); };
 }
@@ -110,7 +113,11 @@ export async function joinMatch(guest, invite, { wait = true } = {}) {
   if (wait) await lobby(guest);
 }
 
-export const ready = guest => guest.page.getByRole('button', { name: 'Ready', exact: true }).click();
+/** Guest: Ready, and the lobby agreed (the button now offers "Not ready"). */
+export async function ready(guest) {
+  await guest.page.getByRole('button', { name: 'Ready', exact: true }).click();
+  await guest.page.getByRole('button', { name: 'Not ready', exact: true }).waitFor({ timeout: 15000 });
+}
 
 /** Host: Start match, once every guest is ready; resolves when every player's world runs. */
 export async function startMatch(host, players, timeout = 300000) {
@@ -237,16 +244,19 @@ export async function train(player, queue, pattern, count = 1) {
   return item;
 }
 
-/** Selects the local player's actors of the given types and attack-moves them to a world position. */
-export async function attackMove(player, types, [x, y]) {
+/**
+ * Selects the local player's actors of the given types and right-clicks a world position, as a player does: a move
+ * order onto ground or shroud, an attack order onto an enemy the player can see. Returns how many were sent and
+ * where they are (their centre).
+ */
+export async function order(player, types, [x, y]) {
   return player.page.evaluate(async ([types, x, y]) => {
     const g = window.game, s = g.client.cur;
-    const ids = s.actors.filter(a => a.owner === s.header.localPlayer && types.includes(g.client.str(a.type))).map(a => a.id);
-    if (!ids.length) return 0;
-    await g.select(ids);
-    await g.command({ cmd: 'mode', mode: 'attackmove' });
-    g.modeClick(x, y, 0);   // the page's own click for an order mode: attack-move confirms with the right button
-    return ids.length;
+    const mine = s.actors.filter(a => a.owner === s.header.localPlayer && types.includes(g.client.str(a.type)));
+    if (!mine.length) return { count: 0, centre: null };
+    await g.select(mine.map(a => a.id));
+    g.orderAt(x, y);
+    return { count: mine.length, centre: [mine.reduce((n, a) => n + a.sx, 0) / mine.length, mine.reduce((n, a) => n + a.sy, 0) / mine.length] };
   }, [types, x, y]);
 }
 

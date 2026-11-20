@@ -101,26 +101,45 @@ in-match chat (Enter) and an optional camera and microphone are included.
 ## Checks
 
 ```powershell
-node tools/peer-unit-test.mjs
-node tools/join-failure-browser-test.mjs   # failed joins: real WebRTC in Chromium, the matchmaker stubbed
-# Browser test: Firebase emulators (RTSAI-Web: firebase emulators:start --only auth,firestore --project demo-rtsai),
-# the website on the emulators, and a game build with VITE_FIREBASE_EMULATORS=1 VITE_REQUIRE_SIGNIN=1 on one origin.
-$env:RTSAI_TEST_URL = 'http://127.0.0.1:3520/'
+node tools/peer-unit-test.mjs               # the lockstep with its input delay, scenarios, connection hygiene
+node tools/join-failure-browser-test.mjs    # failed joins: real WebRTC in Chromium, the matchmaker stubbed
+# The browser test, the speed probe and the films need: the Firebase emulators (auth + firestore, project
+# demo-rtsai; RTSAI-Web's firebase.json, or a config with your own ports), and a game build with
+# VITE_FIREBASE_EMULATORS=1 VITE_REQUIRE_SIGNIN=1 (plus VITE_FIREBASE_EMULATOR_PORTS="<auth>,<firestore>" for other
+# ports) served with its runtime and data on one origin (tools/local-site-server.mjs <build> <port>).
+$env:RTSAI_TEST_URL = 'http://127.0.0.1:3520/play/'
+$env:RTSAI_FIRESTORE_EMULATOR = '127.0.0.1:8085'
 node tools/multiplayer-browser-test.mjs
+node tools/multiplayer-speed-probe.mjs --pings 0,100,200,300 [--players 4] [--jitter 60]
+node tools/multiplayer-film.mjs --scenario happy --clips <folder> --work <folder>
 ```
 
-The browser test runs three independent Chromium contexts with host ICE routes only:
+All three share `tools/multiplayer-harness.mjs`: players as independent Chromium contexts (Firefox too), the emulator
+build's test sign-in, every frame's time and SyncHash kept per page, and a shim on the direct line that holds every
+message back by half a ping, holds the line (a dropped connection) or makes the other side unreachable (two networks
+with no direct route). Host ICE routes only: players on one machine, not a cross-network certification.
+
+The browser test runs three players:
 - the sign-in gate (nothing boots before sign-in) and an invite waiting behind it;
 - invite-link auto-join, code join, bad codes, a build-mismatch rejection, and a full match that says so;
 - a four-slot map with AI, where any settings change clears readiness;
 - lobby chat relayed through the host, and a camera to the host;
 - a mobile-width lobby;
 - a synchronized three-player match with AI: all deploy orders applied in every world, matching hashes, in-match
-  chat, and every player's match counted by the website;
-- in-match feedback reaching the website;
-- a leave that stops everyone, a fresh second match, and a host quit that stops the guest.
+  chat, the input delay shown to the player;
+- a closed tab: the others read "Player 3 left the match" within seconds, and every world stops;
+- a second match 100 ms apart that keeps at least 19 of the game's 25 frames a second;
+- four seconds without the line: each player reads whom the match waits for, then it goes on, still in step;
+- a host quit that stops the guest;
+- a friend on an unreachable network: the guest reads what to try, the host reads that a friend didn't get through;
+- with `RTSAI_TEST_WEBSITE=1` (the website on the same origin and emulators): every player's match counted by
+  `/api/event`, and in-match feedback reaching `/api/feedback`.
 
 Screenshots and a receipt go to `artifacts/multiplayer/`.
+
+The speed probe plays one short match per ping and prints the frames a second each player reached and whether every
+frame's hash agreed. The film tool records every player's window on one clock and cuts them side by side
+(`docs/VIDEO-ROADMAP.md`).
 
 ## In-game chat
 

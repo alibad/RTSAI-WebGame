@@ -3,8 +3,13 @@
 // so. Real pages, the real engine and real WebRTC between browser contexts on this machine (tools/multiplayer-harness.mjs);
 // `--ping` holds every message back by half that many milliseconds, as distance would.
 //   RTSAI_TEST_URL=... RTSAI_FIRESTORE_EMULATOR=... node tools/multiplayer-film.mjs --scenario happy --clips <dir> --work <dir>
-//     [--id <clip id>] [--ping 0] [--minutes 10] [--build "<which build>"] [--keep-raw]
-// Each run writes <clips>/<id>.mp4 (H.264) and adds its entry to <clips>/../clips.json.
+//     [--id <clip id>] [--ping 0] [--minutes 10] [--build "<which build>"]
+// Each run writes <clips>/<id>.mp4 (H.264) and <work>/<id>/cuts.json (the cut list, what the engines reported, the
+// recordings). A film can be cut again from its recordings without playing it again, as one or several shorter clips:
+//   node tools/multiplayer-film.mjs --recut <work>/<id> --id <new clip id> --clips <dir> --work <dir>
+//     [--cuts 0-6,9] [--speed 8=30,9=2] [--caption "8=New words"] [--trim "9=40,75"]  (trim: seconds into that cut)
+// --pair <work>/<idA>,<work>/<idB>: the first player's window of two films side by side, from each film's last cut
+//   (a before/after pair), with --labels "BEFORE ...|AFTER ..." and --caption-all "<words>".
 import fs from 'node:fs';
 import path from 'node:path';
 import { execFileSync, spawn } from 'node:child_process';
@@ -128,11 +133,13 @@ async function player(label, { kind = 'chromium', four = false } = {}) {
   players.push(p);
   return p;
 }
-/** Closes a player's window (as a player would close the tab) and keeps its recording. */
+/** Closes a player's window as a player closes a tab (the page's own unload runs) and keeps its recording. */
 async function closeWindow(p) {
   if (p.closedAt) return;
   p.closedAt = now();
+  const closed = p.page.close().catch(() => {});
   await p.stopRecording().catch(e => log('recording', String(e)));
+  await closed;
   await p.context.close().catch(() => {});
 }
 const ready = async list => { await Promise.all(list.map(p => H.signIn(p))); await Promise.all(list.map(p => H.atMenu(p))); };
@@ -224,21 +231,29 @@ const SCENARIOS = {
     facts.atAttack = { ...await sync(), tanks: tank ? await tanks() : 0, enemyBuildings: enemy.length };
     cut(`Minute ${Math.round((now() - matchStart) / 60)}: Player 1 sends the tanks into Player 2's base`, 4);
     const target = enemy[0] ?? (await H.army(guest))[0];
-    await host.page.evaluate(([x, y]) => window.game.lookAt(x, y), [target.x, target.y]);
     await guest.page.evaluate(([x, y]) => window.game.lookAt(x, y), [target.x, target.y]);
-    for (let wave = 0; wave < 60 && await H.outcome(guest) === 'Undefined'; wave++) {
+    // Right-clicks on the next building still standing: a march while it is under the shroud, an attack once seen.
+    // Player 1's camera rides with the tanks.
+    for (let wave = 0; wave < 100 && await H.outcome(guest) === 'Undefined'; wave++) {
       const left = (await H.army(guest)).filter(a => a.building);
-      if (left.length && tank) await H.attackMove(host, [tank], [left[0].x, left[0].y]);
-      await sleep(5000);
+      if (!left.length || !tank) break;
+      const sent = await H.order(host, [tank], [left[0].x, left[0].y]);
+      if (!sent.count) break;
+      await host.page.evaluate(([x, y]) => window.game.lookAt(x, y), sent.centre);
+      await sleep(3000);
     }
+    for (let i = 0; i < 20 && await H.outcome(host) === 'Undefined'; i++) await sleep(500);
     facts.sync = await sync();
     facts.outcomes = [await H.outcome(host), await H.outcome(guest)];
     cut('The result screens: one Victory, one Defeat, with the same match statistics');
     await sleep(9000);
     cut('Player 2 presses Continue and is back at the menu. What Player 1 sees then');
-    await guest.page.getByRole('button', { name: 'Continue', exact: true }).click().catch(() => {});
+    await guest.page.getByRole('button', { name: 'Continue', exact: true }).click({ timeout: 5000 }).catch(() => {});
     await sleep(7000);
-    facts.afterContinue = { host: (await host.page.getByRole('alert').allInnerTexts().catch(() => [])).join(' | ').slice(0, 300) };
+    facts.afterContinue = { host: await alerts(host), hostBar: await host.page.getByRole('region', { name: 'Multiplayer controls' }).innerText().catch(() => '') };
+    cut('Player 1 presses Continue too');
+    await host.page.getByRole('button', { name: 'Continue', exact: true }).click({ timeout: 5000 }).catch(() => {});
+    await sleep(4000);
     stop();
   },
 
@@ -457,6 +472,36 @@ const SCENARIOS = {
 };
 
 // ------------------------------------------------------------------------------------------------------------- run
+
+/** "0-3,7" as indexes; "8=30,9=2" as a map. */
+const indexes = text => text.split(',').flatMap(part => { const [a, b = a] = part.split('-').map(Number); return Array.from({ length: b - a + 1 }, (_, i) => a + i); });
+const pairs = text => new Map(text ? text.split(/,(?=\d+=)/).map(part => { const at = part.indexOf('='); return [Number(part.slice(0, at)), part.slice(at + 1)]; }) : []);
+
+if (opt('recut', '')) {
+  const saved = JSON.parse(fs.readFileSync(path.join(path.resolve(opt('recut')), 'cuts.json'), 'utf8'));
+  const keep = opt('cuts', '') ? indexes(opt('cuts')) : saved.cuts.map((_, i) => i);
+  const speeds = pairs(opt('speed', '')), captions = pairs(opt('caption', '')), trims = pairs(opt('trim', ''));
+  for (const i of keep) {
+    const c = { ...saved.cuts[i] };
+    if (speeds.has(i)) c.speed = Number(speeds.get(i));
+    if (captions.has(i)) c.caption = captions.get(i);
+    if (trims.has(i)) { const [from, to] = trims.get(i).split(',').map(Number); c.end = Math.min(c.end, c.start + to); c.start += from; }
+    cuts.push(c);
+  }
+  const file = path.join(clips, `${id}.mp4`);
+  console.log(JSON.stringify({ id, file, from: saved.id, ...render(saved.players, file, id), cuts: cuts.map(c => `${c.speed}x ${c.caption}`) }, null, 1));
+  process.exit(0);
+}
+if (opt('pair', '')) {
+  // Two films of the same scene: the first player's window of each, on that film's own clock, from its last cut.
+  const [a, b] = opt('pair').split(',').map(dir => JSON.parse(fs.readFileSync(path.join(path.resolve(dir), 'cuts.json'), 'utf8')));
+  const labels = opt('labels', 'BEFORE|AFTER').split('|'), last = [a, b].map(f => f.cuts.at(-1)), length = Math.min(...last.map(c => c.end - c.start));
+  const panes = [a, b].map((f, i) => ({ ...f.players[0], label: labels[i], videoStart: f.players[0].videoStart + last[0].start - last[i].start, closedAt: 0 }));
+  cuts.push({ start: last[0].start, end: last[0].start + length, speed: 1, caption: opt('caption-all', last[0].caption) });
+  const file = path.join(clips, `${id}.mp4`);
+  console.log(JSON.stringify({ id, file, ...render(panes, file, id), before: a.facts.sync?.speed, after: b.facts.sync?.speed }, null, 1));
+  process.exit(0);
+}
 
 let failure = null;
 try {
