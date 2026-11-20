@@ -283,9 +283,11 @@ function Timeline({ game, sandbox }: { game: Game; sandbox: Sandbox }) {
           <div className="rp-knob" style={{ left: `${pct}%` }} />
         </div>
         <span className="rp-time is-total" style={{ minWidth: 74 }} data-testid="sim-clock">{t(pos)} / {t(len - 1)}</span>
-        {live
-          ? <span className="flex-none text-[10px] font-extrabold uppercase tracking-[.08em] text-[#ff6b5e]" title={`The battle as it is being fought (tick ${tick})`} data-testid="sim-live"><span aria-hidden="true">● </span>Live</span>
-          : <button type="button" className="rp-btn" aria-label="Jump to now" data-tip="Jump to now: the live battle" data-tip-pos="top" onClick={() => sandbox.goLive()} data-testid="sim-jump-now"><SkipForward /></button>}
+        {live && st.ended && st.paused
+          ? <span className="flex-none text-[10px] font-extrabold uppercase tracking-[.08em] text-[#b5b8b8]" title="The battle is over. Play carries on with the survivors." data-testid="sim-end">End</span>
+          : live
+            ? <span className="flex-none text-[10px] font-extrabold uppercase tracking-[.08em] text-[#ff6b5e]" title={`The battle as it is being fought (tick ${tick})`} data-testid="sim-live"><span aria-hidden="true">● </span>Live</span>
+            : <button type="button" className="rp-btn" aria-label={st.ended ? "Jump to the end" : "Jump to now"} data-tip={st.ended ? "Jump to the end of the battle" : "Jump to now: the live battle"} data-tip-pos="top" onClick={() => sandbox.goLive()} data-testid="sim-jump-now"><SkipForward /></button>}
         <div className="rp-speeds" role="radiogroup" aria-label="Playback speed">
           {[1, 2, 4].map((s) => (
             <button key={s} type="button" role="radio" aria-checked={st.speed === s} className="rp-speed" onClick={() => sandbox.setSpeed(s)}>{s}×</button>

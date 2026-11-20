@@ -154,6 +154,10 @@ asked to start a game from any moment of a replay. Page only (`web/src/sandbox.t
 - **Live.** The timeline's right end is the battle still being fought, marked with a red "Live". Left of it, "Jump to
   now" (the skip-forward button where the mark was) goes straight back and on; Play runs from the moment shown into the
   live battle; the live battle waits, paused, while you look back.
+- **The end.** Once the battle has its result (a side won or lost) it runs on 3 seconds (`END_TAIL`, the last falls
+  finish) and holds: the timeline is the battle, not a long walk of the survivors (the owner's "1:53" was a 0:25 fight,
+  seen by the maker-tools session). The mark then reads "End"; playing a past moment on stops there; Play at the end
+  carries on with the survivors, and the timeline with them.
 - **Play from here** (`Sandbox.playFromHere`). A new battle from the moment on screen: every unit of both sides on the
   cell it stood on, with its facing, health, rank and deployed state (an infantryman whose body sequence is empty is
   dug in), its own opening order and name from the battle's setup (matched on the first tick by type, side and cell; a
@@ -191,10 +195,11 @@ built by a vehicle factory still appears in Aircraft. Search stays inside the se
 category/search disarms the old placement brush. Categories unavailable to a nation fall back to an available one.
 
 `tools/replay-seek-browser-test.mjs` runs the owner's dug-in G.I. battle while the camera wanders, writes down the
-engine's truth at five moments, then seeks to each (backwards, forwards, after the fight) and checks the units, their
-cells and health, the score, the camera and the clock, that looking around keeps the timeline's length, that playing
-on reaches the live battle, and that Play from here starts with that moment's units and that its link lays them out
-again with their cells, health and ranks. On the page before the fix 10 of its 29 checks failed; after it, all 32 pass.
+engine's truth at three moments and at the end where the battle holds, then seeks to each (backwards, forwards, after
+the fight) and checks the units, their cells and health, the score, the camera and the clock, that the timeline stops
+with the battle and does not grow while you look around, that playing on stops at the end and Play there carries on,
+and that Play from here starts with that moment's units and that its link lays them out again with their cells, health
+and ranks. On the page before the fix 10 of its 29 checks failed; after it, all pass.
 
 `websim placementtest --root <unpacked public root>` checks the real catalog and completed buildings before any
 tick, plus their positions after scenario recreation. `tools/simulator-placement-browser-test.mjs` checks both

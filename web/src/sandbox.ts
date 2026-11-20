@@ -13,6 +13,7 @@ import { setupLink, type BattleSetup } from "./battle-setups";
 
 export const ARENA = "web-arena";
 const MAX_RECORDING = 25 * 60 * 8; // 8 minutes of ticks
+const END_TAIL = 75; // ticks a battle runs on after its result before it holds: 3 s, the last falls finish
 
 export type SandboxOrder = "engage" | "hold" | "move";
 export type AiSkill = "easy" | "normal" | "hard" | "brutal";
@@ -92,6 +93,8 @@ export interface SandboxState {
   replay: number | null; // index into the recording while scrubbing, null when live
   /** The battle's readout (score, board) at the replay's moment; null when live. */
   replayStats: SandboxStats | null;
+  /** The battle has its result (a side won or lost): the timeline stops a moment later (Sandbox.record). */
+  ended: boolean;
   playing: boolean; // replay playback
   speed: number;
   paused: boolean;
@@ -193,7 +196,7 @@ export class Sandbox {
           { order: cfg.order ?? "engage", destination: null, level: cfg.level },
         ],
         fa: cfg.fa, fb: cfg.fb, units: [], rosters: {}, map: cfg.map ?? ARENA, skill: cfg.skill ?? "normal", money: cfg.money ?? 0, fog: cfg.fog ?? false,
-        recordLen: 0, replay: null, replayStats: null, playing: false, speed: 1, paused: false, pickDestination: null, operation: null, placed: null,
+        recordLen: 0, replay: null, replayStats: null, ended: false, playing: false, speed: 1, paused: false, pickDestination: null, operation: null, placed: null,
         canUndo: false, canRedo: false, notice: null, unitOrders: {}, pickUnit: null,
       },
     });
@@ -201,6 +204,11 @@ export class Sandbox {
     // score of the moment it shows.
     useStore.subscribe((s, prev) => {
       if (this.game.sandbox !== this || s.ui === prev.ui || !s.ui || s.sandbox?.mode !== "run") return;
+      // The result is in: the battle runs on for END_TAIL ticks (the last falls finish), then holds (record).
+      if (this.endAt === null && s.ui.win && s.ui.win !== "Undefined") {
+        this.endAt = s.ui.tick + END_TAIL;
+        this.patch({ ended: true });
+      }
       const last = this.readouts.at(-1);
       const entry = { tick: s.ui.tick, stats: s.ui.sandbox ?? null, cash: s.ui.cash ?? 0 };
       if (last && last.tick >= entry.tick) { if (last.tick === entry.tick) this.readouts[this.readouts.length - 1] = entry; return; }
@@ -270,7 +278,7 @@ export class Sandbox {
     this.urlPlacements = placements;
     this.stopPlayback();
     this.forgetRecording();
-    this.patch({ mode: "edit", recordLen: 0, replay: null, replayStats: null, paused: true });
+    this.patch({ mode: "edit", recordLen: 0, replay: null, replayStats: null, ended: false, paused: true });
     // A new world: actor ids start again, so the card (ui/Inspector.tsx) lets go of the old one.
     store.set({ inspect: null });
     this.game.start(this.scenario(placements, false), true);
@@ -358,7 +366,7 @@ export class Sandbox {
     this.lastRunScenario = this.scenario(placements, true);
     const op = this.state.operation;
     this.game.radio.setOperation(op ? op.id : null, op?.radio ?? []);
-    this.patch({ mode: "run", recordLen: 0, replay: null, replayStats: null, paused: false, brush: null, pickDestination: null });
+    this.patch({ mode: "run", recordLen: 0, replay: null, replayStats: null, ended: false, paused: false, brush: null, pickDestination: null });
     store.set({ inspect: null });
     this.game.start(this.lastRunScenario);
   }
@@ -376,7 +384,13 @@ export class Sandbox {
     this.recording = [];
     this.readouts = [];
     this.firstFrame = null;
+    this.endAt = null;
+    this.heldAtEnd = false;
   }
+
+  /** The tick the battle holds at once its result is in (null: no result yet), and whether it has held there. */
+  private endAt: number | null = null;
+  private heldAtEnd = false;
 
   /**
    * While a battle runs the engine draws the whole battlefield into every snapshot (game.ts sendView), so the replay
@@ -401,6 +415,13 @@ export class Sandbox {
     this.recording.push(s);
     if (this.recording.length > MAX_RECORDING) this.recording.shift();
     if (this.recording.length % 5 === 0 || this.recording.length < 5) this.patch({ recordLen: this.recording.length });
+    // The battle is over: it holds a moment after its result, so the timeline is the battle and not a long walk of the
+    // survivors afterwards (the owner's "1:53" was a 0:25 fight). Play carries on with them if you want.
+    if (this.endAt !== null && !this.heldAtEnd && s.header.tick >= this.endAt) {
+      this.heldAtEnd = true;
+      this.game.client.send({ type: "pause", paused: true });
+      this.patch({ paused: true, recordLen: this.recording.length });
+    }
   }
 
   /** The game tick of a recorded moment (the timeline's clock: 25 ticks a second). */
@@ -765,7 +786,7 @@ export class Sandbox {
     this.playTimer = setInterval(() => {
       const st = this.state;
       if (st.replay === null) return this.stopPlayback();
-      if (st.replay >= this.recording.length - 1) { this.stopPlayback(); this.goLive(); return; }
+      if (st.replay >= this.recording.length - 1) { this.stopPlayback(); this.goLive(!this.heldAtEnd); return; }
       this.scrub(st.replay + 1, false);
     }, 40 / this.state.speed);
   }
@@ -776,9 +797,13 @@ export class Sandbox {
     if (store.get().sandbox?.playing) this.patch({ playing: false });
   }
 
-  /** Back to the newest moment, the battle still being fought, and on with it (the end of the timeline). */
-  goLive() {
+  /**
+   * Back to the newest moment (the end of the timeline): the battle still being fought, and on with it; or, once the
+   * battle is over and holding, its end, where it stays until you press Play.
+   */
+  goLive(resume = !this.heldAtEnd) {
     this.stopPlayback();
+    if (!resume) { this.patch({ replay: null, replayStats: null, paused: true }); return; }
     this.patch({ replay: null, replayStats: null, paused: false });
     store.set({ paused: false });
     this.game.client.send({ type: "pause", paused: false });

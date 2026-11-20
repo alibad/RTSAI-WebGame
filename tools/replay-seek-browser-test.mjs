@@ -1,10 +1,11 @@
 // The Battle simulator's replay timeline in a real browser, on the real engine (docs/EDITOR-SIMULATOR.md, "Replay"):
-// a battle runs while a player looks around like the owner did (pauses, pans away, comes back); at five moments the
-// live game's own truth is written down (every unit's id, type, side, cell and health from the engine, and the score).
+// a battle runs while a player looks around like the owner did (pauses, pans away, comes back); at three moments, and
+// at the end where the battle holds a moment after its result, the live game's own truth is written down (every unit's
+// id, type, side, cell and health from the engine, and the score). The timeline must stop with the battle, not run on.
 // Then the timeline is dragged to each moment, backwards and forwards and after the fight has ended, and the field
 // must show exactly that moment: the same units in the same places, the score of that moment, the camera on them,
-// and a timeline that does not grow while you look. Finally playing on from a past moment must carry on into the live
-// game, and "Play from here" (when the page has it) must start a new battle from that moment's units.
+// and a timeline that does not grow while you look. Playing a past moment on must stop at the end, and Play there
+// carries on with the survivors; "Play from here" (when the page has it) must start a new battle from a moment's units.
 //   node tools/static-serve.mjs --dir <a built page> --port 3640   (or any server with the page, runtime and data)
 //   RTSAI_TEST_URL=http://127.0.0.1:3640/ node tools/replay-seek-browser-test.mjs
 // RTSAI_TEST_SPEED sets the game speed while recording (default 2).
@@ -36,11 +37,11 @@ const s64 = Buffer.from(JSON.stringify(setup)).toString('base64url');
 const MOMENTS = [
   { tick: 160, camera: 'look around, then back' },
   { tick: 460, camera: 'pan far east and stay there' },
-  { tick: 710, camera: 'back to the battle' },
-  { tick: 1210, camera: 'stay' },
-  { tick: 1610, camera: 'stay' },
+  { tick: 610, camera: 'back to the battle' },
 ];
-const END = 1700;
+// After its result a battle runs on this many ticks, then holds (web/src/sandbox.ts END_TAIL), plus a little slack
+// for the pause to reach the engine.
+const END_TAIL = 75, END_SLACK = 15;
 
 const browser = await chromium.launch({ executablePath: browserExecutable(), headless: process.env.RTSAI_TEST_HEADED !== '1', args: browserArgs() });
 const page = await (await browser.newContext({ viewport: { width: 1600, height: 900 } })).newPage();
@@ -87,14 +88,29 @@ try {
     await page.evaluate(() => window.game.sandbox.setPaused(false));
     console.log(`truth at tick ${t.tick} (${fmt(t.tick)}): ${t.units.length} units, score ${t.sides?.map((s) => s.join('/')).join(' vs ')}`);
   }
-  await page.waitForFunction((t) => (window.store.getState().ui?.tick ?? 0) >= t, END, { timeout: 240000, polling: 50 });
-  // England has fallen: the result screen. "Look at the battle" goes back to the field with its timeline.
+  // ---- The end: England falls (the result), the battle runs on a moment and holds; the timeline stops with it.
+  const result = await page.waitForFunction(() => { const ui = window.store.getState().ui; return ui?.win && ui.win !== 'Undefined' ? ui.tick : false; }, null, { timeout: 240000, polling: 20 }).then((h) => h.jsonValue());
+  await page.waitForFunction(() => { const sb = window.game.sandbox; return sb.state.ended && sb.state.paused; }, null, { timeout: 60000, polling: 50 });
+  await page.waitForTimeout(400);
+  const end = await page.evaluate(async () => {
+    const g = window.game, placed = await g.command({ cmd: 'placements' }), ui = window.store.getState().ui;
+    return { tick: g.client.cur.header.tick, len: g.sandbox.recording.length, units: placed.spawns, sides: ui?.sandbox?.sides?.map((s) => [s.alive, s.total]) };
+  });
+  truth.push({ ...end, camera: 'stay (the end)' });
+  console.log(`result at tick ${result} (${fmt(result)}); the battle holds at tick ${end.tick} (${fmt(end.tick)}): ${end.units.length} units, score ${end.sides?.map((s) => s.join('/')).join(' vs ')}`);
+  // The test sees the result a poll late (a tick or two), the page on the tick it arrives.
+  check(end.tick >= result + END_TAIL - 3 && end.tick <= result + END_TAIL + END_SLACK, `the battle holds ${END_TAIL} ticks after its result (result ${result}, held at ${end.tick})`);
+  await page.waitForTimeout(3000);
+  const lenLater = await page.evaluate(() => window.game.sandbox.recording.length);
+  check(lenLater === end.len, `the timeline stops with the battle (${end.len} ticks, ${lenLater} three seconds later)`);
+  // The result screen. "Look at the battle" goes back to the field with its timeline.
   if (await page.locator('[data-testid="oc-look"]').count()) await page.click('[data-testid="oc-look"]');
   await page.waitForSelector('.rp-range');
+  check(await page.locator('[data-testid="sim-end"]').count() === 1, 'the timeline ends in "End", not "Live"');
 
   // ---- Seeking: backwards and forwards, the field must show the moment the timeline says.
   const lenAtStart = await page.evaluate(() => window.store.getState().sandbox.recordLen);
-  for (const k of [4, 0, 3, 1, 2]) {
+  for (const k of [3, 0, 2, 1]) {
     const t = truth[k];
     const r = await page.evaluate(async (want) => {
       const g = window.game, sb = g.sandbox;
@@ -105,7 +121,8 @@ try {
       Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(input, String(i));
       input.dispatchEvent(new Event('input', { bubbles: true }));
       await new Promise((resolve) => setTimeout(resolve, 600));
-      const frame = sb.replayFrame()?.[0];
+      // The last moment while the battle holds there is the live field itself (the knob is already at the end).
+      const frame = sb.replayFrame()?.[0] ?? (i === sb.recording.length - 1 ? g.client.cur : null);
       if (!frame) return { noFrame: true };
       const sideOf = (a) => { const p = frame.players[a.owner]; return !p || !(p.flags & 4) ? -1 : p.flags & 1 ? 0 : 1; };
       const shown = [];
@@ -141,18 +158,27 @@ try {
   check(lenAfter === lenAtStart, `looking around while stopped keeps the timeline's length (${lenAtStart} -> ${lenAfter} ticks)`);
   await page.screenshot({ path: `${out}/seek.png` });
 
-  // ---- Playing on from a past moment reaches the live game, which carries on.
-  const live = await page.evaluate(async (want) => {
+  // ---- Playing on from a past moment of a finished battle stops at its end; Play there carries on with the survivors.
+  const atEnd = await page.evaluate(async (want) => {
     const g = window.game, sb = g.sandbox;
     sb.setSpeed(8);
     sb.scrub(sb.recording.findIndex((s) => s.header.tick === want));
-    const stopped = sb.recording.at(-1).header.tick;
+    const len = sb.recording.length;
     document.querySelector('.rp-play').click();
     const t0 = performance.now();
-    while (performance.now() - t0 < 60000 && (sb.state.replay !== null || (window.store.getState().ui?.tick ?? 0) < stopped + 50)) await new Promise((r) => setTimeout(r, 200));
-    return { replay: sb.state.replay, stopped, tick: window.store.getState().ui?.tick ?? 0 };
-  }, truth[3].tick);
-  check(live.replay === null && live.tick >= live.stopped + 50, `play from ${fmt(truth[3].tick)} runs into the live game and on (stopped at tick ${live.stopped}, now ${live.tick})`);
+    while (performance.now() - t0 < 30000 && sb.state.replay !== null) await new Promise((r) => setTimeout(r, 100));
+    await new Promise((r) => setTimeout(r, 1500));
+    return { replay: sb.state.replay, paused: sb.state.paused, len, after: sb.recording.length, end: !!document.querySelector('[data-testid="sim-end"]') };
+  }, truth[1].tick);
+  check(atEnd.replay === null && atEnd.paused && atEnd.after === atEnd.len && atEnd.end, `play from ${fmt(truth[1].tick)} runs to the end and stops there (${atEnd.len} -> ${atEnd.after} ticks, ${atEnd.paused ? 'held' : 'running'})`);
+  const live = await page.evaluate(async () => {
+    const g = window.game, sb = g.sandbox, stopped = sb.recording.at(-1).header.tick;
+    document.querySelector('.rp-play').click();
+    const t0 = performance.now();
+    while (performance.now() - t0 < 30000 && (window.store.getState().ui?.tick ?? 0) < stopped + 50) await new Promise((r) => setTimeout(r, 200));
+    return { stopped, tick: window.store.getState().ui?.tick ?? 0, last: sb.recording.at(-1).header.tick, replay: sb.state.replay };
+  });
+  check(live.replay === null && live.tick >= live.stopped + 50 && live.last >= live.stopped + 50, `Play at the end carries on with the survivors, and the timeline with it (held at tick ${live.stopped}, now ${live.tick})`);
 
   // ---- Play from here (when the page has it): a new battle from the moment's units.
   const hasPlayFromHere = await page.locator('[data-testid="sim-play-from-here"]').count();
@@ -194,12 +220,13 @@ try {
     await page.waitForTimeout(1500);
     const opened = await page.evaluate(() => window.game.command({ cmd: 'placements' }).then((r) => r.spawns));
     const left = [...opened];
-    // Two infantrymen sharing a cell then: the engine places one per cell, so the second stands on the nearest free cell
-    // (docs/EDITOR-SIMULATOR.md, "Not carried"): up to two cells off.
-    const shared = (u) => t.units.some((o) => o !== u && o.x === u.x && o.y === u.y);
-    const near = (u, n) => same(u, n) || (shared(u) && u.type === n.type && u.player === n.player && Math.abs(u.x - n.x) <= 2 && Math.abs(u.y - n.y) <= 4);
-    // Exact matches first, so a unit that kept its cell is not taken by a moved neighbour.
-    const gone = [...t.units].sort((a, b) => shared(a) - shared(b)).filter((u) => { const i = left.findIndex((n) => near(u, n) && Math.abs(u.health - n.health) <= 2 && u.level === n.level); if (i < 0) return true; left.splice(i, 1); return false; });
+    // Two infantrymen on one cell then (or two mid-step whose middles are in one cell): the engine places one per cell,
+    // so the second stands on the nearest free cell (docs/EDITOR-SIMULATOR.md, "Not carried"): up to two cells off.
+    // Exact matches first, so a unit that kept its cell is not taken by a neighbour that had to make room.
+    const near = (u, n) => u.type === n.type && u.player === n.player && Math.abs(u.x - n.x) <= 2 && Math.abs(u.y - n.y) <= 4;
+    const fits = (u, n) => Math.abs(u.health - n.health) <= 2 && u.level === n.level;
+    const take = (match) => (u) => { const i = left.findIndex((n) => match(u, n) && fits(u, n)); if (i < 0) return true; left.splice(i, 1); return false; };
+    const gone = t.units.filter(take(same)).filter(take(near));
     check(opened.length === t.units.length && !gone.length, `play from here: its link lays out the same ${t.units.length} units with their cells, health and ranks (${opened.length} laid out, ${gone.length} not matched${gone.length ? `: ${gone.map((u) => `${u.type} ${u.x},${u.y} ${u.health}%`).join('; ')}` : ''})`);
   } else {
     check(false, 'play from here: no "Play from here" button on the timeline');
@@ -213,4 +240,4 @@ if (failures.length) {
   console.log(`\n${failures.length} replay check(s) failed.`);
   process.exit(1);
 }
-console.log('\nReplay checks passed: every moment shows its own units, score and camera; the timeline keeps its length; playing on reaches the live game; play from here starts that moment.');
+console.log('\nReplay checks passed: the timeline stops with the battle; every moment shows its own units, score and camera; looking around keeps its length; playing on stops at the end and Play there carries on; play from here starts that moment.');
