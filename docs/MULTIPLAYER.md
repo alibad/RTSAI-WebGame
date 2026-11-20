@@ -74,14 +74,29 @@ in-match chat (Enter) and an optional camera and microphone are included.
   names whose orders the match is waiting for ("Waiting for Player 2…"); at the very start it says that their game
   is still loading, and from 5 seconds on it counts the seconds. It promises no time: only a silent line ends the
   match (15 seconds without any message), not a slow game.
-- **Networks.** Public STUN servers (Google, Cloudflare) find routes. There is no TURN relay. Some strict networks
-  cannot connect directly.
-  - The guest then reads "Couldn't connect directly to your host. Some networks block direct connections; try
-    another network, such as a phone hotspot", whichever way the failure is noticed. (Until 20 Nov 2026 that advice
-    showed only when the 20-second wait ran out; the browser usually gives up first, and the guest read just
-    "Couldn't connect to your host".)
+- **Networks.** Public STUN servers (Google, Cloudflare) find direct routes. When two networks cannot reach each
+  other (strict or carrier-grade NAT on both sides, some office and campus networks), the line goes through
+  Cloudflare's TURN relay (owner's decision, 20 Nov 2026).
+  - Credentials: before connecting, the host (once per match, shared by its guests) and each guest ask the website's
+    `relay` function (RTSAI-Web `functions/relay.js`, europe-west1) with their sign-in. It asks Cloudflare for
+    credentials that last four hours and keeps the relay key's secret on the server. `web/src/net/relay.ts` reuses them
+    for later matches while three hours remain, and drops the browser-blocked port 53.
+  - Without them (signed out, the function down, a test build without it) the game connects as before, without a
+    relay, after at most six seconds; a failure is not asked again for a minute.
+  - Only game data and lobby traffic go through the relay; the browser picks it only when no direct route works.
+    "Connection details" in a match then names the relayed players.
+  - Cost: Cloudflare Realtime TURN is free up to 1,000 GB a month, then $0.05 per GB. A two-player match carries
+    about 37 MB an hour (5.3 kB a second each way), a four-player match up to 227 MB an hour if every line were
+    relayed. The function stays inside Firebase's free allowance (one call per player per match).
+  - When even the relay fails, the guest reads "Couldn't connect to your host, not even through the relay. Some
+    networks block these connections; try another network, such as a phone hotspot." Without the relay on offer the
+    message is "Couldn't connect directly to your host…", whichever way the failure is noticed. (Until 20 Nov 2026
+    that advice showed only when the 20-second wait ran out; the browser usually gives up first, and the guest read
+    just "Couldn't connect to your host".)
   - The host's lobby says "A friend opened your invite but didn't get through…" instead of only waiting for
     friends. The host can't tell a blocked network from a friend who gave up, so it claims neither.
+  - `multiplayer_started` counts the relayed guests (`relayed`), and a failed join says whether the relay was offered
+    (`relay`), so the weekly digest shows how much the relay is used and whether it is enough.
 - **Failed joins are reported** (since 1 Nov 2026), so we learn how many players a relay would help. A guest whose
   join fails on the network sends one `game_error` event: `where: network`, which the weekly digest groups under
   network errors. Its message names the step:
@@ -113,12 +128,22 @@ $env:RTSAI_FIRESTORE_EMULATOR = '127.0.0.1:8085'
 node tools/multiplayer-browser-test.mjs
 node tools/multiplayer-speed-probe.mjs --pings 0,100,200,300 [--players 4] [--jitter 60]
 node tools/multiplayer-film.mjs --scenario happy --clips <folder> --work <folder>
+# The relay, through the real Cloudflare TURN: the emulators WITH functions (RTSAI-Web functions/, the relay key's
+# secret in functions/.secret.local as TURN_KEY_API_TOKEN), VITE_FIREBASE_EMULATOR_PORTS="<auth>,<firestore>,<functions>"
+$env:RTSAI_AUTH_EMULATOR = '127.0.0.1:9099'
+$env:RTSAI_RELAY_FUNCTION = 'http://127.0.0.1:5001/demo-rtsai/europe-west1/relay'
+node tools/multiplayer-relay-test.mjs [--seconds 30]
 ```
+
+The relay test makes a guest whose browser may use relay routes only (the harness's `relayOnly`), then two such
+players, and checks that each match opens through the relay, keeps full speed and step, and that both players'
+connection details name the relayed line. Without relay credentials it stops at once and says so (exit code 2).
 
 All three share `tools/multiplayer-harness.mjs`: players as independent Chromium contexts (Firefox too), the emulator
 build's test sign-in, every frame's time and SyncHash kept per page, and a shim on the direct line that holds every
-message back by half a ping, holds the line (a dropped connection) or makes the other side unreachable (two networks
-with no direct route). Host ICE routes only: players on one machine, not a cross-network certification.
+message back by half a ping, holds the line (a dropped connection), makes the other side unreachable (two networks
+with no direct route) or lets a page use relay routes only. Host ICE routes only, except in the relay test: players on
+one machine, not a cross-network certification.
 
 The browser test runs three players:
 - the sign-in gate (nothing boots before sign-in) and an invite waiting behind it;

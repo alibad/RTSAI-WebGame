@@ -3,7 +3,10 @@
 //   - the engine's own synchronization reports, kept per frame (window.mp.hashes), and every frame's arrival time;
 //   - a network shim on the direct line (window.mp.net): `delay`/`jitter` ms added to every message this page sends
 //     (order kept); `hold`, which keeps messages back until window.mp.release() (a connection that drops and
-//     returns); and `blocked`, which makes the other side's addresses unreachable (two networks with no direct route);
+//     returns); `blocked`, which makes the other side's addresses unreachable (two networks with no direct route);
+//     and `relayOnly`, which lets this page's connections use only relay (TURN) routes, as when its network lets
+//     nothing else through (with hostRoutesOnly: false, so the page's own servers and relay credentials stay; set
+//     before the connection is made);
 //   - host ICE routes only by default (no STUN): players on one machine, not a cross-network certification.
 //   RTSAI_TEST_URL            the page, default http://127.0.0.1:3520/
 //   RTSAI_FIRESTORE_EMULATOR  host:port of the Firestore emulator, default 127.0.0.1:8085
@@ -24,12 +27,15 @@ export function launch(kind = 'chromium', { headed = process.env.RTSAI_TEST_HEAD
 
 /** Runs in the page before its own scripts. */
 function instrument({ hostRoutesOnly, net }) {
-  const mp = window.mp = { frames: [], errors: [], hashes: {}, connections: [], worldStarts: [], net: { delay: 0, jitter: 0, hold: false, blocked: false, ...net }, held: [] };
+  const mp = window.mp = { frames: [], errors: [], hashes: {}, connections: [], worldStarts: [], net: { delay: 0, jitter: 0, hold: false, blocked: false, relayOnly: false, ...net }, held: [] };
   window.addEventListener('rtsai:world-started', e => mp.worldStarts.push(e.detail));
   const Original = window.RTCPeerConnection;
   if (!Original) return;
   window.RTCPeerConnection = class extends Original {
-    constructor(config) { super(hostRoutesOnly ? { ...config, iceServers: [] } : config); mp.connections.push(this); }
+    constructor(config) {
+      super(hostRoutesOnly ? { ...config, iceServers: [] } : mp.net.relayOnly ? { ...config, iceTransportPolicy: 'relay' } : config);
+      mp.connections.push(this);
+    }
     // Blocked: every route the other side offers points at an address nothing answers on (192.0.2.1, TEST-NET-1).
     setRemoteDescription(description) {
       if (mp.net.blocked && description?.sdp) description = { type: description.type, sdp: description.sdp.replace(/^(a=candidate:\S+ \d+ \S+ \d+) \S+ (\d+ typ )/gm, '$1 192.0.2.1 $2') };
@@ -160,6 +166,21 @@ export const lineBytes = player => player.page.evaluate(async () => {
     for (const stat of (await pc.getStats()).values()) if (stat.type === 'transport') { sent += stat.bytesSent ?? 0; received += stat.bytesReceived ?? 0; }
   }
   return { sent, received };
+});
+
+/** How each of this player's open lines runs: the candidate types of the selected pair ('host', 'srflx', 'relay'). */
+export const lineRoutes = player => player.page.evaluate(async () => {
+  const routes = [];
+  for (const pc of window.mp.connections) {
+    if (pc.connectionState !== 'connected') continue;
+    const stats = await pc.getStats();
+    let pair;
+    stats.forEach(s => { if (s.type === 'transport' && s.selectedCandidatePairId) pair = stats.get(s.selectedCandidatePairId); });
+    if (!pair) stats.forEach(s => { if (s.type === 'candidate-pair' && (s.selected || (s.nominated && s.state === 'succeeded'))) pair ??= s; });
+    const local = pair && stats.get(pair.localCandidateId), remote = pair && stats.get(pair.remoteCandidateId);
+    routes.push({ local: local?.candidateType ?? null, remote: remote?.candidateType ?? null, remoteAddress: remote?.address ?? null, protocol: local?.protocol ?? null, relayProtocol: local?.relayProtocol ?? null });
+  }
+  return routes;
 });
 
 /** The local player's actors of a kind, through the page's own game API. */

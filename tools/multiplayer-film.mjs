@@ -124,10 +124,10 @@ async function record(p, viewport) {
 
 const browsers = {};
 const players = [];
-async function player(label, { kind = 'chromium', four = false } = {}) {
+async function player(label, { kind = 'chromium', four = false, hostRoutesOnly = true, net = {} } = {}) {
   browsers[kind] ??= await H.launch(kind);
   const viewport = four ? { width: 1280, height: 720 } : { width: 1200, height: 900 };
-  const p = await H.openPlayer(browsers[kind], { name: label, viewport, net: { delay: ping / 2 } });
+  const p = await H.openPlayer(browsers[kind], { name: label, viewport, hostRoutesOnly, net: { delay: ping / 2, ...net } });
   Object.assign(p, { label, kind, videoStart: now(), closedAt: 0, video: '' });
   await record(p, viewport);
   players.push(p);
@@ -455,6 +455,48 @@ const SCENARIOS = {
     await sleep(8000);
     facts.hostTold = told;
     facts.host = (await host.page.getByRole('dialog').getByRole('status').allInnerTexts().catch(() => [])).join(' | ');
+    stop();
+  },
+
+  /**
+   * The pair that could not play before: Player 2's network lets nothing through but the relay (the harness's
+   * relayOnly), so the line goes through Cloudflare's TURN relay. Needs the relay function with a key (see
+   * tools/multiplayer-relay-test.mjs); real internet, not a simulated route.
+   */
+  async relay() {
+    const host = await player('PLAYER 1 · HOST', { hostRoutesOnly: false }), guest = await player('PLAYER 2 · GUEST', { hostRoutesOnly: false, net: { relayOnly: true } });
+    const both = [host, guest];
+    await ready(both);
+    cut('Player 1 creates a match and sends the invite', 2);
+    await host.page.getByRole('button', { name: 'Multiplayer', exact: true }).click(); await sleep(800);
+    await host.page.getByRole('button', { name: 'Create match', exact: true }).click(); await H.lobby(host);
+    const link = await host.page.getByLabel('Invite link').inputValue();
+    await sleep(2000);
+    cut('Player 2 is on a network that lets no direct connection through, and joins');
+    const from = now();
+    await H.joinMatch(guest, link);
+    facts.joinSeconds = +(now() - from).toFixed(1);
+    await sleep(3500);
+    cut('They are in the lobby. Countries, Ready, Start', 2);
+    await pick(host, 'Player 1 faction', 'saudi'); await sleep(1000);
+    await pick(guest, 'Player 2 faction', 'lebanon'); await sleep(1000);
+    await H.ready(guest); await sleep(1000);
+    await H.startMatch(host, both); await H.reachFrame(both, 50);
+    cut('Both deploy and start building', 2);
+    for (const p of both) await H.deployMcv(p);
+    const building = smallBase(both).catch(e => log('build', String(e)));
+    await sleep(14000);
+    cut('Connection details on both screens: the line goes through the relay');
+    for (const p of both) await p.page.getByRole('region', { name: 'Multiplayer controls' }).getByRole('button', { name: 'Connection details' }).click();
+    await sleep(8000);
+    facts.routes = await Promise.all(both.map(p => H.lineRoutes(p).then(r => r.map(x => `${x.local}->${x.remote}`))));
+    for (const p of both) await p.page.getByRole('button', { name: 'Close details' }).click().catch(() => {});
+    cut('Ninety seconds of play through the relay, sped up: both games in step', 8);
+    await sleep(90000);
+    await building;
+    facts.sync = await sync(both);
+    cut('Minute 2: the same game on both screens');
+    await sleep(5000);
     stop();
   },
 
