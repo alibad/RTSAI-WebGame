@@ -91,6 +91,12 @@ export interface Store {
   sidebarCollapsed: boolean;
   /** The cell grid over the battlefield (ui/GridToggle.tsx, render/grid.ts); kept in the preferences. */
   grid: boolean;
+  /** Every unit's weapon reach drawn on the ground (the Ranges button); kept in the preferences. */
+  ranges: boolean;
+  /** The battle simulator's field panel: readout, who fell when, everything on the field (ui/BattleBoard.tsx). */
+  board: boolean;
+  /** The actor the battle simulator shows on its card (ui/Inspector.tsx): clicked on the field or in the list. */
+  inspect: number | null;
   set: (p: Partial<Store>) => void;
 }
 
@@ -139,6 +145,9 @@ export const useStore = create<Store>((set) => ({
   reviewOpen: false,
   sidebarCollapsed: false,
   grid: false,
+  ranges: false,
+  board: true,
+  inspect: null,
   set: (p) => set(p),
 }));
 

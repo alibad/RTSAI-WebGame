@@ -108,6 +108,23 @@ export function gridLines(info: Pick<StartInfo, "mapSize" | "tileSize" | "cellOr
   return new Float32Array(out);
 }
 
+/**
+ * A ring on the ground of `cells` radius around a world px point, as line instances: a weapon's reach. A circle of the
+ * world projects to an ellipse on screen (tile px per 1024 world units on each axis), as the engine's range circles do.
+ */
+export function ringLines(out: number[], x: number, y: number, cells: number, info: Pick<StartInfo, "tileSize" | "tileScale">, rgba: readonly number[], segments = 56) {
+  const k = 1024 / info.tileScale;
+  const rx = cells * info.tileSize[0] * k, ry = cells * info.tileSize[1] * k;
+  const [r, g, b, a] = rgba;
+  let px = x + rx, py = y;
+  for (let i = 1; i <= segments; i++) {
+    const t = (i / segments) * Math.PI * 2;
+    const nx = x + Math.cos(t) * rx, ny = y + Math.sin(t) * ry;
+    out.push(px, py, nx, ny, r * a, g * a, b * a, a);
+    px = nx; py = ny;
+  }
+}
+
 export class GridPass {
   private prog: WebGLProgram;
   private vao: WebGLVertexArrayObject;
@@ -115,19 +132,46 @@ export class GridPass {
   private width: WebGLUniformLocation | null;
   private count = 0;
   private dirty = true;
+  /** Lines made each frame (weapon reach rings), in their own buffer. */
+  private dynVao: WebGLVertexArrayObject;
+  private dynBuffer: WebGLBuffer;
 
   constructor(private gl: WebGL2RenderingContext) {
     this.prog = compile(gl, LINE_VS, COLOR_FS);
     this.width = gl.getUniformLocation(this.prog, "uWidth");
-    this.vao = gl.createVertexArray()!;
-    gl.bindVertexArray(this.vao);
+    const vertexArray = (buffer: WebGLBuffer) => {
+      const vao = gl.createVertexArray()!;
+      gl.bindVertexArray(vao);
+      gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+      for (const [loc, off] of [[0, 0], [1, 4]]) {
+        gl.enableVertexAttribArray(loc);
+        gl.vertexAttribPointer(loc, 4, gl.FLOAT, false, LINE_FLOATS * 4, off * 4);
+        gl.vertexAttribDivisor(loc, 1);
+      }
+      gl.bindVertexArray(null);
+      return vao;
+    };
     this.buffer = gl.createBuffer()!;
-    gl.bindBuffer(gl.ARRAY_BUFFER, this.buffer);
-    for (const [loc, off] of [[0, 0], [1, 4]]) {
-      gl.enableVertexAttribArray(loc);
-      gl.vertexAttribPointer(loc, 4, gl.FLOAT, false, LINE_FLOATS * 4, off * 4);
-      gl.vertexAttribDivisor(loc, 1);
-    }
+    this.vao = vertexArray(this.buffer);
+    this.dynBuffer = gl.createBuffer()!;
+    this.dynVao = vertexArray(this.dynBuffer);
+  }
+
+  /** Lines made this frame (ringLines), `width` drawing-buffer px per device px. */
+  drawLines(lines: Float32Array, width: number, view: (prog: WebGLProgram) => void) {
+    const n = lines.length / LINE_FLOATS;
+    if (!n) return;
+    const gl = this.gl;
+    gl.useProgram(this.prog);
+    view(this.prog);
+    gl.uniform1f(this.width, width * Math.max(1, window.devicePixelRatio || 1));
+    gl.enable(gl.BLEND);
+    gl.blendEquation(gl.FUNC_ADD);
+    gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.dynBuffer);
+    gl.bufferData(gl.ARRAY_BUFFER, lines, gl.STREAM_DRAW);
+    gl.bindVertexArray(this.dynVao);
+    gl.drawArraysInstanced(gl.TRIANGLE_STRIP, 0, 4, n);
     gl.bindVertexArray(null);
   }
 

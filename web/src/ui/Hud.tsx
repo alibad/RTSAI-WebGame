@@ -17,7 +17,7 @@ import { MatchLibrary } from "./MatchLibrary";
 import { FeedbackSlot } from "./feedback/slot";
 import { GameSettings } from "./GameSettings";
 import { NowPlaying } from "./NowPlaying";
-import { GridToggle } from "./GridToggle";
+import { BoardToggle, GridToggle, RangesToggle } from "./GridToggle";
 import { keyFor, type Command } from "../preferences";
 import { GameButton, Kbd } from "./kit/game";
 import { Flag } from "./Flag";
@@ -376,6 +376,8 @@ export function Hud({ game }: { game: Game }) {
         <NowPlaying game={game} />
         <span className="hud-tool-slot" style={{ "--tip": '"Settings"' } as React.CSSProperties}><GameSettings game={game} /></span>
         <GridToggle game={game} />
+        <RangesToggle />
+        {game.sandbox && <BoardToggle />}
         <FeedbackSlot kind="hud" />
       </nav>
       {developerTools && statsOpen && <Stats game={game} />}

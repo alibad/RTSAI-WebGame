@@ -7,9 +7,12 @@
 export const COMMAND_KEYS = { deploy: "d", guard: "g", stop: "s", scatter: "x", attackmove: "a", repair: "k", sell: "l", typeselect: "t", selectall: "p" } as const;
 export type Command = keyof typeof COMMAND_KEYS;
 
-/** grid: the cell grid over the battlefield (the Grid button, render/grid.ts), kept for the next visit. */
-export interface Preferences { master: number; effects: number; music: number; voice: number; scroll: number; bindings: Partial<Record<Command, string>>; keymap?: number; grid?: boolean }
-export const defaults: Preferences = { master: 1, effects: 1, music: 1, voice: 1, scroll: 1, bindings: {}, keymap: 2, grid: false };
+/**
+ * grid: the cell grid over the battlefield (the Grid button, render/grid.ts); ranges: every unit's weapon reach drawn on
+ * the ground (the Ranges button); board: the battle simulator's field panel (ui/BattleBoard.tsx). Kept for next time.
+ */
+export interface Preferences { master: number; effects: number; music: number; voice: number; scroll: number; bindings: Partial<Record<Command, string>>; keymap?: number; grid?: boolean; ranges?: boolean; board?: boolean }
+export const defaults: Preferences = { master: 1, effects: 1, music: 1, voice: 1, scroll: 1, bindings: {}, keymap: 2, grid: false, ranges: false, board: true };
 
 /** The key a command answers to: the player's binding, else RA2's. */
 export const keyFor = (command: Command) => preferences.bindings[command] ?? COMMAND_KEYS[command];
@@ -40,6 +43,8 @@ function read(): Preferences {
       : migrate(value.bindings ?? {});
     value.keymap = 2;
     value.grid = value.grid === true;
+    value.ranges = value.ranges === true;
+    value.board = value.board !== false;
     for (const key of ["master", "effects", "music", "voice", "scroll"] as const)
       value[key] = Number.isFinite(value[key]) ? Math.max(0, Math.min(key === "scroll" ? 3 : 1, value[key])) : defaults[key];
     return value;

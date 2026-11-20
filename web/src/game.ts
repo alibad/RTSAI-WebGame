@@ -149,7 +149,8 @@ export class Game {
     this.renderer = new Renderer(canvas);
     this.renderer.setGrid(preferences.grid === true);
     this.client = new SimClient(this.renderer);
-    store.set({ shared: this.client.shared, grid: preferences.grid === true });
+    store.set({ shared: this.client.shared, grid: preferences.grid === true, ranges: preferences.ranges === true, board: preferences.board !== false });
+    this.overlay.reach = (type) => this.reachOf(type);
     this.client.onSnapshot = (s) => this.onSnapshot(s);
     this.client.onSheets = (uploaded, total) => store.set({ sheets: { uploaded, total } });
     this.renderer.onMissingTexture = (id) => this.client.needSheet(id);
@@ -712,6 +713,9 @@ export class Game {
     }
     this.updateHover(cur);
     this.overlay.markers = this.sandboxMarkers();
+    const st = store.get();
+    this.overlay.ranges = st.ranges;
+    this.overlay.inspect = this.sandbox ? st.inspect : null;
     // Outside a match the canvas is hidden behind the menus (App.tsx): drawing it there was full-screen work every frame.
     const replay = playing ? (this.coach.review ? [this.coach.review.snapshot, null] as const : this.sandbox?.replayFrame()) : null;
     if (playing && this.shouldDraw(now, cur, !!replay)) {
@@ -755,7 +759,7 @@ export class Game {
     let selected = 0;
     for (const id of ov.selected) selected += id;
     const view = [this.cam.x, this.cam.y, this.cam.zoom, c.clientWidth, c.clientHeight, window.devicePixelRatio, ov.hover,
-      ov.selected.size, selected, ov.dragBox, ov.statusBars, JSON.stringify(ov.markers ?? [])].join();
+      ov.selected.size, selected, ov.dragBox, ov.statusBars, JSON.stringify(ov.markers ?? []), ov.ranges, ov.inspect].join();
     const interpolating = !!cur && now - cur.receivedAt < 60; // ticks are 40 ms apart, drawn in between
     const flashing = !!ov.orderFlash && now - ov.orderFlash.t < 650;
     const changed = replaying || interpolating || flashing || cur !== this.drawn.snapshot || r.version !== this.drawn.version
@@ -1110,6 +1114,33 @@ export class Game {
     return (e.shiftKey ? MOD_SHIFT : 0) | (e.altKey ? MOD_ALT : 0) | (e.ctrlKey ? MOD_CTRL : 0) | (e.metaKey ? MOD_META : 0);
   }
 
+  /** Each actor type's longest weapon reach in cells (the engine's unitinfo, asked once per type and world): the rings. */
+  private reach = { world: null as StartInfo | null, cells: new Map<string, number>(), asked: new Set<string>() };
+  private reachOf(type: number) {
+    const r = this.reach;
+    if (r.world !== this.info) { r.world = this.info; r.cells.clear(); r.asked.clear(); }
+    const name = this.client.str(type);
+    const cells = r.cells.get(name);
+    if (cells !== undefined || r.asked.has(name) || !this.info) return cells;
+    r.asked.add(name);
+    const world = this.info;
+    void this.command<{ weapons?: { range: number; damage: number }[] }>({ cmd: "unitinfo", type: name }).then((u) => {
+      if (r.world !== world) return;
+      r.cells.set(name, Math.max(0, ...(u?.weapons ?? []).filter((w) => w.damage > 0).map((w) => w.range)));
+      this.renderer.version++;
+    }).catch(() => { r.cells.set(name, 0); });
+    return undefined;
+  }
+
+  /** The battle simulator's card follows a left click: the unit or building under it (either side), or nothing. */
+  private inspectAt(wx: number, wy: number) {
+    if (!this.sandbox) return;
+    const s = this.client.cur;
+    const a = s ? this.actorAt(wx, wy, s) : undefined;
+    const player = a && s!.players[a.owner];
+    store.set({ inspect: a && player && player.flags & 4 && a.maxHp > 0 ? a.id : null });
+  }
+
   private sandboxMarkers() {
     const st = this.sandbox && store.get().sandbox;
     if (!st || st.mode !== "edit" || !this.info) return undefined;
@@ -1187,7 +1218,7 @@ export class Game {
     if (d.pan) return;
     const [wx, wy] = this.toWorld(e.clientX, e.clientY);
     if (d.active) this.boxSelect(d.x0, d.y0, wx, wy, e.shiftKey);
-    else if (e.button === 0) this.clickSelect(wx, wy, e.shiftKey);
+    else if (e.button === 0) { this.clickSelect(wx, wy, e.shiftKey); this.inspectAt(wx, wy); }
   }
 
   private bind() {
@@ -1203,7 +1234,7 @@ export class Game {
       ownAt: (wx, wy) => { const s = this.client.cur; const a = s && this.actorAt(wx, wy, s); return !!(s && a && this.ownSelectable(s, a)); },
       hasSelection: () => this.overlay.selected.size > 0,
       mode: () => this.ui?.mode ?? "",
-      select: (wx, wy) => { store.set({ menuOpen: false }); this.clickSelect(wx, wy, false); },
+      select: (wx, wy) => { store.set({ menuOpen: false }); this.clickSelect(wx, wy, false); this.inspectAt(wx, wy); },
       order: (wx, wy) => this.click(wx, wy, BTN_RIGHT, 0),
       modeClick: (wx, wy) => this.modeClick(wx, wy, 0),
       boxSelect: (x0, y0, x1, y1) => this.boxSelect(x0, y0, x1, y1, false),

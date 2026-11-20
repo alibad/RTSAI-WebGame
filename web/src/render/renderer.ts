@@ -6,7 +6,7 @@ import { COLOR_FS, COLOR_VS, COMBINED_FS, SHROUD_FS, SHROUD_VS, SPRITE_VS, TERRA
 import { DRAW_BYTES, type Actor, type Snapshot, type SpriteInfo, type StartInfo } from "../sim/protocol";
 import { ModelPass } from "./models";
 import { IconRaster, type IconSprite } from "./icons";
-import { GridPass } from "./grid";
+import { GridPass, ringLines } from "./grid";
 
 export interface Camera {
   x: number; // world px at the canvas centre
@@ -23,6 +23,12 @@ export interface Overlay {
   markers?: { x: number; y: number; color: [number, number, number] }[];
   /** CycleStatusBars (,): 0 selected and hovered only, 1 also every damaged unit, 2 every unit. */
   statusBars?: number;
+  /** Every unit's weapon reach on the ground (the Ranges button). */
+  ranges?: boolean;
+  /** The battle simulator's inspected actor: its reach is drawn, brighter, even with ranges off. */
+  inspect?: number | null;
+  /** An actor type's (string id's) longest weapon reach in cells, once known (game.ts asks the engine). */
+  reach?: (type: number) => number | undefined;
 }
 
 const INSTANCE_FLOATS = 20;
@@ -782,6 +788,7 @@ export class Renderer {
     if (depthOn) gl.disable(gl.DEPTH_TEST);
     // The cell grid lies on the ground: over the terrain, under everything standing on it and under the shroud.
     if (this.gridOn && this.terrainCopy && this.terrainVao && !this.actorFilter) this.gridPass.draw(this.info, this.terrainCopy, (p) => this.viewUniforms(p, cam));
+    if (cur && !this.actorFilter) this.drawReach(cur, prev, cam, overlay, now);
     if (cur) this.drawCaptured(cur, cam, true);
     if (depthOn) { gl.enable(gl.DEPTH_TEST); gl.clear(gl.DEPTH_BUFFER_BIT); }
     if (cur) this.drawSprites(cur, prev, cam, now, false);
@@ -822,6 +829,33 @@ export class Renderer {
       copy.getContext("2d")!.drawImage(this.canvas, 0, 0);
       grab(copy);
     }
+  }
+
+  /**
+   * Weapon reach on the ground (the Ranges button, and the battle simulator's inspected unit): a ring around each
+   * playable side's unit, in its owner's colour, at its longest weapon's range. Under the units, like the grid.
+   */
+  private drawReach(cur: Snapshot, prev: Snapshot | null, cam: Camera, ov: Overlay, now: number) {
+    const reach = ov.reach, info = this.info;
+    if (!reach || !info || (!ov.ranges && ov.inspect == null)) return;
+    const a = Math.min(1, Math.max(0, (now - cur.receivedAt) / TICK_MS));
+    const rings: number[] = [], focus: number[] = [];
+    for (const act of cur.actors) {
+      const inspected = act.id === ov.inspect;
+      if (!ov.ranges && !inspected) continue;
+      if (act.flags & 16 || act.maxHp <= 0) continue;
+      const player = cur.players[act.owner];
+      if (!player || !(player.flags & 4)) continue;
+      const cells = reach(act.type);
+      if (!cells) continue;
+      const [sx, sy] = Renderer.lerpActor(prev?.actorById.get(act.id), act, a);
+      const c = player.color;
+      const rgb = [((c >> 16) & 255) / 255, ((c >> 8) & 255) / 255, (c & 255) / 255];
+      ringLines(inspected ? focus : rings, sx, sy, cells, info, inspected ? [...rgb, 0.95] : [...rgb, 0.5]);
+    }
+    const view = (p: WebGLProgram) => this.viewUniforms(p, cam);
+    this.gridPass.drawLines(new Float32Array(rings), 1.5, view);
+    this.gridPass.drawLines(new Float32Array(focus), 3, view);
   }
 
   private drawSprites(cur: Snapshot, prev: Snapshot | null, cam: Camera, now: number, aboveShroud: boolean) {

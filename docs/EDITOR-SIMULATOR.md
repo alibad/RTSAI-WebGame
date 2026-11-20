@@ -77,6 +77,28 @@ cell's bottom corner. So slopes come out as one mesh, and cliffs (more than two 
 over the ground, under every unit and under the shroud; Classic's square maps get square cells. The choice is kept in
 the preferences (`rtsai.preferences.v1` `grid`). It needs no runtime change.
 
+## See inside a fight (20 November 2026)
+
+The owner's first pick from the old website Workshop (16 Nov): see what is happening in a battle and why. All of it reads
+what the engine already sends: no runtime change.
+
+- **Battle board** (`web/src/ui/BattleBoard.tsx`, the Board button, open by default, kept in the preferences). On the
+  left, in setup and in battle; hidden during an operation, which has its own objectives panel.
+  - In battle: each side's units alive, health left, shots fired, damage dealt and units destroyed, the battle clock and
+    the first loss, as the engine measures them (`sim/OpenRA.WebSim/Sandbox.cs`, `ui.sandbox`).
+  - Who fell when: each unit lost with the battle clock, newest first (a unit leaving the snapshot or dying).
+  - The field: both sides' actors by type, with the cameo and alive/total, one pip per unit filled to its health,
+    crossed out when destroyed. A row or a pip moves the camera there and opens the unit's card.
+  - Sides: the world's first two playable players are side A (you) and side B (the enemy), as the scenario sets them.
+- **Unit card** (`web/src/ui/Inspector.tsx`). A left click on any unit or building of either side, in setup or in
+  battle, opens the palette's card (`UnitCard`: picture, story, the engine's cost, health, armour, speed, sight and
+  weapons) with this one's live health, rank and, in battle, its type's shots, damage taken and how many are left. It
+  stays on a destroyed unit, steps aside for the victory or defeat screen, and lets go when a new world starts.
+- **Ranges** (the Ranges button, battle bar and simulator setup bar, kept in the preferences): every playable side's unit
+  gets a ring on the ground at its longest damaging weapon's range (the engine's `unitinfo`, asked once per type), in
+  its owner's colour (`Renderer.drawReach`, `render/grid.ts` `ringLines`). The inspected unit's ring is always drawn,
+  thicker. A world circle is drawn as the ellipse the engine draws (tile px per 1024 world units on each axis).
+
 ## Data and building
 
 The page imports website source (RTSAI-Web: the Faction viewer components and the Earth compiler). The build finds

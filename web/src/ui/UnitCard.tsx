@@ -2,7 +2,7 @@
 // the same catalog the website's faction viewer reads) and the numbers from the rules this game actually runs (the
 // engine's unitinfo: cost, health, armour, speed, each weapon's range, reload and damage).
 
-import { useEffect, useState, type CSSProperties } from "react";
+import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { Coins, Crosshair, Eye, Gauge, Heart, Shield } from "lucide-react";
 import type { Game } from "../game";
@@ -37,8 +37,11 @@ export function unitInfo(game: Game, name: string) {
 
 const KIND: Record<string, string> = { infantry: "Infantry", vehicle: "Vehicle", aircraft: "Aircraft", ship: "Ship", building: "Building", defense: "Defence" };
 
-/** `pinned`: the unit picked to place (it stays, and its stage takes the mouse: turn it, play its actions). */
-export function UnitCard({ game, unit, faction, side, pinned = false }: { game: Game; unit: SimUnit; faction: string; side: 0 | 1; pinned?: boolean }) {
+/**
+ * `pinned`: the unit picked to place (it stays, and its stage takes the mouse: turn it, play its actions).
+ * `className` and `children`: the inspected unit's card (ui/Inspector.tsx) places it elsewhere and adds its live state.
+ */
+export function UnitCard({ game, unit, faction, side, pinned = false, className, children }: { game: Game; unit: SimUnit; faction: string; side: 0 | 1; pinned?: boolean; className?: string; children?: ReactNode }) {
   const icons = useStore((s) => s.icons);
   const [info, setInfo] = useState<UnitInfo | null>(null);
   useEffect(() => { let live = true; setInfo(null); void unitInfo(game, unit.name).then((i) => { if (live) setInfo(i); }); return () => { live = false; }; }, [game, unit.name]);
@@ -56,7 +59,7 @@ export function UnitCard({ game, unit, faction, side, pinned = false }: { game: 
   const weapons = info?.weapons.filter((w) => w.damage > 0) ?? [];
   // Over the battlefield, beside the panel it was picked in (a portal: the panel clips what overflows it).
   return createPortal(
-    <div className={pinned ? "sim-card hud-panel is-pinned" : "sim-card hud-panel"} style={{ "--side": SIDE_COLORS[side] } as CSSProperties} data-testid="sim-card">
+    <div className={`sim-card hud-panel${pinned ? " is-pinned" : ""}${className ? ` ${className}` : ""}`} style={{ "--side": SIDE_COLORS[side] } as CSSProperties} data-testid={className ? undefined : "sim-card"}>
       <div className="sim-card-art" data-picture={picture ? "sprite" : undefined}>
         <FactionViewerStage unit={unit.name} faction={faction} color={ENGINE_SIDE_COLORS[side]} interactive={pinned} fallback={picture || (portrait ? `portraits/${portrait}` : icons[iconKey(unit.name, faction)] ?? null)} />
       </div>
@@ -76,7 +79,8 @@ export function UnitCard({ game, unit, faction, side, pinned = false }: { game: 
             <li key={w.name}><Crosshair size={12} /><b>{w.name}</b><span className="digits">{w.damage}{w.burst > 1 ? `×${w.burst}` : ""} · {w.range} cells · {(w.reload / 25).toFixed(1)}s</span><small>{w.targets.join(", ")}</small></li>
           ))}
         </ul>}
-        {story?.strengths && <p className="sim-card-tip">{story.strengths}</p>}
+        {story?.strengths && !children && <p className="sim-card-tip">{story.strengths}</p>}
+        {children}
       </div>
     </div>,
     document.body,

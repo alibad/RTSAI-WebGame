@@ -1174,3 +1174,74 @@
 .ed-field-cursor[hidden] { display:none; }
 .ed-field-cursor.is-gem { border-color:#ff8fd8; background:#ff8fd814; }
 .ed-field-cursor.is-flatten { border-color:#a8ebc1; background:#a8ebc114; border-style:dashed; }
+
+/* ---- battle simulator: the battle board and the inspected unit's card (ui/BattleBoard.tsx, ui/Inspector.tsx) */
+.sb-board { position: absolute; left: 12px; top: 64px; z-index: 14; display: flex; width: 264px; max-height: calc(100% - 64px - 230px); flex-direction: column; gap: 10px; padding: 10px; overflow-y: auto; border-radius: 10px; scrollbar-width: thin; }
+.sb-board-head { display: flex; align-items: center; justify-content: space-between; }
+.sb-board-head b { display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 900; letter-spacing: .05em; text-transform: uppercase; color: var(--hud-accent); }
+.sb-board-head button { display: grid; width: 22px; height: 22px; place-items: center; border-radius: 6px; color: var(--muted-foreground); }
+.sb-board-head button:hover { color: #eef0e6; background: rgba(255, 255, 255, .08); }
+.sb-bar { position: relative; display: block; width: 100%; height: 5px; overflow: hidden; border-radius: 3px; background: rgba(0, 0, 0, .6); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .06); }
+.sb-bar i { position: absolute; inset: 0 auto 0 0; background: var(--side, var(--hud-green, #4fbf63)); transition: width .3s ease; }
+.sb-readout { display: flex; flex-direction: column; gap: 3px; padding: 8px; border-radius: 8px; background: rgba(0, 0, 0, .28); }
+.sb-readout-head, .sb-readout-row { display: grid; grid-template-columns: 1fr 64px 64px; align-items: center; gap: 6px; }
+.sb-readout-head > :not(:first-child) { justify-self: end; box-shadow: 0 0 0 1px #000; }
+.sb-readout-row span { font-size: 11px; color: #aeb5a2; }
+.sb-readout-row b { justify-self: end; font-size: 14px; font-weight: 800; color: var(--side); }
+.sb-readout-row b small { font-size: 10px; color: var(--muted-foreground); }
+.sb-readout-row b .sb-bar { width: 58px; }
+.sb-readout-foot { margin: 4px 0 0; font-size: 10px; color: var(--muted-foreground); }
+.sb-fallen ol { display: flex; max-height: 116px; flex-direction: column; gap: 1px; margin: 4px 0 0; padding: 0; overflow-y: auto; list-style: none; scrollbar-width: thin; }
+.sb-fallen p { display: flex; align-items: center; gap: 5px; margin: 0; }
+.sb-fallen li { display: grid; grid-template-columns: 34px 8px 1fr; align-items: center; gap: 6px; font-size: 11px; color: #c9d0bd; animation: menu-rise .2s ease; }
+.sb-fallen li > span:first-child { color: var(--muted-foreground); }
+.sb-fallen li i { width: 7px; height: 7px; border-radius: 2px; background: var(--side); }
+.sb-fallen li > span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-decoration: line-through; text-decoration-color: rgba(255, 255, 255, .35); }
+.sb-field { display: flex; flex-direction: column; gap: 10px; }
+.sb-field-side { display: flex; flex-direction: column; gap: 4px; }
+.sb-field-title { display: flex; align-items: center; gap: 6px; margin: 0; padding-bottom: 3px; border-bottom: 1px solid color-mix(in srgb, var(--side) 45%, transparent); font-size: 12px; font-weight: 800; color: #eef0e6; }
+.sb-field-title .digits { margin-left: auto; color: var(--side); }
+.sb-field-title small, .sb-type-count small { color: var(--muted-foreground); font-weight: 400; }
+.sb-field-empty { margin: 0; font-size: 11px; color: var(--muted-foreground); }
+.sb-type { display: flex; flex-direction: column; gap: 3px; }
+.sb-type-main { display: grid; grid-template-columns: 38px 1fr auto; align-items: center; gap: 7px; padding: 2px 4px 2px 2px; border-radius: 6px; text-align: left; }
+.sb-type-main:hover { background: rgba(255, 255, 255, .06); }
+.sb-type-pic { display: grid; width: 38px; height: 30px; place-items: center; overflow: hidden; border-radius: 4px; background: rgba(0, 0, 0, .35); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--side) 40%, transparent); }
+.sb-type-pic img { max-width: 100%; max-height: 100%; object-fit: contain; }
+.sb-type-name { overflow: hidden; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; color: #dfe3d4; }
+.sb-type-count { font-size: 12px; font-weight: 700; color: var(--side); }
+.sb-type.is-gone .sb-type-main { opacity: .55; }
+.sb-type.is-gone .sb-type-name { text-decoration: line-through; }
+.sb-pips { display: flex; flex-wrap: wrap; gap: 3px; padding-left: 47px; }
+/* One pip per unit: filled to its health; a destroyed one is hollow and crossed out. */
+.sb-pip { position: relative; width: 11px; height: 11px; padding: 0; border-radius: 2px; background: linear-gradient(to top, var(--side) calc(var(--hp) * 100%), rgba(0, 0, 0, .55) 0); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .18); cursor: pointer; transition: transform .12s ease; }
+.sb-pip:hover { transform: scale(1.25); }
+.sb-pip[aria-pressed="true"] { box-shadow: 0 0 0 2px #fff, 0 0 8px var(--side); }
+.sb-pip.is-dead { background: rgba(0, 0, 0, .35); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .12); }
+.sb-pip.is-dead::after { content: ""; position: absolute; inset: 1px; background: linear-gradient(45deg, transparent 44%, #e05a4e 44% 56%, transparent 56%), linear-gradient(-45deg, transparent 44%, #e05a4e 44% 56%, transparent 56%); }
+/* The inspected unit's card: beside the board (or at the left edge when the board is closed), above the battle. */
+/* Under the victory or defeat screen (.oc-root, z-index 15), like the battle board. */
+.sim-card.is-inspect { left: 12px; right: auto; top: 64px; z-index: 14; width: 300px; pointer-events: auto; }
+:root:has(.sb-board) .sim-card.is-inspect { left: 288px; }
+.sim-card.is-inspect .sim-card-art { height: 150px; }
+.sim-card.is-inspect .sim-card-body > p:not(.menu-eyebrow) { display: -webkit-box; overflow: hidden; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.sim-inspect { position: relative; display: flex; flex-direction: column; gap: 6px; padding-top: 8px; border-top: 1px solid rgba(255, 255, 255, .08); }
+.sim-inspect .menu-eyebrow { display: flex; align-items: center; gap: 6px; margin: 0; color: var(--side); }
+.sim-inspect-close { position: absolute; top: 6px; right: 0; display: grid; width: 22px; height: 22px; place-items: center; border-radius: 6px; color: var(--muted-foreground); }
+.sim-inspect-close:hover { color: #eef0e6; background: rgba(255, 255, 255, .08); }
+.sim-inspect-hp { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 8px; font-size: 13px; color: #eef0e6; }
+.sim-inspect-hp .sb-bar { height: 7px; }
+.sim-inspect-hp .sb-bar i { background: color-mix(in srgb, var(--hud-red, #e05a4e) calc((1 - var(--hp)) * 100%), var(--hud-green, #4fbf63)); }
+.sim-inspect-hp small { color: var(--muted-foreground); }
+.sim-inspect-dead { display: flex; align-items: center; gap: 6px; margin: 0 !important; font-size: 13px !important; font-weight: 800; color: var(--hud-red, #e05a4e) !important; }
+.sim-inspect-type { display: flex; gap: 12px; margin: 0; font-size: 12px; color: #dfe3d4; }
+.sim-inspect-type div { display: flex; align-items: baseline; gap: 4px; }
+.sim-inspect-type svg { align-self: center; color: var(--hud-accent); }
+.sim-inspect-type dd { margin: 0; font-weight: 700; }
+.sim-inspect-type dt { font-size: 10px; color: var(--muted-foreground); }
+@media (max-width: 899px), (max-height: 599px) {
+  .sb-board { top: 54px; width: 220px; max-height: calc(100% - 54px - 150px); }
+  :root:has(.sb-board) .sim-card.is-inspect { left: 240px; }
+  .sim-card.is-inspect { width: 250px; top: 54px; }
+  .sim-card.is-inspect .sim-card-art { height: 100px; }
+}

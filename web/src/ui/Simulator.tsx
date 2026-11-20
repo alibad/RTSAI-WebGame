@@ -16,7 +16,9 @@ import { cn } from "../lib/utils";
 import { SIDE_COLORS, nationGroup, playableNations } from "../sides";
 import { GameMenu, Hud, Rank, RotateHint } from "./Hud";
 import { FeedbackSlot } from "./feedback/slot";
-import { GridToggle } from "./GridToggle";
+import { BoardToggle, GridToggle, RangesToggle } from "./GridToggle";
+import { BattleBoard } from "./BattleBoard";
+import { Inspector } from "./Inspector";
 import { Flag } from "./Flag";
 import { GameButton } from "./kit/game";
 import { MapStrip } from "./MapStrip";
@@ -295,6 +297,8 @@ export function Simulator({ game, exit }: { game: Game; exit: () => void }) {
     <>
       <Hud game={game} />
       <Timeline game={game} sandbox={sandbox} />
+      <BattleBoard game={game} />
+      <Inspector game={game} />
     </>
   );
   return (
@@ -303,8 +307,12 @@ export function Simulator({ game, exit }: { game: Game; exit: () => void }) {
         <button type="button" className="hud-tool" aria-label="Main menu" data-tip="Main menu" onClick={exit}><ArrowLeft /></button>
         <GameMenu game={game} />
         <GridToggle game={game} />
+        <RangesToggle />
+        <BoardToggle />
         <FeedbackSlot kind="hud" />
       </nav>
+      <BattleBoard game={game} />
+      <Inspector game={game} />
       <div className="sb-hint"><div className="hud-card">
         <MousePointerClick />{st.pickDestination !== null ? "Click the battlefield to set the destination" : armed ? <span>Click to place <b>{armed}</b> · right-click or Esc stops</span> : "Pick something, then click the battlefield · or drag it there · right-click removes"}
       </div></div>

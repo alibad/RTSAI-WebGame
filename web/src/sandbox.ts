@@ -227,6 +227,8 @@ export class Sandbox {
     this.stopPlayback();
     this.recording = [];
     this.patch({ mode: "edit", recordLen: 0, replay: null, paused: true });
+    // A new world: actor ids start again, so the card (ui/Inspector.tsx) lets go of the old one.
+    store.set({ inspect: null });
     this.game.start(this.scenario(placements, false), true);
     await this.waitPlaying();
     this.frame(placements);
@@ -292,6 +294,7 @@ export class Sandbox {
     const op = this.state.operation;
     this.game.radio.setOperation(op ? op.id : null, op?.radio ?? []);
     this.patch({ mode: "run", recordLen: 0, replay: null, paused: false, brush: null, pickDestination: null });
+    store.set({ inspect: null });
     this.game.start(this.lastRunScenario);
   }
 
