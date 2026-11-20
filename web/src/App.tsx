@@ -217,6 +217,11 @@ export default function App() {
         const nameOf = (id: string) => nations.find((f) => f.id === id)?.name ?? id;
         sb.configure({ operation: missionOperation(mission, cfg.placements, nameOf) });
       }
+      // A copied battle on a random map this browser has not made: the link carries the generator's request.
+      if (cfg.gen && !useStore.getState().setup?.maps.some((m) => m.id === cfg.map)) {
+        try { cfg.map = await game.generateMap(JSON.parse(cfg.gen)); sb.configure({ map: cfg.map }); }
+        catch (e) { console.warn("the battle's map could not be made again:", e); cfg.map = ARENA; cfg.placements = []; sb.configure({ map: ARENA }); }
+      }
       game.prepare(cfg.map!);
       await sb.edit(cfg.placements);
     })();

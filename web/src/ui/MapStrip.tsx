@@ -2,10 +2,11 @@
 // "New random map" tile that runs the engine's own map generator in this browser, then every map with its preview.
 
 import { useEffect, useRef, useState } from "react";
-import { Dices, Map as MapIcon } from "lucide-react";
+import { Dices, Map as MapIcon, SlidersHorizontal } from "lucide-react";
 import type { Game } from "../game";
 import { useStore } from "../store";
 import type { SetupData } from "../sim/protocol";
+import { RandomMapMaker, generatedNote } from "./RandomMapMaker";
 
 type MapEntry = SetupData["maps"][number];
 
@@ -38,7 +39,7 @@ function MapCard({ game, map, selected, onChange }: { game: Game; map: MapEntry;
   return <button ref={ref} type="button" className="sk-map-thumb" aria-pressed={selected} data-sfx-hover onClick={() => onChange(map.id)} title={`${map.title} · ${map.author}`}>
     <span className="sk-map-thumb-art">{preview ? <img src={preview} alt="" draggable={false} /> : <MapIcon size={22} strokeWidth={1.4} aria-hidden="true" />}</span>
     <span className="sk-map-thumb-name">{map.title}</span>
-    <small>{map.players < 2 ? "Draft · " : ""}{map.players} players · {mapCollection(map)}</small>
+    <small>{map.players < 2 ? "Draft · " : ""}{map.players} players · {map.generated && generatedNote(map) || mapCollection(map)}</small>
   </button>;
 }
 
@@ -63,14 +64,20 @@ export function MapStrip({ game, value, onChange, players = 2, filter, className
 }) {
   const setup = useStore((s) => s.setup);
   const random = useRandomMap(game, players, onChange);
+  const [choosing, setChoosing] = useState(false);
   const maps = orderMaps((setup?.maps ?? []).filter((m) => !filter || filter(m)), includeDrafts);
   return (
     <div className={className ?? "sk-maps"} role="group" aria-label="Maps">
-      <button type="button" className="sk-map-thumb sk-map-random" data-sfx-hover onClick={random.make} aria-busy={random.making} data-testid="random-map">
-        <span className="sk-map-thumb-art">{random.making ? <span className="spinner" /> : <Dices size={24} strokeWidth={1.4} aria-hidden="true" />}</span>
-        <span className="sk-map-thumb-name">{random.making ? "Making a map…" : "New random map"}</span>
-        <small>{random.error || "Lakes, forests, cliffs"}</small>
-      </button>
+      {/* Two doors: the dice (one click, everything left to chance), and "Choose landscape" (ui/RandomMapMaker.tsx). */}
+      <div className="sk-map-thumb sk-map-random" aria-busy={random.making}>
+        <button type="button" className="sk-map-random-go" data-sfx-hover onClick={random.make} aria-busy={random.making} data-testid="random-map">
+          <span className="sk-map-thumb-art">{random.making ? <span className="spinner" /> : <Dices size={24} strokeWidth={1.4} aria-hidden="true" />}</span>
+          <span className="sk-map-thumb-name">{random.making ? "Making a map…" : "New random map"}</span>
+        </button>
+        {random.error && <small className="is-error">{random.error}</small>}
+        <button type="button" className="sk-map-random-choose" data-sfx-hover onClick={() => setChoosing(true)} disabled={random.making} data-testid="random-map-choose"><SlidersHorizontal size={11} aria-hidden="true" />Choose landscape</button>
+      </div>
+      {choosing && <RandomMapMaker game={game} players={players} onMade={onChange} close={() => setChoosing(false)} />}
       {maps.map(m => <MapCard key={m.id} game={game} map={m} selected={m.id === value} onChange={onChange} />)}
     </div>
   );

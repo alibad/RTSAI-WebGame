@@ -1,0 +1,84 @@
+/* The making modes' own dialogs (Map editor, Battle simulator): the random map chooser (ui/RandomMapMaker.tsx) and
+   "My battles" (ui/BattleSetups.tsx). They use the game's panels and accents (styles.css, hud.css). */
+
+/* ---- the random map tile's two doors (ui/MapStrip.tsx): the dice, and "Choose landscape" under it */
+.sk-map-thumb.sk-map-random { padding: 0; }
+.sk-map-random-go { display: flex; flex: 1; flex-direction: column; gap: 3px; padding: 5px 5px 2px; border-radius: 6px 6px 0 0; color: inherit; text-align: left; }
+.sk-map-random-go:focus-visible, .sk-map-random-choose:focus-visible { outline: 2px solid var(--hud-accent); outline-offset: -2px; }
+.sk-map-random-choose { display: flex; align-items: center; gap: 5px; padding: 4px 6px 6px; border-top: 1px dashed color-mix(in srgb, var(--hud-accent) 30%, transparent); border-radius: 0 0 6px 6px;
+  font-size: 10.5px; color: #c9c2ad; text-align: left; transition: color .15s, background .15s; }
+.sk-map-random-choose:hover { color: var(--hud-accent); background: rgb(var(--command-accent-rgb) / .1); }
+.sk-map-random-choose svg { flex: none; }
+.sk-map-random small.is-error { padding: 0 6px 5px; color: #ff9d8f; }
+
+/* ---- shared dialog shell */
+.rm-scrim { position: fixed; inset: 0; z-index: 70; display: grid; place-items: center; padding: 16px; background: rgba(0, 0, 0, .6); backdrop-filter: blur(3px); animation: settings-fade .16s ease-out; }
+.rm-panel { display: flex; width: min(860px, 100%); max-height: calc(100dvh - 32px); flex-direction: column; gap: 12px; padding: 16px; border-radius: 12px; overflow-y: auto; }
+.rm-panel > header { display: flex; align-items: center; justify-content: space-between; }
+.rm-panel > header b { font-size: 16px; font-weight: 900; letter-spacing: .04em; color: var(--hud-accent); }
+.rm-panel > header button { display: grid; width: 28px; height: 28px; place-items: center; border-radius: 6px; color: var(--muted-foreground); }
+.rm-panel > header button:hover { color: #eef0e6; background: rgba(255, 255, 255, .06); }
+.rm-panel > footer { display: flex; justify-content: flex-end; gap: 8px; }
+.rm-label { display: block; margin-bottom: 4px; font-size: 11px; color: var(--muted-foreground); }
+.rm-note { margin: 0; font-size: 12px; line-height: 1.4; color: #aab0a2; }
+
+/* ---- landscapes: a picture each */
+.rm-lands { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; }
+.rm-land { display: flex; min-width: 0; flex-direction: column; gap: 2px; padding: 5px 5px 7px; border: 1px solid var(--hud-edge); border-radius: 8px; background: rgba(24, 29, 32, .72); text-align: left;
+  transition: transform .14s, border-color .14s, box-shadow .2s, background .14s; }
+.rm-land:hover { transform: translateY(-2px); border-color: #87949c; }
+.rm-land:active { transform: scale(.97); }
+.rm-land[aria-checked="true"] { border-color: var(--hud-accent); background: rgba(56, 49, 24, .78); box-shadow: 0 0 0 2px rgb(var(--command-accent-rgb) / .15), 0 0 18px rgb(var(--command-accent-rgb) / .16); }
+.rm-land:focus-visible { outline: 2px solid var(--hud-accent); outline-offset: 2px; }
+.rm-land-art { display: grid; aspect-ratio: 16 / 9; place-items: center; overflow: hidden; border-radius: 5px; color: var(--hud-accent); background: repeating-linear-gradient(45deg, #0c0f0c 0 8px, #101410 8px 16px); }
+.rm-land-art img { width: 100%; height: 100%; object-fit: cover; image-rendering: pixelated; filter: saturate(.85) brightness(.9); transition: filter .2s; }
+.rm-land:hover img, .rm-land[aria-checked="true"] img { filter: none; }
+.rm-land b { margin-top: 3px; overflow: hidden; font-size: 12.5px; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; color: #f5efe4; }
+.rm-land[aria-checked="true"] b { color: var(--hud-accent); }
+.rm-land small { display: -webkit-box; min-height: 2.5em; overflow: hidden; font-size: 10.5px; line-height: 1.25; color: #8a9381; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+
+/* ---- size, ore, seed */
+.rm-row { display: grid; grid-template-columns: 1fr 1fr minmax(170px, auto); gap: 12px; align-items: end; }
+.rm-seg { display: flex; padding: 2px; border-radius: 6px; background: #0d100b; box-shadow: inset 0 0 0 1px var(--hud-edge-hi, #3a4031); }
+.rm-seg button { flex: 1; height: 30px; padding: 0 10px; border-radius: 4px; font-size: 12.5px; color: var(--muted-foreground); transition: color .12s, background .12s; }
+.rm-seg button:hover { color: #eef0e6; }
+.rm-seg button[aria-checked="true"] { color: var(--hud-accent); background: rgb(var(--command-accent-rgb) / .14); box-shadow: inset 0 0 0 1px var(--hud-accent-dim); }
+.rm-seed > div { display: flex; gap: 4px; }
+.rm-seed input { width: 100%; min-width: 0; height: 34px; padding: 0 10px; border: 1px solid var(--hud-edge-hi, #3a4031); border-radius: 6px; font: 600 14px/1 ui-monospace, "Cascadia Mono", Consolas, monospace; letter-spacing: .04em; color: #eef0e6; background: #0d100b; outline: none; }
+.rm-seed input:focus-visible { border-color: var(--hud-accent); }
+.rm-seed input[aria-invalid="true"] { border-color: #ff5a4e; }
+.rm-seed button { display: grid; width: 34px; height: 34px; flex: none; place-items: center; border-radius: 6px; color: var(--hud-accent); box-shadow: inset 0 0 0 1px var(--hud-edge-hi, #3a4031); transition: transform .2s, background .15s; }
+.rm-seed button:hover { background: rgb(var(--command-accent-rgb) / .12); transform: rotate(-14deg); }
+
+@media (max-width: 760px) {
+  .rm-lands { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .rm-row { grid-template-columns: 1fr; }
+  .rm-panel > footer .gbtn { width: 100%; }
+}
+
+/* ---- "My battles" (ui/BattleSetups.tsx): saved battle setups */
+.bs-row { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+.bs-row .gbtn { min-width: 0; padding: 0 6px; }
+.bs-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 10px; }
+.bs-card { position: relative; display: flex; min-width: 0; flex-direction: column; border: 1px solid var(--hud-edge); border-radius: 9px; background: rgba(24, 29, 32, .72); overflow: hidden; transition: transform .14s, border-color .14s; }
+.bs-card:hover { transform: translateY(-2px); border-color: #87949c; }
+.bs-open { display: flex; min-width: 0; flex-direction: column; gap: 6px; padding: 6px 6px 8px; text-align: left; }
+.bs-open:focus-visible { outline: 2px solid var(--hud-accent); outline-offset: -2px; }
+.bs-art { display: grid; aspect-ratio: 16 / 7; place-items: center; overflow: hidden; border-radius: 5px; color: rgb(var(--command-accent-rgb) / .4); background: repeating-linear-gradient(45deg, #0c0f0c 0 8px, #101410 8px 16px); }
+.bs-art img { width: 100%; height: 100%; object-fit: cover; image-rendering: pixelated; }
+.bs-sides { display: flex; align-items: center; gap: 7px; font-size: 13px; font-weight: 700; color: #f5efe4; }
+.bs-sides .digits { font-size: 14px; }
+.bs-sides i { font-style: normal; font-size: 10px; letter-spacing: .1em; color: var(--muted-foreground); }
+.bs-meta { overflow: hidden; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; color: #8a9381; }
+.bs-name { width: 100%; min-width: 0; padding: 2px 4px; margin: 0 -4px; border: 1px solid transparent; border-radius: 4px; font-size: 13px; font-weight: 700; color: var(--hud-accent); background: transparent; outline: none; }
+.bs-name:hover { border-color: var(--hud-edge-hi, #3a4031); }
+.bs-name:focus-visible { border-color: var(--hud-accent); background: #0d100b; }
+.bs-tools { display: flex; gap: 4px; padding: 0 6px 6px; }
+.bs-tools button { display: inline-flex; height: 26px; flex: 1; align-items: center; justify-content: center; gap: 5px; border-radius: 5px; font-size: 11.5px; color: #c9c2ad; box-shadow: inset 0 0 0 1px var(--hud-edge-hi, #3a4031); transition: color .12s, background .12s; }
+.bs-tools button:hover { color: var(--hud-accent); background: rgb(var(--command-accent-rgb) / .1); }
+.bs-tools button.is-danger:hover { color: #ff9d8f; background: rgba(255, 90, 78, .1); }
+.bs-empty { margin: 0; padding: 26px 12px; border: 1px dashed var(--hud-edge-hi, #3a4031); border-radius: 9px; font-size: 13px; line-height: 1.5; text-align: center; color: #aab0a2; }
+/* What Save, Copy link and My battles answer: a note beside the panel, over the battlefield, so the panel's rows stay put. */
+.bs-toast { position: fixed; top: 62px; right: calc(var(--sidebar-w, 340px) + 12px); z-index: 30; max-width: min(340px, calc(100vw - var(--sidebar-w, 340px) - 24px)); margin: 0; padding: 8px 12px; border-radius: 8px;
+  font-size: 12.5px; line-height: 1.4; color: #dff2cc; background: rgba(14, 22, 12, .94); box-shadow: inset 0 0 0 1px rgba(156, 242, 138, .4), 0 8px 20px rgba(0, 0, 0, .45); animation: settings-fade .18s ease-out; pointer-events: none; }
+.bs-toast.is-warn { color: #ffe9bd; background: rgba(34, 24, 8, .94); box-shadow: inset 0 0 0 1px rgba(246, 215, 154, .45), 0 8px 20px rgba(0, 0, 0, .45); }

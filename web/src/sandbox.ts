@@ -9,6 +9,7 @@ import { store, useStore } from "./store";
 import { uiTone } from "./ui/feel";
 import { ENGINE_SIDE_COLORS } from "./sides";
 import type { Operation } from "./mission";
+import type { BattleSetup } from "./battle-setups";
 
 export const ARENA = "web-arena";
 const MAX_RECORDING = 25 * 60 * 8; // 8 minutes of ticks
@@ -54,6 +55,8 @@ export interface SandboxConfig {
   skill?: AiSkill;
   money?: number;
   fog?: boolean;
+  /** The generator request (JSON) of a random map: made again when this browser doesn't have the map (a copied link). */
+  gen?: string;
 }
 
 export interface SideSettings { order: SandboxOrder; destination: { u: number; v: number } | null; level: number }
@@ -107,6 +110,7 @@ export function parseSandboxUrl(params: URLSearchParams): SandboxConfig {
       Object.assign(cfg, {
         fa: j.fa ?? cfg.fa, fb: j.fb ?? cfg.fb, level: j.level ?? 0, health: j.health ?? 100,
         order: j.order, autorun: !!j.autorun, map: j.map, skill: j.skill, money: j.money, fog: j.fog,
+        gen: j.gen && typeof j.gen === "object" ? JSON.stringify(j.gen) : undefined,
         placements: (j.placements ?? []).map((p: Placement & { type?: string; player?: number }) => {
           const side = (p.side ?? p.player ?? 0) as 0 | 1;
           return { ...p, id: p.id ?? p.type, side, facing: p.facing ?? (side === 0 ? 768 : 256) };
@@ -390,6 +394,34 @@ export class Sandbox {
     this.patch({ fa, fb, operation: null });
     this.urlPlacements = placements;
     await this.edit(placements);
+  }
+
+  /** The setup as it stands, to keep or to share (battle-setups.ts): the map, both sides' settings and every placed unit. */
+  async snapshot(): Promise<Omit<BattleSetup, "id" | "name" | "savedAt">> {
+    const st = this.state;
+    const placements = st.mode === "edit" ? await this.collect() : this.placementsAtRun;
+    const map = store.get().setup?.maps.find((m) => m.id === st.map);
+    return {
+      map: st.map, mapTitle: map?.title ?? "Open arena", ...(map?.generated && map.gen ? { gen: map.gen } : {}), ...(map?.library || map?.saved ? { own: true } : {}),
+      fa: st.fa, fb: st.fb, skill: st.skill, money: st.money, fog: st.fog, sides: st.sides, placements,
+    };
+  }
+
+  /**
+   * Lays a kept setup out again. Its map first: a random one is made again from its request, one of the player's own
+   * must still be in this browser. Answers how many units found no room (the map was edited since).
+   */
+  async restore(s: Pick<BattleSetup, "map" | "gen" | "fa" | "fb" | "skill" | "money" | "fog" | "sides" | "placements">): Promise<{ missing: number }> {
+    let map = s.map;
+    if (!store.get().setup?.maps.some((m) => m.id === map)) {
+      if (!s.gen) throw Error("This battle's map is no longer in this browser.");
+      map = await this.game.generateMap(JSON.parse(s.gen));
+    }
+    this.patch({ map, fa: s.fa, fb: s.fb, skill: s.skill, money: s.money, fog: s.fog, sides: s.sides, operation: null, brush: null, pickDestination: null });
+    this.game.prepare(map);
+    await this.edit(s.placements);
+    const placed = (await this.collect()).length;
+    return { missing: Math.max(0, s.placements.length - placed) };
   }
 
   /** The map's start positions in the editing world (MPos and world px). */

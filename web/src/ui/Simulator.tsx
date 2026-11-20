@@ -23,6 +23,7 @@ import { Flag } from "./Flag";
 import { GameButton } from "./kit/game";
 import { MapStrip } from "./MapStrip";
 import { UnitCard } from "./UnitCard";
+import { BattleSetups } from "./BattleSetups";
 import { iconKey } from "../icon-key";
 
 const KINDS: { id: string; label: string; icon: React.ReactNode }[] = [
@@ -148,6 +149,7 @@ function EditPanel({ game, sandbox }: { game: Game; sandbox: Sandbox }) {
   return (
     <div className="sim-edit flex min-h-0 flex-1 flex-col gap-2">
       <MapCard game={game} sandbox={sandbox} />
+      <BattleSetups game={game} sandbox={sandbox} />
       {st.operation && <OperationCard sandbox={sandbox} />}
       <div className="grid grid-cols-2 gap-2">
         {([0, 1] as const).map((s) => (
