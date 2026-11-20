@@ -11,7 +11,7 @@ live without a fix that was already on main. These rules prevent that.
 | `OpenRA` | The engine: our fork of OpenRA/OpenRA (`fork/main`) | public |
 | `RTSAI-Mod` | The desktop game, plus the faction catalog master (`catalog/`), the AI companion (`companion/`), the older missions (`missions/`) and the roadmap (`docs/roadmap.md`) | public |
 | `RTSAI-WebGame` | The web game at rtsai.net/play, plus its release tool | public |
-| `RTSAI-Web` | rtsai.net, plus the Faction Studio (the one review desk) and the Sound Desk | private |
+| `RTSAI-Web` | rtsai.net, plus the Faction Studio (the one review desk) and the Sound Desk | public (since 20 Nov 2026) |
 | `RTSAI-Art` | The forge: the look (`bible/`), art sources, the sound tools (`tools/sound`) and the trailers (`film/`) | private |
 
 - **Archived on GitHub (read-only), so don't work in them:**
