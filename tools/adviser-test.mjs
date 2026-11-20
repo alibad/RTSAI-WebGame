@@ -148,6 +148,9 @@ for profile, data in load()['profiles'].items():
           add(prefix+'search-sweep-away',{**base,'units':away,'production':busy,**spatial(grid(lambda x,y:True, lambda x,y:40<=x<=64 and y<24))},items)
           # An enemy in sight on land: the army goes after it; one on the lake is left alone.
           add(prefix+'hunt',{**base,'units':army_home,'production':busy,'visible_enemies':[actor(infantry,950,40,70,True)],**spatial(grid(lambda x,y:True))},items)
+          # Where enemy units were seen comes first: the sighting farthest from our base, on land.
+          add(prefix+'search-trail',{**base,'units':army_home,'production':busy,'enemy_trail':[[20,20],[40,70],[75,75],[70,20]],**spatial(grid(lambda x,y:True))},items)
+          add(prefix+'search-trail-no-grid',{**base,'units':army_home,'production':busy,'enemy_trail':[[20,20],[70,20]]},items)
           add(prefix+'hunt-not-on-water',{**base,'units':army_home,'production':busy,'visible_enemies':[actor(infantry,951,75,75,True)],**spatial(grid(lambda x,y:True))},items)
     add(prefix+'done',{**base,'done':True,'result':'win'},items)
 
@@ -182,6 +185,7 @@ const observation = ({ raw: r, tree }) => ({ tick:r.tick, cash:r.cash ?? 0, powe
   visibleEnemyBuildings:(r.visible_enemy_buildings ?? []).map(actor), rememberedEnemyBuildings:(r.remembered_enemy_buildings ?? []).map(actor),
   production:(r.production ?? []).map(p => ({ item:p.item, queueType:p.queue_type, progress:p.progress, remainingTicks:p.remaining_ticks })),
   availableProduction:r.available_production ?? [], actorNames:r.actor_names ?? {}, techTree:tree,
+  enemyTrail:(r.enemy_trail ?? []).map(([x, y]) => ({ x, y })),
   ...(r.spatial_map ? { spatial: { channels: r.spatial_channels, bytes: new Uint8Array(Buffer.from(r.spatial_map, 'base64')) } } : {}) });
 
 const keys = new Set();
@@ -209,6 +213,8 @@ const onLand = (c) => !(c.target_x >= 60 && c.target_x <= 90 && c.target_y >= 60
 expect('search-unseen', (a, l) => { assert.equal(a?.key, 'sweep', l); assert(a.commands.every(onLand), `${l}: never into the lake`); });
 expect('search-sweep', (a, l) => { assert.equal(a?.key, 'sweep', l); assert(a.commands.every(c => c.target_x >= 30 || c.target_y >= 30), `${l}: somewhere not in sight`); });
 expect('search-sweep-away', (a, l) => assert.equal(a?.key, 'sweep', l));
+expect('search-trail', (a, l) => { assert.equal(a?.key, 'sweep', l); assert(a.commands.every(c => c.target_x === 40 && c.target_y === 70), `${l}: the farthest sighting on land`); });
+expect('search-trail-no-grid', (a, l) => { assert.equal(a?.key, 'sweep', l); assert(a.commands.every(c => c.target_x === 70 && c.target_y === 20), l); });
 expect('sweep-one-busy', (a, l) => { if (a) assert.equal(a.key, 'sweep', l); });
 expect('hunt', (a, l) => { assert.equal(a?.key, 'hunt', l); assert.equal(a.commands[0].target_x, 40, l); });
 expect('hunt-not-on-water', (a, l) => assert.notEqual(a?.key, 'hunt', l));
@@ -218,7 +224,7 @@ expect('place-defence-known', (a, l) => { assert.equal(a?.key, 'place', l); asse
 // The enemy-base memory: a building seen stays known out of sight, and is forgotten once its cell is in sight without it.
 {
   const fog = (inSightAt) => { const b = new Uint8Array(20 * 20 * 5 * 4), v = new DataView(b.buffer); for (let y = 0; y < 20; y++) for (let x = 0; x < 20; x++) v.setFloat32(((y * 20 + x) * 5 + 4) * 4, inSightAt(x, y) ? 1 : 0.5, true); return { channels: 5, bytes: b }; };
-  const obs = (tick, visible, sight) => ({ tick, mapWidth: 20, mapHeight: 20, visibleEnemyBuildings: visible, rememberedEnemyBuildings: [], spatial: fog(sight) });
+  const obs = (tick, visible, sight, enemies = []) => ({ tick, mapWidth: 20, mapHeight: 20, visibleEnemies: enemies, visibleEnemyBuildings: visible, rememberedEnemyBuildings: [], spatial: fog(sight) });
   const yard = { actorId: 7, kind: 'nacnst', cellX: 15, cellY: 15, idle: false, canAttack: false };
   const memory = new EnemyBaseMemory();
   memory.recall(obs(100, [yard], () => true));
@@ -226,6 +232,11 @@ expect('place-defence-known', (a, l) => { assert.equal(a?.key, 'place', l); asse
   assert.equal(memory.recall(obs(300, [], (x, y) => x === 15 && y === 15)).rememberedEnemyBuildings.length, 0, 'its cell in sight without it: forgotten');
   memory.recall(obs(400, [yard], () => true));
   assert.equal(memory.recall(obs(10, [], () => false)).rememberedEnemyBuildings.length, 0, 'a new match starts empty');
+  // Where enemy units were seen: kept until that place is in sight with no enemy there.
+  const raider = { actorId: 70, kind: 'r2karrar', cellX: 12, cellY: 4, idle: false, canAttack: true };
+  memory.recall(obs(20, [], () => true, [raider]));
+  assert.deepEqual(memory.recall(obs(30, [], () => false)).enemyTrail, [{ x: 12, y: 4 }], 'a sighting is kept');
+  assert.deepEqual(memory.recall(obs(40, [], (x, y) => x === 12 && y === 4)).enemyTrail, [], 'looked at, nobody there: dropped');
 }
 assert.deepEqual([desiredHarvesterCount(64,64),desiredHarvesterCount(96,96),desiredHarvesterCount(128,128),desiredHarvesterCount(129,128)], [2,3,4,5]);
 // No queue metadata: never misidentify a low-cost structure as infantry.

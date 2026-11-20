@@ -65,6 +65,8 @@ export interface AdviserObservation {
   visibleEnemyBuildings: AdviserActor[];
   /** Previously seen, frozen contacts supplied by the engine, never hidden live actors. */
   rememberedEnemyBuildings?: AdviserActor[];
+  /** Cells where enemy units were seen this match and not looked at since, newest first (EnemyBaseMemory). */
+  enemyTrail?: { x: number; y: number }[];
   production: { item: string; queueType: string; progress: number; remainingTicks: number }[];
   availableProduction: string[];
   actorNames: Record<string, string>;
@@ -191,6 +193,14 @@ export function searchGoal(snapshot: AdviserObservation, from?: { x: number; y: 
   const cell = (x: number, y: number, channel: number) => grid!.getFloat32(((y * w + x) * channels + channel) * 4, true);
   const explored = (x: number, y: number) => grid !== null && cell(x, y, 4) >= 0.5;
   const open = (x: number, y: number) => landReachable(snapshot, x, y);
+  // Enemy units come from their base and go back to it: the place an enemy was seen farthest from our base, not
+  // looked at since, comes first.
+  let lead: { x: number; y: number } | null = null, leadFar = 20 ** 2;
+  for (const p of snapshot.enemyTrail ?? []) {
+    const d = (p.x - hx) ** 2 + (p.y - hy) ** 2;
+    if (d > leadFar && open(p.x, p.y)) { leadFar = d; lead = p; }
+  }
+  if (lead) return { x: lead.x, y: lead.y };
   for (const [x, y] of [[w - 1 - hx, h - 1 - hy], [w - 1 - hx, hy], [hx, h - 1 - hy], [Math.floor(w / 2), Math.floor(h / 2)]]) {
     const cx = Math.max(0, Math.min(w - 1, x)), cy = Math.max(0, Math.min(h - 1, y));
     if ((cx - hx) ** 2 + (cy - hy) ** 2 > 20 ** 2 && !explored(cx, cy) && open(cx, cy)) return { x: cx, y: cy };
@@ -219,16 +229,22 @@ export function searchGoal(snapshot: AdviserObservation, from?: { x: number; y: 
  */
 export class EnemyBaseMemory {
   private seen = new Map<number, AdviserActor>();
+  /** Where enemy units were seen, newest first; a place is dropped once it is in sight with no enemy there. */
+  private trail: { x: number; y: number }[] = [];
   private lastTick = -1;
   recall(observation: AdviserObservation): AdviserObservation {
-    if (observation.tick < this.lastTick) this.seen.clear();
+    if (observation.tick < this.lastTick) { this.seen.clear(); this.trail = []; }
     this.lastTick = observation.tick;
     const visible = new Set(observation.visibleEnemyBuildings.map(building => building.actorId));
     for (const building of observation.visibleEnemyBuildings) this.seen.set(building.actorId, building);
     for (const [id, building] of this.seen) if (!visible.has(id) && inSight(observation, building.cellX, building.cellY)) this.seen.delete(id);
+    const near = (p: { x: number; y: number }, x: number, y: number) => (p.x - x) ** 2 + (p.y - y) ** 2 <= 3 ** 2;
+    this.trail = this.trail.filter(p => !inSight(observation, p.x, p.y) || observation.visibleEnemies.some(enemy => near(p, enemy.cellX, enemy.cellY)));
+    for (const enemy of observation.visibleEnemies) if (!this.trail.some(p => near(p, enemy.cellX, enemy.cellY))) this.trail.unshift({ x: enemy.cellX, y: enemy.cellY });
+    this.trail.length = Math.min(this.trail.length, 40);
     const known = new Set([...visible, ...(observation.rememberedEnemyBuildings ?? []).map(building => building.actorId)]);
     const extra = [...this.seen.values()].filter(building => !known.has(building.actorId));
-    return extra.length ? { ...observation, rememberedEnemyBuildings: [...(observation.rememberedEnemyBuildings ?? []), ...extra] } : observation;
+    return { ...observation, enemyTrail: [...this.trail], ...(extra.length ? { rememberedEnemyBuildings: [...(observation.rememberedEnemyBuildings ?? []), ...extra] } : {}) };
   }
 }
 
