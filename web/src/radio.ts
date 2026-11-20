@@ -10,6 +10,8 @@ import { useStore, type Store } from "./store";
 
 /** World ticks per second of game time at the default speed (OpenRA's 40 ms timestep; Lua's DateTime.Seconds). */
 export const TICKS_PER_SECOND = 25;
+/** A mission first seen later than this was entered mid-battle (a save resumed): a new one is seen in its first second. */
+const ENTERED_MID_BATTLE = 2 * TICKS_PER_SECOND;
 
 export interface OnAir extends RadioCall { key: number }
 
@@ -60,22 +62,25 @@ export class Radio {
       return;
     }
     const ui = s.ui!;
-    if (mission.id !== this.mission) {
-      this.reset(mission.id);
-      this.calls = own ?? radioCalls(mission.id);
-    }
-    if (this.over) return;
     const seconds = ui.tick / TICKS_PER_SECOND;
     const outcome = ui.win === "Won" ? "victory" : ui.win === "Lost" ? "defeat" : null;
-    const due = this.calls.map((call, i) => ({ call, i })).filter(({ call, i }) => {
-      if (this.fired.has(i)) return false;
+    const isDue = (call: RadioCall) => {
       const when = call.when;
       if (when === "start") return true;
       if (when === "victory" || when === "defeat") return when === outcome;
       if ("time" in when) return !outcome && seconds >= when.time;
       if ("event" in when) return !outcome && !!mission.events?.includes(when.event);
       return !outcome && mission.objectives[when.objective]?.status === "complete";
-    });
+    };
+    if (mission.id !== this.mission) {
+      this.reset(mission.id);
+      this.calls = own ?? radioCalls(mission.id);
+      // A resumed save: the calls due by now were heard before the save, so they count as played. (Without this they
+      // all went on air again, one after another, minutes of old radio over the battle the player came back to.)
+      if (ui.tick > ENTERED_MID_BATTLE && !outcome) this.calls.forEach((call, i) => { if (isDue(call)) this.fired.add(i); });
+    }
+    if (this.over) return;
+    const due = this.calls.map((call, i) => ({ call, i })).filter(({ call, i }) => !this.fired.has(i) && isDue(call));
     if (!due.length) return;
     // Several at once (a jump in time, two objectives in one tick): earliest time first, else as written.
     due.sort((a, b) => timeOf(a.call) - timeOf(b.call) || a.i - b.i);
