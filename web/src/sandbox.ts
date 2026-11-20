@@ -286,7 +286,11 @@ export class Sandbox {
     }
   }
 
-  /** Camera on the placements, zoomed out enough to show both sides (the map's start when nothing is placed). */
+  /**
+   * Camera on the placements, zoomed out enough to show both sides (the map's start when nothing is placed), in the
+   * middle of what the panels leave uncovered: the build column or setup panel on the right and, while it is open, the
+   * battle board on the left. Until 20 Nov 2026 it used the whole canvas, and at 1155 px wide the board hid one side.
+   */
   private frame(placements: Placement[]) {
     const info = store.get().info;
     if (!info) return;
@@ -296,10 +300,20 @@ export class Sandbox {
     const pts = placements.map((p) => [ox + (2 * p.u + (p.v & 1)) * hw, oy + p.v * hh]);
     const xs = pts.map((p) => p[0]), ys = pts.map((p) => p[1]);
     const [x0, x1, y0, y1] = [Math.min(...xs), Math.max(...xs), Math.min(...ys), Math.max(...ys)];
-    const canvas = this.game.canvas;
-    const zoom = Math.max(0.35, Math.min(1.5, Math.min(canvas.clientWidth / (x1 - x0 + 500), canvas.clientHeight / (y1 - y0 + 400))));
+    const canvas = this.game.canvas, c = canvas.getBoundingClientRect();
+    // The free strip, in page px: from the board's right edge (288 px in while it opens) to the canvas's right edge
+    // (the setup panel) or the build column, whichever comes first.
+    const column = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--sidebar-w")) || 0;
+    const right = Math.min(c.right, window.innerWidth - column);
+    const board = document.querySelector(".sb-board")?.getBoundingClientRect();
+    let left = Math.max(c.left, board ? board.right : store.get().board ? c.left + 288 : c.left);
+    if (right - left < 480) left = c.left; // too narrow to dodge the board: use the width there is
+    const width = Math.max(240, right - left);
+    const zoom = Math.max(0.35, Math.min(1.5, Math.min(width / (x1 - x0 + 500), canvas.clientHeight / (y1 - y0 + 400))));
     this.game.cam.zoom = zoom;
-    this.game.lookAt((x0 + x1) / 2, (y0 + y1) / 2);
+    // The camera's point is drawn in the canvas's middle; the free strip's middle is `shift` px right of it.
+    const shift = (left + right) / 2 - (c.left + c.right) / 2;
+    this.game.lookAt((x0 + x1) / 2 - shift / zoom, (y0 + y1) / 2);
   }
 
   private waitPlaying() {
