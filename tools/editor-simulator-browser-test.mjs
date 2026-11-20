@@ -85,8 +85,13 @@ try {
   await page.click('[data-testid="sim-side-1"]');
   await page.click('[data-unit="r2karrar"]');
   await page.mouse.click(820, 360);
-  const placed = await page.evaluate(() => window.game.command({ cmd: 'placements' }));
-  const sides = new Set(placed.spawns.map((s) => s.player));
+  // A click places through the engine a moment later: wait for both sides rather than read at once (it raced, 20 Nov 2026).
+  let placed, sides;
+  for (const t0 = Date.now(); Date.now() - t0 < 10000; await page.waitForTimeout(200)) {
+    placed = await page.evaluate(() => window.game.command({ cmd: 'placements' }));
+    sides = new Set(placed.spawns.map((s) => s.player));
+    if (placed.spawns.length >= 10 && sides.size === 2) break;
+  }
   assert.ok(placed.spawns.length >= 10 && sides.size === 2, `units placed for both sides (${placed.spawns.length})`);
   await page.click('[data-testid="sim-fight"]');
   await page.waitForFunction(() => window.store.getState().sandbox?.mode === 'run' && window.store.getState().phase === 'playing', null, { timeout: 120000 });

@@ -113,15 +113,20 @@ export class Game {
   private fpsT = 0;
   private lastFrame = 0;
   /**
-   * Most frames drawn a second (?fps=N; 0: every display refresh). The world ticks 25 times a second and is
-   * interpolated between ticks, so 60 looks the same as every refresh of a 144 Hz screen, at well under half the work.
+   * Most frames drawn a second (?fps=N; 0: every display refresh), kept to an even beat of the screen's refreshes
+   * (shouldDraw: a 144 Hz screen draws on every 2nd, 72 a second). The world ticks 25 times a second and is
+   * interpolated between ticks, so that looks the same as every refresh, at about half the work.
    */
   private readonly maxFps = (() => {
     const v = Number(new URLSearchParams(location.search).get("fps") ?? 60);
     return Number.isFinite(v) && v >= 0 ? v : 60;
   })();
-  private nextDraw = 0;
   private lastDraw = 0;
+  /** Display refreshes seen (animation frames), the one last drawn on, and the refresh interval (median of recent gaps). */
+  private refreshes = 0;
+  private lastDrawRefresh = -1;
+  private refreshMs = 1000 / 60;
+  private readonly gaps: number[] = [];
   /** What the last drawn frame showed (shouldDraw skips an identical one). */
   private drawn: { snapshot: Snapshot | null; version: number; view: string } = { snapshot: null, version: -1, view: "" };
   private lastClick = { t: 0, id: -1 };
@@ -703,6 +708,12 @@ export class Game {
     this.raf = requestAnimationFrame(this.frame);
     const dt = this.lastFrame ? Math.min(100, now - this.lastFrame) : 16;
     this.lastFrame = now;
+    this.refreshes++;
+    if (dt > 2 && dt < 40) {
+      this.gaps.push(dt);
+      if (this.gaps.length > 31) this.gaps.shift();
+      if (this.refreshes % 30 === 0) this.refreshMs = [...this.gaps].sort((a, b) => a - b)[this.gaps.length >> 1];
+    }
     const playing = store.get().phase === "playing";
     if (playing) this.scroll(dt);
     this.client.poll(performance.now());
@@ -754,8 +765,11 @@ export class Game {
    * game or an idle view draws only the 4-a-second safety refresh.
    */
   private shouldDraw(now: number, cur: Snapshot | null, replaying: boolean) {
-    const interval = this.maxFps > 0 ? 1000 / this.maxFps : 0;
-    if (now < this.nextDraw - 1) return false;
+    // An even beat: draw on every n-th display refresh, n = the refreshes in one 1/maxFps (144 Hz: every 2nd, 72 a second;
+    // 120 and 240 Hz: 60; 60 Hz: every one). Until 20 Nov 2026 the cap kept time by the clock, and on a 144 Hz screen it
+    // drew on 2 and 3 refreshes in turn (14 and 21 ms): everything that moved, and every scroll, juddered.
+    const every = this.maxFps > 0 ? Math.max(1, Math.floor(1000 / this.maxFps / this.refreshMs + 0.1)) : 1;
+    if (this.refreshes - this.lastDrawRefresh < every) return false;
     const r = this.renderer, ov = this.overlay, c = this.canvas;
     let selected = 0;
     for (const id of ov.selected) selected += id;
@@ -766,8 +780,7 @@ export class Game {
     const changed = replaying || interpolating || flashing || cur !== this.drawn.snapshot || r.version !== this.drawn.version
       || view !== this.drawn.view || r.pixelProbe !== null || r.frameGrab !== null || now - this.lastDraw > 250;
     if (!changed) return false;
-    if (this.nextDraw + interval < now) this.nextDraw = now; // after idle refreshes: restart the cadence
-    this.nextDraw += interval;
+    this.lastDrawRefresh = this.refreshes;
     this.lastDraw = now;
     this.drawn = { snapshot: cur, version: r.version, view };
     return true;
