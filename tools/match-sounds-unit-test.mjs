@@ -25,11 +25,12 @@ const paths = [
 ];
 const names = (list) => list.map((p) => p.split('/').pop());
 
-// Iran against Saudi Arabia: Iran's announcer, the interface, the battlefield, then Iran's voices and the shared ones.
+// Iran against Saudi Arabia: Iran's announcer and the interface, then Iran's voices and the shared ones (the first
+// thing a player does is select a unit), then the battlefield.
 const iran = names(matchSounds(paths, 'iran', ['iran', 'saudi']));
 assert.deepEqual(iran.slice(0, 2).sort(), ['click.wav', 'eva-unit-ready.wav']);
-assert.deepEqual(iran.slice(2, 7).sort(), ['china-role-aa.wav', 'igiat1a.wav', 'naval-ciws-burst.wav', 'redsea-m1-fire.wav', 'rtsai-explode-large.wav']);
-assert.deepEqual(iran.slice(7).sort(), ['ienasea.wav', 'iran-air-attack-en.wav', 'iran-inf-select-fa.wav', 'shadow-select-fa.wav']);
+assert.deepEqual(iran.slice(2, 6).sort(), ['ienasea.wav', 'iran-air-attack-en.wav', 'iran-inf-select-fa.wav', 'shadow-select-fa.wav']);
+assert.deepEqual(iran.slice(6).sort(), ['china-role-aa.wav', 'igiat1a.wav', 'naval-ciws-burst.wav', 'redsea-m1-fire.wav', 'rtsai-explode-large.wav']);
 // Nothing of anyone else's: no music, one announcer only, no other country's voice lines, no original-country sounds.
 assert.equal(matchSounds(paths, 'iran', ['iran', 'saudi']).filter((p) => p.includes('/eva/')).length, 1);
 for (const other of ['rtsai-plateau-engines.ogg', 'rsa-falcon-build-ar.wav', 'hz-drone-move-ar.wav', 'il-air-action-he.wav', 'rcn-infantry-action-zh.wav', 'tr-greywolf-attack-tr.wav', 'rye-ghost-build-en.wav', 'igisea.wav'])
@@ -39,12 +40,15 @@ for (const other of ['rtsai-plateau-engines.ogg', 'rsa-falcon-build-ar.wav', 'hz
 for (const [country, file] of [['china', 'rcn-infantry-action-zh.wav'], ['turkey', 'tr-greywolf-attack-tr.wav'], ['saudi', 'rsa-falcon-build-ar.wav'], ['israel', 'il-air-action-he.wav'], ['yemen', 'rye-ghost-build-en.wav'], ['lebanon', 'hz-drone-move-ar.wav']])
   assert.ok(names(matchSounds(paths, country)).includes(file), `${country} fetches ${file}`);
 
-// An original country against Iran: the originals' own folder (voices and weapons in one), no modern voice lines.
+// An original country against Iran: the originals' own folder (their voices and weapons in one) straight after the
+// announcer, no modern voice lines, and not the shared kit voices this build replaces with the originals'.
 const america = names(matchSounds(paths, 'america', ['america', 'iran']));
-assert.ok(america.includes('igisea.wav') && america.includes('igiat1a.wav') && america.includes('redsea-m1-fire.wav'));
+assert.ok(america.includes('igiat1a.wav') && america.includes('redsea-m1-fire.wav'));
+assert.ok(america.indexOf('igisea.wav') > america.indexOf('click.wav') && america.indexOf('igisea.wav') < america.indexOf('igiat1a.wav'), 'the originals\' voices come after the interface and before the battlefield');
 assert.ok(!america.some((n) => /-(select|move|attack|action|build)-[a-z]{2}\.wav$/.test(n)), 'no modern voice lines for an original country');
-// Iran against an original country hears that country's weapons: its folder comes with the battlefield.
+assert.ok(!america.includes('ienasea.wav'));
+// Iran against an original country hears that country's weapons: its folder comes with the battlefield, after Iran's voices.
 const mixed = names(matchSounds(paths, 'iran', ['iran', 'america']));
-assert.ok(mixed.indexOf('igisea.wav') > 1 && mixed.indexOf('igisea.wav') < mixed.indexOf('iran-inf-select-fa.wav'));
+assert.ok(mixed.indexOf('igisea.wav') > mixed.indexOf('iran-inf-select-fa.wav'));
 
 console.log('match sounds: ok');
