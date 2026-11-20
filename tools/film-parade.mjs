@@ -10,7 +10,7 @@
 //
 //   node tools/film-parade.mjs --base http://127.0.0.1:3590/ --out <dir> [--factions iran,germany:tnkd+mtnk+e1] [--rows infantry,vehicles,ships,defenses,buildings]
 //        [--units tnkd,mtnk] [--map web-arena] [--crf 22] [--keep-takes] [--cold-audio [--settle 15000]]
-//        [--pack <web-bundle.pack>] [--overlay <dir>] [--note "text"]
+//        [--pack <web-bundle.pack>] [--overlay <dir>] [--note "text"] [--health 20]
 // Writes <out>/<faction>.mp4 (H.264 + AAC, 1280x720, 30 fps) and <out>/<faction>.json: per unit, what was heard and
 // seen (voices on select and on orders, shots counted by the engine, distinct facings, body sequences, death).
 import fs from "node:fs";
@@ -32,6 +32,8 @@ const crf = opt("crf", "22");
 const settle = Number(opt("settle", "0"));
 // --note "text": a label in the middle of the frame for the whole film (which build this is, in a before/after pair).
 const note = opt("note", "");
+// --health <percent>: the row's own units start damaged (to film how damage looks); buildings have their own take.
+const startHealth = Math.max(1, Math.min(100, Number(opt("health", "100"))));
 const onlyRows = opt("rows", "")?.split(",").filter(Boolean);
 const unitsForAll = opt("units", "")?.split(",").filter(Boolean); // a short parade of just these roster units
 const W = 1280, H = 720, FPS = 30;
@@ -406,7 +408,8 @@ async function unitTake(faction, country, enemy, row, takeDir, heard) {
   // Low in the frame at the start, a third up after the walk; targets near the top. Defences stand where they fire.
   const vStart = c.v + (fixed ? 4 : 13), vEnd = c.v + (fixed ? 4 : 6), vTargets = c.v - (fixed ? 4 : row.kind === "infantry" ? 2 : 6);
   const placements = [];
-  names.forEach((name, i) => placements.push({ id: name, side: refs.includes(name) ? 2 : 0, u: u0 + gap * i, v: vStart, facing: 384, ...(refs.includes(name) ? { order: "hold" } : {}) }));
+  names.forEach((name, i) => placements.push({ id: name, side: refs.includes(name) ? 2 : 0, u: u0 + gap * i, v: vStart, facing: 384,
+    ...(refs.includes(name) ? { order: "hold" } : startHealth < 100 ? { health: startHealth } : {}) }));
   // The other side's dummies: buildings (ground), engineers (infantry), a miner (vehicle), transports (sea), and two
   // airships that lift off and drift across the row (air). None of them shoots back.
   const dummies = [];
