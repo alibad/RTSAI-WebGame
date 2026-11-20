@@ -99,6 +99,39 @@ what the engine already sends: no runtime change.
   its owner's colour (`Renderer.drawReach`, `render/grid.ts` `ringLines`). The inspected unit's ring is always drawn,
   thicker. A world circle is drawn as the ellipse the engine draws (tile px per 1024 world units on each axis).
 
+## The other three picks: saving, the ground, one unit (20 November 2026)
+
+The owner's other picks from the old website Workshop (16 Nov). Page only: no runtime change.
+
+- **Random maps, chosen** (`web/src/ui/RandomMapMaker.tsx`, on every map strip). The random map tile keeps its one
+  click; "Choose landscape" under it opens a chooser: nine landscapes as pictures (each a map the generator made,
+  `web/public/menu/landscapes`; remake them with the generator when its landscapes change) or Surprise me, the size,
+  how much ore and the seed. The same four always make the same map (`MapGen.cs`), and a random map's entry shows its
+  landscape and seed.
+- **Battle setups** (`web/src/battle-setups.ts`, `ui/BattleSetups.tsx`, the setup panel's Save / My battles / Copy link).
+  - Save keeps the setup in this browser (`localStorage` `rtsai.sim-setups`, 40 at most): the map, both nations, skill,
+    money, fog, each side's order, and every placed unit with its rank, health and its own order if it has one.
+  - Copy link gives the setup as `?mode=sandbox&s=`. A random map travels as the request that made it, in the optional
+    field `gen` (the page makes the map again when it does not have it: `App.tsx`); a map from the editor or a real
+    place exists in one browser only, and the note says so. Links without `gen` open as before.
+  - A kept setup stores a unit's order only when it is its own (`collect(true)`), so the side's order can still be
+    changed after an undo or after opening a saved battle. A link carries every order.
+- **Edit map** (the battlefield card, beside Change; `App.tsx` `editMapFromBattle`, store `battleReturn`). The battle is
+  kept whole, the editor opens on its map with "Back to the battle" as its primary button, and the battle is laid out
+  again on the map that comes back: the same map when nothing changed, a saved copy when the ground did. Units with no
+  room any more stay out and the setup says how many (`Sandbox.restore`).
+- **Undo and redo** (the setup's top bar, Ctrl+Z and Ctrl+Y; `Sandbox.undo`, `redo`, `apply`). Each placement,
+  removal, Clear side, Clear all, plan and what-if is one step (80 kept). Units are taken out and put back in place;
+  when a building has to come back the editing world is rebuilt from the placements, the only way onto its exact cells.
+  A new map, nation or saved battle starts a new history.
+- **One unit's what-ifs** (`web/src/ui/UnitWhatIfs.tsx`, on the unit card in setup): rank, health (10 to 100 percent),
+  team, a first order of its own (Engage, Hold, or Move to a clicked point; it outranks its side's), Duplicate and
+  Remove. They go into the fight as spawn values (`Scenario.cs` `SpawnSpec`). Still to do, in the engine: one
+  building's power switched off, and weapon bonuses.
+- **After a battle** (`ui/Outcome.tsx`): in the simulator the result offers Look at the battle (it steps aside for the
+  timeline and the board), Save replay, Run again and Back to setup. If a battle's world closes under the simulator by
+  any other road, the simulator goes back to the setup (`App.tsx`).
+
 ## Data and building
 
 The page imports website source (RTSAI-Web: the Faction viewer components and the Earth compiler). The build finds
@@ -150,3 +183,11 @@ requests without an identifying User-Agent).
 Known gaps: islands inside a lake or sea stay water (the compiler has no land fill); a coastline that ends inside the
 box (missing data) adds no sea; and the `Bundle.cs` editor-widget overlay takes effect after the next data repack (the
 runtime also quiets the editor widgets itself).
+
+Found on 20 November 2026 and still open (the ranked list is in `D:\Generated\RTSAI\maker-tools-20261120\README.md`):
+- Random and blank maps are strips four times as wide as tall (`MapGen.cs` and the editor's "new" make a square in
+  cells, and an isometric cell is twice as wide as a row is high). Squarer maps are an engine-side change.
+- A dragged tile stroke skips cells and painted ground has hard edges: the tile brush paints only where it is told the
+  pointer is. Filling the path in on the page did not change what the engine painted. A ground brush like
+  `WaterBrush.cs` (dirt, rough ground and sand with their edge pieces) is the fix.
+- Every save of an edited map is a new copy in the player's maps, and a saved map cannot be deleted from the page.
