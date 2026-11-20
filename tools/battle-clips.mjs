@@ -222,10 +222,13 @@ for (const clip of grid.clips) {
   const runAt = 1.2; // the film opens on both armies standing, this long
   await page.evaluate(() => window.game.sandbox.setPaused(false));
   const started = Date.now();
+  // Game time counts from here: a row's scripted orders come during the fight, not before it.
+  const tick0 = { tick: await page.evaluate(() => window.game.client.cur.header.tick), at: started };
 
   // The player's own orders, given the way a player gives them: select, then a right-click on the target.
   for (const step of clip.script ?? []) {
-    await sleep(Math.max(0, step.at * 1000 - (Date.now() - started)));
+    // At its second of game time (on a busy PC the game runs slower than the clock).
+    await page.waitForFunction((tick) => window.game.client.cur.header.tick >= tick, tick0.tick + Math.round(step.at * 25), { timeout: 120000, polling: 20 });
     if (step.do === "attack") {
       // The order goes in as a right-click at the target's place on the map (the message the page sends for a
       // real right-click), so it lands even when the camera is not showing the target.
@@ -246,7 +249,7 @@ for (const clip of grid.clips) {
   // Watch it: who is alive, who has fired, until the time is up or one side is gone. Game time, from the ticks: on a
   // busy PC the game runs slower than real time, and the film is drawn at game time anyway.
   const seconds = Number(opt("seconds", clip.seconds ?? 28)), timeline = [];
-  let ended = null, stats = null, built0 = null, builtNow = null, tick0 = null, tickNow = null, poses = null;
+  let ended = null, stats = null, built0 = null, builtNow = null, tickNow = null, poses = null;
   for (;;) {
     await sleep(500);
     const seen = await page.evaluate(() => {
@@ -258,7 +261,6 @@ for (const clip of grid.clips) {
       const poses = sides.map((owner) => { const out = {}; for (const a of s.actors) { if (a.owner !== owner || (a.flags & 16) || (a.flags & 8) || !(a.maxHp > 0)) continue; const t = g.client.strings[a.type], q = g.client.str(a.sequence) || "deployed"; /* an empty pose: deployed, its sandbag body drawn instead (sandbox.ts) */ (out[t] ??= {})[q] = ((out[t] ??= {})[q] ?? 0) + 1; } return out; });
       return { stats: window.store.getState().ui?.sandbox ?? null, built, tick: s.header.tick, poses };
     });
-    if (!tick0) tick0 = { tick: seen.tick, at: Date.now() };
     tickNow = { tick: seen.tick, at: Date.now() };
     const t = (seen.tick - tick0.tick) / 25;
     if (t >= seconds || (Date.now() - started) / 1000 > seconds * 4 + 30) break;
