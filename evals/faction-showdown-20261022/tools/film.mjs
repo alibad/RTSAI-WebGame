@@ -35,11 +35,18 @@ const limit = Number(opt("limit", 2400));
 const crf = opt("crf", "28");
 const url = opt("url", "http://127.0.0.1:3741/");
 const CSS_W = 960, CSS_H = 540, DPR = 2, FPS = 30;
+// --slow <n>: everything runs n times slower than the film (the game's speed, the camera, the overlay, the pacing), and
+// one film frame is taken every n/30 s. A busy PC then still gives every film frame a new picture: at 1, a screencast
+// that cannot keep up holds a frame and jumps (20 Nov 2026: 2 to 12% of the AI front's frames, which the owner sees as
+// flicker; the Review inbox refuses over 2%).
+const SLOW = Math.max(1, Number(opt("slow", 1)));
 const name = opt("name", `${A}-vs-${B}-s${seed}`);
 fs.mkdirSync(outDir, { recursive: true });
 const t0 = Date.now();
 const log = (...a) => console.log(`[${((Date.now() - t0) / 1000).toFixed(0)}s]`, ...a);
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms * SLOW));
+/** The film's clock in milliseconds: wall time divided by --slow. */
+const filmNow = () => Date.now() / SLOW;
 
 const exe = process.env.LOCALAPPDATA + "/ms-playwright/chromium-1228/chrome-win64/chrome.exe";
 const browser = await chromium.launch({ executablePath: exe, headless: true,
@@ -86,7 +93,7 @@ cdp.on("Page.screencastFrame", async (f) => {
     if (lastT !== null) longestGap = Math.max(longestGap, t - lastT);
     lastT = t;
     if (clock === null) clock = t;
-    while (last && clock + 1000 / FPS <= t) { await write(last); clock += 1000 / FPS; }
+    while (last && clock + (1000 * SLOW) / FPS <= t) { await write(last); clock += (1000 * SLOW) / FPS; }
     last = buf;
   }
   await cdp.send("Page.screencastFrameAck", { sessionId: f.sessionId }).catch(() => {});
@@ -105,9 +112,12 @@ await page.waitForFunction(() => ["playing", "error"].includes(window.store.getS
 if ((await page.evaluate(() => window.store.getState().phase)) !== "playing") throw new Error("did not start: " + await page.evaluate(() => window.store.getState().error));
 log("replay ready", A, "vs", B, "end tick", replay.tick);
 
+// --slow: the overlay's CSS transitions and animations run slower too.
+if (SLOW > 1) { await cdp.send("Animation.enable"); await cdp.send("Animation.setPlaybackRate", { playbackRate: 1 / SLOW }); }
 // The director and the overlay live in the page (smooth camera on requestAnimationFrame).
-await page.evaluate(({ A, B, nameA, nameB, mapTitle, label, sub }) => {
+await page.evaluate(({ A, B, nameA, nameB, mapTitle, label, sub, slow }) => {
   const g = window.game;
+  const filmNow = () => performance.now() / slow; // the film's clock (--slow)
   document.documentElement.classList.add("footage-clean");
   // Snapshots carry only actors in view: keep the whole map in view (the camera still shows its own part).
   g.sendView = function () { this.client.send({ type: "view", x0: -100000, y0: -100000, x1: 100000, y1: 100000 }); };
@@ -193,7 +203,7 @@ await page.evaluate(({ A, B, nameA, nameB, mapTitle, label, sub }) => {
           const feed = document.getElementById("evo-feed");
           feed.appendChild(el);
           while (feed.children.length > 3) feed.firstChild.remove();
-          setTimeout(() => el.remove(), 9000);
+          setTimeout(() => el.remove(), 9000 * slow);
         }
         prev[i] = p.buildingsDead;
       }
@@ -203,7 +213,7 @@ await page.evaluate(({ A, B, nameA, nameB, mapTitle, label, sub }) => {
       const fade = document.getElementById("evo-fade"), skip = document.getElementById("evo-skip");
       fade.classList.add("on"); requestAnimationFrame(() => requestAnimationFrame(() => fade.classList.remove("on")));
       skip.textContent = `▶▶ +${Math.floor(skipped / 60)}:${String(skipped % 60).padStart(2, "0")}`;
-      skip.classList.add("on"); clearTimeout(this.skipTimer); this.skipTimer = setTimeout(() => skip.classList.remove("on"), 2600);
+      skip.classList.add("on"); clearTimeout(this.skipTimer); this.skipTimer = setTimeout(() => skip.classList.remove("on"), 2600 * slow);
     },
     end(stats) {
       const w = stats.players.findIndex((p) => p.win === "Won");
@@ -228,7 +238,7 @@ await page.evaluate(({ A, B, nameA, nameB, mapTitle, label, sub }) => {
   const vel = { x: 0, y: 0 };
   function look() {
     const s = g.client.cur; if (!s) return;
-    const now = performance.now();
+    const now = filmNow();
     for (const a of s.actors) {
       if (a.owner === 0 || a.maxHp <= 0) continue;
       const before = hp.get(a.id);
@@ -245,10 +255,10 @@ await page.evaluate(({ A, B, nameA, nameB, mapTitle, label, sub }) => {
       if (bestN >= 4) lastFight = now;
     } else if (now - lastFight > 4000) goal = null;
   }
-  setInterval(look, 200);
-  let lastFrame = performance.now();
+  setInterval(look, 200 * slow);
+  let lastFrame = filmNow();
   function frame() {
-    const now = performance.now(), dt = Math.min(0.1, (now - lastFrame) / 1000); lastFrame = now;
+    const now = filmNow(), dt = Math.min(0.1, (now - lastFrame) / 1000); lastFrame = now;
     const target = goal ?? fallback;
     if (target) {
       const dx = target.x - g.cam.x, dy = target.y - g.cam.y, d = Math.hypot(dx, dy);
@@ -263,7 +273,7 @@ await page.evaluate(({ A, B, nameA, nameB, mapTitle, label, sub }) => {
   }
   requestAnimationFrame(frame);
   window.__dir = {
-    state: () => ({ fight: performance.now() - lastFight < 4000, heat: heat.length }),
+    state: () => ({ fight: filmNow() - lastFight < 4000, heat: heat.length }),
     reset: () => { hp.clear(); heat = []; goal = null; lastFight = -1e9; },
     setFallback: (p) => { fallback = p; },
     // Where the armies are: per side, the centre of its moving combat units, and its base (buildings' centre).
@@ -279,7 +289,7 @@ await page.evaluate(({ A, B, nameA, nameB, mapTitle, label, sub }) => {
       return Object.values(out).map((o) => ({ army: c(o.units), base: c(o.buildings) }));
     },
   };
-}, { A, B, nameA: factionName(A), nameB: factionName(B), mapTitle, label, sub });
+}, { A, B, nameA: factionName(A), nameB: factionName(B), mapTitle, label, sub, slow: SLOW });
 
 // The overlay's numbers at a tick, from the scored match's timeline (sampled every ~10 game seconds): army value and
 // money interpolated, losses stepped.
@@ -293,12 +303,13 @@ function statsAt(tick) {
     return { army: [lerp(0)], killsCost: lerp(1), deathsCost: a[2], unitsDead: a[3], buildingsDead: a[4], earned: lerp(5) };
   }) };
 }
-const setSpeed = (v) => page.evaluate((v) => window.game.client.send({ type: "speed", speed: v }), v);
+// The film's speed; the game runs --slow times slower (raw: a fast-forward that is not filmed).
+const setSpeed = (v, raw = false) => page.evaluate((v) => window.game.client.send({ type: "speed", speed: v }), raw ? v : v / SLOW);
 const tickNow = () => page.evaluate(() => window.game.client.cur?.header.tick ?? 0);
 const timeline = [];
 let speed = quietSpeed, stats = null, fightOn = false, lastPick = 0, pick = 0;
 // Recording pauses while the film skips ahead; it comes back with a fade and the time jumped.
-let quietSince = Date.now(), skipping = false, skipFrom = 0;
+let quietSince = filmNow(), skipping = false, skipFrom = 0;
 const pauseRecording = (gs) => { skipping = true; recording = false; skipFrom = gs; };
 async function resumeRecording(gs) {
   await sleep(300); // the camera has cut to its subject
@@ -308,8 +319,8 @@ async function resumeRecording(gs) {
 }
 /** No fight on screen: every 6 s of real time the camera visits the bigger army on the move, else alternates the bases. */
 async function idleCamera() {
-  if (fightOn || Date.now() - lastPick <= 6000) return;
-  lastPick = Date.now();
+  if (fightOn || filmNow() - lastPick <= 6000) return;
+  lastPick = filmNow();
   const sides = await page.evaluate(() => window.__dir.sides());
   const armies = sides.filter((s) => s.army && s.army.n >= 3).sort((p, q) => q.army.n - p.army.n);
   const spot = pick++ % 3 === 2 && armies.length ? armies[0].army : sides[pick % Math.max(1, sides.length)]?.base ?? armies[0]?.army;
@@ -346,10 +357,10 @@ async function filmFull() {
       await setSpeed(speed);
       timeline.push({ wall: (Date.now() - t0) / 1000, game: Math.round(s.gs), event: fightOn ? "battle" : "quiet" });
       if (fightOn && skipping) await resumeRecording(s.gs);
-      if (!fightOn) quietSince = Date.now();
+      if (!fightOn) quietSince = filmNow();
     }
-    if (!fightOn && !skipping && Date.now() - quietSince > quietRecord * 1000) { pauseRecording(s.gs); timeline.push({ wall: (Date.now() - t0) / 1000, game: Math.round(s.gs), event: "skip" }); }
-    if (skipping && s.gs - skipFrom > 240) { await resumeRecording(s.gs); quietSince = Date.now(); }
+    if (!fightOn && !skipping && filmNow() - quietSince > quietRecord * 1000) { pauseRecording(s.gs); timeline.push({ wall: (Date.now() - t0) / 1000, game: Math.round(s.gs), event: "skip" }); }
+    if (skipping && s.gs - skipFrom > 240) { await resumeRecording(s.gs); quietSince = filmNow(); }
     await idleCamera();
     if (s.phase !== "playing") { log("phase", s.phase); break; }
     if (s.tick >= replay.tick - 1) { if (skipping) await resumeRecording(s.gs); await endCard(); break; }
@@ -394,8 +405,8 @@ async function filmHighlights() {
   await page.evaluate(() => window.game.setPaused(false));
   await sleep(600);
   recording = true;
-  const openingUntil = Date.now() + Number(opt("opening", 5)) * 1000;
-  while (Date.now() < openingUntil) { await sleep(400); await idleCamera(); await step(); }
+  const openingUntil = filmNow() + Number(opt("opening", 5)) * 1000;
+  while (filmNow() < openingUntil) { await sleep(400); await idleCamera(); await step(); }
   pauseRecording((await tickNow()) * 0.04);
 
   for (const w of windows) {
@@ -403,7 +414,7 @@ async function filmHighlights() {
     const now = await tickNow();
     if (start > now && start - now < 25 * 60) {
       // Close by: fast-forward unrecorded.
-      await setSpeed(8);
+      await setSpeed(8, true);
       while ((await tickNow()) < start) await sleep(100);
     } else if (start > now || start < now - 25 * 5) {
       // Far: restart the replay there (rebuilt without drawing), as the replay's own seek does.

@@ -1,7 +1,7 @@
 // Films a skirmish grid's games for review, one at a time: each game's replay through the faction showdown's
 // broadcast film (evals/faction-showdown-20261022/tools/film.mjs: the opening, the biggest fight, the ending), then a
 // 720p copy with two caption lines of what each computer player did (tools/arena/skirmish-report.mjs).
-//   node tools/arena/skirmish-films.mjs --run <folder> [--only g01,g02] [--url http://127.0.0.1:3464/] [--bundle <pack>] [--tag after]
+//   node tools/arena/skirmish-films.mjs --run <folder> [--only g01,g02] [--url http://127.0.0.1:3464/] [--bundle <pack>] [--tag after] [--slow 3]
 // Needs <run>/report.json (run skirmish-report.mjs first) and ffmpeg. Writes <run>/clips/<id>[-tag].mp4, .jpg and
 // <run>/clips/<id>[-tag].json (title, what it shows, facts, suspected problems with their second in the clip).
 import fs from "node:fs";
@@ -45,7 +45,9 @@ for (const g of order) {
   const made = path.join(raw, `${name}.mp4`);
   // A film already made is only captioned again (--again films it anew).
   const film = fs.existsSync(made) && !argv.includes("--again") ? { status: 0 } : spawnSync(process.execPath, [filmTool, "--replay", g.replay, "--result", path.join(run, "results.jsonl"), "--out", raw, "--url", url, "--name", name,
-    "--label", label, "--sub", sub, "--windows", opt("windows", "1"), "--window", opt("window", "40"), "--opening", "4", ...(bundle ? ["--bundle", path.resolve(bundle)] : [])], { encoding: "utf8", maxBuffer: 64 * 1024 * 1024 });
+    "--label", label, "--sub", sub, "--windows", opt("windows", "1"), "--window", opt("window", "40"), "--opening", "4", ...(bundle ? ["--bundle", path.resolve(bundle)] : []),
+    // --slow 3: the game runs three times slower than the film, so a busy PC still draws every frame (film.mjs).
+    "--slow", opt("slow", "3")], { encoding: "utf8", maxBuffer: 64 * 1024 * 1024 });
   if (film.status !== 0 || !fs.existsSync(made)) { console.log(`${name}: FILM FAILED ${String(film.stderr).slice(-400)}`); continue; }
   const filmInfo = JSON.parse(fs.readFileSync(path.join(raw, `${name}.json`), "utf8"));
   // Captions: two lines under the picture, the reference side first (blue), then the side under test (red).
