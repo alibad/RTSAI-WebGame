@@ -1039,15 +1039,22 @@ export class Renderer {
       const y0 = Math.round(sy) + act.by;
       const x1 = x0 + act.bw;
       const y1 = y0 + act.bh;
-      // RA2-style corner brackets (not for a unit that only shows its status bar)
+      // RA2-style corner brackets (not for a unit that only shows its status bar): short fixed corners, two screen
+      // pixels thick over a dark edge, so they read on sand and snow and a packed group stays four corners per unit
+      // instead of a mesh of long lines.
       const c = selected ? [1, 1, 1] : [0.7, 0.7, 0.7];
       if (!barOnly) {
-        const L = Math.max(3, Math.min(act.bw, act.bh) / 4);
-        const t = px;
-        rect(x0, y0, L, t, c[0], c[1], c[2]); rect(x0, y0, t, L, c[0], c[1], c[2]);
-        rect(x1 - L, y0, L, t, c[0], c[1], c[2]); rect(x1 - t, y0, t, L, c[0], c[1], c[2]);
-        rect(x0, y1 - t, L, t, c[0], c[1], c[2]); rect(x0, y1 - L, t, L, c[0], c[1], c[2]);
-        rect(x1 - L, y1 - t, L, t, c[0], c[1], c[2]); rect(x1 - t, y1 - L, t, L, c[0], c[1], c[2]);
+        const L = Math.min(7, Math.max(4, Math.min(act.bw, act.bh) * 0.22));
+        const t = 2 * px, e = px;
+        const corners = (pad: number, w: number, r: number, g: number, b: number, al: number) => {
+          const l = L + pad;
+          rect(x0 - pad, y0 - pad, l, w, r, g, b, al); rect(x0 - pad, y0 - pad, w, l, r, g, b, al);
+          rect(x1 + pad - l, y0 - pad, l, w, r, g, b, al); rect(x1 + pad - w, y0 - pad, w, l, r, g, b, al);
+          rect(x0 - pad, y1 + pad - w, l, w, r, g, b, al); rect(x0 - pad, y1 + pad - l, w, l, r, g, b, al);
+          rect(x1 + pad - l, y1 + pad - w, l, w, r, g, b, al); rect(x1 + pad - w, y1 + pad - l, w, l, r, g, b, al);
+        };
+        corners(e, t + 2 * e, 0, 0, 0, 0.55);
+        corners(0, t, c[0], c[1], c[2], 1);
         if (act.rank > 0) {
           // Veterancy chevrons at the bottom right (gold: veteran, red-gold: elite).
           const col = act.rank >= 2 ? [1, 0.45, 0.2] : [0.95, 0.82, 0.45];
@@ -1059,10 +1066,18 @@ export class Renderer {
         }
       }
       if (act.maxHp > 0) {
+        // A segmented pip bar, as in Red Alert 2: short and centred over the unit (it no longer spans the whole box,
+        // so packed units' bars do not run into each other), one pip per 6 px of width, 5 to 12 pips.
         const f = Math.max(0, act.hp / act.maxHp);
-        const col = f > 0.5 ? [0.2, 0.85, 0.25] : f > 0.25 ? [0.95, 0.8, 0.1] : [0.9, 0.15, 0.1];
-        rect(x0, y0 - 5 * px - 3, act.bw, 4, 0, 0, 0, 0.75);
-        rect(x0 + px, y0 - 4 * px - 3, Math.max(0, (act.bw - 2 * px) * f), 2, col[0], col[1], col[2]);
+        const col = f > 0.5 ? [0.25, 0.9, 0.3] : f > 0.25 ? [0.98, 0.82, 0.15] : [0.95, 0.2, 0.12];
+        const pips = Math.min(12, Math.max(5, Math.round(act.bw / 6)));
+        const pw = 3, gap = 1, ph = 3, lit = f > 0 ? Math.max(1, Math.ceil(f * pips - 1e-6)) : 0;
+        const bw = pips * (pw + gap) - gap, bx = (x0 + x1) / 2 - bw / 2, by = y0 - ph - 4;
+        rect(bx - 1, by - 1, bw + 2, ph + 2, 0, 0, 0, 0.8);
+        for (let k = 0; k < pips; k++) {
+          const on = k < lit;
+          rect(bx + k * (pw + gap), by, pw, ph, on ? col[0] : 0.22, on ? col[1] : 0.24, on ? col[2] : 0.22, 1);
+        }
       }
     }
 
