@@ -9,6 +9,7 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { Skull, Swords, X } from "lucide-react";
 import type { Game } from "../game";
+import type { Actor } from "../sim/protocol";
 import { useStore } from "../store";
 import { battleStats } from "../sandbox";
 import { SIDE_COLORS } from "../sides";
@@ -44,6 +45,10 @@ export function useField(game: Game) {
     setUnits([]);
     setFallen([]);
     if (!info) return;
+    const unit = (a: Actor, side: number): FieldUnit => ({ id: a.id, type: game.client.str(a.type), side: side as 0 | 1, hp: a.hp, maxHp: a.maxHp, x: a.sx, y: a.sy, dead: false, building: (a.flags & 8) !== 0 });
+    // A battle begun from a replay moment (Play from here) loses units in its first ticks, before the first read
+    // below: the battle's first recorded frame lists every unit it began with, so none is missing from the board.
+    let seeded = false;
     const read = () => {
       // The replay's moment while scrubbing: the field as it was then, without touching the battle's log of losses.
       const frame = game.sandbox?.replayFrame()?.[0];
@@ -52,10 +57,19 @@ export function useField(game: Game) {
         for (const a of frame.actors) {
           const side = sides[a.owner];
           if (side < 0 || a.maxHp <= 0 || a.flags & 16 || a.hp <= 0) continue;
-          alive.set(a.id, { id: a.id, type: game.client.str(a.type), side: side as 0 | 1, hp: a.hp, maxHp: a.maxHp, x: a.sx, y: a.sy, dead: false, building: (a.flags & 8) !== 0 });
+          alive.set(a.id, unit(a, side));
         }
         setUnits([...roster.current.values()].map((u) => alive.get(u.id) ?? { ...u, dead: true, hp: 0 }));
         return;
+      }
+      const first = mode === "run" && !seeded ? game.sandbox?.recording[0] : undefined;
+      if (first) {
+        seeded = true;
+        const sides = sidesOf(first);
+        for (const a of first.actors) {
+          const side = sides[a.owner];
+          if (side >= 0 && a.maxHp > 0 && !(a.flags & 16) && a.hp > 0 && !roster.current.has(a.id)) roster.current.set(a.id, unit(a, side));
+        }
       }
       const cur = game.client.cur;
       if (!cur) return;
@@ -69,7 +83,7 @@ export function useField(game: Game) {
         const known = roster.current.get(a.id);
         if (dead) { if (known && !known.dead) { known.dead = true; known.hp = 0; lost.push({ n: seq++, at: elapsed(), type: known.type, side: known.side }); } continue; }
         seen.add(a.id);
-        roster.current.set(a.id, { id: a.id, type: game.client.str(a.type), side: side as 0 | 1, hp: a.hp, maxHp: a.maxHp, x: a.sx, y: a.sy, dead: false, building: (a.flags & 8) !== 0 });
+        roster.current.set(a.id, unit(a, side));
       }
       for (const u of roster.current.values()) {
         if (u.dead || seen.has(u.id)) continue;

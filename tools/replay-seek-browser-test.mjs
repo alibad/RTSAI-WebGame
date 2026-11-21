@@ -213,6 +213,16 @@ try {
     check(JSON.stringify(next.roster) === JSON.stringify(want), `play from ${fmt(t.tick)}: the new battle starts (tick ${next.tick}) with that moment's ${want.length} units (${next.roster.length} there)`);
     check(next.linkDeployed === before && next.deployed + next.lostE1 >= before, `play from ${fmt(t.tick)}: the G.I.s dug in then are dug in again (${before} then; ${next.linkDeployed} in the setup, ${next.deployed} dug in at tick 3)`);
     check(/[?&]mode=sandbox/.test(next.href) && /[?&]s=/.test(next.href), 'play from here: the address is a link to the new battle');
+    // The battle board lists every unit the new battle began with, also one that fell in its first ticks, before the
+    // board's first look at the field (it reads it four times a second).
+    const board = await page.evaluate(async () => {
+      const sb = window.game.sandbox; sb.setPaused(false);
+      await new Promise((r) => setTimeout(r, 600)); sb.setPaused(true);
+      await new Promise((r) => setTimeout(r, 400));
+      return [...document.querySelectorAll('[data-testid="battle-board"] .sb-field-title .digits small')].map((e) => Number(e.textContent.replace('/', '')));
+    });
+    const began = [0, 1].map((s) => next.roster.filter((k) => k.endsWith(`/${s}`)).length);
+    check(JSON.stringify(board) === JSON.stringify(began), `play from ${fmt(t.tick)}: the battle board lists every unit the new battle began with (${board.join(' + ') || 'no board'} listed, ${began.join(' + ')} began)`);
     // The link, opened afresh, lays the battle out in a paused setup: every unit's cell, health and rank, exactly.
     const same = (a, b) => a.type === b.type && a.player === b.player && Math.abs(a.x - b.x) <= 1 && Math.abs(a.y - b.y) <= 2;
     await page.goto(next.href);
