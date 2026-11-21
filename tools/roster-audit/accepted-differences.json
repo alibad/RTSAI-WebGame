@@ -2929,7 +2929,7 @@
        "burst": 1,
        "damage": 125,
        "excludes": [],
-       "projectile": "Bullet",
+       "projectile": "InstantHit",
        "range": 14336,
        "reload": 250,
        "targets": [
