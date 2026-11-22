@@ -14,6 +14,7 @@
 //   --runtime <_framework dir>  answer the page's runtime (public/aot/_framework/*) from a local publish of
 //                              sim/OpenRA.WebSim.Browser, so a simulation or drawing change is filmed on the live page
 //                              and data before any runtime release
+//   --runtime-mode interp       film a local Studio build (it ships only the interpreter runtime); default aot
 //   --bars selected|damaged|all   whose health bars show (default damaged: every unit that has been hit; a grid row
 //                              can say "bars" for itself)
 //
@@ -113,7 +114,8 @@ for (let i = 0; i < 4; i++) {
 
 /** Opens a simulator link and waits for its editing world: the placements standing, paused. */
 async function openSimulator(cfg) {
-  await page.goto(`${url}?profile=public&private=0&runtime=aot&mode=sandbox&s=${b64url(cfg)}`);
+  // --runtime-mode interp films a local Studio build, which ships only the interpreter runtime (wasm-interp).
+  await page.goto(`${url}?profile=public&private=0&runtime=${opt("runtime-mode", "aot")}&mode=sandbox&s=${b64url(cfg)}`);
   await page.waitForFunction(() => { const s = window.store?.getState(); return s?.phase === "error" || (s?.phase === "playing" && s.sandbox?.mode === "edit" && s.sandbox.units.length > 0 && !!window.game.client.cur); }, null, { timeout: 300000, polling: 250 });
   const state = await page.evaluate(() => ({ phase: window.store.getState().phase, error: window.store.getState().error }));
   if (state.phase === "error") throw new Error(`the page failed: ${state.error}`);
