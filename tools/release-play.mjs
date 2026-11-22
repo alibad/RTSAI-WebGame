@@ -12,6 +12,8 @@
 //     on top of origin/main, and with --engine <commit> on an engine commit that is not pinned yet.
 //   node tools/release-play.mjs promote                 the prepared preview to production, then checks rtsai.net/play
 //   node tools/release-play.mjs abort                   gives up the prepared release (and the lock)
+//   node tools/release-play.mjs campaign [--dry]        publishes changed campaign files (cdn.mutable) on their own;
+//     they reach players at once (the page does not pin them), so this needs the owner's approval like a promote.
 // The release in progress is <work>/release.json; it is also the lock: one release at a time on this machine.
 // Receipts of finished releases are in <work>/releases/.
 import { execFileSync, execSync, spawn, spawnSync } from "node:child_process";
@@ -900,10 +902,66 @@ function abort() {
   say(`aborted ${state.id}; ${touched}${state.cdn?.added?.length ? ` (Cloudflare keeps the roots ${state.cdn.added.join(", ")})` : ""}`);
 }
 
-const commands = { status, prepare, promote, abort };
+/**
+ * Publishes the Cloudflare folder when only campaign files changed (paths under cdn.mutable: the films, voices and
+ * index the page reads from VITE_CAMPAIGN_BASE, unpinned). A release uploads to Cloudflare only when it adds a runtime
+ * or data root, so a campaign fix between releases had no way out (21 Nov 2026: the Lebanon chapter's renamed folder).
+ * It adds no roots: it refuses when anything outside cdn.mutable differs from the live manifest. Changes are found by
+ * path and size, as the manifest records them; a same-size edit is not seen. --dry lists them and deploys nothing.
+ */
+async function campaign() {
+  const dry = flag("dry");
+  const mutable = (p) => (config.cdn.mutable ?? []).some((m) => p.startsWith(m));
+  const live = await fetch(`${config.vercel.public}BUILD.json?release=${Date.now()}`).then((r) => r.json());
+  const liveManifest = await fetch(`${host}MANIFEST.json?release=${Date.now()}`).then((r) => (r.ok ? r.json() : null));
+  if (!liveManifest) refuse(`${host}MANIFEST.json could not be read`);
+  const local = folderManifest(config.cdn.dir);
+  const control = new Set(["MANIFEST.json", "_headers", "404.html"]);
+  const outside = Object.keys(local).filter((p) => !mutable(p) && !control.has(p) && local[p] !== liveManifest.files[p]);
+  if (outside.length) refuse(`${config.cdn.dir} differs from the live manifest outside the campaign files (${outside.length}, e.g. ${outside.slice(0, 5).join(", ")}): that is a release, use prepare`);
+  const changed = Object.keys(local).filter((p) => mutable(p) && local[p] !== liveManifest.files[p]).sort();
+  if (!changed.length) { say("no campaign file differs from what Cloudflare serves"); return; }
+  step(`campaign files to publish (${changed.length})`);
+  for (const p of changed) say(`  ${p in liveManifest.files ? "changed" : "new    "} ${p} (${local[p]} bytes)`);
+  if (dry) { say("\n--dry: nothing deployed"); return; }
+
+  fs.mkdirSync(work, { recursive: true });
+  let fd;
+  try { fd = fs.openSync(lockFile, "wx"); } catch {
+    refuse(`another release holds the lock: ${describeLock(readLock())}. Finish it (promote) or give it up (abort) first`);
+  }
+  const id = new Date().toISOString().replace(/[:.]/g, "-");
+  const rel = path.join(work, "releases", id);
+  const state = { id, stage: "campaign files", pid: process.pid, cwd: repo, startedAt: new Date().toISOString(), dir: rel, changed };
+  fs.mkdirSync(rel, { recursive: true });
+  fs.writeSync(fd, JSON.stringify(state, null, 2));
+  fs.closeSync(fd);
+  try {
+    step("cloudflare");
+    const cdn = await cdnPublish(rel, {}, live);
+    if (!cdn.deployed) refuse("Cloudflare was not deployed");
+    step(`check ${host}`);
+    for (const p of changed) {
+      let size = -1;
+      for (let i = 0; i < 20 && size !== local[p]; i++) {
+        size = await fetch(`${host}${p}?release=${Date.now()}`).then(async (r) => (r.ok ? (await r.arrayBuffer()).byteLength : -r.status));
+        if (size !== local[p]) await sleep(3000);
+      }
+      if (size !== local[p]) refuse(`${host}${p} answers ${size < 0 ? `HTTP ${-size}` : `${size} bytes`}, not ${local[p]} bytes`);
+    }
+    say(`  all ${changed.length} served at their size`);
+    Object.assign(state, { stage: "campaign files live", cdn, finishedAt: new Date().toISOString() });
+    fs.writeFileSync(path.join(rel, "receipt.json"), JSON.stringify(state, null, 2) + "\n");
+    say(`\nLIVE: ${changed.length} campaign file(s) on ${host} (deployment ${cdn.deployment}, ${cdn.files} files). Receipt: ${path.join(rel, "receipt.json")}`);
+  } finally {
+    fs.rmSync(lockFile, { force: true });
+  }
+}
+
+const commands = { status, prepare, promote, abort, campaign };
 const command = commands[argv[0]];
 if (!command) {
-  console.error("usage: node tools/release-play.mjs status|prepare|promote|abort  (see the top of this file)");
+  console.error("usage: node tools/release-play.mjs status|prepare|promote|abort|campaign  (see the top of this file)");
   process.exit(2);
 }
 try {
