@@ -93,7 +93,11 @@ try {
         const actualRosters = await page.evaluate(() => window.game.client.command({ cmd: 'rosters' }));
         for (const faction of studio[mode].factions) {
           const expectedRoster = [...new Set([...faction.units.map(u => u.id), ...studio[mode].deployments[faction.id]])].sort();
-          assert.deepEqual([...actualRosters.rosters[faction.id]].sort(), expectedRoster, `${mode}/${faction.id} must match the audited Studio roster and deployed yards`);
+          // A local Concept Forge drafts build (RTSAI-Mod tools/build-unit-preview.py with RTSAI_FORGE_DRAFTS) adds its own
+          // fd* actors to the rosters on purpose; every other actor must still match the audited Studio roster.
+          const drafts = process.env.RTSAI_FORGE_DRAFTS ? actualRosters.rosters[faction.id].filter(id => id.startsWith('fd')) : [];
+          if (drafts.length) (receipt.forgeDrafts ??= {})[`${mode}/${faction.id}`] = drafts;
+          assert.deepEqual([...actualRosters.rosters[faction.id]].filter(id => !drafts.includes(id)).sort(), expectedRoster, `${mode}/${faction.id} must match the audited Studio roster and deployed yards`);
           (receipt.rosters ??= []).push({ mode, faction: faction.id, units: faction.units.length, deploymentForms: studio[mode].deployments[faction.id], passed: true });
         }
         console.log(`PASS ${mode}: all ${studio[mode].factions.length} faction rosters match Studio, including saved rule overlays`);
