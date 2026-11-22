@@ -60,12 +60,20 @@ What players get:
   InstantHit, and `tools/roster-audit/accepted-differences.json` still recorded it as a Bullet. Only that field changed
   (`4744e75`); the owner accepted it with the promote.
 
+## Afterwards: the Lebanon chapter's film and voices (22 Nov, 16:05 Doha)
+
+Not in the release itself: the page asks for `campaign-v2/lebanon-relay/`, and the CDN had the chapter only under the
+old name since 14 Nov, so it played without its briefing film and radio voices. A release uploads to Cloudflare only
+when it adds a root, so on the owner's "Yes, put them live" the release tool gained `campaign [--dry]` (`2f28a1e`),
+which publishes changed campaign files on their own and refuses anything else. It published 8 files: the 7 files under
+`lebanon-relay/` (byte-identical to the old-name ones, prepared by the campaign session in
+`D:\Generated\RTSAI\campaign-20261120\fix-relay-files`) and `index.json` with the entry renamed. Cloudflare deployment
+ed8a34e6, 19,863 files; receipt `D:\Builds\RTSAI\play-release\releases\2026-11-22T13-04-30-486Z`.
+`tools/campaign-files-check.mjs` on live: 8 missing before, nothing missing after. The old-name folder stays on the
+CDN until the owner decides (it is a public address carrying the old name; old saves do not use it).
+
 ## Not in this release
 
-- The Lebanon chapter's Relay film and radio voices: the page asks for `campaign-v2/lebanon-relay/`, and the CDN has
-  them only under the old name. The fix (7 byte-identical files and one index line, prepared by the campaign session in
-  `D:\Generated\RTSAI\campaign-20261120\fix-relay-files`) can only go up with a Cloudflare upload, which happens at
-  `prepare` and reaches players at once, so it waits on the owner.
 - The desktop game: Windows is still 0.4.0-alpha.4 (14 Nov).
 
 ## How it was built
