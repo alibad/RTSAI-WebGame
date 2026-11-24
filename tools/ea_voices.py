@@ -182,9 +182,11 @@ class VoiceGenerator:
                                    for e in E._section(rtsai, 'Weapons')]
         self.cur_weapons = E.merge(self.cur_weapon_sources)
         self.ref_weapons = art.files.load(E._section(classic, 'Weapons'))
-        self.cur_weapon_sources.append(art.retail.weapons)
-        self.cur_weapons = E.merge(self.cur_weapon_sources)
-        self.ref_weapons.update({w.key: w.clone() for w in art.retail.weapons})
+        # The desktop packages (target native-render-only) have no retail layer: their weapons are the mod's own.
+        if art.retail is not None:
+            self.cur_weapon_sources.append(art.retail.weapons)
+            self.cur_weapons = E.merge(self.cur_weapon_sources)
+            self.ref_weapons.update({w.key: w.clone() for w in art.retail.weapons})
 
     # -- reading
 
@@ -272,7 +274,7 @@ class VoiceGenerator:
             if files:
                 clips |= files
                 self.weapons[weapon] = {'sounds': sounds, 'firedBy': sorted(users)}
-        for weapon in self.art.retail.weapons:
+        for weapon in (self.art.retail.weapons if self.art.retail is not None else []):
             sounds = weapon_sounds(weapon)
             files = {clip_file(x, strict=False) for value in sounds.values() for x in E.split_list(value)} - {None}
             if files:
@@ -598,7 +600,8 @@ class VoiceGenerator:
         the web content inserted, then the original-art overlays at the end (ea-art.yaml, ea-modern-preserve.yaml)."""
         if getattr(self, '_raw_sources', None) is None:
             rtsai = (self.art.mod_root / 'mods/rtsai/mod.yaml').read_text(encoding='utf-8')
-            rules, _, _ = E.web_lists(rtsai)
+            # The desktop packages load the mod's own rule list (no web content inserted).
+            rules = E._section(rtsai, 'Rules') if self.art.native_render_only else E.web_lists(rtsai)[0]
             self._raw_sources = [E.parse(self.art.files.path(e).read_text(encoding='utf-8'), str(self.art.files.path(e)))
                                  for e in rules]
         retail = getattr(self.art, 'retail', None)
